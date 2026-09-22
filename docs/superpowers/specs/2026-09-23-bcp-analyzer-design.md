@@ -201,7 +201,14 @@ Routes use TanStack Router. All filters and tab choices are stored in the URL, s
 - **`/settings`:** BCP connection status (token valid or expired) and when the token was last refreshed. Shows no secrets.
 
 **UI conventions**
-- Mantine `AppShell`, light and dark mode, and the Mantine theme defined in one file.
+- **Dark sci-fi HUD theme, dark only** (no light mode, no toggle):
+  - A near-black navy background with a faint neon grid.
+  - Content sits in `Panel` surfaces: translucent, with a cyan edge and a cut corner.
+  - Neon cyan is the primary accent and plasma magenta the secondary.
+  - Fonts: Orbitron for headings, Exo 2 for body text, JetBrains Mono with tabular numbers for figures.
+  - Motion is minimal and respects `prefers-reduced-motion`.
+  - Text keeps WCAG AA contrast.
+- Mantine `AppShell`, with the Mantine theme defined in one file (`apps/web/src/theme.ts`).
 - The heatmap is a custom component built on Mantine's `Table`. It uses a diverging scale (red → grey → green) and prints the numbers in each cell, so it doesn't rely on colour alone.
 - Every data view has a loading skeleton, an empty state and an error state with a retry button.
 - Code is grouped by feature under `src/features/<feature>/`: components, query hooks, utilities and tests together.
