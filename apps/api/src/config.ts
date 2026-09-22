@@ -4,7 +4,7 @@ const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3001),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-  DATABASE_URL: z.string().min(1).default('postgres://bcp:bcp@localhost:5432/bcp'),
+  DATABASE_URL: z.string().min(1).default('postgres://bcp:bcp@localhost:5434/bcp'),
   TOURNAMENT_SOURCE: z.enum(['bcp', 'fixtures']).default('fixtures'),
   /** Resolved against the API's working directory (apps/api when run via pnpm). */
   FIXTURES_DIR: z.string().min(1).default('../../fixtures/bcp/sample'),
