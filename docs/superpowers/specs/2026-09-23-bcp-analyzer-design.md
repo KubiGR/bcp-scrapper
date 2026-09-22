@@ -24,7 +24,7 @@ A small team. It runs locally with `pnpm dev` for now, and is structured so it c
 
 - **BCP API access.** BCP does not publish a documented public API. Their web app uses an internal JSON API. The user intends to obtain official/paid access. All BCP-specific code is isolated behind one interface (`TournamentSource`) so the endpoint, auth and response formats can change without touching the rest of the app.
 - **Pairing-process data** is not available from BCP (see Non-goals).
-- **Node version.** The local Node is 20.12; the toolchain requires Node ≥ 20.19. The project pins **Node 22 LTS** via `.nvmrc`.
+- **Node version.** The toolchain requires Node ≥ 20.19. The project pins the current LTS, **Node 24 LTS (Krypton)** via `.nvmrc`.
 
 ## 3. Architecture
 
@@ -45,7 +45,7 @@ React (apps/web) ──HTTP/JSON──▶ Hono API (apps/api) ──▶ Tourname
 | Area | Choice |
 |---|---|
 | Language | TypeScript (strict, `noUncheckedIndexedAccess`, no `any`) |
-| Runtime | Node 22 LTS, pnpm workspaces |
+| Runtime | Node 24 LTS (Krypton), pnpm workspaces |
 | Web | React 19 + React Compiler 1.0, Vite |
 | Routing | TanStack Router (file-based, type-safe search params) |
 | Server state | TanStack Query |
@@ -187,7 +187,7 @@ bcp-scrapper/
 ├─ fixtures/bcp/               # saved BCP responses
 ├─ docs/superpowers/specs/
 ├─ eslint.config.js  .prettierrc  tsconfig.base.json
-├─ .nvmrc (22)  pnpm-workspace.yaml  .env.example
+├─ .nvmrc (lts/krypton)  pnpm-workspace.yaml  .env.example
 ```
 
 ## 13. Build order
