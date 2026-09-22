@@ -1,0 +1,45 @@
+.header {
+  background: rgb(6 10 22 / 0.85);
+  border-bottom: 1px solid rgb(0 220 255 / 0.3);
+  box-shadow: 0 1px 16px rgb(0 220 255 / 0.12);
+  backdrop-filter: blur(6px);
+}
+
+.brand {
+  font-family: var(--mantine-font-family-headings);
+  font-size: var(--mantine-font-size-lg);
+  font-weight: 800;
+  text-decoration: none;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mantine-color-neon-4);
+  text-shadow: 0 0 12px rgb(0 220 255 / 0.55);
+}
+
+.brandAccent {
+  color: var(--mantine-color-plasma-4);
+  text-shadow: 0 0 12px rgb(255 31 214 / 0.5);
+}
+
+.navLink {
+  padding: 6px 2px;
+  font-family: var(--mantine-font-family-headings);
+  font-size: var(--mantine-font-size-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--mantine-color-dark-1);
+  border-bottom: 2px solid transparent;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease;
+}
+
+.navLink:hover {
+  color: var(--mantine-color-neon-3);
+}
+
+.navLink[data-status='active'] {
+  color: var(--mantine-color-neon-4);
+  border-bottom-color: var(--mantine-color-neon-5);
+}

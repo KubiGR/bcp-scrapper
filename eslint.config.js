@@ -41,11 +41,13 @@ export default defineConfig([
   },
   {
     // Vitest matchers (expect.any, expect.stringContaining) are typed `any`, and asserting
-    // on mocked methods (expect(obj.method)) is idiomatic in tests.
+    // on mocked methods (expect(obj.method)) is idiomatic in tests. Empty-bodied stub methods
+    // (e.g. a ResizeObserver polyfill) are also fine here: they exist to satisfy an interface.
     files: ['**/*.test.{ts,tsx}', '**/test/**/*.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/no-empty-function': 'off',
     },
   },
   { files: ['**/*.{js,cjs,mjs}'], extends: [tseslint.configs.disableTypeChecked] },

@@ -1,0 +1,25 @@
+/* Page backdrop: a faint cyan glow from the top over a 32px tactical grid. */
+body {
+  min-height: 100vh;
+  background-color: var(--mantine-color-dark-8);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgb(0 220 255 / 0.1), transparent 70%),
+    linear-gradient(rgb(0 220 255 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(0 220 255 / 0.035) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    32px 32px,
+    32px 32px;
+  background-attachment: fixed;
+}
+
+::selection {
+  background: rgb(0 220 255 / 0.35);
+  color: var(--mantine-color-white);
+}
+
+/* Figures line up in columns: use on every number shown in tables and stats. */
+.numeric {
+  font-family: var(--mantine-font-family-monospace);
+  font-variant-numeric: tabular-nums;
+}

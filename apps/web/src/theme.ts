@@ -1,0 +1,64 @@
+import { createTheme, Title, type MantineColorsTuple } from '@mantine/core';
+
+/**
+ * Near-black navy. Mantine's dark scheme uses dark[7] for the page, dark[6] for surfaces,
+ * dark[4] for borders and dark[0] for text, so this tuple sets the whole mood.
+ */
+const dark: MantineColorsTuple = [
+  '#d5def0',
+  '#a9b7d1',
+  '#7f8fb0',
+  '#5a6a8e',
+  '#3d4c70',
+  '#2a3656',
+  '#1b2440',
+  '#121a30',
+  '#0b1122',
+  '#060a16',
+];
+
+/** Neon cyan: the primary accent for actions, focus rings and highlights. */
+const neon: MantineColorsTuple = [
+  '#e0fdff',
+  '#b3f7ff',
+  '#80f0ff',
+  '#4de8ff',
+  '#26e2ff',
+  '#00dcff',
+  '#00c4e6',
+  '#00a3bf',
+  '#008299',
+  '#006173',
+];
+
+/** Plasma magenta: secondary accent. Use sparingly so cyan stays the lead colour. */
+const plasma: MantineColorsTuple = [
+  '#ffe3fb',
+  '#ffb8f3',
+  '#ff8ceb',
+  '#ff5fe3',
+  '#ff3bdc',
+  '#ff1fd6',
+  '#e600bf',
+  '#b80099',
+  '#8a0073',
+  '#5c004d',
+];
+
+export const theme = createTheme({
+  colors: { dark, neon, plasma },
+  primaryColor: 'neon',
+  primaryShade: { light: 6, dark: 5 },
+  white: '#eef3ff',
+  black: '#060a16',
+  fontFamily: '"Exo 2 Variable", system-ui, sans-serif',
+  fontFamilyMonospace: '"JetBrains Mono Variable", ui-monospace, monospace',
+  headings: { fontFamily: '"Orbitron Variable", "Exo 2 Variable", sans-serif', fontWeight: '700' },
+  defaultRadius: 0,
+  cursorType: 'pointer',
+  components: {
+    Title: Title.extend({
+      styles: { root: { textTransform: 'uppercase', letterSpacing: '0.08em' } },
+    }),
+  },
+});
