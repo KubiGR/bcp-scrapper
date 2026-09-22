@@ -1,0 +1,33 @@
+{
+  "data": [
+    {
+      "id": "EVTSINGLE01",
+      "name": "Sample Singles GT",
+      "eventDate": "2026-04-10T08:00:00.000Z",
+      "eventEndDate": "2026-04-11T18:00:00.000Z",
+      "country": "Germany",
+      "totalPlayers": 64,
+      "teamEvent": false,
+      "isOnlineEvent": false,
+      "numberOfRounds": 5,
+      "ended": true,
+      "hideLists": false,
+      "gameType": 1
+    },
+    {
+      "id": "EVTTEAM0001",
+      "name": "Sample Team Open",
+      "eventDate": "2026-03-28T09:00:00.000Z",
+      "eventEndDate": "2026-03-29T18:00:00.000Z",
+      "country": "United States",
+      "totalPlayers": 8,
+      "teamEvent": true,
+      "isOnlineEvent": false,
+      "numberOfRounds": 2,
+      "ended": true,
+      "hideLists": false,
+      "gameType": 1
+    }
+  ],
+  "nextKey": "page-2"
+}

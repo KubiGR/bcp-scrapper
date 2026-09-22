@@ -1,0 +1,15 @@
+{
+  "data": [
+    {
+      "id": "EVTSMALL001",
+      "name": "  Tiny RTT  ",
+      "eventDate": "2026-04-12T10:00:00.000Z",
+      "eventEndDate": null,
+      "country": null,
+      "numberOfRounds": 3,
+      "ended": false,
+      "gameType": 1
+    }
+  ],
+  "nextKey": null
+}

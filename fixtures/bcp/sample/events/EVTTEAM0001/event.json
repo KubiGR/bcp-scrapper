@@ -1,0 +1,12 @@
+{
+  "id": "EVTTEAM0001",
+  "name": "Sample Team Open",
+  "dates": { "start": "2026-03-28T09:00:00.000Z", "end": "2026-03-29T18:00:00.000Z" },
+  "location": { "city": "Springfield", "country": "United States" },
+  "format": { "teamEvent": true, "pairingStyle": "swiss" },
+  "status": { "started": true, "ended": true, "currentRound": 2, "numberOfRounds": 2 },
+  "playerCounts": { "total": 8 },
+  "teamPlayerCounts": { "total": 4 },
+  "flags": { "hideLists": false },
+  "isOnlineEvent": false
+}

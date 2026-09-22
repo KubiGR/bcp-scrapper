@@ -1,0 +1,109 @@
+{
+  "active": [
+    {
+      "id": "PL-ADA",
+      "user": { "id": "US-ADA", "firstName": "Ada", "lastName": "Archer" },
+      "teamPlayerId": "TM-ALPHA",
+      "faction": { "name": "Space Marines", "parentFaction": { "name": "Space Marines" } },
+      "placing": 2,
+      "dropped": false,
+      "listId": "LS-ADA",
+      "total_games": [
+        { "gameNum": 1, "gameResult": 2, "gamePoints": 15 },
+        { "gameNum": 2, "gameResult": 2, "gamePoints": 13 }
+      ]
+    },
+    {
+      "id": "PL-BEN",
+      "user": { "id": "US-BEN", "firstName": "Ben", "lastName": "Baker" },
+      "teamPlayerId": "TM-ALPHA",
+      "faction": { "name": "Aeldari", "parentFaction": { "name": "Aeldari" } },
+      "placing": 6,
+      "dropped": false,
+      "listId": "LS-BEN",
+      "total_games": [
+        { "gameNum": 1, "gameResult": 1, "gamePoints": 10 },
+        { "gameNum": 2, "gameResult": 0, "gamePoints": 3 }
+      ]
+    },
+    {
+      "id": "PL-CARA",
+      "user": { "id": "US-CARA", "firstName": "Cara", "lastName": "Cole" },
+      "teamPlayerId": "TM-BRAVO",
+      "faction": { "name": "Orks", "parentFaction": { "name": "Orks" } },
+      "placing": 3,
+      "dropped": false,
+      "listId": "LS-CARA",
+      "total_games": [
+        { "gameNum": 1, "gameResult": 0, "gamePoints": 5 },
+        { "gameNum": 2, "gameResult": 2, "gamePoints": 16 }
+      ]
+    },
+    {
+      "id": "PL-DAN",
+      "user": { "id": "US-DAN", "firstName": "Dan", "lastName": "Drake" },
+      "teamPlayerId": "TM-BRAVO",
+      "faction": { "name": "Necrons", "parentFaction": { "name": "Necrons" } },
+      "placing": 5,
+      "dropped": false,
+      "listId": "LS-DAN",
+      "total_games": [
+        { "gameNum": 1, "gameResult": 1, "gamePoints": 10 },
+        { "gameNum": 2, "gameResult": 1, "gamePoints": 10 }
+      ]
+    },
+    {
+      "id": "PL-EVE",
+      "user": { "id": "US-EVE", "firstName": "Eve", "lastName": "Evans" },
+      "teamPlayerId": "TM-CHARLIE",
+      "faction": { "name": "Space Marines", "parentFaction": { "name": "Space Marines" } },
+      "placing": 8,
+      "dropped": false,
+      "listId": "LS-EVE",
+      "total_games": [
+        { "gameNum": 1, "gameResult": 0, "gamePoints": 4 },
+        { "gameNum": 2, "gameResult": 0, "gamePoints": 7 }
+      ]
+    },
+    {
+      "id": "PL-FINN",
+      "user": { "id": "US-FINN", "firstName": "Finn", "lastName": "Ford" },
+      "teamPlayerId": "TM-CHARLIE",
+      "faction": { "name": "Orks", "parentFaction": { "name": "Orks" } },
+      "placing": 1,
+      "dropped": false,
+      "listId": "LS-FINN",
+      "total_games": [
+        { "gameNum": 1, "gameResult": 2, "gamePoints": 20 },
+        { "gameNum": 2, "gameResult": 2, "gamePoints": 17 }
+      ]
+    },
+    {
+      "id": "PL-GIA",
+      "user": { "id": "US-GIA", "firstName": "Gia", "lastName": "Grant" },
+      "teamPlayerId": "TM-DELTA",
+      "faction": { "name": "Aeldari", "parentFaction": { "name": "Aeldari" } },
+      "placing": 4,
+      "dropped": false,
+      "listId": "LS-GIA",
+      "total_games": [
+        { "gameNum": 1, "gameResult": 2, "gamePoints": 16 },
+        { "gameNum": 2, "gameResult": 0, "gamePoints": 4 }
+      ]
+    },
+    {
+      "id": "PL-HAL",
+      "user": { "id": "US-HAL", "firstName": "Hal", "lastName": "Hayes" },
+      "teamPlayerId": "TM-DELTA",
+      "faction": { "name": "Necrons", "parentFaction": { "name": "Necrons" } },
+      "placing": 7,
+      "dropped": false,
+      "listId": null,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 0, "gamePoints": 0 },
+        { "gameNum": 2, "gameResult": 1, "gamePoints": 10 }
+      ]
+    }
+  ],
+  "deleted": []
+}

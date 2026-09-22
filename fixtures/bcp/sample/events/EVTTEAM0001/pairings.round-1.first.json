@@ -1,0 +1,51 @@
+{
+  "data": [
+    {
+      "id": "GM-R1-1",
+      "round": 1,
+      "table": 1,
+      "pairingType": "Pairing",
+      "teamPairingId": "TP-R1-1",
+      "player1": { "id": "PL-ADA", "firstName": "Ada", "lastName": "Archer" },
+      "player2": { "id": "PL-CARA", "firstName": "Cara", "lastName": "Cole" },
+      "metaData": {
+        "p1-firstTurn": true,
+        "p2-firstTurn": "",
+        "p1-primary": "45",
+        "p2-primary": "30",
+        "p1-secondary": "35",
+        "p2-secondary": "30",
+        "p1-victoryPoints": 80,
+        "p2-victoryPoints": 60,
+        "p1-gamePoints": "15",
+        "p2-gamePoints": "5",
+        "p1-gameResult": "2",
+        "p2-gameResult": "0"
+      }
+    },
+    {
+      "id": "GM-R1-2",
+      "round": 1,
+      "table": 2,
+      "pairingType": "Pairing",
+      "teamPairingId": "TP-R1-1",
+      "player1": { "id": "PL-BEN", "firstName": "Ben", "lastName": "Baker" },
+      "player2": { "id": "PL-DAN", "firstName": "Dan", "lastName": "Drake" },
+      "metaData": {
+        "p1-firstTurn": "",
+        "p2-firstTurn": true,
+        "p1-primary": "40",
+        "p2-primary": "40",
+        "p1-secondary": "30",
+        "p2-secondary": "30",
+        "p1-victoryPoints": 70,
+        "p2-victoryPoints": 70,
+        "p1-gamePoints": "10",
+        "p2-gamePoints": "10",
+        "p1-gameResult": "1",
+        "p2-gameResult": "1"
+      }
+    }
+  ],
+  "nextKey": "r1-page-2"
+}

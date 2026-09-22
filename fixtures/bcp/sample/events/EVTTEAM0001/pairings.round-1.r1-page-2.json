@@ -1,0 +1,51 @@
+{
+  "data": [
+    {
+      "id": "GM-R1-3",
+      "round": 1,
+      "table": 3,
+      "pairingType": "Pairing",
+      "teamPairingId": "TP-R1-2",
+      "player1": { "id": "PL-EVE", "firstName": "Eve", "lastName": "Evans" },
+      "player2": { "id": "PL-GIA", "firstName": "Gia", "lastName": "Grant" },
+      "metaData": {
+        "p1-firstTurn": true,
+        "p2-firstTurn": "",
+        "p1-primary": "25",
+        "p2-primary": "45",
+        "p1-secondary": "25",
+        "p2-secondary": "40",
+        "p1-victoryPoints": 50,
+        "p2-victoryPoints": 85,
+        "p1-gamePoints": "4",
+        "p2-gamePoints": "16",
+        "p1-gameResult": "0",
+        "p2-gameResult": "2"
+      }
+    },
+    {
+      "id": "GM-R1-4",
+      "round": 1,
+      "table": 4,
+      "pairingType": "Pairing",
+      "teamPairingId": "TP-R1-2",
+      "player1": { "id": "PL-FINN", "firstName": "Finn", "lastName": "Ford" },
+      "player2": { "id": "PL-HAL", "firstName": "Hal", "lastName": "Hayes" },
+      "metaData": {
+        "p1-firstTurn": "",
+        "p2-firstTurn": "",
+        "p1-primary": "50",
+        "p2-primary": "20",
+        "p1-secondary": "40",
+        "p2-secondary": "20",
+        "p1-victoryPoints": 90,
+        "p2-victoryPoints": 40,
+        "p1-gamePoints": "20",
+        "p2-gamePoints": "0",
+        "p1-gameResult": "2",
+        "p2-gameResult": "0"
+      }
+    }
+  ],
+  "nextKey": null
+}

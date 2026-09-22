@@ -1,0 +1,25 @@
+{
+  "active": [
+    {
+      "id": "TP-R2-1",
+      "round": 2,
+      "table": 1,
+      "pairingType": "TeamPairing",
+      "teamPlayer1": { "id": "TM-ALPHA", "name": "Alpha Squad" },
+      "teamPlayer2": { "id": "TM-CHARLIE", "name": "Charlie Wing" },
+      "player1Game": { "result": 0, "points": 16 },
+      "player2Game": { "result": 2, "points": 24 }
+    },
+    {
+      "id": "TP-R2-2",
+      "round": 2,
+      "table": 2,
+      "pairingType": "TeamPairing",
+      "teamPlayer1": { "id": "TM-BRAVO", "name": "Bravo Company" },
+      "teamPlayer2": { "id": "TM-DELTA", "name": "Delta Force" },
+      "player1Game": { "result": 2, "points": 26 },
+      "player2Game": { "result": 0, "points": 14 }
+    }
+  ],
+  "deleted": []
+}

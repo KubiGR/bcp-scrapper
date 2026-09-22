@@ -1,0 +1,41 @@
+{
+  "active": [
+    {
+      "id": "TM-ALPHA",
+      "name": "Alpha Squad",
+      "placing": 2,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 2, "gamePoints": 25 },
+        { "gameNum": 2, "gameResult": 0, "gamePoints": 16 }
+      ]
+    },
+    {
+      "id": "TM-BRAVO",
+      "name": "Bravo Company",
+      "placing": 3,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 0, "gamePoints": 15 },
+        { "gameNum": 2, "gameResult": 2, "gamePoints": 26 }
+      ]
+    },
+    {
+      "id": "TM-CHARLIE",
+      "name": "Charlie Wing",
+      "placing": 1,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 2, "gamePoints": 24 },
+        { "gameNum": 2, "gameResult": 2, "gamePoints": 24 }
+      ]
+    },
+    {
+      "id": "TM-DELTA",
+      "name": "Delta Force",
+      "placing": 4,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 0, "gamePoints": 16 },
+        { "gameNum": 2, "gameResult": 0, "gamePoints": 14 }
+      ]
+    }
+  ],
+  "deleted": []
+}
