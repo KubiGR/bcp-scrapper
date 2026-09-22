@@ -98,7 +98,7 @@ Every table that stores BCP data keeps `bcp_id` (unique) and a `raw jsonb` colum
 
 | Table | Columns (key) |
 |---|---|
-| `events` | `id`, `bcp_id`, `name`, `start_date`, `end_date`, `country`, `city`, `player_count`, `is_team_event`, `round_count`, `ended`, `hide_lists`, `last_synced_at`, `raw` |
+| `events` | `id`, `bcp_id`, `name`, `start_date`, `end_date`, `country`, `city`, `player_count`, `team_count` (null until event detail is synced), `is_team_event`, `round_count`, `ended`, `hide_lists`, `last_synced_at`, `raw` |
 | `teams` | `id`, `event_id`, `bcp_id`, `name`, `placing`, `raw` |
 | `players` | `id`, `event_id`, `team_id` (nullable), `bcp_id`, `name`, `faction`, `parent_faction`, `placing`, `wins`, `losses`, `draws`, `list_bcp_id`, `raw` |
 | `army_lists` | `id`, `player_id` (unique), `bcp_id`, `raw_text`, `fetched_at`, `raw` |
@@ -149,14 +149,22 @@ interface TournamentSource {
 - Each item is saved as soon as it's fetched. A retry only fetches what's still missing.
 - Only one sync of a given kind can run for the same target at a time. A second request returns the id of the run already in progress.
 - The web app polls `GET /api/sync-runs/:id` every 2 seconds while a sync is running.
-- **Freshness:** ended events are cached until the user presses "Refresh". Events still running are treated as stale after 10 minutes. The catalogue re-syncs the last 14 days whenever the finder page is opened and the last sync is older than 6 hours.
+- **Freshness:**
+  - Ended events are cached until the user presses "Refresh".
+  - Events still running are treated as stale after 10 minutes.
+  - When the finder page opens and the last catalogue sync is older than 6 hours, it re-syncs the **last 30 days plus the next 7**. This keeps the default "Latest" view current.
+- **Catalogue coverage:**
+  - The date ranges already fetched from BCP are the union of the `from`–`to` ranges of succeeded `catalog` runs.
+  - `GET /api/catalog/coverage` returns them merged, e.g. `[{ from, to, syncedAt }]`.
+  - The finder uses this to spot gaps in a deep search's date range and offer to fetch them.
 - **Future:** move to a persistent job queue (e.g. pg-boss on the same Postgres) only if we ever run more than one API process.
 
 ## 8. API routes (`apps/api/src/routes/`)
 
 | Method & path | Purpose |
 |---|---|
-| `GET /api/events?from&to&country&minPlayers&type&q&sort&page` | Search the **local** catalogue |
+| `GET /api/events?from&to&country&minPlayers&maxPlayers&type&q&sort&page&pageSize` | Search the **local** catalogue. `sort` is `date` (newest first, the default) or `players` (biggest first). |
+| `GET /api/catalog/coverage` | Merged date ranges already fetched from BCP (see §7) |
 | `GET /api/events/:id` | Event detail with sync status for each kind |
 | `GET /api/events/:id/players` | Players with faction, placing, record, and whether their list has been fetched |
 | `GET /api/events/:id/lists/export?format=txt\|json` | Download all fetched lists |
@@ -183,10 +191,20 @@ Pure functions with no I/O, each with thorough unit tests:
 
 Routes use TanStack Router. All filters and tab choices are stored in the URL, so any view can be shared as a link.
 
-- **`/`: Tournament finder.**
-  - Filters: date range, country, minimum players (default 40), type (singles/teams/all), name search.
-  - The sortable table has name, date, location, players, type and sync status badges.
-  - "Update catalogue" shows when the catalogue was last synced.
+- **`/`: Tournament finder: latest big tournaments by default, deep search on demand.**
+  - **Size filter, always visible:**
+    - Preset buttons All · 16+ · **40+ (default)** · 100+ · 200+.
+    - "Custom" shows min/max player inputs (e.g. 50–120).
+    - Player counts are players, not teams. When the team count is known (after an event sync), team events show both, e.g. "432 players · 108 teams".
+  - **Default view "Latest":**
+    - Events that started in the last 30 days or are running now, newest first, filtered by the size filter.
+    - Kept current by the automatic catalogue refresh (§7).
+  - **Advanced panel (deep search):** any date range, name search, country, singles/teams/all, sort by newest or biggest first.
+  - **Coverage gaps:**
+    - If the chosen date range includes days that aren't in the catalogue yet (per `GET /api/catalog/coverage`), a notice names the missing span and its approximate request count, with a **Fetch** button.
+    - Fetch starts a `catalog` sync for exactly the gap. Results appear as pages arrive.
+  - **Table:** name, date, location, players (and teams), type, sync status badges. Rows link to the event page.
+  - Shows when the catalogue was last synced.
 - **`/events/$eventId`: Event page.** The header shows name, dates, player count and a Refresh button. Tabs:
   - **Players & lists:**
     - Search and faction filter.

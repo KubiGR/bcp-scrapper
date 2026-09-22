@@ -19,7 +19,7 @@
 **Spec:** `docs/superpowers/specs/2026-09-23-bcp-analyzer-design.md`
 
 **This is plan 1 of 3.**
-- **Plan 2:** the tournament finder, event page, players & lists, list export, the remaining read routes, freshness rules (§7), and the Playwright smoke test.
+- **Plan 2:** the tournament finder (size presets, the "Latest" default view, deep search, catalogue coverage gaps and `GET /api/catalog/coverage`), the event page, players & lists, list export, the remaining read routes, freshness rules (§7), and the Playwright smoke test.
 - **Plan 3:** rounds, standings, team detail and the faction matrix (§9).
 
 Plans 2 and 3 are written after this plan is executed, so they can build on real code.
@@ -121,7 +121,7 @@ fixtures/bcp/recorded/               anonymised live recordings (git-ignored)
 - Test: `packages/shared/src/schemas.test.ts`
 
 **Interfaces:**
-- Produces (`@bcp/shared`): `EventSummarySchema`/`EventSummary`, `TeamSchema`/`Team`, `PlayerSchema`/`Player`, `TeamMatchupSchema`/`TeamMatchup`, `GameSchema`/`Game`, `GameResultSchema`/`GameResult` (`'a_win'|'b_win'|'draw'`), `SideSchema`/`Side` (`'a'|'b'`), `ArmyListSchema`/`ArmyList`, `SyncKindSchema`/`SyncKind`, `SyncStatusSchema`/`SyncStatus`, `SyncRequestSchema`/`SyncRequest`, `SyncRunSchema`/`SyncRun`, `ApiErrorCodeSchema`/`ApiErrorCode`, `ApiErrorBodySchema`/`ApiErrorBody`, `EventListQuerySchema`/`EventListQuery`, `EventListItemSchema`/`EventListItem`, `EventListResponseSchema`/`EventListResponse`, `BcpStatusSchema`/`BcpStatus`.
+- Produces (`@bcp/shared`): `EventSummarySchema`/`EventSummary`, `TeamSchema`/`Team`, `PlayerSchema`/`Player`, `TeamMatchupSchema`/`TeamMatchup`, `GameSchema`/`Game`, `GameResultSchema`/`GameResult` (`'a_win'|'b_win'|'draw'`), `SideSchema`/`Side` (`'a'|'b'`), `ArmyListSchema`/`ArmyList`, `SyncKindSchema`/`SyncKind`, `SyncStatusSchema`/`SyncStatus`, `SyncRequestSchema`/`SyncRequest`, `SyncRunSchema`/`SyncRun`, `ApiErrorCodeSchema`/`ApiErrorCode`, `ApiErrorBodySchema`/`ApiErrorBody`, `EventSortSchema`/`EventSort` (`'date'|'players'`), `EventListQuerySchema`/`EventListQuery`, `EventListItemSchema`/`EventListItem`, `EventListResponseSchema`/`EventListResponse`, `BcpStatusSchema`/`BcpStatus`.
 - Root scripts: `pnpm typecheck`, `pnpm lint`, `pnpm format`, `pnpm format:check`, `pnpm test`, `pnpm check`, `pnpm dev`, `pnpm db:up`.
 
 - [ ] **Step 1: Enable pnpm and create the root package**
@@ -399,9 +399,22 @@ describe('EventListQuerySchema', () => {
     expect(EventListQuerySchema.parse({ minPlayers: '40' })).toEqual({
       minPlayers: 40,
       type: 'all',
+      sort: 'date',
       page: 1,
       pageSize: 50,
     });
+  });
+
+  it('accepts a player-size window and a biggest-first sort', () => {
+    expect(
+      EventListQuerySchema.parse({ minPlayers: '50', maxPlayers: '120', sort: 'players' }),
+    ).toMatchObject({ minPlayers: 50, maxPlayers: 120, sort: 'players' });
+  });
+
+  it('rejects a size window whose maximum is below its minimum', () => {
+    expect(EventListQuerySchema.safeParse({ minPlayers: '100', maxPlayers: '40' }).success).toBe(
+      false,
+    );
   });
 
   it('rejects page sizes above 100', () => {
@@ -438,6 +451,8 @@ export const EventSummarySchema = z.object({
   country: z.string().nullable(),
   city: z.string().nullable(),
   playerCount: z.number().int().nonnegative(),
+  /** Teams in a team event. Only event detail knows it; null from search results and for singles. */
+  teamCount: z.number().int().nonnegative().nullable(),
   isTeamEvent: z.boolean(),
   isOnline: z.boolean(),
   roundCount: z.number().int().nonnegative(),
@@ -582,17 +597,28 @@ export const ApiErrorBodySchema = z.object({
 });
 export type ApiErrorBody = z.infer<typeof ApiErrorBodySchema>;
 
+/** `date`: newest first. `players`: biggest first. */
+export const EventSortSchema = z.enum(['date', 'players']);
+export type EventSort = z.infer<typeof EventSortSchema>;
+
 /** Query string for GET /api/events. Values arrive as strings, hence the coercion. */
-export const EventListQuerySchema = z.object({
-  from: z.iso.date().optional(),
-  to: z.iso.date().optional(),
-  country: z.string().trim().min(1).optional(),
-  minPlayers: z.coerce.number().int().nonnegative().default(0),
-  type: z.enum(['all', 'singles', 'teams']).default('all'),
-  q: z.string().trim().min(1).optional(),
-  page: z.coerce.number().int().positive().default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(50),
-});
+export const EventListQuerySchema = z
+  .object({
+    from: z.iso.date().optional(),
+    to: z.iso.date().optional(),
+    country: z.string().trim().min(1).optional(),
+    minPlayers: z.coerce.number().int().nonnegative().default(0),
+    maxPlayers: z.coerce.number().int().nonnegative().optional(),
+    type: z.enum(['all', 'singles', 'teams']).default('all'),
+    q: z.string().trim().min(1).optional(),
+    sort: EventSortSchema.default('date'),
+    page: z.coerce.number().int().positive().default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(50),
+  })
+  .refine((query) => query.maxPlayers === undefined || query.maxPlayers >= query.minPlayers, {
+    message: '`maxPlayers` must be at least `minPlayers`',
+    path: ['maxPlayers'],
+  });
 export type EventListQuery = z.infer<typeof EventListQuerySchema>;
 
 export const EventListItemSchema = EventSummarySchema.extend({
@@ -628,7 +654,7 @@ export * from './sync';
 - [ ] **Step 8: Run the tests and watch them pass**
 
 Run: `pnpm test`
-Expected: PASS, 6 tests in project `shared`.
+Expected: PASS, 8 tests in project `shared`.
 
 - [ ] **Step 9: Set up git hooks and run the full check**
 
@@ -1193,6 +1219,8 @@ export const events = pgTable(
     country: text('country'),
     city: text('city'),
     playerCount: integer('player_count').notNull(),
+    /** Only event detail knows this; null for singles and for events only seen in the catalogue. */
+    teamCount: integer('team_count'),
     isTeamEvent: boolean('is_team_event').notNull(),
     isOnline: boolean('is_online').notNull(),
     roundCount: integer('round_count').notNull(),
@@ -1617,6 +1645,7 @@ describe('mapEventSearchItem', () => {
       country: null,
       city: null,
       playerCount: 0,
+      teamCount: null,
       isTeamEvent: false,
       isOnline: false,
       roundCount: 0,
@@ -1638,6 +1667,7 @@ describe('mapEventDetail', () => {
         format: { teamEvent: true },
         status: { ended: true, numberOfRounds: 5 },
         playerCounts: { total: 432 },
+        teamPlayerCounts: { total: 108 },
         flags: { hideLists: true },
         isOnlineEvent: false,
       },
@@ -1650,8 +1680,24 @@ describe('mapEventDetail', () => {
       ended: true,
       roundCount: 5,
       playerCount: 432,
+      teamCount: 108,
       hideLists: true,
     });
+  });
+
+  it('leaves teamCount null for singles events', () => {
+    const raw = parseBcp(
+      RawEventDetail,
+      {
+        id: 'E2',
+        name: 'GT',
+        dates: { start: '2026-03-28T09:00:00.000Z' },
+        format: { teamEvent: false },
+        teamPlayerCounts: { total: 0 },
+      },
+      'test',
+    );
+    expect(mapEventDetail(raw).teamCount).toBeNull();
   });
 });
 
@@ -1893,6 +1939,7 @@ export const RawEventDetail = z.object({
     .object({ ended: z.boolean().nullish(), numberOfRounds: z.number().nullish() })
     .nullish(),
   playerCounts: z.object({ total: z.number().nullish() }).nullish(),
+  teamPlayerCounts: z.object({ total: z.number().nullish() }).nullish(),
   flags: z.object({ hideLists: z.boolean().nullish() }).nullish(),
   isOnlineEvent: z.boolean().nullish(),
 });
@@ -2012,8 +2059,9 @@ export function mapEventSearchItem(raw: RawEventSearchItem): EventSummary {
     startDate: toIso(raw.eventDate),
     endDate: raw.eventEndDate ? toIso(raw.eventEndDate) : null,
     country: raw.country ?? null,
-    city: null, // search results carry no city; event detail fills it in
+    city: null, // search results carry no city or team count; event detail fills them in
     playerCount: raw.totalPlayers ?? 0,
+    teamCount: null,
     isTeamEvent: raw.teamEvent ?? false,
     isOnline: raw.isOnlineEvent ?? false,
     roundCount: raw.numberOfRounds ?? 0,
@@ -2023,6 +2071,7 @@ export function mapEventSearchItem(raw: RawEventSearchItem): EventSummary {
 }
 
 export function mapEventDetail(raw: RawEventDetail): EventSummary {
+  const isTeamEvent = raw.format?.teamEvent ?? false;
   return {
     bcpId: raw.id,
     name: raw.name.trim(),
@@ -2031,7 +2080,8 @@ export function mapEventDetail(raw: RawEventDetail): EventSummary {
     country: raw.location?.country ?? null,
     city: raw.location?.city ?? null,
     playerCount: raw.playerCounts?.total ?? 0,
-    isTeamEvent: raw.format?.teamEvent ?? false,
+    teamCount: isTeamEvent ? (raw.teamPlayerCounts?.total ?? null) : null,
+    isTeamEvent,
     isOnline: raw.isOnlineEvent ?? false,
     roundCount: raw.status?.numberOfRounds ?? 0,
     ended: raw.status?.ended ?? false,
@@ -2207,6 +2257,7 @@ These hand-written files copy the real BCP response shapes. They describe a two-
   "format": { "teamEvent": true, "pairingStyle": "swiss" },
   "status": { "started": true, "ended": true, "currentRound": 2, "numberOfRounds": 2 },
   "playerCounts": { "total": 8 },
+  "teamPlayerCounts": { "total": 4 },
   "flags": { "hideLists": false },
   "isOnlineEvent": false
 }
@@ -3687,7 +3738,13 @@ describe('BcpSource over the sample fixtures', () => {
 
   it('keeps the original JSON alongside mapped values', async () => {
     const event = await source.getEvent(EVENT);
-    expect(event).toMatchObject({ bcpId: EVENT, city: 'Springfield', roundCount: 2, isTeamEvent: true });
+    expect(event).toMatchObject({
+      bcpId: EVENT,
+      city: 'Springfield',
+      roundCount: 2,
+      isTeamEvent: true,
+      teamCount: 4,
+    });
     expect(event.raw).toMatchObject({ format: { pairingStyle: 'swiss' } });
   });
 
@@ -4055,6 +4112,7 @@ describe('event upserts', () => {
 
     const row = await findEvent(db, 'EVTTEAM0001');
     expect(row?.city).toBe('Springfield');
+    expect(row?.teamCount).toBe(4);
     expect(row?.rawDetail).not.toBeNull();
     expect(row?.rawSummary).not.toBeNull();
     expect(row?.lastSyncedAt).toBeInstanceOf(Date);
@@ -4073,11 +4131,21 @@ describe('searchEvents', () => {
       (await searchEvents(db, query(input))).items.map((e) => e.bcpId);
 
     expect(await ids({ minPlayers: '40' })).toEqual(['EVTSINGLE01']);
+    expect(await ids({ minPlayers: '1', maxPlayers: '10' })).toEqual(['EVTTEAM0001']);
     expect(await ids({ type: 'teams' })).toEqual(['EVTTEAM0001']);
     expect(await ids({ type: 'singles' })).toEqual(['EVTSMALL001', 'EVTSINGLE01']);
     expect(await ids({ q: 'team open' })).toEqual(['EVTTEAM0001']);
     expect(await ids({ country: 'germany' })).toEqual(['EVTSINGLE01']);
     expect(await ids({ from: '2026-04-01', to: '2026-04-10' })).toEqual(['EVTSINGLE01']);
+  });
+
+  it('sorts biggest first when asked', async () => {
+    const result = await searchEvents(db, query({ sort: 'players' }));
+    expect(result.items.map((e) => [e.bcpId, e.playerCount])).toEqual([
+      ['EVTSINGLE01', 64],
+      ['EVTTEAM0001', 8],
+      ['EVTSMALL001', 0],
+    ]);
   });
 
   it('treats % and _ in the search text literally', async () => {
@@ -4241,7 +4309,7 @@ export function excludedColumns<T extends PgTable>(
 
 ```ts
 import type { EventListItem, EventListQuery, EventListResponse, EventSummary } from '@bcp/shared';
-import { and, desc, eq, gte, ilike, lt, type SQL } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, lt, lte, type SQL } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { events } from '../db/schema';
@@ -4258,6 +4326,7 @@ function toRow(event: EventSummary) {
     country: event.country,
     city: event.city,
     playerCount: event.playerCount,
+    teamCount: event.teamCount,
     isTeamEvent: event.isTeamEvent,
     isOnline: event.isOnline,
     roundCount: event.roundCount,
@@ -4266,7 +4335,7 @@ function toRow(event: EventSummary) {
   };
 }
 
-/** Catalogue results: never overwrite what only event detail knows (city, raw detail). */
+/** Catalogue results: never overwrite what only event detail knows (city, team count, raw detail). */
 export async function upsertEventSummaries(db: Db, list: Fetched<EventSummary>[]): Promise<void> {
   if (list.length === 0) return;
   await db
@@ -4274,7 +4343,14 @@ export async function upsertEventSummaries(db: Db, list: Fetched<EventSummary>[]
     .values(list.map((event) => ({ ...toRow(event), rawSummary: event.raw })))
     .onConflictDoUpdate({
       target: events.id,
-      set: excludedColumns(events, ['id', 'createdAt', 'city', 'rawDetail', 'lastSyncedAt']),
+      set: excludedColumns(events, [
+        'id',
+        'createdAt',
+        'city',
+        'teamCount',
+        'rawDetail',
+        'lastSyncedAt',
+      ]),
     });
 }
 
@@ -4306,6 +4382,7 @@ export function toEventListItem(row: EventRow): EventListItem {
     country: row.country,
     city: row.city,
     playerCount: row.playerCount,
+    teamCount: row.teamCount,
     isTeamEvent: row.isTeamEvent,
     isOnline: row.isOnline,
     roundCount: row.roundCount,
@@ -4331,16 +4408,23 @@ export async function searchEvents(db: Db, query: EventListQuery): Promise<Event
   if (query.to) filters.push(lt(events.startDate, startOfNextDay(query.to)));
   if (query.country) filters.push(ilike(events.country, escapeLike(query.country)));
   if (query.minPlayers > 0) filters.push(gte(events.playerCount, query.minPlayers));
+  if (query.maxPlayers !== undefined) filters.push(lte(events.playerCount, query.maxPlayers));
   if (query.type !== 'all') filters.push(eq(events.isTeamEvent, query.type === 'teams'));
   if (query.q) filters.push(ilike(events.name, `%${escapeLike(query.q)}%`));
   const where = and(...filters);
+
+  // Ties fall back to newest first, then id, so paging is stable.
+  const order =
+    query.sort === 'players'
+      ? [desc(events.playerCount), desc(events.startDate), events.id]
+      : [desc(events.startDate), events.id];
 
   const [rows, total] = await Promise.all([
     db
       .select()
       .from(events)
       .where(where)
-      .orderBy(desc(events.startDate), events.id)
+      .orderBy(...order)
       .limit(query.pageSize)
       .offset((query.page - 1) * query.pageSize),
     db.$count(events, where),
@@ -4612,7 +4696,7 @@ export async function failInterruptedSyncRuns(db: Db): Promise<number> {
 - [ ] **Step 6: Run the tests and watch them pass**
 
 Run: `pnpm vitest run --project api src/repo`
-Expected: PASS, 10 tests.
+Expected: PASS, 11 tests.
 
 - [ ] **Step 7: Check and commit**
 
