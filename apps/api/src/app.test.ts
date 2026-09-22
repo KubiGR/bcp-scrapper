@@ -1,10 +1,35 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from './app';
+import type { Db } from './db/client';
+import { createTestDb } from './db/test-db';
 import { BcpRateLimitedError, NotFoundError } from './errors';
-import { silentLogger } from './test/helpers';
+import { SyncRunner } from './sync/runner';
+import { sampleSource, silentLogger } from './test/helpers';
+
+let db: Db;
+let close: () => Promise<void>;
+beforeAll(async () => {
+  ({ db, close } = await createTestDb());
+});
+afterAll(() => close());
+
+function makeApp() {
+  return createApp({
+    db,
+    runner: new SyncRunner({ db, source: sampleSource(), logger: silentLogger }),
+    bcpStatus: () =>
+      Promise.resolve({
+        source: 'fixtures',
+        authenticated: false,
+        accessTokenExpiresAt: null,
+        lastRefreshAt: null,
+      }),
+    logger: silentLogger,
+  });
+}
 
 function appWithBoomRoutes() {
-  const app = createApp({ logger: silentLogger });
+  const app = makeApp();
   app.get('/boom/not-found', () => {
     throw new NotFoundError('Event X not found');
   });
@@ -19,13 +44,13 @@ function appWithBoomRoutes() {
 
 describe('createApp', () => {
   it('answers the health check', async () => {
-    const response = await createApp({ logger: silentLogger }).request('/api/health');
+    const response = await makeApp().request('/api/health');
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: 'ok' });
   });
 
   it('returns the standard error body for unknown routes', async () => {
-    const response = await createApp({ logger: silentLogger }).request('/api/nope');
+    const response = await makeApp().request('/api/nope');
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({
       error: { code: 'NOT_FOUND', message: 'No route for GET /api/nope' },

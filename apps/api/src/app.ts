@@ -1,9 +1,17 @@
-import type { ApiErrorBody } from '@bcp/shared';
+import type { ApiErrorBody, BcpStatus } from '@bcp/shared';
 import { Hono } from 'hono';
+import type { Db } from './db/client';
 import { AppError, BcpRateLimitedError, toErrorBody } from './errors';
 import type { Logger } from './logger';
+import { bcpRoutes } from './routes/bcp';
+import { eventRoutes } from './routes/events';
+import { syncRoutes } from './routes/sync';
+import type { SyncRunner } from './sync/runner';
 
 export interface AppDeps {
+  db: Db;
+  runner: SyncRunner;
+  bcpStatus: () => Promise<BcpStatus>;
   logger: Logger;
 }
 
@@ -30,6 +38,9 @@ export function createApp(deps: AppDeps) {
   });
 
   app.get('/api/health', (c) => c.json({ status: 'ok' }));
+  app.route('/api', eventRoutes(deps));
+  app.route('/api', syncRoutes(deps));
+  app.route('/api', bcpRoutes(deps));
 
   return app;
 }
