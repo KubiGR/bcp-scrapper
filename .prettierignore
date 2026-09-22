@@ -4,3 +4,4 @@ apps/api/drizzle
 fixtures/bcp/recorded
 coverage
 dist
+.superpowers
