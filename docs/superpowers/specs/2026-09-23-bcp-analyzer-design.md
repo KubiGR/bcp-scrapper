@@ -12,7 +12,7 @@
 ### Non-goals (for now)
 
 - Parsing army lists into units/points (lists are stored as raw text).
-- Recording the pairing *process* (defender / attacker / refusal picks). BCP does not expose it; the data model leaves room for it later.
+- Recording the pairing _process_ (defender / attacker / refusal picks). BCP does not expose it; the data model leaves room for it later.
 - Game systems other than Warhammer 40k.
 - Authentication for our own app, public hosting, running more than one API instance.
 
@@ -30,15 +30,15 @@ BCP has no public API. Its website is a single-page app that loads JSON from `ht
 
 Required headers: `client-id: web-app`, `env: bcp`, `accept: application/json`. With a login, also `Authorization: Bearer <accessToken>`.
 
-| Data | Endpoint | Notes |
-|---|---|---|
-| Event search | `GET /v1/events?gameType=1&startDate&endDate&sortKey=eventDate&sortAscending=false&limit=100[&searchString][&nextKey]` | Paged via `nextKey`. The server ignores `minPlayers` and has no team filter, so we filter locally. `gameType=1` is 40k. |
-| Event detail | `GET /v2/events/{id}` | |
-| Players | `GET /v1/events/{id}/players?placings=true` | `{active, deleted}`. Faction, `teamId`, `placing`, `listId`, `total_metrics`. About 1.1 MB for 432 players. |
-| Teams | `GET /v1/events/{id}/teamplayers?placings=true` | `{active, deleted}`. `name`, `placing`, `captainId`, `total_metrics`. |
-| Team matchups | `GET /v1/events/{id}/pairings?round=N&pairingType=TeamPairing` | `teamPlayer1/2`, `table`, and each side's `result` and `points` (e.g. 17–3). |
-| Individual games | `GET /v1/pairings?eventId={id}&round=N&pairingType=Pairing&limit=500` | `{data, nextKey}`. `teamPairingId` links the game to its team matchup. `metaData` holds `p1/p2-victoryPoints`, `-primary`, `-secondary`, `-firstTurn`, `-gamePoints` and `-gameResult` (0 = loss, 1 = draw, 2 = win). |
-| Army list | `GET /v1/armylists/{listId}` | **Requires a login** (returns 401 without one). |
+| Data             | Endpoint                                                                                                               | Notes                                                                                                                                                                                                                 |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Event search     | `GET /v1/events?gameType=1&startDate&endDate&sortKey=eventDate&sortAscending=false&limit=100[&searchString][&nextKey]` | Paged via `nextKey`. The server ignores `minPlayers` and has no team filter, so we filter locally. `gameType=1` is 40k.                                                                                               |
+| Event detail     | `GET /v2/events/{id}`                                                                                                  |                                                                                                                                                                                                                       |
+| Players          | `GET /v1/events/{id}/players?placings=true`                                                                            | `{active, deleted}`. Faction, `teamId`, `placing`, `listId`, `total_metrics`. About 1.1 MB for 432 players.                                                                                                           |
+| Teams            | `GET /v1/events/{id}/teamplayers?placings=true`                                                                        | `{active, deleted}`. `name`, `placing`, `captainId`, `total_metrics`.                                                                                                                                                 |
+| Team matchups    | `GET /v1/events/{id}/pairings?round=N&pairingType=TeamPairing`                                                         | `teamPlayer1/2`, `table`, and each side's `result` and `points` (e.g. 17–3).                                                                                                                                          |
+| Individual games | `GET /v1/pairings?eventId={id}&round=N&pairingType=Pairing&limit=500`                                                  | `{data, nextKey}`. `teamPairingId` links the game to its team matchup. `metaData` holds `p1/p2-victoryPoints`, `-primary`, `-secondary`, `-firstTurn`, `-gamePoints` and `-gameResult` (0 = loss, 1 = draw, 2 = win). |
+| Army list        | `GET /v1/armylists/{listId}`                                                                                           | **Requires a login** (returns 401 without one).                                                                                                                                                                       |
 
 ### Authentication
 
@@ -73,22 +73,22 @@ React (apps/web) ──HTTP/JSON──▶ Hono API (apps/api) ──▶ Tourname
 
 ### Tech stack
 
-| Area | Choice |
-|---|---|
-| Language | TypeScript (strict, `noUncheckedIndexedAccess`, no `any`) |
-| Runtime | Node 24 LTS (Krypton), pnpm workspaces |
-| Web | React 19 + React Compiler 1.0, Vite |
-| Routing | TanStack Router (file-based, type-safe search params) |
-| Server state | TanStack Query |
-| UI | Mantine (core, dates, notifications, charts), `mantine-datatable`, CSS Modules + `postcss-preset-mantine` |
-| API | Hono on Node (`@hono/node-server`) |
-| DB | **Postgres 17** (Docker Compose locally) + Drizzle ORM & drizzle-kit migrations; **PGlite** for tests |
-| Validation | Zod |
-| Logging | pino |
-| Lint | ESLint flat config, `typescript-eslint` strict type-checked, `eslint-plugin-react-hooks` (includes the React Compiler rules) |
-| Format | Prettier |
-| Tests | Vitest, React Testing Library, Playwright (single smoke test) |
-| Git hooks | Husky + lint-staged |
+| Area         | Choice                                                                                                                       |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Language     | TypeScript (strict, `noUncheckedIndexedAccess`, no `any`)                                                                    |
+| Runtime      | Node 24 LTS (Krypton), pnpm workspaces                                                                                       |
+| Web          | React 19 + React Compiler 1.0, Vite                                                                                          |
+| Routing      | TanStack Router (file-based, type-safe search params)                                                                        |
+| Server state | TanStack Query                                                                                                               |
+| UI           | Mantine (core, dates, notifications, charts), `mantine-datatable`, CSS Modules + `postcss-preset-mantine`                    |
+| API          | Hono on Node (`@hono/node-server`)                                                                                           |
+| DB           | **Postgres 17** (Docker Compose locally) + Drizzle ORM & drizzle-kit migrations; **PGlite** for tests                        |
+| Validation   | Zod                                                                                                                          |
+| Logging      | pino                                                                                                                         |
+| Lint         | ESLint flat config, `typescript-eslint` strict type-checked, `eslint-plugin-react-hooks` (includes the React Compiler rules) |
+| Format       | Prettier                                                                                                                     |
+| Tests        | Vitest, React Testing Library, Playwright (single smoke test)                                                                |
+| Git hooks    | Husky + lint-staged                                                                                                          |
 
 **`mantine-datatable` fallback:** if it doesn't support the current Mantine major version, use TanStack Table rendered with Mantine's `Table`.
 
@@ -96,15 +96,15 @@ React (apps/web) ──HTTP/JSON──▶ Hono API (apps/api) ──▶ Tourname
 
 Every table that stores BCP data keeps `bcp_id` (unique) and a `raw jsonb` column with the original BCP object. The typed columns are extracted from `raw` by the mappers.
 
-| Table | Columns (key) |
-|---|---|
-| `events` | `id`, `bcp_id`, `name`, `start_date`, `end_date`, `country`, `city`, `player_count`, `team_count` (null until event detail is synced), `is_team_event`, `round_count`, `ended`, `hide_lists`, `last_synced_at`, `raw` |
-| `teams` | `id`, `event_id`, `bcp_id`, `name`, `placing`, `raw` |
-| `players` | `id`, `event_id`, `team_id` (nullable), `bcp_id`, `name`, `faction`, `parent_faction`, `placing`, `wins`, `losses`, `draws`, `list_bcp_id`, `raw` |
-| `army_lists` | `id`, `player_id` (unique), `bcp_id`, `raw_text`, `fetched_at`, `raw` |
-| `team_matchups` | `id`, `event_id`, `bcp_id`, `round`, `table_no`, `team_a_id`, `team_b_id`, `points_a`, `points_b`, `result_a`, `raw` |
-| `games` | `id`, `event_id`, `bcp_id`, `round`, `team_matchup_id` (nullable), `table_no`, `player_a_id`, `player_b_id`, `vp_a`, `vp_b`, `primary_a/b`, `secondary_a/b`, `game_points_a/b`, `first_turn` (a/b/null), `result` (a_win/b_win/draw), `raw` |
-| `sync_runs` | `id`, `event_id` (nullable), `kind` (catalog/event/lists/pairings), `status` (queued/running/succeeded/failed), `total`, `done`, `failed`, `error`, `started_at`, `finished_at` |
+| Table           | Columns (key)                                                                                                                                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `events`        | `id`, `bcp_id`, `name`, `start_date`, `end_date`, `country`, `city`, `player_count`, `team_count` (null until event detail is synced), `is_team_event`, `round_count`, `ended`, `hide_lists`, `last_synced_at`, `raw`                       |
+| `teams`         | `id`, `event_id`, `bcp_id`, `name`, `placing`, `raw`                                                                                                                                                                                        |
+| `players`       | `id`, `event_id`, `team_id` (nullable), `bcp_id`, `name`, `faction`, `parent_faction`, `placing`, `wins`, `losses`, `draws`, `list_bcp_id`, `raw`                                                                                           |
+| `army_lists`    | `id`, `player_id` (unique), `bcp_id`, `raw_text`, `fetched_at`, `raw`                                                                                                                                                                       |
+| `team_matchups` | `id`, `event_id`, `bcp_id`, `round`, `table_no`, `team_a_id`, `team_b_id`, `points_a`, `points_b`, `result_a`, `raw`                                                                                                                        |
+| `games`         | `id`, `event_id`, `bcp_id`, `round`, `team_matchup_id` (nullable), `table_no`, `player_a_id`, `player_b_id`, `vp_a`, `vp_b`, `primary_a/b`, `secondary_a/b`, `game_points_a/b`, `first_turn` (a/b/null), `result` (a_win/b_win/draw), `raw` |
+| `sync_runs`     | `id`, `event_id` (nullable), `kind` (catalog/event/lists/pairings), `status` (queued/running/succeeded/failed), `total`, `done`, `failed`, `error`, `started_at`, `finished_at`                                                             |
 
 - Singles and team events share `games`, so faction statistics can draw on both.
 - `team_matchups.points_*` stores BCP's team score (e.g. 17–3). `games.game_points_*` stores the per-game points that make up that score.
@@ -138,12 +138,12 @@ interface TournamentSource {
 
 ## 7. Sync jobs (`apps/api/src/sync/`)
 
-| Kind | What it does | Size |
-|---|---|---|
-| `catalog` | Pages through all 40k events in a date range and upserts them into `events` | about 1 request per 100 events (a year is roughly 100 requests) |
-| `event` | Event detail, players and teams | 3 requests |
-| `pairings` | Team matchups and games for every round | 2 × rounds (+ paging) |
-| `lists` | One request per player with a `listId` and no stored list | about 1 per player |
+| Kind       | What it does                                                                | Size                                                            |
+| ---------- | --------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `catalog`  | Pages through all 40k events in a date range and upserts them into `events` | about 1 request per 100 events (a year is roughly 100 requests) |
+| `event`    | Event detail, players and teams                                             | 3 requests                                                      |
+| `pairings` | Team matchups and games for every round                                     | 2 × rounds (+ paging)                                           |
+| `lists`    | One request per player with a `listId` and no stored list                   | about 1 per player                                              |
 
 - `POST /api/sync` with `{ kind, eventId?, from?, to? }` creates a `sync_runs` row and returns `{ syncRunId }` immediately. The work continues in an in-process runner.
 - Each item is saved as soon as it's fetched. A retry only fetches what's still missing.
@@ -161,21 +161,21 @@ interface TournamentSource {
 
 ## 8. API routes (`apps/api/src/routes/`)
 
-| Method & path | Purpose |
-|---|---|
+| Method & path                                                                     | Purpose                                                                                                    |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `GET /api/events?from&to&country&minPlayers&maxPlayers&type&q&sort&page&pageSize` | Search the **local** catalogue. `sort` is `date` (newest first, the default) or `players` (biggest first). |
-| `GET /api/catalog/coverage` | Merged date ranges already fetched from BCP (see §7) |
-| `GET /api/events/:id` | Event detail with sync status for each kind |
-| `GET /api/events/:id/players` | Players with faction, placing, record, and whether their list has been fetched |
-| `GET /api/events/:id/lists/export?format=txt\|json` | Download all fetched lists |
-| `GET /api/players/:id/list` | A single army list |
-| `GET /api/events/:id/rounds` | Pairings and results for each round (team matchups with nested games) |
-| `GET /api/events/:id/standings` | Team standings with points per round |
-| `GET /api/events/:id/teams/:teamId` | A team's players with per-round results |
-| `GET /api/events/:id/matchups?minGames` | Faction matchup matrix for one event |
-| `GET /api/matchups?eventIds=…&minGames` | Faction matchup matrix combined across the given events |
-| `POST /api/sync` | Start a sync (see §7) |
-| `GET /api/sync-runs/:id` | Sync progress |
+| `GET /api/catalog/coverage`                                                       | Merged date ranges already fetched from BCP (see §7)                                                       |
+| `GET /api/events/:id`                                                             | Event detail with sync status for each kind                                                                |
+| `GET /api/events/:id/players`                                                     | Players with faction, placing, record, and whether their list has been fetched                             |
+| `GET /api/events/:id/lists/export?format=txt\|json`                               | Download all fetched lists                                                                                 |
+| `GET /api/players/:id/list`                                                       | A single army list                                                                                         |
+| `GET /api/events/:id/rounds`                                                      | Pairings and results for each round (team matchups with nested games)                                      |
+| `GET /api/events/:id/standings`                                                   | Team standings with points per round                                                                       |
+| `GET /api/events/:id/teams/:teamId`                                               | A team's players with per-round results                                                                    |
+| `GET /api/events/:id/matchups?minGames`                                           | Faction matchup matrix for one event                                                                       |
+| `GET /api/matchups?eventIds=…&minGames`                                           | Faction matchup matrix combined across the given events                                                    |
+| `POST /api/sync`                                                                  | Start a sync (see §7)                                                                                      |
+| `GET /api/sync-runs/:id`                                                          | Sync progress                                                                                              |
 
 Every error response has the shape `{ error: { code, message, details? } }`.
 
@@ -211,7 +211,7 @@ Routes use TanStack Router. All filters and tab choices are stored in the URL, s
     - Clicking a row opens a drawer with the raw list and a copy button.
     - "Fetch all lists" with a progress bar, and export as `.txt`/`.json`.
   - **Rounds:** pairings and results for each round, with VP and who went first. Team events group games under their team matchup, and each matchup row expands to show its games.
-  - *Team events only:*
+  - _Team events only:_
     - **Standings:** teams by placing, with points per round in columns.
     - **Team detail** (`/events/$eventId/teams/$teamId`): each player's per-round results.
     - **Faction matchups:** heatmap with a min-games control. Clicking a cell lists the games behind it.
@@ -219,6 +219,7 @@ Routes use TanStack Router. All filters and tab choices are stored in the URL, s
 - **`/settings`:** BCP connection status (token valid or expired) and when the token was last refreshed. Shows no secrets.
 
 **UI conventions**
+
 - **Dark sci-fi HUD theme, dark only** (no light mode, no toggle):
   - A near-black navy background with a faint neon grid.
   - Content sits in `Panel` surfaces: translucent, with a cyan edge and a cut corner.

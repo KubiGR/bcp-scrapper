@@ -5,6 +5,7 @@
 **Goal:** Build a monorepo with strict tooling, a Postgres schema, a rate-limited and authenticated BCP scraper that maps BCP JSON into typed domain objects, background sync jobs, a small HTTP API to start and watch syncs, and a Mantine web shell that shows the BCP connection status.
 
 **Architecture:**
+
 - pnpm monorepo:
   - `packages/shared`: Zod schemas and types.
   - `apps/api`: a Hono server with Drizzle/Postgres and the BCP scraper.
@@ -19,12 +20,14 @@
 **Spec:** `docs/superpowers/specs/2026-09-23-bcp-analyzer-design.md`
 
 **This is plan 1 of 3.**
+
 - **Plan 2:** the tournament finder (size presets, the "Latest" default view, deep search, catalogue coverage gaps and `GET /api/catalog/coverage`), the event page, players & lists, list export, the remaining read routes, freshness rules (§7), and the Playwright smoke test.
 - **Plan 3:** rounds, standings, team detail and the faction matrix (§9).
 
 Plans 2 and 3 are written after this plan is executed, so they can build on real code.
 
 **Deliberate refinements of the spec (apply when reading it):**
+
 - **Primary keys are the BCP ids** (text), so there's no separate `bcp_id` column. `players.team_id`, `games.player_*_id` and `games.team_matchup_id` have no foreign keys, because BCP can reference entries that no longer exist. They are indexed instead.
 - **The spec's `FixtureSource`** is implemented as `new BcpSource(new FixtureTransport(dir))`, so fixtures go through the real parsing code.
 - **`army_lists`** is keyed by `player_id`, with one list per player.
@@ -115,12 +118,14 @@ fixtures/bcp/recorded/               anonymised live recordings (git-ignored)
 ### Task 1: Monorepo tooling and shared schemas
 
 **Files:**
+
 - Create: `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `tsconfig.json`, `eslint.config.js`, `.prettierrc.json`, `.prettierignore`, `.editorconfig`, `.gitignore`, `vitest.config.ts`, `.husky/pre-commit`
 - Create: `packages/shared/package.json`, `packages/shared/tsconfig.json`, `packages/shared/vitest.config.ts`
 - Create: `packages/shared/src/domain.ts`, `packages/shared/src/sync.ts`, `packages/shared/src/api.ts`, `packages/shared/src/index.ts`
 - Test: `packages/shared/src/schemas.test.ts`
 
 **Interfaces:**
+
 - Produces (`@bcp/shared`): `EventSummarySchema`/`EventSummary`, `TeamSchema`/`Team`, `PlayerSchema`/`Player`, `TeamMatchupSchema`/`TeamMatchup`, `GameSchema`/`Game`, `GameResultSchema`/`GameResult` (`'a_win'|'b_win'|'draw'`), `SideSchema`/`Side` (`'a'|'b'`), `ArmyListSchema`/`ArmyList`, `SyncKindSchema`/`SyncKind`, `SyncStatusSchema`/`SyncStatus`, `SyncRequestSchema`/`SyncRequest`, `SyncRunSchema`/`SyncRun`, `ApiErrorCodeSchema`/`ApiErrorCode`, `ApiErrorBodySchema`/`ApiErrorBody`, `EventSortSchema`/`EventSort` (`'date'|'players'`), `EventListQuerySchema`/`EventListQuery`, `EventListItemSchema`/`EventListItem`, `EventListResponseSchema`/`EventListResponse`, `BcpStatusSchema`/`BcpStatus`.
 - Root scripts: `pnpm typecheck`, `pnpm lint`, `pnpm format`, `pnpm format:check`, `pnpm test`, `pnpm check`, `pnpm dev`, `pnpm db:up`.
 
@@ -681,12 +686,14 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 2: API skeleton (config, logging, errors, health route)
 
 **Files:**
+
 - Create: `apps/api/package.json`, `apps/api/tsconfig.json`, `apps/api/vitest.config.ts`
 - Create: `apps/api/src/config.ts`, `apps/api/src/logger.ts`, `apps/api/src/errors.ts`, `apps/api/src/validation.ts`, `apps/api/src/app.ts`, `apps/api/src/main.ts`, `apps/api/src/test/helpers.ts`
 - Create: `.env.example`
 - Test: `apps/api/src/config.test.ts`, `apps/api/src/app.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ApiErrorBody`, `ApiErrorCode` from `@bcp/shared`.
 - Produces:
   - `loadConfig(env?: NodeJS.ProcessEnv): Config`
@@ -847,9 +854,7 @@ import { z } from 'zod';
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3001),
-  LOG_LEVEL: z
-    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
-    .default('info'),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().min(1).default('postgres://bcp:bcp@localhost:5432/bcp'),
   TOURNAMENT_SOURCE: z.enum(['bcp', 'fixtures']).default('fixtures'),
   /** Resolved against the API's working directory (apps/api when run via pnpm). */
@@ -887,7 +892,13 @@ export function createLogger(level: string, pretty: boolean): Logger {
   return pino({
     level,
     redact: {
-      paths: ['headers.authorization', 'accessToken', 'refreshToken', '*.accessToken', '*.refreshToken'],
+      paths: [
+        'headers.authorization',
+        'accessToken',
+        'refreshToken',
+        '*.accessToken',
+        '*.refreshToken',
+      ],
       censor: '[redacted]',
     },
     ...(pretty ? { transport: { target: 'pino-pretty' } } : {}),
@@ -1115,11 +1126,13 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 3: Postgres schema, migrations and test database
 
 **Files:**
+
 - Create: `docker-compose.yml`, `apps/api/drizzle.config.ts`, `apps/api/src/db/schema.ts`, `apps/api/src/db/client.ts`, `apps/api/src/db/test-db.ts`
 - Generated: `apps/api/drizzle/0000_init.sql` and `apps/api/drizzle/meta/*`
 - Test: `apps/api/src/db/schema.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - Tables `events`, `teams`, `players`, `armyLists`, `teamMatchups`, `games`, `syncRuns`, `bcpSession`
   - `type Db = PgDatabase<PgQueryResultHKT, typeof schema>`
@@ -1476,7 +1489,9 @@ const anEvent = {
 describe('database schema', () => {
   it('deletes an event’s teams when the event is deleted', async () => {
     await db.insert(events).values(anEvent);
-    await db.insert(teams).values({ id: 'T1', eventId: 'EVT1', name: 'A', roundPoints: [], raw: {} });
+    await db
+      .insert(teams)
+      .values({ id: 'T1', eventId: 'EVT1', name: 'A', roundPoints: [], raw: {} });
 
     await db.delete(events).where(eq(events.id, 'EVT1'));
 
@@ -1519,11 +1534,13 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 4: BCP response schemas, mappers and sample fixtures
 
 **Files:**
+
 - Create: `apps/api/src/bcp/transport.ts`, `apps/api/src/bcp/raw.ts`, `apps/api/src/bcp/mappers.ts`
 - Create: `fixtures/bcp/sample/**` (listed in Step 5)
 - Test: `apps/api/src/bcp/mappers.test.ts`
 
 **Interfaces:**
+
 - Consumes: domain types from `@bcp/shared`; `BcpSchemaError` and `formatIssues`.
 - Produces:
   - `interface BcpRequest { path: string; query?: Record<string, string | number | undefined> }`
@@ -1536,6 +1553,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   - `mapEventSearchItem`, `mapEventDetail`, `mapPlayer(raw, eventId)`, `mapTeam(raw, eventId)`, `mapTeamPairing(raw, eventId): TeamMatchup | null`, `mapPairing(raw, eventId): Game | null`, `mapArmyList`, `toGameResult(a, b)`
 
 **How the BCP data is shaped** (confirmed against live data on 2026-09-23):
+
 - Numbers arrive as numbers, as numeric strings, or as `""` when nothing was entered.
 - Game results are `2` = win, `1` = draw, `0` = loss.
 - A game's `metaData` stores each side's stats as `p1-<stat>` and `p2-<stat>`.
@@ -1803,10 +1821,21 @@ describe('mapTeamPairing', () => {
 });
 
 describe('mapPairing', () => {
-  const pairing = (metaData: Record<string, unknown>, player2: { id: string } | null = { id: 'P2' }) =>
+  const pairing = (
+    metaData: Record<string, unknown>,
+    player2: { id: string } | null = { id: 'P2' },
+  ) =>
     parseBcp(
       RawPairing,
-      { id: 'G1', round: 2, table: 7, teamPairingId: 'TP1', player1: { id: 'P1' }, player2, metaData },
+      {
+        id: 'G1',
+        round: 2,
+        table: 7,
+        teamPairingId: 'TP1',
+        player1: { id: 'P1' },
+        player2,
+        metaData,
+      },
       'test',
     );
 
@@ -1851,9 +1880,16 @@ describe('mapPairing', () => {
 
   it('recognises draws, player-2 first turns and unplayed games', () => {
     expect(
-      mapPairing(pairing({ 'p2-firstTurn': true, 'p1-gameResult': '1', 'p2-gameResult': '1' }), 'E1'),
+      mapPairing(
+        pairing({ 'p2-firstTurn': true, 'p1-gameResult': '1', 'p2-gameResult': '1' }),
+        'E1',
+      ),
     ).toMatchObject({ firstTurn: 'b', result: 'draw' });
-    expect(mapPairing(pairing({}), 'E1')).toMatchObject({ firstTurn: null, result: null, vpA: null });
+    expect(mapPairing(pairing({}), 'E1')).toMatchObject({
+      firstTurn: null,
+      result: null,
+      vpA: null,
+    });
   });
 
   it('maps a bye (no player 2)', () => {
@@ -2004,7 +2040,11 @@ export const RawArmyList = z.object({
 });
 export type RawArmyList = z.output<typeof RawArmyList>;
 
-export function parseBcp<S extends z.ZodType>(schema: S, data: unknown, endpoint: string): z.output<S> {
+export function parseBcp<S extends z.ZodType>(
+  schema: S,
+  data: unknown,
+  endpoint: string,
+): z.output<S> {
   const result = schema.safeParse(data);
   if (!result.success) throw new BcpSchemaError(endpoint, formatIssues(result.error));
   return result.data;
@@ -2016,7 +2056,10 @@ export function parseItems<S extends z.ZodType>(
   items: unknown[],
   endpoint: string,
 ): { parsed: z.output<S>; raw: unknown }[] {
-  return items.map((raw, index) => ({ parsed: parseBcp(schema, raw, `${endpoint}[${index}]`), raw }));
+  return items.map((raw, index) => ({
+    parsed: parseBcp(schema, raw, `${endpoint}[${index}]`),
+    raw,
+  }));
 }
 ```
 
@@ -2699,15 +2742,15 @@ These hand-written files copy the real BCP response shapes. They describe a two-
 
 Army lists: create one file per list, `fixtures/bcp/sample/armylists/<id>.json`:
 
-| File | `armyListText` |
-|---|---|
-| `LS-ADA.json` | `"Space Marines – Gladius Task Force\n\nCaptain (80 pts)\nIntercessor Squad x10 (160 pts)"` |
-| `LS-BEN.json` | `"Aeldari – Battle Host\n\nFarseer (70 pts)\nGuardian Defenders x10 (100 pts)"` |
-| `LS-CARA.json` | `"Orks – War Horde\n\nWarboss (65 pts)\nBoyz x20 (170 pts)"` |
-| `LS-DAN.json` | `"Necrons – Awakened Dynasty\n\nOverlord (85 pts)\nNecron Warriors x20 (200 pts)"` |
-| `LS-EVE.json` | `"Space Marines – Firestorm Assault Force\n\nLieutenant (65 pts)\nInfernus Squad x5 (90 pts)"` |
-| `LS-FINN.json` | `"Orks – Kult of Speed\n\nWarboss on Warbike (80 pts)\nWarbikers x6 (140 pts)"` |
-| `LS-GIA.json` | `"Aeldari – Aspect Host\n\nAutarch (75 pts)\nDire Avengers x5 (80 pts)"` |
+| File           | `armyListText`                                                                                 |
+| -------------- | ---------------------------------------------------------------------------------------------- |
+| `LS-ADA.json`  | `"Space Marines – Gladius Task Force\n\nCaptain (80 pts)\nIntercessor Squad x10 (160 pts)"`    |
+| `LS-BEN.json`  | `"Aeldari – Battle Host\n\nFarseer (70 pts)\nGuardian Defenders x10 (100 pts)"`                |
+| `LS-CARA.json` | `"Orks – War Horde\n\nWarboss (65 pts)\nBoyz x20 (170 pts)"`                                   |
+| `LS-DAN.json`  | `"Necrons – Awakened Dynasty\n\nOverlord (85 pts)\nNecron Warriors x20 (200 pts)"`             |
+| `LS-EVE.json`  | `"Space Marines – Firestorm Assault Force\n\nLieutenant (65 pts)\nInfernus Squad x5 (90 pts)"` |
+| `LS-FINN.json` | `"Orks – Kult of Speed\n\nWarboss on Warbike (80 pts)\nWarbikers x6 (140 pts)"`                |
+| `LS-GIA.json`  | `"Aeldari – Aspect Host\n\nAutarch (75 pts)\nDire Avengers x5 (80 pts)"`                       |
 
 Each file has the shape `{ "id": "<id without .json>", "armyListText": "<text from the table>" }`. For example, `fixtures/bcp/sample/armylists/LS-ADA.json`:
 
@@ -2740,10 +2783,12 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 5: Rate limiter and HTTP transport
 
 **Files:**
+
 - Create: `apps/api/src/bcp/rate-limiter.ts`, `apps/api/src/bcp/http-transport.ts`
 - Test: `apps/api/src/bcp/rate-limiter.test.ts`, `apps/api/src/bcp/http-transport.test.ts`
 
 **Interfaces:**
+
 - Consumes: `BcpRequest`, `BcpTransport`, `AccessTokenProvider` (Task 4); the error classes (Task 2); `Logger`.
 - Produces:
   - `new RateLimiter({ requestsPerSecond, maxConcurrency })` with `.run<T>(task: () => Promise<T>): Promise<T>`
@@ -3040,7 +3085,10 @@ describe('HttpTransport', () => {
   });
 
   it('throws BcpAuthError when BCP still refuses after a refresh', async () => {
-    const auth = { getAccessToken: () => Promise.resolve('tok'), refresh: vi.fn(() => Promise.resolve()) };
+    const auth = {
+      getAccessToken: () => Promise.resolve('tok'),
+      refresh: vi.fn(() => Promise.resolve()),
+    };
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(json({}, { status: 401 }));
 
     await expect(
@@ -3186,7 +3234,12 @@ export class HttpTransport implements BcpTransport {
       signal: AbortSignal.timeout(this.#options.timeoutMs),
     });
     this.#options.logger.debug(
-      { path, status: response.status, attempt, durationMs: Math.round(performance.now() - startedAt) },
+      {
+        path,
+        status: response.status,
+        attempt,
+        durationMs: Math.round(performance.now() - startedAt),
+      },
       'BCP request',
     );
     return response;
@@ -3214,10 +3267,12 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 6: BCP authentication (token refresh + persisted session)
 
 **Files:**
+
 - Create: `apps/api/src/bcp/auth.ts`, `apps/api/src/bcp/auth-store.ts`
 - Test: `apps/api/src/bcp/auth.test.ts`
 
 **Interfaces:**
+
 - Consumes: `AccessTokenProvider` (Task 4); `BcpAuthError`; `Db` and `bcpSession` (Task 3).
 - Produces:
   - `interface BcpSession { accessToken; refreshToken; accessTokenExpiresAt: Date|null; lastRefreshAt: Date|null; seedTokenHash: string|null }`
@@ -3229,6 +3284,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   - `createDbSessionStore(db)`
 
 **How BCP's login works** (read from BCP's own site code on 2026-09-23):
+
 - To refresh, `POST {BCP_API_URL}/v1/oauth/token` with the headers `content-type: application/json` and `client-id: web-app`, and the body `{"refresh_token": "...", "grant_type": "refresh_token"}`.
 - The response is `{ accessToken, idToken, refreshToken? }`. The access token is a JWT, and its `exp` field says when it expires.
 - **Not yet confirmed against live BCP:** whether a refresh also rotates the refresh token. The code handles both cases. Task 12 checks this for real.
@@ -3322,14 +3378,18 @@ describe('BcpAuth', () => {
   });
 
   it('keeps the old refresh token when BCP does not rotate it', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(tokenResponse(fakeJwt(NOW + 3_600_000)));
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(tokenResponse(fakeJwt(NOW + 3_600_000)));
     const store = createMemorySessionStore();
     await makeAuth({ store, envRefreshToken: 'refresh-1', fetch: fetchMock }).refresh();
     expect((await store.load())?.refreshToken).toBe('refresh-1');
   });
 
   it('refreshes an access token that expires within a minute', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(tokenResponse(fakeJwt(NOW + 3_600_000)));
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(tokenResponse(fakeJwt(NOW + 3_600_000)));
     const auth = makeAuth({
       envAccessToken: fakeJwt(NOW + 30_000),
       envRefreshToken: 'refresh-1',
@@ -3340,7 +3400,9 @@ describe('BcpAuth', () => {
   });
 
   it('makes a single refresh request for concurrent callers', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(tokenResponse(fakeJwt(NOW + 3_600_000)));
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(tokenResponse(fakeJwt(NOW + 3_600_000)));
     const auth = makeAuth({ envRefreshToken: 'refresh-1', fetch: fetchMock });
     await Promise.all([auth.getAccessToken(), auth.getAccessToken(), auth.refresh()]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -3364,7 +3426,9 @@ describe('BcpAuth', () => {
     const sameSeed = makeAuth({ store });
     expect(await sameSeed.getAccessToken()).toBe(stored.accessToken);
 
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(tokenResponse(fakeJwt(NOW + 7_200_000)));
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(tokenResponse(fakeJwt(NOW + 7_200_000)));
     const newSeed = makeAuth({ store, envRefreshToken: 'brand-new', fetch: fetchMock });
     await newSeed.getAccessToken();
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
@@ -3545,7 +3609,9 @@ export class BcpAuth implements AccessTokenProvider {
   }
 
   #isExpired(session: BcpSession): boolean {
-    return session.accessTokenExpiresAt !== null && session.accessTokenExpiresAt.getTime() <= this.#now();
+    return (
+      session.accessTokenExpiresAt !== null && session.accessTokenExpiresAt.getTime() <= this.#now()
+    );
   }
 
   #isExpiring(session: BcpSession): boolean {
@@ -3584,7 +3650,10 @@ export class BcpAuth implements AccessTokenProvider {
     await this.#options.store.save(next);
     this.#session = next;
     this.#options.logger.info(
-      { expiresAt: next.accessTokenExpiresAt?.toISOString(), rotated: Boolean(parsed.data.refreshToken) },
+      {
+        expiresAt: next.accessTokenExpiresAt?.toISOString(),
+        rotated: Boolean(parsed.data.refreshToken),
+      },
       'Refreshed BCP access token',
     );
   }
@@ -3646,11 +3715,13 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 7: Tournament source and fixture transport
 
 **Files:**
+
 - Create: `apps/api/src/bcp/fixture-transport.ts`, `apps/api/src/bcp/source.ts`
 - Modify: `apps/api/src/test/helpers.ts`
 - Test: `apps/api/src/bcp/fixture-transport.test.ts`, `apps/api/src/bcp/source.test.ts`
 
 **Interfaces:**
+
 - Consumes: the parse helpers and schemas from `raw.ts`, the mappers, `BcpTransport`, `NotFoundError`.
 - Produces:
   - `type Fetched<T> = T & { raw: unknown }`
@@ -3686,7 +3757,10 @@ describe('fixtureFileFor', () => {
     [{ path: '/v2/events/E1' }, 'events/E1/event.json'],
     [{ path: '/v1/events/E1/players' }, 'events/E1/players.json'],
     [{ path: '/v1/events/E1/teamplayers' }, 'events/E1/teams.json'],
-    [{ path: '/v1/events/E1/pairings', query: { round: 2 } }, 'events/E1/team-pairings.round-2.json'],
+    [
+      { path: '/v1/events/E1/pairings', query: { round: 2 } },
+      'events/E1/team-pairings.round-2.json',
+    ],
     [
       { path: '/v1/pairings', query: { eventId: 'E1', round: 1, nextKey: 'p2' } },
       'events/E1/pairings.round-1.p2.json',
@@ -3711,7 +3785,9 @@ describe('FixtureTransport', () => {
   });
 
   it('throws NotFoundError for missing files, like BCP answering 404', async () => {
-    await expect(transport.get({ path: '/v1/armylists/NOPE' })).rejects.toBeInstanceOf(NotFoundError);
+    await expect(transport.get({ path: '/v1/armylists/NOPE' })).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
   });
 });
 ```
@@ -3773,7 +3849,9 @@ describe('BcpSource over the sample fixtures', () => {
   });
 
   it('returns null for a list BCP does not have', async () => {
-    await expect(source.getList('LS-ADA')).resolves.toMatchObject({ text: expect.stringContaining('Gladius') });
+    await expect(source.getList('LS-ADA')).resolves.toMatchObject({
+      text: expect.stringContaining('Gladius'),
+    });
     await expect(source.getList('LS-MISSING')).resolves.toBeNull();
   });
 });
@@ -3996,7 +4074,13 @@ export class BcpSource implements TournamentSource {
         RawPageEnvelope,
         await this.#transport.get({
           path,
-          query: { eventId, round, pairingType: 'Pairing', limit: PAGE_SIZE, nextKey: cursor ?? undefined },
+          query: {
+            eventId,
+            round,
+            pairingType: 'Pairing',
+            limit: PAGE_SIZE,
+            nextKey: cursor ?? undefined,
+          },
         }),
         path,
       );
@@ -4061,10 +4145,12 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 8: Repositories
 
 **Files:**
+
 - Create: `apps/api/src/repo/upsert.ts`, `apps/api/src/repo/events.ts`, `apps/api/src/repo/participants.ts`, `apps/api/src/repo/pairings.ts`, `apps/api/src/repo/lists.ts`, `apps/api/src/repo/sync-runs.ts`
 - Test: `apps/api/src/repo/events.test.ts`, `apps/api/src/repo/lists.test.ts`, `apps/api/src/repo/sync-runs.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Db`, the tables, `Fetched<T>`, the shared types, `sampleSource()`.
 - Produces:
   - `excludedColumns(table, except)`
@@ -4084,7 +4170,13 @@ import { EventListQuerySchema } from '@bcp/shared';
 import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
 import { sampleSource } from '../test/helpers';
-import { findEvent, markEventSynced, searchEvents, upsertEventDetail, upsertEventSummaries } from './events';
+import {
+  findEvent,
+  markEventSynced,
+  searchEvents,
+  upsertEventDetail,
+  upsertEventSummaries,
+} from './events';
 
 let db: Db;
 let close: () => Promise<void>;
@@ -4108,7 +4200,10 @@ describe('event upserts', () => {
   it('keeps detail-only fields when the catalogue is synced again', async () => {
     await upsertEventDetail(db, await source.getEvent('EVTTEAM0001'));
     await markEventSynced(db, 'EVTTEAM0001');
-    await upsertEventSummaries(db, (await source.listEvents({ from: '2026-01-01', to: '2026-12-31' }, null)).items);
+    await upsertEventSummaries(
+      db,
+      (await source.listEvents({ from: '2026-01-01', to: '2026-12-31' }, null)).items,
+    );
 
     const row = await findEvent(db, 'EVTTEAM0001');
     expect(row?.city).toBe('Springfield');
@@ -4237,7 +4332,13 @@ beforeEach(() => resetDb(db));
 describe('sync runs', () => {
   it('tracks a run from queued to succeeded', async () => {
     const run = await createSyncRun(db, { kind: 'lists', eventId: 'E1' });
-    expect(run).toMatchObject({ kind: 'lists', eventId: 'E1', status: 'queued', done: 0, total: null });
+    expect(run).toMatchObject({
+      kind: 'lists',
+      eventId: 'E1',
+      status: 'queued',
+      done: 0,
+      total: null,
+    });
     if (!run) throw new Error('not created');
 
     await markSyncRunRunning(db, run.id);
@@ -4248,7 +4349,13 @@ describe('sync runs', () => {
     await finishSyncRun(db, run.id, { status: 'succeeded' });
 
     const finished = await getSyncRun(db, run.id);
-    expect(finished).toMatchObject({ status: 'succeeded', total: 3, done: 2, failed: 1, error: null });
+    expect(finished).toMatchObject({
+      status: 'succeeded',
+      total: 3,
+      done: 2,
+      failed: 1,
+      error: null,
+    });
     expect(finished?.finishedAt).toEqual(expect.any(String));
   });
 
@@ -4257,7 +4364,9 @@ describe('sync runs', () => {
     expect(await createSyncRun(db, { kind: 'lists', eventId: 'E1' })).toBeNull();
     expect(await findActiveSyncRun(db, 'lists', 'E1')).toEqual(first);
     expect(await createSyncRun(db, { kind: 'lists', eventId: 'E2' })).not.toBeNull();
-    expect(await createSyncRun(db, { kind: 'catalog', from: '2026-01-01', to: '2026-01-31' })).not.toBeNull();
+    expect(
+      await createSyncRun(db, { kind: 'catalog', from: '2026-01-01', to: '2026-01-31' }),
+    ).not.toBeNull();
     expect(await findActiveSyncRun(db, 'catalog', null)).not.toBeNull();
   });
 
@@ -4571,7 +4680,11 @@ export async function findPlayersMissingLists(
   return rows.flatMap(({ playerId, listId }) => (listId === null ? [] : [{ playerId, listId }]));
 }
 
-export async function saveArmyList(db: Db, playerId: string, list: Fetched<ArmyList>): Promise<void> {
+export async function saveArmyList(
+  db: Db,
+  playerId: string,
+  list: Fetched<ArmyList>,
+): Promise<void> {
   const values = { listId: list.bcpId, text: list.text, raw: list.raw, fetchedAt: new Date() };
   await db
     .insert(armyLists)
@@ -4713,10 +4826,12 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 9: Sync jobs and runner
 
 **Files:**
+
 - Create: `apps/api/src/sync/jobs.ts`, `apps/api/src/sync/runner.ts`
 - Test: `apps/api/src/sync/runner.test.ts`
 
 **Interfaces:**
+
 - Consumes: `TournamentSource`, every repository function (Task 8), `BcpAuthError`, `Logger`.
 - Produces:
   - `interface Progress { setTotal(n): Promise<void>; succeeded(n?): Promise<void>; failed(n?): Promise<void> }`
@@ -4763,7 +4878,11 @@ const rowCount = async (table: PgTable) => (await db.select({ n: count() }).from
 describe('SyncRunner', () => {
   it('catalog: pages through every search page', async () => {
     const runner = new SyncRunner({ db, source: sampleSource(), logger: silentLogger });
-    const run = await runToCompletion(runner, { kind: 'catalog', from: '2026-01-01', to: '2026-12-31' });
+    const run = await runToCompletion(runner, {
+      kind: 'catalog',
+      from: '2026-01-01',
+      to: '2026-12-31',
+    });
     expect(run).toMatchObject({ status: 'succeeded', done: 3 });
     expect(await rowCount(events)).toBe(3);
   });
@@ -5063,11 +5182,13 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 10: HTTP routes and process wiring
 
 **Files:**
+
 - Create: `apps/api/src/routes/events.ts`, `apps/api/src/routes/sync.ts`, `apps/api/src/routes/bcp.ts`, `apps/api/src/bcp/create-source.ts`
 - Modify: `apps/api/src/app.ts` (replace the whole file), `apps/api/src/main.ts` (replace the whole file), `apps/api/src/app.test.ts` (update `createApp` calls)
 - Test: `apps/api/src/routes/routes.test.ts`
 
 **Interfaces:**
+
 - Consumes: the repositories, `SyncRunner`, `BcpAuth`, `HttpTransport`, `RateLimiter`, `FixtureTransport`, `BcpSource`, `createDbSessionStore`, `Config`.
 - Produces:
   - Routes:
@@ -5121,7 +5242,11 @@ const post = (path: string, body: unknown) =>
 
 describe('API routes', () => {
   it('syncs the catalogue and then searches it', async () => {
-    const started = await post('/api/sync', { kind: 'catalog', from: '2026-01-01', to: '2026-12-31' });
+    const started = await post('/api/sync', {
+      kind: 'catalog',
+      from: '2026-01-01',
+      to: '2026-12-31',
+    });
     expect(started.status).toBe(202);
     const run = (await started.json()) as { id: number };
     await runner.idle();
@@ -5138,14 +5263,21 @@ describe('API routes', () => {
     await runner.idle();
 
     const found = await app.request('/api/events/EVTTEAM0001');
-    expect(await found.json()).toMatchObject({ city: 'Springfield', lastSyncedAt: expect.any(String) });
+    expect(await found.json()).toMatchObject({
+      city: 'Springfield',
+      lastSyncedAt: expect.any(String),
+    });
 
     const missing = await app.request('/api/events/NOPE');
     expect(missing.status).toBe(404);
   });
 
   it('validates sync requests and query strings', async () => {
-    const badSync = await post('/api/sync', { kind: 'catalog', from: '2026-12-31', to: '2026-01-01' });
+    const badSync = await post('/api/sync', {
+      kind: 'catalog',
+      from: '2026-12-31',
+      to: '2026-01-01',
+    });
     expect(badSync.status).toBe(400);
     expect(await badSync.json()).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
 
@@ -5421,14 +5553,17 @@ const logger = createLogger(config.LOG_LEVEL, config.NODE_ENV === 'development')
 const database = createDb(config.DATABASE_URL);
 await database.migrate();
 const interrupted = await failInterruptedSyncRuns(database.db);
-if (interrupted > 0) logger.warn({ interrupted }, 'Marked sync runs cut off by a restart as failed');
+if (interrupted > 0)
+  logger.warn({ interrupted }, 'Marked sync runs cut off by a restart as failed');
 
 const { source, status } = createSource(config, { db: database.db, logger });
 const runner = new SyncRunner({ db: database.db, source, logger });
 const app = createApp({ db: database.db, runner, bcpStatus: status, logger });
 
 const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => {
-  logger.info(`API listening on http://localhost:${info.port} (source: ${config.TOURNAMENT_SOURCE})`);
+  logger.info(
+    `API listening on http://localhost:${info.port} (source: ${config.TOURNAMENT_SOURCE})`,
+  );
 });
 
 async function shutdown(signal: string): Promise<void> {
@@ -5461,6 +5596,7 @@ kill %1
 ```
 
 Expected:
+
 - The first call returns 202 with `{"id":1,"kind":"pairings",...,"status":"queued"}`.
 - The second shows `"status":"succeeded","total":2,"done":2`.
 - The third returns the event with `"city":"Springfield"`.
@@ -5480,6 +5616,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 11: Web shell — React Compiler, Mantine sci-fi dark theme, router, settings page
 
 **Files:**
+
 - Create:
   - `apps/web/package.json`, `apps/web/tsconfig.json`, `apps/web/index.html`, `apps/web/vite.config.ts`, `apps/web/postcss.config.js`
   - `apps/web/src/main.tsx`, `apps/web/src/router.ts`, `apps/web/src/theme.ts`, `apps/web/src/styles/global.css`
@@ -5492,6 +5629,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Test: `apps/web/src/features/settings/BcpStatusCard.test.tsx`, `apps/web/src/api/client.test.ts`
 
 **Interfaces:**
+
 - Consumes: `BcpStatusSchema`, `ApiErrorBodySchema`, `ApiErrorCode` from `@bcp/shared`; `GET /api/bcp/status` (Task 10).
 - Produces:
   - `apiGet<S>(path, schema): Promise<z.output<S>>`
@@ -5504,6 +5642,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   - `renderWithProviders(ui)`
 
 **Design direction: sci-fi HUD, dark only.**
+
 - **Colour scheme:**
   - The whole app is forced to the dark colour scheme (`forceColorScheme="dark"`). There is no light theme and no toggle.
   - The page is a near-black navy with a faint neon grid.
@@ -5952,7 +6091,10 @@ describe('apiGet', () => {
   });
 
   it('reports an unreachable API server clearly', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))),
+    );
     await expect(apiGet('/api/x', z.unknown())).rejects.toMatchObject({
       code: 'NETWORK',
       message: expect.stringContaining('API server') as unknown,
@@ -6378,6 +6520,7 @@ pnpm dev
 ```
 
 Open http://localhost:5173/settings. Expected:
+
 - A dark navy page with a faint grid.
 - The header reads "BCP//ANALYZER", with the `//` in magenta.
 - A "BCP uplink" panel with a cut corner and a cyan accent bar, showing the badge **Offline · fixtures**.
@@ -6401,10 +6544,12 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 12: Record real BCP data, verify the live login, write the README
 
 **Files:**
+
 - Create: `apps/api/src/bcp/anonymise.ts`, `apps/api/scripts/record-fixtures.ts`, `README.md`
 - Test: `apps/api/src/bcp/anonymise.test.ts`
 
 **Interfaces:**
+
 - Consumes: `BcpAuth`, `createMemorySessionStore`, `HttpTransport`, `RateLimiter`, `BcpSource`, `fixtureFileFor`, `BcpTransport`, `loadConfig`, `createLogger`.
 - Produces: `new Anonymiser()` with `.anonymise(value: unknown): unknown`; the script `pnpm --filter @bcp/api record-fixtures <eventId> [--lists N] [--out DIR]`.
 
@@ -6488,7 +6633,15 @@ Expected: FAIL, because the module `./anonymise` does not exist.
 
 ```ts
 /** Keys that identify or describe people; dropped entirely from recordings. */
-const DROPPED_KEYS = new Set(['email', 'username', 'phone', 'owner', 'eventUsers', 'captain', 'description']);
+const DROPPED_KEYS = new Set([
+  'email',
+  'username',
+  'phone',
+  'owner',
+  'eventUsers',
+  'captain',
+  'description',
+]);
 
 /** Objects under these keys are teams, so their `name` is a team name. */
 const TEAM_OBJECT_KEYS = new Set(['team', 'teamPlayer1', 'teamPlayer2']);
@@ -6709,13 +6862,13 @@ The API refreshes access tokens itself and stores the session in Postgres. If Se
 
 ## Commands
 
-| Command | What it does |
-| --- | --- |
-| `pnpm dev` | API and web app with reload |
-| `pnpm check` | Typecheck, lint, format check and all tests (run before pushing) |
-| `pnpm test` | All tests (no network, no Docker needed) |
-| `pnpm format` | Format everything with Prettier |
-| `pnpm --filter @bcp/api db:generate --name <change>` | New migration after editing `apps/api/src/db/schema.ts` |
+| Command                                                       | What it does                                                          |
+| ------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `pnpm dev`                                                    | API and web app with reload                                           |
+| `pnpm check`                                                  | Typecheck, lint, format check and all tests (run before pushing)      |
+| `pnpm test`                                                   | All tests (no network, no Docker needed)                              |
+| `pnpm format`                                                 | Format everything with Prettier                                       |
+| `pnpm --filter @bcp/api db:generate --name <change>`          | New migration after editing `apps/api/src/db/schema.ts`               |
 | `pnpm --filter @bcp/api record-fixtures <eventId> --lists 10` | Record a real event as anonymised fixtures in `fixtures/bcp/recorded` |
 
 ## Layout
@@ -6750,6 +6903,7 @@ pnpm --filter @bcp/api record-fixtures YlZ0Eu7zlVn3 --lists 5
 (`YlZ0Eu7zlVn3` is AdeptiCon 2026 40K Teams: 432 players, 5 rounds.)
 
 Expected log lines:
+
 - `Refreshed BCP access token` with `rotated: true` or `rotated: false`. **Tell the user which one it was.** It confirms the refresh flow and whether BCP rotates refresh tokens.
 - `Round recorded` five times, with `games` around 216 each.
 - `Recording complete` with `players: 432`, `listsFetched: 5` and `auth.authenticated: true`.
@@ -6768,11 +6922,13 @@ sleep 3 && curl -s localhost:3001/api/sync-runs/1; kill %1
 Expected: `"status":"succeeded","total":5,"done":5`.
 
 **If the refresh fails** (a `BcpAuthError` mentioning HTTP 4xx from `/v1/oauth/token`):
+
 1. Copy `AuthIdentityServiceProvider.web-app.accessToken` into `BCP_ACCESS_TOKEN` instead, and re-run.
 2. Record the refresh request and response the BCP site itself makes (DevTools → Network → `oauth/token`) in the spec's "Authentication" section.
 3. Stop and report to the user before changing `BcpAuth`.
 
 **If a schema error appears** (`BCP_SCHEMA_MISMATCH` with a field path):
+
 1. Look at the recorded JSON at that path.
 2. Loosen or fix the schema in `raw.ts`.
 3. Add a mapper test using the real shape, and re-run.
