@@ -1,8 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '../db/client';
 import { createTestDb } from '../db/test-db';
-import { BcpAuthError, BcpUnavailableError } from '../errors';
-import { silentLogger } from '../test/helpers';
+import { BcpAuthError, BcpRateLimitedError, BcpUnavailableError } from '../errors';
+import { settle, silentLogger } from '../test/helpers';
 import { BcpAuth, createMemorySessionStore, decodeJwtExpiry, type BcpSession } from './auth';
 import { createDbSessionStore } from './auth-store';
 
@@ -145,16 +145,24 @@ describe('BcpAuth', () => {
     );
   });
 
-  it('treats a 5xx from the token endpoint as BCP being down, not as a rejected login', async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response('busy', { status: 503 }))
-      .mockResolvedValueOnce(tokenResponse(fakeJwt(NOW + 3_600_000)));
-    const auth = makeAuth({ envRefreshToken: 'refresh-1', fetch: fetchMock });
+  it('treats a persistent 5xx from the token endpoint as BCP being down, not as a rejected login', async () => {
+    vi.useFakeTimers({ now: NOW });
+    try {
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(new Response('busy', { status: 503 }))
+        .mockResolvedValueOnce(new Response('busy', { status: 503 }))
+        .mockResolvedValueOnce(new Response('busy', { status: 503 }))
+        .mockResolvedValueOnce(tokenResponse(fakeJwt(NOW + 3_600_000)));
+      const auth = makeAuth({ envRefreshToken: 'refresh-1', fetch: fetchMock });
 
-    await expect(auth.refresh()).rejects.toBeInstanceOf(BcpUnavailableError);
-    await expect(auth.refresh()).resolves.toBeUndefined();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+      await expect(settle(auth.refresh())).rejects.toBeInstanceOf(BcpUnavailableError);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      await expect(settle(auth.refresh())).resolves.toBeUndefined();
+      expect(fetchMock).toHaveBeenCalledTimes(4);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('prefers the stored session, unless .env now holds a different refresh token', async () => {
@@ -372,5 +380,63 @@ describe('createDbSessionStore', () => {
     await store.save({ ...session, accessToken: 'b' });
 
     expect(await store.load()).toEqual({ ...session, accessToken: 'b' });
+  });
+});
+
+describe('BcpAuth token endpoint resilience', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ now: NOW });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('retries a transient 503 and then refreshes', async () => {
+    const fresh = fakeJwt(NOW + 3_600_000);
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response('busy', { status: 503 }))
+      .mockResolvedValueOnce(tokenResponse(fresh));
+    const auth = makeAuth({ envRefreshToken: 'r1', fetch: fetchMock });
+
+    await expect(settle(auth.getAccessToken())).resolves.toBe(fresh);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('gives up after three network errors with BcpUnavailableError, also from status()', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockRejectedValue(new TypeError('fetch failed'));
+    const auth = makeAuth({ envRefreshToken: 'r1', fetch: fetchMock });
+
+    await expect(settle(auth.getAccessToken())).rejects.toBeInstanceOf(BcpUnavailableError);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    // An AppError, so /api/bcp/status answers 502 BCP_UNAVAILABLE instead of 500 INTERNAL.
+    await expect(settle(auth.status())).rejects.toBeInstanceOf(BcpUnavailableError);
+  });
+
+  it('maps a persistent 429 to BcpRateLimitedError', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockImplementation(() =>
+        Promise.resolve(
+          new Response('slow down', { status: 429, headers: { 'retry-after': '2' } }),
+        ),
+      );
+    const auth = makeAuth({ envRefreshToken: 'r1', fetch: fetchMock });
+
+    const error = await settle(auth.getAccessToken()).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(BcpRateLimitedError);
+    expect((error as BcpRateLimitedError).retryAfterSeconds).toBe(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('keeps a still-valid access token usable after BCP rejects the refresh token', async () => {
+    const valid = fakeJwt(NOW + 3_600_000);
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response('no', { status: 401 }));
+    const auth = makeAuth({ envRefreshToken: 'dead', envAccessToken: valid, fetch: fetchMock });
+
+    await expect(auth.refresh()).rejects.toBeInstanceOf(BcpAuthError);
+    expect(await auth.getAccessToken()).toBe(valid);
+    expect((await auth.status()).state).toBe('connected');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

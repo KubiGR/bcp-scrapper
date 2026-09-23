@@ -86,10 +86,12 @@ describe('BcpAuth + HttpTransport with a login BCP rejects', () => {
     expect(bcp.tokenPosts()).toBe(1);
     expect(bcp.dataRequests()).toBe(1);
 
+    // The access token is still valid by its expiry, so the second get() sends it straight to
+    // BCP (no POST), gets a 401, and fails fast without re-POSTing the already-rejected token.
     await expect(settle(transport.get({ path: '/v1/armylists/L2' }))).rejects.toBeInstanceOf(
       BcpAuthError,
     );
     expect(bcp.tokenPosts()).toBe(1);
-    expect(bcp.dataRequests()).toBe(1);
+    expect(bcp.dataRequests()).toBe(2);
   });
 });

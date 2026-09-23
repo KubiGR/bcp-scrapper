@@ -1,13 +1,18 @@
 import { createHash } from 'node:crypto';
 import type { BcpStatus } from '@bcp/shared';
 import { z } from 'zod';
-import { BcpAuthError, BcpUnavailableError } from '../errors';
+import { BcpAuthError, BcpRateLimitedError, BcpUnavailableError } from '../errors';
+import { sleep } from '../lib/sleep';
 import type { Logger } from '../logger';
+import { parseRetryAfterSeconds, retryDelayMs } from './http-transport';
 import type { AccessTokenProvider } from './transport';
 
 /** Refresh this long before the access token actually expires. */
 const EXPIRY_MARGIN_MS = 60_000;
 const REFRESH_TIMEOUT_MS = 15_000;
+/** Network errors, 5xx and 429 from the token endpoint are retried this many times in total. */
+const REFRESH_ATTEMPTS = 3;
+const DEFAULT_RATE_LIMIT_SECONDS = 60;
 
 export interface BcpSession {
   accessToken: string | null;
@@ -190,11 +195,13 @@ export class BcpAuth implements AccessTokenProvider {
     return session.refreshToken !== null && session.refreshToken === this.#rejectedRefreshToken;
   }
 
-  /** A rejected login counts too, so it fails fast (without a POST) instead of using a dead token. */
+  /**
+   * Refresh only when the access token is missing or (nearly) expired. A still-valid access token
+   * keeps working after BCP refused the refresh token, so a pasted BCP_ACCESS_TOKEN fallback stays
+   * usable; a dead one fails on its first 401, and the transport's refresh() then fails fast.
+   */
   #needsRefresh(session: BcpSession): boolean {
-    return (
-      session.refreshToken !== null && (this.#isExpiring(session) || this.#isRejected(session))
-    );
+    return session.refreshToken !== null && this.#isExpiring(session);
   }
 
   #isUsable(session: BcpSession): boolean {
@@ -213,6 +220,41 @@ export class BcpAuth implements AccessTokenProvider {
     return session.accessTokenExpiresAt.getTime() - this.#now() < EXPIRY_MARGIN_MS;
   }
 
+  /** POSTs the refresh, retrying network errors, 5xx and 429 with backoff. */
+  async #postRefresh(refreshToken: string): Promise<Response> {
+    for (let attempt = 1; ; attempt += 1) {
+      let response: Response;
+      try {
+        // Unlike the data endpoints, BCP's token endpoint has no /v1 prefix.
+        response = await this.#fetch(new URL('/oauth/token', this.#options.apiUrl), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'client-id': 'web-app' },
+          body: JSON.stringify({ refresh_token: refreshToken, grant_type: 'refresh_token' }),
+          signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
+        });
+      } catch (error) {
+        if (attempt >= REFRESH_ATTEMPTS) {
+          throw new BcpUnavailableError('Could not reach BCP to refresh the login', error);
+        }
+        await sleep(retryDelayMs(attempt, null));
+        continue;
+      }
+
+      const retryable = response.status === 429 || response.status >= 500;
+      if (!retryable) return response;
+      const retryAfter = response.headers.get('retry-after');
+      if (attempt >= REFRESH_ATTEMPTS) {
+        if (response.status === 429) {
+          throw new BcpRateLimitedError(
+            parseRetryAfterSeconds(retryAfter) ?? DEFAULT_RATE_LIMIT_SECONDS,
+          );
+        }
+        throw new BcpUnavailableError(`BCP could not refresh the login (HTTP ${response.status})`);
+      }
+      await sleep(retryDelayMs(attempt, retryAfter));
+    }
+  }
+
   async #doRefresh(): Promise<void> {
     const loaded = await this.#loadSession();
     const adopted = await this.#adoptNewerStoredSession(loaded);
@@ -225,17 +267,7 @@ export class BcpAuth implements AccessTokenProvider {
       throw new BcpAuthError(`BCP already rejected this refresh token. ${LOG_IN_AGAIN}`);
     }
 
-    // Unlike the data endpoints, BCP's token endpoint has no /v1 prefix.
-    const response = await this.#fetch(new URL('/oauth/token', this.#options.apiUrl), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'client-id': 'web-app' },
-      body: JSON.stringify({ refresh_token: session.refreshToken, grant_type: 'refresh_token' }),
-      signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
-    });
-    if (response.status === 429 || response.status >= 500) {
-      // BCP is struggling; the token may be fine, so it is neither remembered nor reported as rejected.
-      throw new BcpUnavailableError(`BCP could not refresh the login (HTTP ${response.status})`);
-    }
+    const response = await this.#postRefresh(session.refreshToken);
     if (!response.ok) {
       this.#rejectedRefreshToken = session.refreshToken;
       throw new BcpAuthError(

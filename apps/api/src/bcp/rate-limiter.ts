@@ -1,4 +1,4 @@
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+import { sleep } from '../lib/sleep';
 
 /**
  * Limits both how often tasks start (requestsPerSecond) and how many run at once

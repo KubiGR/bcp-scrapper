@@ -5,6 +5,7 @@ import {
   BcpUnavailableError,
   NotFoundError,
 } from '../errors';
+import { sleep } from '../lib/sleep';
 import type { Logger } from '../logger';
 import type { RateLimiter } from './rate-limiter';
 import type { AccessTokenProvider, BcpRequest, BcpTransport } from './transport';
@@ -21,8 +22,6 @@ const BASE_BACKOFF_MS = 500;
 const MAX_BACKOFF_MS = 10_000;
 const MAX_RETRY_AFTER_MS = 60_000;
 const DEFAULT_RATE_LIMIT_SECONDS = 60;
-
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export function buildUrl(baseUrl: string, { path, query = {} }: BcpRequest): URL {
   const url = new URL(path, baseUrl);
