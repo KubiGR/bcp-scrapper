@@ -106,6 +106,24 @@ export async function finishSyncRun(
     .where(eq(syncRuns.id, id));
 }
 
+export interface CatalogRunRange {
+  from: string;
+  to: string;
+  finishedAt: Date;
+}
+
+/** Date ranges of every catalogue run that succeeded, with when each finished. */
+export async function listSucceededCatalogRuns(db: Db): Promise<CatalogRunRange[]> {
+  const rows = await db
+    .select()
+    .from(syncRuns)
+    .where(and(eq(syncRuns.kind, 'catalog'), eq(syncRuns.status, 'succeeded')));
+  return rows.flatMap((row) => {
+    const range = rangeOf(row);
+    return range && row.finishedAt ? [{ ...range, finishedAt: row.finishedAt }] : [];
+  });
+}
+
 /** Runs are in-process; any still active at startup were cut off by a restart. */
 export async function failInterruptedSyncRuns(db: Db): Promise<number> {
   const rows = await db
