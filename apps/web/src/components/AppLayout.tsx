@@ -1,6 +1,9 @@
 import { AppShell, Container, Group } from '@mantine/core';
 import { Link, Outlet } from '@tanstack/react-router';
+import { FinderSearchSchema } from '../features/finder/finder-search';
 import classes from './AppLayout.module.css';
+
+const FINDER_DEFAULTS = FinderSearchSchema.parse({});
 
 const NAV_ITEMS = [
   { to: '/', label: 'Tournaments' },
@@ -13,7 +16,7 @@ export function AppLayout() {
       <AppShell.Header className={classes.header}>
         <Container size="xl" h="100%">
           <Group h="100%" justify="space-between" wrap="nowrap">
-            <Link to="/" className={classes.brand}>
+            <Link to="/" search={FINDER_DEFAULTS} className={classes.brand}>
               <span className={classes.brandMark} aria-hidden />
               BCP Analyzer
             </Link>

@@ -1,0 +1,17 @@
+/* Looks like plain text; underline only appears on hover or keyboard focus. */
+.eventName {
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mantine-color-text);
+  text-decoration: none;
+  border-radius: 2px;
+}
+
+.eventName:hover,
+.eventName:focus-visible {
+  text-decoration: underline;
+}
+
+.eventName:focus-visible {
+  outline: 1px solid var(--mantine-color-neon-5);
+  outline-offset: 2px;
+}

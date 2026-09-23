@@ -1,0 +1,62 @@
+import { fireEvent, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithProviders } from '../../test/render';
+import { anEvent } from '../../test/sample-data';
+import { EventsTable } from './EventsTable';
+
+// mantine-datatable decides per-column visibility with `useMediaQuery`, which calls
+// `window.matchMedia` once after mount even for columns with no `visibleMediaQuery`. The jsdom
+// stub in test/setup.ts always reports no match, which would hide every column shortly after
+// mount; report a match here so the table's columns render as they do in a real browser.
+beforeEach(() => {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: true,
+    media: query,
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => false,
+  }));
+});
+
+const props = {
+  fetching: false,
+  page: 1,
+  onPageChange: vi.fn(),
+  emptyText: 'Nothing here',
+};
+
+describe('EventsTable', () => {
+  it('lists events with size and badges, and opens one on click', () => {
+    const onOpen = vi.fn();
+    renderWithProviders(
+      <EventsTable
+        {...props}
+        onOpen={onOpen}
+        response={{
+          items: [anEvent({ playerCount: 432, teamCount: 108 })],
+          total: 1,
+          page: 1,
+          pageSize: 25,
+        }}
+      />,
+    );
+    expect(screen.getByText('432 players · 108 teams')).toBeInTheDocument();
+    expect(screen.getByText('Teams')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Sample Team Open'));
+    expect(onOpen).toHaveBeenCalledWith('EVT1');
+  });
+
+  it('shows the empty text', () => {
+    renderWithProviders(
+      <EventsTable
+        {...props}
+        onOpen={vi.fn()}
+        response={{ items: [], total: 0, page: 1, pageSize: 25 }}
+      />,
+    );
+    expect(screen.getByText('Nothing here')).toBeInTheDocument();
+  });
+});
