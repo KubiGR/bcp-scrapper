@@ -13,6 +13,31 @@ afterEach(() => {
 });
 
 describe('AdvancedSearch', () => {
+  it('lets the user pick a new date range: the first click starts it, the second completes it', () => {
+    const onChange = vi.fn();
+    renderWithProviders(
+      <AdvancedSearch search={deepSearch()} window={window} onChange={onChange} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dates' }));
+    fireEvent.click(screen.getByRole('button', { name: '5 January 2026' }));
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '20 January 2026' }));
+
+    expect(onChange).toHaveBeenCalledWith({ from: '2026-01-05', to: '2026-01-20' });
+  });
+
+  it('shows a date range changed elsewhere (back, a shared link)', () => {
+    const { rerender } = renderWithProviders(
+      <AdvancedSearch search={deepSearch()} window={window} onChange={vi.fn()} />,
+    );
+    const later = { from: '2026-03-01', to: '2026-03-31' };
+    rerender(<AdvancedSearch search={deepSearch()} window={later} onChange={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Dates' })).toHaveTextContent(
+      '1 Mar 2026 – 31 Mar 2026',
+    );
+  });
+
   it('writes the name to the URL after a pause, without adding a history entry', () => {
     vi.useFakeTimers();
     const onChange = vi.fn();

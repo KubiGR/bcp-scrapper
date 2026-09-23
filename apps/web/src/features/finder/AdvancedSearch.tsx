@@ -58,6 +58,27 @@ function useUrlText(param: string | undefined, write: (value: string | undefined
   return { text, onTextChange, cancel: writeLater.cancel };
 }
 
+type DraftRange = [string | null, string | null];
+
+/**
+ * The date picker's value. A range is picked in two clicks, and the half-picked range has to live
+ * here: the URL only takes complete ranges, so binding the picker to it would undo the first click.
+ * When the URL's range changes elsewhere (back, "Back to latest"), the picker follows it.
+ */
+function useDraftRange(window: DateRange, write: (range: DateRange) => void) {
+  const [draft, setDraft] = useState<DraftRange>([window.from, window.to]);
+  const [seen, setSeen] = useState(window);
+  if (window.from !== seen.from || window.to !== seen.to) {
+    setSeen(window);
+    setDraft([window.from, window.to]);
+  }
+  const onRangeChange = ([from, to]: DraftRange) => {
+    setDraft([from, to]);
+    if (from && to) write({ from, to });
+  };
+  return { draft, onRangeChange };
+}
+
 export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps) {
   const [opened, { toggle }] = useDisclosure(!isLatestView(search));
   const name = useUrlText(search.q, (q) => {
@@ -65,6 +86,9 @@ export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps
   });
   const country = useUrlText(search.country, (value) => {
     onChange({ country: value }, { replace: true });
+  });
+  const dates = useDraftRange(window, (range) => {
+    onChange(range);
   });
 
   return (
@@ -95,10 +119,8 @@ export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps
             label="Dates"
             valueFormat="D MMM YYYY"
             allowSingleDateInRange
-            value={[window.from, window.to]}
-            onChange={([from, to]) => {
-              if (from && to) onChange({ from, to });
-            }}
+            value={dates.draft}
+            onChange={dates.onRangeChange}
           />
           <TextInput
             label="Name"
