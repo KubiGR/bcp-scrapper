@@ -90,8 +90,13 @@ export function mapPlayer(raw: RawPlayer, eventId: string): Player {
   };
 }
 
+/** Swiss games are stage 0 and bracket (pod) games stage 1, so pods sort after the swiss rounds. */
+const stageOf = (game: RawGameSummary) => (game.pod ? 1 : 0);
+
 export function mapTeam(raw: RawTeam, eventId: string): Team {
-  const games = [...(raw.total_games ?? [])].sort((a, b) => a.gameNum - b.gameNum);
+  const games = [...(raw.total_games ?? [])].sort(
+    (a, b) => stageOf(a) - stageOf(b) || a.gameNum - b.gameNum,
+  );
   return {
     bcpId: raw.id,
     eventBcpId: eventId,

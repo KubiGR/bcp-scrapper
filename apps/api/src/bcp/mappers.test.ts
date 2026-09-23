@@ -195,6 +195,23 @@ describe('mapTeam', () => {
       roundPoints: [25, 24],
     });
   });
+
+  it('puts bracket (pod) games after the swiss rounds, although they restart gameNum at 1', () => {
+    const raw = parseBcp(
+      RawTeam,
+      {
+        id: 'T1',
+        name: 'Alpha',
+        total_games: [
+          { gameNum: 1, pod: true, gameResult: 2, gamePoints: 82 },
+          { gameNum: 2, gameResult: 2, gamePoints: 71 },
+          { gameNum: 1, gameResult: 2, gamePoints: 76 },
+        ],
+      },
+      'test',
+    );
+    expect(mapTeam(raw, 'E1').roundPoints).toEqual([76, 71, 82]);
+  });
 });
 
 describe('mapTeamPairing', () => {

@@ -56,7 +56,9 @@ export const RawEventDetail = z.object({
 export type RawEventDetail = z.output<typeof RawEventDetail>;
 
 const RawGameSummary = z.object({
+  /** Restarts at 1 for bracket (pod) games, which follow the swiss rounds. */
   gameNum: z.number(),
+  pod: z.boolean().nullish(),
   gameResult: bcpNumber,
   gamePoints: bcpNumber,
 });
