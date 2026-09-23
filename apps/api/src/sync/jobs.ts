@@ -1,7 +1,6 @@
 import type { SyncRequest } from '@bcp/shared';
 import { PageCursors, type TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
-import { BcpAuthError, BcpRateLimitedError } from '../errors';
 import type { Logger } from '../logger';
 import {
   findEvent,
@@ -10,7 +9,6 @@ import {
   upsertEventSummaries,
   type EventRow,
 } from '../repo/events';
-import { findPlayersMissingLists, saveArmyList } from '../repo/lists';
 import { replaceRoundPairings } from '../repo/pairings';
 import { replaceEventPlayers, replaceEventTeams } from '../repo/participants';
 
@@ -37,8 +35,6 @@ export function runJob(ctx: JobContext, request: SyncRequest): Promise<void> {
       return syncEventJob(ctx, request);
     case 'pairings':
       return syncPairings(ctx, request);
-    case 'lists':
-      return syncLists(ctx, request);
   }
 }
 
@@ -55,24 +51,30 @@ async function syncCatalog(ctx: JobContext, { from, to }: RequestOf<'catalog'>):
 }
 
 /** Event detail, teams (team events only) and players. Drops teams and players BCP removed. */
-async function syncEvent(ctx: JobContext, eventId: string): Promise<EventRow> {
-  const event = await ctx.source.getEvent(eventId);
-  await upsertEventDetail(ctx.db, event);
+async function syncEvent(
+  deps: Pick<JobContext, 'db' | 'source'>,
+  eventId: string,
+): Promise<EventRow> {
+  const event = await deps.source.getEvent(eventId);
+  await upsertEventDetail(deps.db, event);
   if (event.isTeamEvent) {
-    await replaceEventTeams(ctx.db, eventId, await ctx.source.getTeams(eventId));
+    await replaceEventTeams(deps.db, eventId, await deps.source.getTeams(eventId));
   }
-  await replaceEventPlayers(ctx.db, eventId, await ctx.source.getPlayers(eventId));
-  await markEventSynced(ctx.db, eventId);
+  await replaceEventPlayers(deps.db, eventId, await deps.source.getPlayers(eventId));
+  await markEventSynced(deps.db, eventId);
 
-  const row = await findEvent(ctx.db, eventId);
+  const row = await findEvent(deps.db, eventId);
   if (!row) throw new Error(`Event ${eventId} vanished right after being stored`);
   return row;
 }
 
 /** Pairings and lists need players in the database; fetch them once if we never have. */
-async function ensureEventSynced(ctx: JobContext, eventId: string): Promise<EventRow> {
-  const existing = await findEvent(ctx.db, eventId);
-  return existing?.lastSyncedAt ? existing : syncEvent(ctx, eventId);
+export async function ensureEventSynced(
+  deps: Pick<JobContext, 'db' | 'source'>,
+  eventId: string,
+): Promise<EventRow> {
+  const existing = await findEvent(deps.db, eventId);
+  return existing?.lastSyncedAt ? existing : syncEvent(deps, eventId);
 }
 
 async function syncEventJob(ctx: JobContext, { eventId }: RequestOf<'event'>): Promise<void> {
@@ -97,33 +99,5 @@ async function syncPairings(ctx: JobContext, { eventId }: RequestOf<'pairings'>)
     }
     await replaceRoundPairings(ctx.db, eventId, round, { teamMatchups, games });
     await ctx.progress.succeeded();
-  }
-}
-
-/**
- * One request per missing list. A single failure is counted and skipped, so a retry
- * fetches only what is still missing. A broken login or a rate limit aborts, since every later list
- * would fail too.
- */
-async function syncLists(ctx: JobContext, { eventId }: RequestOf<'lists'>): Promise<void> {
-  await ensureEventSynced(ctx, eventId);
-  const missing = await findPlayersMissingLists(ctx.db, eventId);
-  await ctx.progress.setTotal(missing.length);
-
-  for (const { playerId, listId } of missing) {
-    try {
-      const list = await ctx.source.getList(listId);
-      if (list === null) {
-        ctx.logger.warn({ playerId, listId }, 'BCP has no list for this player');
-        await ctx.progress.failed();
-        continue;
-      }
-      await saveArmyList(ctx.db, playerId, list);
-      await ctx.progress.succeeded();
-    } catch (error) {
-      if (error instanceof BcpAuthError || error instanceof BcpRateLimitedError) throw error;
-      ctx.logger.warn({ err: error, playerId, listId }, 'Could not fetch list');
-      await ctx.progress.failed();
-    }
   }
 }

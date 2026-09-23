@@ -22,9 +22,9 @@ beforeEach(() => resetDb(db));
 
 describe('sync runs', () => {
   it('tracks a run from queued to succeeded', async () => {
-    const run = await createSyncRun(db, { kind: 'lists', eventId: 'E1' });
+    const run = await createSyncRun(db, { kind: 'pairings', eventId: 'E1' });
     expect(run).toMatchObject({
-      kind: 'lists',
+      kind: 'pairings',
       eventId: 'E1',
       status: 'queued',
       done: 0,
@@ -51,10 +51,10 @@ describe('sync runs', () => {
   });
 
   it('refuses a second active run for the same kind and event', async () => {
-    const first = await createSyncRun(db, { kind: 'lists', eventId: 'E1' });
-    expect(await createSyncRun(db, { kind: 'lists', eventId: 'E1' })).toBeNull();
-    expect(await findActiveSyncRun(db, 'lists', 'E1')).toEqual(first);
-    expect(await createSyncRun(db, { kind: 'lists', eventId: 'E2' })).not.toBeNull();
+    const first = await createSyncRun(db, { kind: 'pairings', eventId: 'E1' });
+    expect(await createSyncRun(db, { kind: 'pairings', eventId: 'E1' })).toBeNull();
+    expect(await findActiveSyncRun(db, 'pairings', 'E1')).toEqual(first);
+    expect(await createSyncRun(db, { kind: 'pairings', eventId: 'E2' })).not.toBeNull();
     expect(
       await createSyncRun(db, { kind: 'catalog', from: '2026-01-01', to: '2026-01-31' }),
     ).not.toBeNull();

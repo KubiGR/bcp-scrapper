@@ -4,7 +4,7 @@ import { createApp } from '../app';
 import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
 import { SyncRunner } from '../sync/runner';
-import { sampleSource, silentLogger } from '../test/helpers';
+import { sampleSource, silentLogger, testListQueue } from '../test/helpers';
 
 let db: Db;
 let close: () => Promise<void>;
@@ -21,7 +21,13 @@ const status: BcpStatus = {
 beforeAll(async () => {
   ({ db, close } = await createTestDb());
   runner = new SyncRunner({ db, source: sampleSource(), logger: silentLogger });
-  app = createApp({ db, runner, bcpStatus: () => Promise.resolve(status), logger: silentLogger });
+  app = createApp({
+    db,
+    runner,
+    listQueue: testListQueue(db),
+    bcpStatus: () => Promise.resolve(status),
+    logger: silentLogger,
+  });
 });
 afterAll(() => close());
 beforeEach(() => resetDb(db));

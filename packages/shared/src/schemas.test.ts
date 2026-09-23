@@ -24,8 +24,12 @@ describe('SyncRequestSchema', () => {
   });
 
   it('requires an eventId for event-scoped syncs', () => {
-    expect(SyncRequestSchema.safeParse({ kind: 'lists' }).success).toBe(false);
-    expect(SyncRequestSchema.safeParse({ kind: 'lists', eventId: 'EVT1' }).success).toBe(true);
+    expect(SyncRequestSchema.safeParse({ kind: 'pairings' }).success).toBe(false);
+    expect(SyncRequestSchema.safeParse({ kind: 'pairings', eventId: 'EVT1' }).success).toBe(true);
+  });
+
+  it('rejects the retired lists kind', () => {
+    expect(SyncRequestSchema.safeParse({ kind: 'lists', eventId: 'E1' }).success).toBe(false);
   });
 
   it('rejects unknown kinds', () => {
@@ -101,12 +105,20 @@ describe('EventDetailSchema', () => {
       hideLists: false,
       lastSyncedAt: null,
       stale: true,
-      counts: { players: 0, teams: 0, listsAvailable: 0, listsFetched: 0, listsMissing: 0 },
+      counts: {
+        players: 0,
+        teams: 0,
+        listsAvailable: 0,
+        listsFetched: 0,
+        listsMissing: 0,
+        listsQueued: 0,
+        listsFailed: 0,
+      },
       syncs: {
         event: { ...aRun, kind: 'event', eventId: 'E1', range: null },
         pairings: null,
-        lists: null,
       },
+      listQueueSeconds: null,
     };
     expect(EventDetailSchema.parse(detail).syncs.event?.kind).toBe('event');
   });

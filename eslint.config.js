@@ -14,6 +14,7 @@ export default defineConfig([
     '**/routeTree.gen.ts',
     'apps/api/drizzle',
     'fixtures',
+    '.claude',
   ]),
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,

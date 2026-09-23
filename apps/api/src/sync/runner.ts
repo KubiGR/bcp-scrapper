@@ -3,6 +3,7 @@ import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import { AppError } from '../errors';
 import type { Logger } from '../logger';
+import type { EventRow } from '../repo/events';
 import {
   createSyncRun,
   eventIdOf,
@@ -12,7 +13,7 @@ import {
   markSyncRunRunning,
   setSyncRunTotal,
 } from '../repo/sync-runs';
-import { runJob, type Progress } from './jobs';
+import { ensureEventSynced, runJob, type Progress } from './jobs';
 
 export interface SyncRunnerDeps {
   db: Db;
@@ -51,6 +52,11 @@ export class SyncRunner {
   /** Resolves once every background job has settled. */
   async idle(): Promise<void> {
     while (this.#inFlight.size > 0) await Promise.allSettled([...this.#inFlight]);
+  }
+
+  /** Loads the event's detail, teams and players now if it was never synced (no tracked run). */
+  ensureEventSynced(eventId: string): Promise<EventRow> {
+    return ensureEventSynced(this.#deps, eventId);
   }
 
   async #execute(runId: number, request: SyncRequest): Promise<void> {

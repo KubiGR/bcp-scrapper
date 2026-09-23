@@ -94,6 +94,10 @@ export const EventCountsSchema = z.object({
   listsFetched: z.number().int().nonnegative(),
   /** Players with a BCP list that isn't stored (never fetched, or replaced on BCP since). */
   listsMissing: z.number().int().nonnegative(),
+  /** Open queue requests (queued or fetching) for this event's players. */
+  listsQueued: z.number().int().nonnegative(),
+  /** Players whose newest list request failed and whose list isn't stored. */
+  listsFailed: z.number().int().nonnegative(),
 });
 export type EventCounts = z.infer<typeof EventCountsSchema>;
 
@@ -101,7 +105,6 @@ export type EventCounts = z.infer<typeof EventCountsSchema>;
 export const EventSyncsSchema = z.object({
   event: SyncRunSchema.nullable(),
   pairings: SyncRunSchema.nullable(),
-  lists: SyncRunSchema.nullable(),
 });
 export type EventSyncs = z.infer<typeof EventSyncsSchema>;
 
@@ -110,10 +113,19 @@ export const EventDetailSchema = EventListItemSchema.extend({
   stale: z.boolean(),
   counts: EventCountsSchema,
   syncs: EventSyncsSchema,
+  /** Seconds until this event's queued lists are fetched; null when none are queued. */
+  listQueueSeconds: z.number().int().nonnegative().nullable(),
 });
 export type EventDetail = z.infer<typeof EventDetailSchema>;
 
-export const ListStatusSchema = z.enum(['none', 'available', 'fetched']);
+export const ListStatusSchema = z.enum([
+  'none',
+  'available',
+  'queued',
+  'fetching',
+  'fetched',
+  'failed',
+]);
 export type ListStatus = z.infer<typeof ListStatusSchema>;
 
 export const EventPlayerSchema = z.object({
@@ -128,6 +140,8 @@ export const EventPlayerSchema = z.object({
   draws: z.number().int().nonnegative(),
   dropped: z.boolean(),
   listStatus: ListStatusSchema,
+  /** Why the newest list request failed (only when `listStatus` is failed). */
+  listError: z.string().nullable(),
 });
 export type EventPlayer = z.infer<typeof EventPlayerSchema>;
 

@@ -1,12 +1,23 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { renderWithProviders, renderWithRouter, stubFetchRoutes } from '../../test/render';
-import { anEventDetail, aSyncRun } from '../../test/sample-data';
+import { renderWithProviders, stubFetchRoutes } from '../../test/render';
+import { anEventDetail } from '../../test/sample-data';
 import { FetchListsButton } from './FetchListsButton';
 
+const queueResult = {
+  queued: 7,
+  alreadyQueued: 0,
+  alreadyFetched: 0,
+  noListOnBcp: 0,
+  notQualifying: 0,
+  estimatedSeconds: 35,
+};
+
 describe('FetchListsButton', () => {
-  it('offers to fetch the missing lists and starts a lists sync', async () => {
-    const fetchMock = stubFetchRoutes({ 'POST /api/sync': aSyncRun({ status: 'succeeded' }) });
+  it('offers to fetch the missing lists and queues them', async () => {
+    const fetchMock = stubFetchRoutes({
+      'POST /api/events/EVT1/lists/queue': queueResult,
+    });
     renderWithProviders(<FetchListsButton event={anEventDetail()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Fetch all lists (7 missing)' }));
@@ -15,24 +26,27 @@ describe('FetchListsButton', () => {
       expect(fetchMock).toHaveBeenCalled();
     });
     // eslint-disable-next-line @typescript-eslint/no-base-to-string -- the body is a JSON string here
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
-      kind: 'lists',
-      eventId: 'EVT1',
-    });
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({});
   });
 
-  it('explains hidden lists and lists that were unavailable last time', () => {
+  it('explains hidden lists', () => {
     renderWithProviders(
       <FetchListsButton
         event={anEventDetail({
           hideLists: true,
-          counts: { players: 8, teams: 4, listsAvailable: 7, listsFetched: 5, listsMissing: 2 },
-          syncs: { event: null, pairings: null, lists: aSyncRun({ done: 5, failed: 2 }) },
+          counts: {
+            players: 8,
+            teams: 4,
+            listsAvailable: 7,
+            listsFetched: 5,
+            listsMissing: 2,
+            listsQueued: 0,
+            listsFailed: 0,
+          },
         })}
       />,
     );
     expect(screen.getByText(/lists as hidden/)).toBeInTheDocument();
-    expect(screen.getByText('2 lists were unavailable on the last fetch.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Fetch all lists (2 missing)' })).toBeEnabled();
   });
 
@@ -40,7 +54,15 @@ describe('FetchListsButton', () => {
     const { unmount } = renderWithProviders(
       <FetchListsButton
         event={anEventDetail({
-          counts: { players: 8, teams: 4, listsAvailable: 7, listsFetched: 7, listsMissing: 0 },
+          counts: {
+            players: 8,
+            teams: 4,
+            listsAvailable: 7,
+            listsFetched: 7,
+            listsMissing: 0,
+            listsQueued: 0,
+            listsFailed: 0,
+          },
         })}
       />,
     );
@@ -49,60 +71,56 @@ describe('FetchListsButton', () => {
     renderWithProviders(
       <FetchListsButton
         event={anEventDetail({
-          counts: { players: 8, teams: 4, listsAvailable: 0, listsFetched: 0, listsMissing: 0 },
+          counts: {
+            players: 8,
+            teams: 4,
+            listsAvailable: 0,
+            listsFetched: 0,
+            listsMissing: 0,
+            listsQueued: 0,
+            listsFailed: 0,
+          },
         })}
       />,
     );
     expect(screen.getByRole('button', { name: 'No lists on BCP' })).toBeDisabled();
   });
 
-  it('labels the button from listsMissing, not from available minus fetched', () => {
+  it('labels the button from listsMissing minus listsQueued', () => {
     renderWithProviders(
       <FetchListsButton
         event={anEventDetail({
-          counts: { players: 8, teams: 4, listsAvailable: 7, listsFetched: 7, listsMissing: 1 },
+          counts: {
+            players: 8,
+            teams: 4,
+            listsAvailable: 7,
+            listsFetched: 7,
+            listsMissing: 1,
+            listsQueued: 0,
+            listsFailed: 0,
+          },
         })}
       />,
     );
     expect(screen.getByRole('button', { name: 'Fetch all lists (1 missing)' })).toBeEnabled();
   });
 
-  it('shows the progress of a fetch that is already running, without a click', async () => {
-    const running = aSyncRun({ status: 'running', total: 7, done: 3 });
-    const fetchMock = stubFetchRoutes({ 'GET /api/sync-runs/1': running });
+  it('shows "All lists queued" once every missing list is already queued', () => {
     renderWithProviders(
       <FetchListsButton
-        event={anEventDetail({ syncs: { event: null, pairings: null, lists: running } })}
-      />,
-    );
-
-    expect(await screen.findByText('Fetching lists 3/7')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Fetch all lists/ })).toBeDisabled();
-    expect(fetchMock.mock.calls.some(([url]) => url === '/api/sync')).toBe(false);
-  });
-
-  it('shows why the last fetch failed, linking to Settings when BCP refused the login', async () => {
-    renderWithRouter(
-      <FetchListsButton
         event={anEventDetail({
-          syncs: {
-            event: null,
-            pairings: null,
-            lists: aSyncRun({
-              status: 'failed',
-              done: 0,
-              error: 'BCP rejected the saved login',
-              errorCode: 'BCP_AUTH',
-            }),
+          counts: {
+            players: 8,
+            teams: 4,
+            listsAvailable: 7,
+            listsFetched: 0,
+            listsMissing: 7,
+            listsQueued: 7,
+            listsFailed: 0,
           },
         })}
       />,
     );
-
-    expect(await screen.findByText(/BCP rejected the saved login/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Open Settings' })).toHaveAttribute(
-      'href',
-      '/settings',
-    );
+    expect(screen.getByRole('button', { name: 'All lists queued' })).toBeDisabled();
   });
 });

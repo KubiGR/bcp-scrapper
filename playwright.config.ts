@@ -21,6 +21,7 @@ export default defineConfig({
         DATABASE_URL: 'pglite://memory',
         TOURNAMENT_SOURCE: 'fixtures',
         LOG_LEVEL: 'warn',
+        LIST_QUEUE_INTERVAL_MS: '200',
       },
     },
     {

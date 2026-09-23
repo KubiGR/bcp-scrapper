@@ -24,8 +24,8 @@ describe('useSync', () => {
     });
 
     act(() => {
-      result.current.start({ kind: 'lists', eventId: 'EVT1' });
-      result.current.start({ kind: 'lists', eventId: 'EVT1' });
+      result.current.start({ kind: 'event', eventId: 'EVT1' });
+      result.current.start({ kind: 'event', eventId: 'EVT1' });
     });
 
     await waitFor(() => {

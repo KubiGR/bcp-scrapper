@@ -26,7 +26,7 @@ describe('EventPage', () => {
       'GET /api/events/EVT1': anEventDetail({
         stale: true,
         lastSyncedAt: null,
-        syncs: { event: null, pairings: null, lists: null },
+        syncs: { event: null, pairings: null },
       }),
       'POST /api/sync': aSyncRun({ kind: 'event', status: 'succeeded' }),
     });
@@ -45,7 +45,7 @@ describe('EventPage', () => {
       'GET /api/events/EVT1': anEventDetail({
         stale: true,
         lastSyncedAt: null,
-        syncs: { event: running, pairings: null, lists: null },
+        syncs: { event: running, pairings: null },
       }),
       'GET /api/sync-runs/1': running,
     });
@@ -62,7 +62,6 @@ describe('EventPage', () => {
         syncs: {
           event: aSyncRun({ kind: 'event', status: 'failed', error: 'BCP is unavailable' }),
           pairings: null,
-          lists: null,
         },
       }),
     });
