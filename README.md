@@ -45,16 +45,28 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
 - **Not connected**: no usable token is configured. Do steps 1–4.
 - **Offline · fixtures**: `TOURNAMENT_SOURCE=fixtures`, so the API serves sample data and never contacts BCP.
 
+## Using it
+
+- **Tournaments** (the start page) shows the biggest events of the last 30 days. Pick a size
+  (All · 16+ · 40+ · 100+ · 200+, or Custom min/max). **Advanced search** adds a date range, name,
+  country, singles/teams and newest/biggest sorting. When a date range hasn't been fetched from BCP
+  yet, the page says so and offers **Fetch** (with the approximate number of requests).
+- **An event page** loads its players from BCP the first time you open it. **Fetch all lists**
+  downloads every army list (about 2 per second), **Export lists** saves them as `.txt` or `.json`,
+  and clicking a player shows their list with a copy button.
+- No Docker? `DATABASE_URL=pglite://memory pnpm dev` runs everything in memory (lost on restart).
+
 ## Commands
 
-| Command                                                       | What it does                                                          |
-| ------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `pnpm dev`                                                    | API and web app with reload                                           |
-| `pnpm check`                                                  | Typecheck, lint, format check and all tests (run before pushing)      |
-| `pnpm test`                                                   | All tests (no network, no Docker needed)                              |
-| `pnpm format`                                                 | Format everything with Prettier                                       |
-| `pnpm --filter @bcp/api db:generate --name <change>`          | New migration after editing `apps/api/src/db/schema.ts`               |
-| `pnpm --filter @bcp/api record-fixtures <eventId> --lists 10` | Record a real event as anonymised fixtures in `fixtures/bcp/recorded` |
+| Command                                                       | What it does                                                                         |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `pnpm dev`                                                    | API and web app with reload                                                          |
+| `pnpm check`                                                  | Typecheck, lint, format check and all tests (run before pushing)                     |
+| `pnpm test`                                                   | All tests (no network, no Docker needed)                                             |
+| `pnpm e2e`                                                    | Browser smoke test on fixtures (first time: `pnpm exec playwright install chromium`) |
+| `pnpm format`                                                 | Format everything with Prettier                                                      |
+| `pnpm --filter @bcp/api db:generate --name <change>`          | New migration after editing `apps/api/src/db/schema.ts`                              |
+| `pnpm --filter @bcp/api record-fixtures <eventId> --lists 10` | Record a real event as anonymised fixtures in `fixtures/bcp/recorded`                |
 
 `record-fixtures` stores the BCP session (and any rotated refresh token) in Postgres, so
 **`pnpm db:up` must already be running** before you use it.
