@@ -8,7 +8,6 @@ import 'mantine-datatable/styles.css';
 import './styles/global.css';
 
 import { MantineProvider } from '@mantine/core';
-import { Notifications } from '@mantine/notifications';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
@@ -23,7 +22,6 @@ if (!rootElement) throw new Error('Missing #root element in index.html');
 createRoot(rootElement).render(
   <StrictMode>
     <MantineProvider theme={theme} forceColorScheme="dark">
-      <Notifications position="bottom-right" />
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
       </QueryClientProvider>

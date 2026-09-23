@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ApiErrorCodeSchema } from './error-code';
 
 export const SyncKindSchema = z.enum(['catalog', 'event', 'pairings', 'lists']);
 export type SyncKind = z.infer<typeof SyncKindSchema>;
@@ -30,6 +31,8 @@ export const SyncRunSchema = z.object({
   done: z.number().int(),
   failed: z.number().int(),
   error: z.string().nullable(),
+  /** Why a failed run failed; `BCP_AUTH` means the BCP login was refused. */
+  errorCode: ApiErrorCodeSchema.nullable(),
   startedAt: z.iso.datetime(),
   finishedAt: z.iso.datetime().nullable(),
   /** The requested date range of a catalogue run; null for event-scoped runs. */

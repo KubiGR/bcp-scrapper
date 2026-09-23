@@ -128,7 +128,24 @@ describe('SyncRunner', () => {
 
     const run = await runToCompletion(runner, { kind: 'lists', eventId: EVENT });
 
-    expect(run).toMatchObject({ status: 'failed', error: 'Session expired', done: 0 });
+    expect(run).toMatchObject({
+      status: 'failed',
+      error: 'Session expired',
+      errorCode: 'BCP_AUTH',
+      done: 0,
+    });
+  });
+
+  it('records INTERNAL as the code of an unexpected failure', async () => {
+    const source = sampleSource();
+    const broken = withOverrides(source, {
+      getEvent: () => Promise.reject(new Error('kaboom')),
+    });
+    const runner = new SyncRunner({ db, source: broken, logger: silentLogger });
+
+    const run = await runToCompletion(runner, { kind: 'event', eventId: EVENT });
+
+    expect(run).toMatchObject({ status: 'failed', error: 'kaboom', errorCode: 'INTERNAL' });
   });
 
   it('lists: aborts the whole run when BCP rate limits us', async () => {
@@ -163,6 +180,7 @@ describe('SyncRunner', () => {
     expect(run).toMatchObject({
       status: 'failed',
       error: 'BCP returned a repeated page cursor for /v1/events',
+      errorCode: 'BCP_UNAVAILABLE',
     });
   });
 

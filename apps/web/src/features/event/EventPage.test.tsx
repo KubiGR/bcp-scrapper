@@ -35,4 +35,39 @@ describe('EventPage', () => {
       expect(fetchMock.mock.calls.filter(([url]) => url === '/api/sync')).toHaveLength(1);
     });
   });
+
+  it('follows an event sync that is already running instead of starting another', async () => {
+    const running = aSyncRun({ kind: 'event', status: 'running', done: 0, finishedAt: null });
+    const fetchMock = stubFetchRoutes({
+      'GET /api/events/EVT1/players': { items: [] },
+      'GET /api/events/EVT1': anEventDetail({
+        stale: true,
+        lastSyncedAt: null,
+        syncs: { event: running, pairings: null, lists: null },
+      }),
+      'GET /api/sync-runs/1': running,
+    });
+    renderWithProviders(<EventPage eventId="EVT1" />);
+
+    expect(await screen.findByRole('button', { name: 'Refresh from BCP' })).toBeDisabled();
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/sync')).toBe(false);
+  });
+
+  it('says why the last event sync failed', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': { items: [] },
+      'GET /api/events/EVT1': anEventDetail({
+        syncs: {
+          event: aSyncRun({ kind: 'event', status: 'failed', error: 'BCP is unavailable' }),
+          pairings: null,
+          lists: null,
+        },
+      }),
+    });
+    renderWithProviders(<EventPage eventId="EVT1" />);
+
+    expect(
+      await screen.findByText(/The last event sync failed: BCP is unavailable/),
+    ).toBeInTheDocument();
+  });
 });

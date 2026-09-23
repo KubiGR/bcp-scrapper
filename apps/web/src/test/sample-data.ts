@@ -10,6 +10,7 @@ export function aSyncRun(overrides: Partial<SyncRun> = {}): SyncRun {
     done: 7,
     failed: 0,
     error: null,
+    errorCode: null,
     startedAt: '2026-09-23T10:00:00.000Z',
     finishedAt: '2026-09-23T10:01:00.000Z',
     range: null,

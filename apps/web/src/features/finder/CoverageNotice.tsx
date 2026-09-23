@@ -1,9 +1,34 @@
-import { estimateCatalogRequests, findGaps, type DateRange } from '@bcp/shared';
+import { daysIn, estimateCatalogRequests, findGaps, type DateRange } from '@bcp/shared';
 import { Alert, Button, Group, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { formatIsoDay } from '../../lib/format';
+import { fetchCatalogGaps } from '../sync/follow-sync';
 import { useSync } from '../sync/use-sync';
 import { coverageQuery } from './finder-queries';
+
+function GapsText({ gaps }: { gaps: DateRange[] }) {
+  const requests = gaps.reduce((sum, gap) => sum + estimateCatalogRequests(gap), 0);
+  const cost = (
+    <>
+      (about <span className="numeric">{requests}</span> requests)
+    </>
+  );
+  const [only] = gaps;
+  if (gaps.length === 1 && only) {
+    return (
+      <>
+        {formatIsoDay(only.from)} – {formatIsoDay(only.to)} hasn't been fetched from BCP yet {cost}.
+      </>
+    );
+  }
+  const days = gaps.reduce((sum, gap) => sum + daysIn(gap), 0);
+  return (
+    <>
+      <span className="numeric">{gaps.length}</span> date ranges (
+      <span className="numeric">{days}</span> days) haven't been fetched from BCP yet {cost}.
+    </>
+  );
+}
 
 /** Tells the user when part of a deep search hasn't been fetched from BCP, and fetches it on request. */
 export function CoverageNotice({ window }: { window: DateRange }) {
@@ -14,35 +39,35 @@ export function CoverageNotice({ window }: { window: DateRange }) {
   });
   if (!coverage.data) return null;
 
-  if (sync.isSyncing || coverage.data.activeRun) {
-    const found = sync.run?.done ?? coverage.data.activeRun?.done ?? 0;
-    return (
-      <Alert color="neon" variant="light" title="Fetching tournaments from BCP">
-        <Text size="sm">
-          <span className="numeric">{found}</span> events so far. Results appear when it's done.
-        </Text>
-      </Alert>
-    );
-  }
-
+  const activeRun = coverage.data.activeRun;
   const gaps = findGaps(window, coverage.data.ranges);
-  const first = gaps[0];
-  const last = gaps.at(-1);
-  if (!first || !last) return null;
-  // One run covers every gap; re-fetching a covered day in between is harmless.
-  const span = { from: first.from, to: last.to };
+  const busy = sync.isSyncing || activeRun !== null;
+  if (!busy && gaps.length === 0) return null;
 
+  // While someone else's catalogue run is active, the coverage query polls it (see coverageQuery).
+  const found = sync.isSyncing ? (sync.run?.done ?? 0) : (activeRun?.done ?? 0);
   return (
-    <Alert color="yellow" variant="light" title="Not fetched from BCP yet">
+    <Alert
+      color={busy ? 'neon' : 'yellow'}
+      variant={busy ? 'light' : 'outline'}
+      title={busy ? 'Fetching tournaments from BCP' : 'Not fetched from BCP yet'}
+    >
       <Group justify="space-between" wrap="wrap" gap="sm">
-        <Text size="sm">
-          {formatIsoDay(span.from)} – {formatIsoDay(span.to)} hasn't been fetched from BCP yet
-          (about <span className="numeric">{estimateCatalogRequests(span)}</span> requests).
+        <Text size="sm" aria-live="polite">
+          {!busy && <GapsText gaps={gaps} />}
+          {busy && sync.waiting && 'Waiting for the current catalogue refresh…'}
+          {busy && !sync.waiting && (
+            <>
+              <span className="numeric">{found}</span> events so far. Results appear when it's done.
+            </>
+          )}
         </Text>
         <Button
           size="xs"
+          loading={busy}
+          disabled={gaps.length === 0}
           onClick={() => {
-            sync.start({ kind: 'catalog', ...span });
+            sync.track((onProgress, options) => fetchCatalogGaps(gaps, onProgress, options));
           }}
         >
           Fetch

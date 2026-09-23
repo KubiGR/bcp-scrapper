@@ -1,6 +1,7 @@
 import type { SyncRequest, SyncRun } from '@bcp/shared';
 import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
+import { AppError } from '../errors';
 import type { Logger } from '../logger';
 import {
   createSyncRun,
@@ -20,6 +21,7 @@ export interface SyncRunnerDeps {
 }
 
 const describeError = (error: unknown) => (error instanceof Error ? error.message : String(error));
+const codeOf = (error: unknown) => (error instanceof AppError ? error.code : 'INTERNAL');
 
 /** Runs sync jobs in the background of this process and records their progress in sync_runs. */
 export class SyncRunner {
@@ -67,11 +69,13 @@ export class SyncRunner {
       logger.info('Sync finished');
     } catch (error) {
       logger.error({ err: error }, 'Sync failed');
-      await finishSyncRun(db, runId, { status: 'failed', error: describeError(error) }).catch(
-        (finishError: unknown) => {
-          logger.error({ err: finishError }, 'Could not record sync failure');
-        },
-      );
+      await finishSyncRun(db, runId, {
+        status: 'failed',
+        error: describeError(error),
+        code: codeOf(error),
+      }).catch((finishError: unknown) => {
+        logger.error({ err: finishError }, 'Could not record sync failure');
+      });
     }
   }
 }

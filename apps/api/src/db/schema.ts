@@ -1,3 +1,4 @@
+import type { ApiErrorCode } from '@bcp/shared';
 import { sql } from 'drizzle-orm';
 import {
   boolean,
@@ -175,6 +176,8 @@ export const syncRuns = pgTable(
     done: integer('done').notNull().default(0),
     failed: integer('failed').notNull().default(0),
     error: text('error'),
+    /** The AppError code of a failed run (else INTERNAL). */
+    errorCode: text('error_code').$type<ApiErrorCode>(),
     startedAt: timestamptz('started_at').notNull().defaultNow(),
     finishedAt: timestamptz('finished_at'),
   },

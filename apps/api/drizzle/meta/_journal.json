@@ -8,6 +8,13 @@
       "when": 1790117791017,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790166616276,
+      "tag": "0001_sync-run-error-code",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import type { EventSyncs, SyncKind, SyncRequest, SyncRun } from '@bcp/shared';
+import type { ApiErrorCode, EventSyncs, SyncKind, SyncRequest, SyncRun } from '@bcp/shared';
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db } from '../db/client';
@@ -30,6 +30,7 @@ function toSyncRun(row: SyncRunRow): SyncRun {
     done: row.done,
     failed: row.failed,
     error: row.error,
+    errorCode: row.errorCode,
     startedAt: row.startedAt.toISOString(),
     finishedAt: row.finishedAt?.toISOString() ?? null,
     range: rangeOf(row),
@@ -94,13 +95,15 @@ export async function incrementSyncRun(
 export async function finishSyncRun(
   db: Db,
   id: number,
-  outcome: { status: 'succeeded' } | { status: 'failed'; error: string },
+  outcome: { status: 'succeeded' } | { status: 'failed'; error: string; code: ApiErrorCode },
 ): Promise<void> {
+  const failed = outcome.status === 'failed';
   await db
     .update(syncRuns)
     .set({
       status: outcome.status,
-      error: outcome.status === 'failed' ? outcome.error : null,
+      error: failed ? outcome.error : null,
+      errorCode: failed ? outcome.code : null,
       finishedAt: new Date(),
     })
     .where(eq(syncRuns.id, id));
@@ -142,7 +145,12 @@ export async function latestEventSyncRuns(db: Db, eventId: string): Promise<Even
 export async function failInterruptedSyncRuns(db: Db): Promise<number> {
   const rows = await db
     .update(syncRuns)
-    .set({ status: 'failed', error: 'Interrupted by a server restart', finishedAt: new Date() })
+    .set({
+      status: 'failed',
+      error: 'Interrupted by a server restart',
+      errorCode: 'INTERNAL',
+      finishedAt: new Date(),
+    })
     .where(inArray(syncRuns.status, [...ACTIVE]))
     .returning({ id: syncRuns.id });
   return rows.length;

@@ -63,6 +63,7 @@ const aRun = {
   done: 3,
   failed: 0,
   error: null,
+  errorCode: null,
   startedAt: '2026-09-23T10:00:00.000Z',
   finishedAt: '2026-09-23T10:01:00.000Z',
   range: { from: '2026-08-24', to: '2026-09-30' },

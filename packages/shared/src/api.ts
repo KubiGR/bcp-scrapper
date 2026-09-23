@@ -1,17 +1,7 @@
 import { z } from 'zod';
 import { EventSummarySchema } from './domain';
+import { ApiErrorCodeSchema } from './error-code';
 import { SyncRunSchema } from './sync';
-
-export const ApiErrorCodeSchema = z.enum([
-  'BCP_UNAVAILABLE',
-  'BCP_RATE_LIMITED',
-  'BCP_SCHEMA_MISMATCH',
-  'BCP_AUTH',
-  'NOT_FOUND',
-  'VALIDATION_ERROR',
-  'INTERNAL',
-]);
-export type ApiErrorCode = z.infer<typeof ApiErrorCodeSchema>;
 
 export const ApiErrorBodySchema = z.object({
   error: z.object({

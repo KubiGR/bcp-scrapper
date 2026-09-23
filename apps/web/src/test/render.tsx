@@ -1,5 +1,11 @@
 import { MantineProvider } from '@mantine/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router';
 import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { vi } from 'vitest';
@@ -13,6 +19,18 @@ export function renderWithProviders(ui: ReactElement) {
       <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
     </MantineProvider>,
   );
+}
+
+/**
+ * Like renderWithProviders, inside a memory router whose every path renders `ui`, for components
+ * with a `Link`. The router renders asynchronously: query with `findBy…`.
+ */
+export function renderWithRouter(ui: ReactElement) {
+  const router = createRouter({
+    routeTree: createRootRoute({ component: () => ui }),
+    history: createMemoryHistory(),
+  });
+  return renderWithProviders(<RouterProvider router={router} />);
 }
 
 type FetchArgs = [input: RequestInfo | URL, init?: RequestInit];
@@ -31,7 +49,8 @@ export function stubFetchJson(body: unknown, status = 200) {
 
 /**
  * Answers fetch by "METHOD /path-prefix" keys, checked in insertion order (list the more specific
- * path first). A value is a JSON body, or a function returning a Response (for error statuses).
+ * path first). A value is a JSON body, or a function of (url, init) returning a Response (for error
+ * statuses, or answers that depend on the request).
  * Unmatched requests reject, so a test fails loudly on an unexpected call.
  */
 export function stubFetchRoutes(routes: Record<string, unknown>) {
@@ -45,7 +64,9 @@ export function stubFetchRoutes(routes: Record<string, unknown>) {
     if (!match) return Promise.reject(new Error(`Unexpected ${method} ${url}`));
     const value = match[1];
     return Promise.resolve(
-      typeof value === 'function' ? (value as () => Response)() : Response.json(value),
+      typeof value === 'function'
+        ? (value as (url: string, init?: RequestInit) => Response)(url, init)
+        : Response.json(value),
     );
   });
   vi.stubGlobal('fetch', fetchMock);

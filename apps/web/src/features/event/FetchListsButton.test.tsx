@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { renderWithProviders, stubFetchRoutes } from '../../test/render';
+import { renderWithProviders, renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { anEventDetail, aSyncRun } from '../../test/sample-data';
 import { FetchListsButton } from './FetchListsButton';
 
@@ -54,5 +54,44 @@ describe('FetchListsButton', () => {
       />,
     );
     expect(screen.getByRole('button', { name: 'No lists on BCP' })).toBeDisabled();
+  });
+
+  it('shows the progress of a fetch that is already running, without a click', async () => {
+    const running = aSyncRun({ status: 'running', total: 7, done: 3 });
+    const fetchMock = stubFetchRoutes({ 'GET /api/sync-runs/1': running });
+    renderWithProviders(
+      <FetchListsButton
+        event={anEventDetail({ syncs: { event: null, pairings: null, lists: running } })}
+      />,
+    );
+
+    expect(await screen.findByText('Fetching lists 3/7')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Fetch all lists/ })).toBeDisabled();
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/sync')).toBe(false);
+  });
+
+  it('shows why the last fetch failed, linking to Settings when BCP refused the login', async () => {
+    renderWithRouter(
+      <FetchListsButton
+        event={anEventDetail({
+          syncs: {
+            event: null,
+            pairings: null,
+            lists: aSyncRun({
+              status: 'failed',
+              done: 0,
+              error: 'BCP rejected the saved login',
+              errorCode: 'BCP_AUTH',
+            }),
+          },
+        })}
+      />,
+    );
+
+    expect(await screen.findByText(/BCP rejected the saved login/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Settings' })).toHaveAttribute(
+      'href',
+      '/settings',
+    );
   });
 });
