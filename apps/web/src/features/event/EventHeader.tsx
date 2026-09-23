@@ -1,0 +1,43 @@
+import type { EventDetail } from '@bcp/shared';
+import { Button, Group, Stack, Text, Title } from '@mantine/core';
+import { EventStatusBadges } from '../../components/EventStatusBadges';
+import { formatDateTime, formatEventDates, formatEventSize } from '../../lib/format';
+
+interface EventHeaderProps {
+  event: EventDetail;
+  syncing: boolean;
+  onRefresh: () => void;
+}
+
+export function EventHeader({ event, syncing, onRefresh }: EventHeaderProps) {
+  const location = [event.city, event.country].filter(Boolean).join(', ');
+  return (
+    <Stack gap="xs">
+      <Group justify="space-between" align="flex-start" wrap="wrap">
+        <Title order={1}>{event.name}</Title>
+        <Button variant="outline" size="sm" loading={syncing} onClick={onRefresh}>
+          Refresh from BCP
+        </Button>
+      </Group>
+      <Group gap="md" wrap="wrap">
+        <Text size="sm" c="dimmed" className="numeric">
+          {formatEventDates(event.startDate, event.endDate)}
+        </Text>
+        {location !== '' && (
+          <Text size="sm" c="dimmed">
+            {location}
+          </Text>
+        )}
+        <Text size="sm" c="dimmed" className="numeric">
+          {formatEventSize(event)}
+        </Text>
+        <EventStatusBadges event={event} />
+      </Group>
+      {event.lastSyncedAt !== null && (
+        <Text size="xs" c="dimmed">
+          Synced {formatDateTime(event.lastSyncedAt)}
+        </Text>
+      )}
+    </Stack>
+  );
+}
