@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { BcpStatus } from '@bcp/shared';
 import { z } from 'zod';
 import { BcpAuthError, BcpUnavailableError } from '../errors';
 import type { Logger } from '../logger';
@@ -22,8 +23,10 @@ export interface BcpSessionStore {
   save(session: BcpSession): Promise<void>;
 }
 
+export type BcpAuthState = Exclude<BcpStatus['state'], 'fixtures'>;
+
 export interface BcpAuthStatus {
-  authenticated: boolean;
+  state: BcpAuthState;
   accessTokenExpiresAt: string | null;
   lastRefreshAt: string | null;
 }
@@ -102,13 +105,30 @@ export class BcpAuth implements AccessTokenProvider {
     return this.#refreshing;
   }
 
+  /**
+   * Where the login stands. A stale login is refreshed (single-flight) to find out;
+   * a rejected one is reported as such rather than thrown.
+   */
   async status(): Promise<BcpAuthStatus> {
-    const session = await this.#loadSession();
+    const state = await this.#checkLogin();
+    const session = this.#session;
     return {
-      authenticated: session.accessToken !== null && !this.#isExpired(session),
-      accessTokenExpiresAt: session.accessTokenExpiresAt?.toISOString() ?? null,
-      lastRefreshAt: session.lastRefreshAt?.toISOString() ?? null,
+      state,
+      accessTokenExpiresAt: session?.accessTokenExpiresAt?.toISOString() ?? null,
+      lastRefreshAt: session?.lastRefreshAt?.toISOString() ?? null,
     };
+  }
+
+  async #checkLogin(): Promise<BcpAuthState> {
+    const session = await this.#loadSession();
+    if (!this.#needsRefresh(session)) return this.#isUsable(session) ? 'connected' : 'missing';
+    try {
+      await this.refresh();
+      return 'connected';
+    } catch (error) {
+      if (error instanceof BcpAuthError) return 'rejected';
+      throw error;
+    }
   }
 
   async #loadSession(): Promise<BcpSession> {
@@ -145,6 +165,10 @@ export class BcpAuth implements AccessTokenProvider {
     return (
       session.refreshToken !== null && (this.#isExpiring(session) || this.#isRejected(session))
     );
+  }
+
+  #isUsable(session: BcpSession): boolean {
+    return session.accessToken !== null && !this.#isExpired(session);
   }
 
   #isExpired(session: BcpSession): boolean {

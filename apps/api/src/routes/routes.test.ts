@@ -13,7 +13,7 @@ let app: ReturnType<typeof createApp>;
 
 const status: BcpStatus = {
   source: 'fixtures',
-  authenticated: false,
+  state: 'fixtures',
   accessTokenExpiresAt: null,
   lastRefreshAt: null,
 };

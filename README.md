@@ -36,10 +36,14 @@ Out of the box the API serves the sample data in `fixtures/bcp/sample` (`TOURNAM
 2. Open DevTools → Application → Local Storage → `https://www.bestcoastpairings.com`.
 3. Copy the value of `AuthIdentityServiceProvider.web-app.refreshToken` into `.env` as `BCP_REFRESH_TOKEN`.
 4. Set `TOURNAMENT_SOURCE=bcp` and restart `pnpm dev`.
-5. The **Settings** page should show **Connected**.
+5. Open the **Settings** page. It checks the login (refreshing it if needed) and should show **Connected**.
 
-The API refreshes access tokens itself and stores the session in Postgres. If Settings shows
-**Not connected** later, repeat steps 1–3 and restart.
+The API refreshes access tokens itself and stores the session in Postgres. Settings shows one of:
+
+- **Connected**: the login works.
+- **Login expired**: BCP rejected the saved refresh token. Repeat steps 1–3 and restart.
+- **Not connected**: no usable token is configured. Do steps 1–4.
+- **Offline · fixtures**: `TOURNAMENT_SOURCE=fixtures`, so the API serves sample data and never contacts BCP.
 
 ## Commands
 

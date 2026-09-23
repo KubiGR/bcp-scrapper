@@ -20,7 +20,7 @@ function makeApp() {
     bcpStatus: () =>
       Promise.resolve({
         source: 'fixtures',
-        authenticated: false,
+        state: 'fixtures',
         accessTokenExpiresAt: null,
         lastRefreshAt: null,
       }),

@@ -56,7 +56,7 @@ describe('BcpAuth', () => {
   it('is anonymous when no tokens are configured', async () => {
     const auth = makeAuth({});
     expect(await auth.getAccessToken()).toBeNull();
-    expect((await auth.status()).authenticated).toBe(false);
+    expect((await auth.status()).state).toBe('missing');
   });
 
   it('refreshes when there is no usable access token and persists the rotated refresh token', async () => {
@@ -77,7 +77,7 @@ describe('BcpAuth', () => {
     });
     expect((await store.load())?.refreshToken).toBe('refresh-2');
     expect(await auth.status()).toEqual({
-      authenticated: true,
+      state: 'connected',
       accessTokenExpiresAt: new Date(NOW + 3_600_000).toISOString(),
       lastRefreshAt: new Date(NOW).toISOString(),
     });
@@ -173,6 +173,52 @@ describe('BcpAuth', () => {
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
       refresh_token: 'brand-new',
     });
+  });
+});
+
+describe('BcpAuth.status', () => {
+  it('is connected with a usable access token and no refresh token, without a POST', async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    const auth = makeAuth({ envAccessToken: fakeJwt(NOW + 3_600_000), fetch: fetchMock });
+    expect((await auth.status()).state).toBe('connected');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('is missing with only an expired access token', async () => {
+    const auth = makeAuth({ envAccessToken: fakeJwt(NOW - 1000) });
+    expect((await auth.status()).state).toBe('missing');
+  });
+
+  it('refreshes an expired login to check it, and reports it connected', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(tokenResponse(fakeJwt(NOW + 3_600_000)));
+    const auth = makeAuth({ envRefreshToken: 'refresh-1', fetch: fetchMock });
+
+    expect(await auth.status()).toEqual({
+      state: 'connected',
+      accessTokenExpiresAt: new Date(NOW + 3_600_000).toISOString(),
+      lastRefreshAt: new Date(NOW).toISOString(),
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a login BCP rejects, without throwing or POSTing twice', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response('no', { status: 401 }));
+    const auth = makeAuth({ envRefreshToken: 'expired', fetch: fetchMock });
+
+    expect((await auth.status()).state).toBe('rejected');
+    expect((await auth.status()).state).toBe('rejected');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('checks concurrent status calls with a single refresh', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(tokenResponse(fakeJwt(NOW + 3_600_000)));
+    const auth = makeAuth({ envRefreshToken: 'refresh-1', fetch: fetchMock });
+    await Promise.all([auth.status(), auth.status()]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

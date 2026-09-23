@@ -24,7 +24,7 @@ export function createSource(config: Config, deps: { db: Db; logger: Logger }): 
       status: () =>
         Promise.resolve({
           source: 'fixtures',
-          authenticated: false,
+          state: 'fixtures',
           accessTokenExpiresAt: null,
           lastRefreshAt: null,
         }),

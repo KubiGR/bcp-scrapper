@@ -7,7 +7,7 @@ describe('BcpStatusCard', () => {
   it('shows a live connection with its token expiry', async () => {
     stubFetchJson({
       source: 'bcp',
-      authenticated: true,
+      state: 'connected',
       accessTokenExpiresAt: '2026-09-23T13:00:00.000Z',
       lastRefreshAt: '2026-09-23T12:00:00.000Z',
     });
@@ -19,7 +19,7 @@ describe('BcpStatusCard', () => {
   it('explains fixture mode', async () => {
     stubFetchJson({
       source: 'fixtures',
-      authenticated: false,
+      state: 'fixtures',
       accessTokenExpiresAt: null,
       lastRefreshAt: null,
     });
@@ -31,13 +31,29 @@ describe('BcpStatusCard', () => {
   it('tells the user how to fix a missing login', async () => {
     stubFetchJson({
       source: 'bcp',
-      authenticated: false,
+      state: 'missing',
       accessTokenExpiresAt: null,
       lastRefreshAt: null,
     });
     renderWithProviders(<BcpStatusCard />);
     expect(await screen.findByText('Not connected')).toBeInTheDocument();
     expect(screen.getByText(/BCP_REFRESH_TOKEN/)).toBeInTheDocument();
+  });
+
+  it('tells the user how to replace a login BCP rejected', async () => {
+    stubFetchJson({
+      source: 'bcp',
+      state: 'rejected',
+      accessTokenExpiresAt: '2026-09-23T11:00:00.000Z',
+      lastRefreshAt: '2026-09-22T12:00:00.000Z',
+    });
+    renderWithProviders(<BcpStatusCard />);
+    expect(await screen.findByText('Login expired')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'BCP rejected the saved login. Log in at bestcoastpairings.com, copy a fresh refresh token into BCP_REFRESH_TOKEN in .env, and restart the API.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('shows the API error with a retry button', async () => {

@@ -16,29 +16,37 @@ interface StatusView {
 }
 
 function describeStatus(status: BcpStatus): StatusView {
-  if (status.source === 'fixtures') {
-    return {
-      label: 'Offline · fixtures',
-      color: 'gray',
-      description:
-        'Serving saved sample data. Set TOURNAMENT_SOURCE=bcp in .env to connect to Best Coast Pairings.',
-    };
+  switch (status.state) {
+    case 'fixtures':
+      return {
+        label: 'Offline · fixtures',
+        color: 'gray',
+        description:
+          'Serving saved sample data. Set TOURNAMENT_SOURCE=bcp in .env to connect to Best Coast Pairings.',
+      };
+    case 'connected':
+      return {
+        label: 'Connected',
+        color: 'neon',
+        description: status.accessTokenExpiresAt
+          ? `Token valid until ${formatDateTime(status.accessTokenExpiresAt)}. It refreshes automatically.`
+          : 'Token active. It refreshes automatically.',
+      };
+    case 'rejected':
+      return {
+        label: 'Login expired',
+        color: 'red',
+        description:
+          'BCP rejected the saved login. Log in at bestcoastpairings.com, copy a fresh refresh token into BCP_REFRESH_TOKEN in .env, and restart the API.',
+      };
+    case 'missing':
+      return {
+        label: 'Not connected',
+        color: 'red',
+        description:
+          'No valid BCP login. Add BCP_REFRESH_TOKEN to .env (see the README) and restart the API.',
+      };
   }
-  if (status.authenticated) {
-    return {
-      label: 'Connected',
-      color: 'neon',
-      description: status.accessTokenExpiresAt
-        ? `Token valid until ${formatDateTime(status.accessTokenExpiresAt)}. It refreshes automatically.`
-        : 'Token active. It refreshes automatically.',
-    };
-  }
-  return {
-    label: 'Not connected',
-    color: 'red',
-    description:
-      'No valid BCP login. Add BCP_REFRESH_TOKEN to .env (see the README) and restart the API.',
-  };
 }
 
 export function BcpStatusCard() {

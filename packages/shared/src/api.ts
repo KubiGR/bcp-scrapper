@@ -58,9 +58,13 @@ export const EventListResponseSchema = z.object({
 });
 export type EventListResponse = z.infer<typeof EventListResponseSchema>;
 
+/**
+ * `fixtures`: serving sample data, BCP is never contacted. `connected`: the login works.
+ * `rejected`: BCP refused the saved refresh token. `missing`: no usable token is configured.
+ */
 export const BcpStatusSchema = z.object({
   source: z.enum(['bcp', 'fixtures']),
-  authenticated: z.boolean(),
+  state: z.enum(['fixtures', 'connected', 'rejected', 'missing']),
   accessTokenExpiresAt: z.iso.datetime().nullable(),
   lastRefreshAt: z.iso.datetime().nullable(),
 });
