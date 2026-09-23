@@ -1,5 +1,5 @@
-import type { SyncKind, SyncRequest, SyncRun } from '@bcp/shared';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import type { EventSyncs, SyncKind, SyncRequest, SyncRun } from '@bcp/shared';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db } from '../db/client';
 import { syncRuns } from '../db/schema';
@@ -122,6 +122,20 @@ export async function listSucceededCatalogRuns(db: Db): Promise<CatalogRunRange[
     const range = rangeOf(row);
     return range && row.finishedAt ? [{ ...range, finishedAt: row.finishedAt }] : [];
   });
+}
+
+/** The most recent run of each event-scoped kind for one event. */
+export async function latestEventSyncRuns(db: Db, eventId: string): Promise<EventSyncs> {
+  const rows = await db
+    .select()
+    .from(syncRuns)
+    .where(eq(syncRuns.eventId, eventId))
+    .orderBy(desc(syncRuns.id));
+  const latest = (kind: 'event' | 'pairings' | 'lists') => {
+    const row = rows.find((candidate) => candidate.kind === kind);
+    return row ? toSyncRun(row) : null;
+  };
+  return { event: latest('event'), pairings: latest('pairings'), lists: latest('lists') };
 }
 
 /** Runs are in-process; any still active at startup were cut off by a restart. */

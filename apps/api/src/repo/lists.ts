@@ -1,8 +1,8 @@
-import type { ArmyList } from '@bcp/shared';
-import { and, eq, isNotNull, isNull } from 'drizzle-orm';
+import type { ArmyList, PlayerList } from '@bcp/shared';
+import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
-import { armyLists, players } from '../db/schema';
+import { armyLists, players, teams } from '../db/schema';
 
 /** Players whose BCP list id we know but whose list text we have not stored yet. */
 export async function findPlayersMissingLists(
@@ -28,4 +28,50 @@ export async function saveArmyList(
     .insert(armyLists)
     .values({ playerId, ...values })
     .onConflictDoUpdate({ target: armyLists.playerId, set: values });
+}
+
+/** One stored army list with the context an export needs. */
+export interface ExportedList {
+  placing: number | null;
+  player: string;
+  team: string | null;
+  faction: string | null;
+  listId: string;
+  text: string | null;
+}
+
+/** Every stored list of an event, best placing first (unplaced players last, by name). */
+export async function listEventArmyLists(db: Db, eventId: string): Promise<ExportedList[]> {
+  return db
+    .select({
+      placing: players.placing,
+      player: players.name,
+      team: teams.name,
+      faction: players.faction,
+      listId: armyLists.listId,
+      text: armyLists.text,
+    })
+    .from(armyLists)
+    .innerJoin(players, eq(players.id, armyLists.playerId))
+    .leftJoin(teams, eq(teams.id, players.teamId))
+    .where(eq(players.eventId, eventId))
+    .orderBy(sql`${players.placing} asc nulls last`, players.name);
+}
+
+export async function findPlayerList(db: Db, playerId: string): Promise<PlayerList | null> {
+  const [row] = await db
+    .select({
+      playerId: players.id,
+      playerName: players.name,
+      teamName: teams.name,
+      faction: players.faction,
+      listId: armyLists.listId,
+      text: armyLists.text,
+      fetchedAt: armyLists.fetchedAt,
+    })
+    .from(armyLists)
+    .innerJoin(players, eq(players.id, armyLists.playerId))
+    .leftJoin(teams, eq(teams.id, players.teamId))
+    .where(eq(armyLists.playerId, playerId));
+  return row ? { ...row, fetchedAt: row.fetchedAt.toISOString() } : null;
 }

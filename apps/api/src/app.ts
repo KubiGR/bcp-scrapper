@@ -42,7 +42,7 @@ export function createApp(deps: AppDeps) {
   });
 
   app.get('/api/health', (c) => c.json({ status: 'ok' }));
-  app.route('/api', eventRoutes(deps));
+  app.route('/api', eventRoutes({ ...deps, now }));
   app.route('/api', syncRoutes(deps));
   app.route('/api', bcpRoutes(deps));
   app.route('/api', catalogRoutes({ ...deps, now }));

@@ -1,8 +1,8 @@
-import type { Player, Team } from '@bcp/shared';
-import { and, eq, notInArray } from 'drizzle-orm';
+import type { EventCounts, EventPlayer, ListStatus, Player, Team } from '@bcp/shared';
+import { and, count, eq, isNotNull, notInArray, sql } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
-import { players, teams } from '../db/schema';
+import { armyLists, players, teams } from '../db/schema';
 import { excludedColumns } from './upsert';
 
 export async function upsertTeams(db: Db, list: Fetched<Team>[]): Promise<void> {
@@ -77,4 +77,53 @@ export async function replaceEventPlayers(
     const keep = list.map((player) => player.bcpId);
     await tx.delete(players).where(and(eq(players.eventId, eventId), notInArray(players.id, keep)));
   });
+}
+
+function listStatusOf(bcpListId: string | null, storedListId: string | null): ListStatus {
+  if (storedListId !== null) return 'fetched';
+  return bcpListId === null ? 'none' : 'available';
+}
+
+/** An event's players, best placing first (unplaced last, by name), with team and list status. */
+export async function listEventPlayers(db: Db, eventId: string): Promise<EventPlayer[]> {
+  const rows = await db
+    .select({ player: players, teamName: teams.name, storedListId: armyLists.listId })
+    .from(players)
+    .leftJoin(teams, eq(teams.id, players.teamId))
+    .leftJoin(armyLists, eq(armyLists.playerId, players.id))
+    .where(eq(players.eventId, eventId))
+    .orderBy(sql`${players.placing} asc nulls last`, players.name);
+  return rows.map(({ player, teamName, storedListId }) => ({
+    bcpId: player.id,
+    name: player.name,
+    teamName,
+    faction: player.faction,
+    parentFaction: player.parentFaction,
+    placing: player.placing,
+    wins: player.wins,
+    losses: player.losses,
+    draws: player.draws,
+    dropped: player.dropped,
+    listStatus: listStatusOf(player.listId, storedListId),
+  }));
+}
+
+export async function countEventParticipants(db: Db, eventId: string): Promise<EventCounts> {
+  const ofEvent = eq(players.eventId, eventId);
+  const [playerCount, teamCount, listsAvailable, fetched] = await Promise.all([
+    db.$count(players, ofEvent),
+    db.$count(teams, eq(teams.eventId, eventId)),
+    db.$count(players, and(ofEvent, isNotNull(players.listId))),
+    db
+      .select({ n: count() })
+      .from(armyLists)
+      .innerJoin(players, eq(players.id, armyLists.playerId))
+      .where(ofEvent),
+  ]);
+  return {
+    players: playerCount,
+    teams: teamCount,
+    listsAvailable,
+    listsFetched: fetched[0]?.n ?? 0,
+  };
 }
