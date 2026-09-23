@@ -26,6 +26,8 @@ pnpm dev            # API on :3001, web on http://localhost:5173
 so it can run alongside any other local Postgres. `DATABASE_URL` in `.env.example` already points
 at `localhost:5434`.
 
+The API and the database bind to localhost (127.0.0.1) only, so neither is reachable from your network.
+
 Out of the box the API serves the sample data in `fixtures/bcp/sample` (`TOURNAMENT_SOURCE=fixtures`).
 
 ## Connecting to BCP

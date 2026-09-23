@@ -5,6 +5,7 @@ describe('loadConfig', () => {
   it('applies defaults when the environment is empty', () => {
     const config = loadConfig({});
     expect(config.PORT).toBe(3001);
+    expect(config.HOST).toBe('127.0.0.1');
     expect(config.TOURNAMENT_SOURCE).toBe('fixtures');
     expect(config.BCP_REQUESTS_PER_SECOND).toBe(2);
     expect(config.BCP_REFRESH_TOKEN).toBeUndefined();
