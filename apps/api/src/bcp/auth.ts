@@ -89,6 +89,7 @@ export class BcpAuth implements AccessTokenProvider {
   readonly #now: () => number;
   #session: BcpSession | null = null;
   #refreshing: Promise<void> | null = null;
+  #loading: Promise<BcpSession> | null = null;
   /** The refresh token BCP last refused. It is never sent again; a different token clears this. */
   #rejectedRefreshToken: string | null = null;
 
@@ -137,9 +138,16 @@ export class BcpAuth implements AccessTokenProvider {
     }
   }
 
-  async #loadSession(): Promise<BcpSession> {
-    if (this.#session) return this.#session;
+  /** The session in memory, read (or seeded from .env) once, however many callers ask at once. */
+  #loadSession(): Promise<BcpSession> {
+    if (this.#session) return Promise.resolve(this.#session);
+    this.#loading ??= this.#readOrSeedSession().finally(() => {
+      this.#loading = null;
+    });
+    return this.#loading;
+  }
 
+  async #readOrSeedSession(): Promise<BcpSession> {
     const { envRefreshToken, envAccessToken, store } = this.#options;
     const seedHash = seedHashOf(envRefreshToken, envAccessToken);
     const stored = await store.load();
@@ -160,6 +168,22 @@ export class BcpAuth implements AccessTokenProvider {
     await store.save(seeded);
     this.#session = seeded;
     return seeded;
+  }
+
+  /**
+   * Another process sharing the store (e.g. the fixture recorder) may have rotated the refresh
+   * token since this one loaded it; BCP would reject the old one. Adopts the stored session when
+   * it holds a different refresh token from a later refresh; returns it, or null.
+   */
+  async #adoptNewerStoredSession(session: BcpSession): Promise<BcpSession | null> {
+    const stored = await this.#options.store.load();
+    if (!stored?.lastRefreshAt || stored.refreshToken === session.refreshToken) return null;
+    if (stored.lastRefreshAt.getTime() <= (session.lastRefreshAt?.getTime() ?? -Infinity)) {
+      return null;
+    }
+    this.#session = stored;
+    this.#options.logger.info('Adopted the BCP session another process refreshed');
+    return stored;
   }
 
   #isRejected(session: BcpSession): boolean {
@@ -190,7 +214,10 @@ export class BcpAuth implements AccessTokenProvider {
   }
 
   async #doRefresh(): Promise<void> {
-    const session = await this.#loadSession();
+    const loaded = await this.#loadSession();
+    const adopted = await this.#adoptNewerStoredSession(loaded);
+    if (adopted && !this.#isExpiring(adopted)) return;
+    const session = adopted ?? loaded;
     if (!session.refreshToken) {
       throw new BcpAuthError('No BCP refresh token configured. Set BCP_REFRESH_TOKEN in .env.');
     }
@@ -225,8 +252,9 @@ export class BcpAuth implements AccessTokenProvider {
       accessTokenExpiresAt: decodeJwtExpiry(parsed.data.accessToken),
       lastRefreshAt: new Date(this.#now()),
     };
-    await this.#options.store.save(next);
+    // In memory first: if saving fails, this process still holds the rotated token BCP now expects.
     this.#session = next;
+    await this.#options.store.save(next);
     this.#options.logger.info(
       {
         expiresAt: next.accessTokenExpiresAt?.toISOString(),

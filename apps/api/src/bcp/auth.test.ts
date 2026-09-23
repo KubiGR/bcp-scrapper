@@ -22,6 +22,7 @@ function makeAuth(options: {
   envRefreshToken?: string;
   envAccessToken?: string;
   fetch?: typeof fetch;
+  now?: () => number;
 }) {
   return new BcpAuth({
     apiUrl: 'https://bcp.test',
@@ -30,9 +31,13 @@ function makeAuth(options: {
     envAccessToken: options.envAccessToken,
     logger: silentLogger,
     fetch: options.fetch ?? vi.fn<typeof fetch>(),
-    now: () => NOW,
+    now: options.now ?? (() => NOW),
   });
 }
+
+const sentRefreshToken = (init: RequestInit | undefined): unknown =>
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string -- the body is a string in these mocks
+  (JSON.parse(String(init?.body)) as { refresh_token?: unknown }).refresh_token;
 
 describe('decodeJwtExpiry', () => {
   it('reads exp from a JWT', () => {
@@ -196,6 +201,105 @@ describe('BcpAuth', () => {
     });
     expect(await after.getAccessToken()).toBe(fresh);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('BcpAuth across processes sharing one store', () => {
+  /** A and B both hold r1 in memory; then the access token expires and A rotates it to r2. */
+  async function afterARotates(rotatedAccessExpiresAt: (clock: number) => number) {
+    let clock = NOW;
+    const now = () => clock;
+    const store = createMemorySessionStore({
+      accessToken: fakeJwt(NOW + 120_000),
+      refreshToken: 'r1',
+      accessTokenExpiresAt: new Date(NOW + 120_000),
+      lastRefreshAt: new Date(NOW - 3_600_000),
+      seedTokenHash: null,
+    });
+    const fetchA = vi.fn<typeof fetch>();
+    const fetchB = vi.fn<typeof fetch>();
+    const a = makeAuth({ store, fetch: fetchA, now });
+    const b = makeAuth({ store, fetch: fetchB, now });
+    await a.getAccessToken();
+    await b.getAccessToken();
+
+    clock = NOW + 600_000;
+    const rotatedAccess = fakeJwt(rotatedAccessExpiresAt(clock));
+    fetchA.mockResolvedValue(tokenResponse(rotatedAccess, 'r2'));
+    expect(await a.getAccessToken()).toBe(rotatedAccess);
+    expect((await store.load())?.refreshToken).toBe('r2');
+    return { b, fetchB, store, rotatedAccess, clock };
+  }
+
+  it("adopts the other process's rotated session instead of re-sending the old token", async () => {
+    const { b, fetchB, rotatedAccess } = await afterARotates((clock) => clock + 3_600_000);
+
+    expect(await b.getAccessToken()).toBe(rotatedAccess);
+    expect(fetchB).not.toHaveBeenCalled();
+  });
+
+  it('refreshes with the rotated token when the adopted access token is also stale', async () => {
+    const { b, fetchB, store, clock } = await afterARotates((now) => now + 30_000);
+    const fresh = fakeJwt(clock + 3_600_000);
+    fetchB.mockResolvedValue(tokenResponse(fresh, 'r3'));
+
+    expect(await b.getAccessToken()).toBe(fresh);
+    expect(fetchB).toHaveBeenCalledTimes(1);
+    expect(sentRefreshToken(fetchB.mock.calls[0]?.[1])).toBe('r2');
+    expect((await store.load())?.refreshToken).toBe('r3');
+  });
+
+  it('recovers from a rejected token once another process stores a newer one', async () => {
+    const store = createMemorySessionStore();
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response('no', { status: 401 }));
+    const auth = makeAuth({ store, envRefreshToken: 'r1', fetch: fetchMock });
+    expect((await auth.status()).state).toBe('rejected');
+
+    const access = fakeJwt(NOW + 3_600_000);
+    const seed = await store.load();
+    if (!seed) throw new Error('not seeded');
+    await store.save({
+      ...seed,
+      accessToken: access,
+      refreshToken: 'r2',
+      accessTokenExpiresAt: new Date(NOW + 3_600_000),
+      lastRefreshAt: new Date(NOW),
+    });
+
+    expect(await auth.getAccessToken()).toBe(access);
+    expect((await auth.status()).state).toBe('connected');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a rotated token in memory even when saving it fails', async () => {
+    const inner = createMemorySessionStore();
+    const store = {
+      load: () => inner.load(),
+      save: vi
+        .fn<(session: BcpSession) => Promise<void>>()
+        .mockImplementationOnce((session) => inner.save(session)) // the seed
+        .mockRejectedValue(new Error('database is down')),
+    };
+    const fresh = fakeJwt(NOW + 3_600_000);
+    const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(tokenResponse(fresh, 'r2')));
+    const auth = makeAuth({ store, envRefreshToken: 'r1', fetch: fetchMock });
+
+    await expect(auth.getAccessToken()).rejects.toThrow('database is down');
+    expect(await auth.getAccessToken()).toBe(fresh);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    fetchMock.mockClear();
+    await expect(auth.refresh()).rejects.toThrow('database is down');
+    expect(sentRefreshToken(fetchMock.mock.calls[0]?.[1])).toBe('r2');
+  });
+
+  it('loads (and seeds) the session once for concurrent first callers', async () => {
+    const inner = createMemorySessionStore();
+    const store = { load: vi.fn(() => inner.load()), save: vi.fn(inner.save) };
+    const auth = makeAuth({ store, envAccessToken: fakeJwt(NOW + 3_600_000) });
+
+    await Promise.all([auth.getAccessToken(), auth.getAccessToken(), auth.status()]);
+    expect(store.load).toHaveBeenCalledTimes(1);
+    expect(store.save).toHaveBeenCalledTimes(1);
   });
 });
 
