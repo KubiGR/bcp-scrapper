@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { BcpAuthError } from '../errors';
+import { BcpAuthError, BcpUnavailableError } from '../errors';
 import type { Logger } from '../logger';
 import type { AccessTokenProvider } from './transport';
 
@@ -37,6 +37,8 @@ export interface BcpAuthOptions {
   fetch?: typeof globalThis.fetch;
   now?: () => number;
 }
+
+const LOG_IN_AGAIN = 'Log in to bestcoastpairings.com again and update BCP_REFRESH_TOKEN.';
 
 const RefreshResponseSchema = z.object({
   accessToken: z.string().min(1),
@@ -78,6 +80,8 @@ export class BcpAuth implements AccessTokenProvider {
   readonly #now: () => number;
   #session: BcpSession | null = null;
   #refreshing: Promise<void> | null = null;
+  /** The refresh token BCP last refused. It is never sent again; a different token clears this. */
+  #rejectedRefreshToken: string | null = null;
 
   constructor(options: BcpAuthOptions) {
     this.#options = options;
@@ -87,7 +91,7 @@ export class BcpAuth implements AccessTokenProvider {
 
   async getAccessToken(): Promise<string | null> {
     const session = await this.#loadSession();
-    if (session.refreshToken && this.#isExpiring(session)) await this.refresh();
+    if (this.#needsRefresh(session)) await this.refresh();
     return this.#session?.accessToken ?? null;
   }
 
@@ -132,6 +136,17 @@ export class BcpAuth implements AccessTokenProvider {
     return seeded;
   }
 
+  #isRejected(session: BcpSession): boolean {
+    return session.refreshToken !== null && session.refreshToken === this.#rejectedRefreshToken;
+  }
+
+  /** A rejected login counts too, so it fails fast (without a POST) instead of using a dead token. */
+  #needsRefresh(session: BcpSession): boolean {
+    return (
+      session.refreshToken !== null && (this.#isExpiring(session) || this.#isRejected(session))
+    );
+  }
+
   #isExpired(session: BcpSession): boolean {
     return (
       session.accessTokenExpiresAt !== null && session.accessTokenExpiresAt.getTime() <= this.#now()
@@ -149,6 +164,9 @@ export class BcpAuth implements AccessTokenProvider {
     if (!session.refreshToken) {
       throw new BcpAuthError('No BCP refresh token configured. Set BCP_REFRESH_TOKEN in .env.');
     }
+    if (this.#isRejected(session)) {
+      throw new BcpAuthError(`BCP already rejected this refresh token. ${LOG_IN_AGAIN}`);
+    }
 
     // Unlike the data endpoints, BCP's token endpoint has no /v1 prefix.
     const response = await this.#fetch(new URL('/oauth/token', this.#options.apiUrl), {
@@ -157,12 +175,17 @@ export class BcpAuth implements AccessTokenProvider {
       body: JSON.stringify({ refresh_token: session.refreshToken, grant_type: 'refresh_token' }),
       signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
     });
+    if (response.status === 429 || response.status >= 500) {
+      // BCP is struggling; the token may be fine, so it is neither remembered nor reported as rejected.
+      throw new BcpUnavailableError(`BCP could not refresh the login (HTTP ${response.status})`);
+    }
     if (!response.ok) {
+      this.#rejectedRefreshToken = session.refreshToken;
       throw new BcpAuthError(
-        `BCP rejected the refresh token (HTTP ${response.status}). Log in to bestcoastpairings.com again and update BCP_REFRESH_TOKEN.`,
+        `BCP rejected the refresh token (HTTP ${response.status}). ${LOG_IN_AGAIN}`,
       );
     }
-    const parsed = RefreshResponseSchema.safeParse(await response.json());
+    const parsed = RefreshResponseSchema.safeParse(await response.json().catch(() => null));
     if (!parsed.success) throw new BcpAuthError('BCP token response had an unexpected shape');
 
     const next: BcpSession = {

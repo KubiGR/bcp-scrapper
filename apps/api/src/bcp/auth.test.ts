@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Db } from '../db/client';
 import { createTestDb } from '../db/test-db';
-import { BcpAuthError } from '../errors';
+import { BcpAuthError, BcpUnavailableError } from '../errors';
 import { silentLogger } from '../test/helpers';
 import { BcpAuth, createMemorySessionStore, decodeJwtExpiry, type BcpSession } from './auth';
 import { createDbSessionStore } from './auth-store';
@@ -118,6 +118,38 @@ describe('BcpAuth', () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response('no', { status: 401 }));
     const auth = makeAuth({ envRefreshToken: 'expired', fetch: fetchMock });
     await expect(auth.refresh()).rejects.toBeInstanceOf(BcpAuthError);
+  });
+
+  it('never sends a refresh token BCP rejected again', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response('no', { status: 401 }));
+    const auth = makeAuth({ envRefreshToken: 'expired', fetch: fetchMock });
+
+    await expect(auth.getAccessToken()).rejects.toBeInstanceOf(BcpAuthError);
+    await expect(auth.getAccessToken()).rejects.toBeInstanceOf(BcpAuthError);
+    await expect(auth.refresh()).rejects.toBeInstanceOf(BcpAuthError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws BcpAuthError for a 200 whose body is not JSON', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response('<html>oops</html>', { status: 200 }));
+    const auth = makeAuth({ envRefreshToken: 'refresh-1', fetch: fetchMock });
+    await expect(auth.refresh()).rejects.toThrow(
+      new BcpAuthError('BCP token response had an unexpected shape'),
+    );
+  });
+
+  it('treats a 5xx from the token endpoint as BCP being down, not as a rejected login', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response('busy', { status: 503 }))
+      .mockResolvedValueOnce(tokenResponse(fakeJwt(NOW + 3_600_000)));
+    const auth = makeAuth({ envRefreshToken: 'refresh-1', fetch: fetchMock });
+
+    await expect(auth.refresh()).rejects.toBeInstanceOf(BcpUnavailableError);
+    await expect(auth.refresh()).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('prefers the stored session, unless .env now holds a different refresh token', async () => {

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BcpAuthError, BcpRateLimitedError, BcpUnavailableError, NotFoundError } from '../errors';
-import { silentLogger } from '../test/helpers';
+import { settle, silentLogger } from '../test/helpers';
 import { buildUrl, HttpTransport, retryDelayMs } from './http-transport';
 import { RateLimiter } from './rate-limiter';
 import type { AccessTokenProvider } from './transport';
@@ -28,18 +28,6 @@ function makeTransport(
     logger: silentLogger,
     fetch: fetchMock,
   });
-}
-
-/** Runs a transport call while fast-forwarding the fake timers used for backoff. */
-async function settle<T>(promise: Promise<T>): Promise<T> {
-  const settled = promise.then(
-    (value) => ({ ok: true as const, value }),
-    (error: unknown) => ({ ok: false as const, error }),
-  );
-  await vi.runAllTimersAsync();
-  const result = await settled;
-  if (result.ok) return result.value;
-  throw result.error;
 }
 
 describe('buildUrl', () => {

@@ -1,4 +1,10 @@
-import { BcpAuthError, BcpRateLimitedError, BcpUnavailableError, NotFoundError } from '../errors';
+import {
+  AppError,
+  BcpAuthError,
+  BcpRateLimitedError,
+  BcpUnavailableError,
+  NotFoundError,
+} from '../errors';
 import type { Logger } from '../logger';
 import type { RateLimiter } from './rate-limiter';
 import type { AccessTokenProvider, BcpRequest, BcpTransport } from './transport';
@@ -74,6 +80,9 @@ export class HttpTransport implements BcpTransport {
       try {
         response = await limiter.run(() => this.#send(url, request.path, attempt));
       } catch (error) {
+        // Our own errors are final, e.g. a login BCP rejected while getting the token:
+        // retrying would only re-send it, and wrapping it would hide it.
+        if (error instanceof AppError) throw error;
         if (attempt >= maxAttempts) {
           throw new BcpUnavailableError(`Could not reach BCP for ${request.path}`, error);
         }
