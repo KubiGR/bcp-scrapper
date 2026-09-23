@@ -1,0 +1,8 @@
+/*
+ * A Mantine badge hides overflow, so its minimum width is almost nothing and a narrow table
+ * cell squeezes the label to an ellipsis. Keep every badge at its full width; the group wraps.
+ */
+.badges > * {
+  flex-shrink: 0;
+  min-width: max-content;
+}
