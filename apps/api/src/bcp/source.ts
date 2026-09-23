@@ -1,6 +1,6 @@
 import type { ArmyList, EventSummary, Game, Player, Team, TeamMatchup } from '@bcp/shared';
 import type { z } from 'zod';
-import { NotFoundError } from '../errors';
+import { BcpUnavailableError, NotFoundError } from '../errors';
 import {
   mapArmyList,
   mapEventDetail,
@@ -27,7 +27,8 @@ import type { BcpTransport } from './transport';
 
 /** Warhammer 40,000 in BCP's game-type numbering. */
 const WARHAMMER_40K = 1;
-const PAGE_SIZE = 100;
+const EVENT_PAGE_SIZE = 100;
+const GAME_PAGE_SIZE = 500;
 
 /** A mapped domain object plus the untouched BCP JSON it came from (stored in `raw` columns). */
 export type Fetched<T> = T & { raw: unknown };
@@ -54,6 +55,29 @@ export interface TournamentSource {
   getList(listId: string): Promise<Fetched<ArmyList> | null>;
 }
 
+/**
+ * The cursors one paging loop has followed. BCP answering with a cursor it already gave
+ * would otherwise page forever.
+ */
+export class PageCursors {
+  readonly #path: string;
+  readonly #seen = new Set<string>();
+
+  constructor(path: string) {
+    this.#path = path;
+  }
+
+  /** Passes the next cursor through, or throws if this loop already followed it. */
+  next(cursor: string | null): string | null {
+    if (cursor === null) return null;
+    if (this.#seen.has(cursor)) {
+      throw new BcpUnavailableError(`BCP returned a repeated page cursor for ${this.#path}`);
+    }
+    this.#seen.add(cursor);
+    return cursor;
+  }
+}
+
 /** Reads tournaments from BCP's web API (or fixture files shaped like it). */
 export class BcpSource implements TournamentSource {
   readonly #transport: BcpTransport;
@@ -74,7 +98,7 @@ export class BcpSource implements TournamentSource {
           endDate: `${range.to}T23:59:59Z`,
           sortKey: 'eventDate',
           sortAscending: 'true',
-          limit: PAGE_SIZE,
+          limit: EVENT_PAGE_SIZE,
           nextKey: cursor ?? undefined,
         },
       }),
@@ -136,6 +160,7 @@ export class BcpSource implements TournamentSource {
   async getGames(eventId: string, round: number): Promise<Fetched<Game>[]> {
     const path = '/v1/pairings';
     const games: Fetched<Game>[] = [];
+    const seen = new PageCursors(path);
     let cursor: string | null = null;
     do {
       const body: z.output<typeof RawPageEnvelope> = parseBcp(
@@ -146,7 +171,7 @@ export class BcpSource implements TournamentSource {
             eventId,
             round,
             pairingType: 'Pairing',
-            limit: PAGE_SIZE,
+            limit: GAME_PAGE_SIZE,
             nextKey: cursor ?? undefined,
           },
         }),
@@ -156,7 +181,7 @@ export class BcpSource implements TournamentSource {
         const game = mapPairing(parsed, eventId);
         if (game) games.push({ ...game, raw });
       }
-      cursor = body.data.length > 0 ? (body.nextKey ?? null) : null;
+      cursor = seen.next(body.data.length > 0 ? (body.nextKey ?? null) : null);
     } while (cursor !== null);
     return games;
   }

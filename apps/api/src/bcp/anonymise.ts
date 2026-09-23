@@ -4,6 +4,8 @@ const DROPPED_KEYS = new Set([
   'username',
   'phone',
   'owner',
+  'ownerFirstName',
+  'ownerLastName',
   'eventUsers',
   'captain',
   'description',

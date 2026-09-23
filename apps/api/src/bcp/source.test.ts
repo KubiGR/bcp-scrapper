@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { BcpUnavailableError } from '../errors';
 import { sampleSource } from '../test/helpers';
+import { BcpSource } from './source';
+import type { BcpRequest, BcpTransport } from './transport';
 
 const EVENT = 'EVTTEAM0001';
 const source = sampleSource();
@@ -56,5 +59,34 @@ describe('BcpSource over the sample fixtures', () => {
       text: expect.stringContaining('Gladius'),
     });
     await expect(source.getList('LS-MISSING')).resolves.toBeNull();
+  });
+});
+
+/** Answers every request with one game and the same nextKey, recording what was asked. */
+function repeatingCursorTransport(): BcpTransport & { requests: BcpRequest[] } {
+  const requests: BcpRequest[] = [];
+  return {
+    requests,
+    get(request) {
+      requests.push(request);
+      const game = { id: `G${requests.length}`, round: 1, player1: null, player2: null };
+      return Promise.resolve({ data: [game], nextKey: 'same-page' });
+    },
+  };
+}
+
+describe('BcpSource.getGames paging', () => {
+  it('asks for 500 games per page', async () => {
+    const transport = repeatingCursorTransport();
+    await new BcpSource(transport).getGames(EVENT, 1).catch(() => undefined);
+    expect(transport.requests[0]?.query).toMatchObject({ limit: 500, round: 1 });
+  });
+
+  it('stops with BcpUnavailableError when BCP repeats a page cursor', async () => {
+    const transport = repeatingCursorTransport();
+    await expect(new BcpSource(transport).getGames(EVENT, 1)).rejects.toThrow(
+      new BcpUnavailableError('BCP returned a repeated page cursor for /v1/pairings'),
+    );
+    expect(transport.requests).toHaveLength(2);
   });
 });

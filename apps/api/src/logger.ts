@@ -2,12 +2,18 @@ import pino from 'pino';
 
 export type Logger = pino.Logger;
 
-export function createLogger(level: string, pretty: boolean): Logger {
-  return pino({
+/** `destination` is for tests; by default pino writes to stdout. */
+export function createLogger(
+  level: string,
+  pretty: boolean,
+  destination?: pino.DestinationStream,
+): Logger {
+  const options: pino.LoggerOptions = {
     level,
     redact: {
       paths: [
         'headers.authorization',
+        'headers.Authorization',
         'accessToken',
         'refreshToken',
         '*.accessToken',
@@ -16,5 +22,6 @@ export function createLogger(level: string, pretty: boolean): Logger {
       censor: '[redacted]',
     },
     ...(pretty ? { transport: { target: 'pino-pretty' } } : {}),
-  });
+  };
+  return destination ? pino(options, destination) : pino(options);
 }

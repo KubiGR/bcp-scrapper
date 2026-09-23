@@ -59,4 +59,14 @@ describe('Anonymiser', () => {
       pairingPlayer: { team: 'Team 002' },
     });
   });
+
+  it('drops the owner name fields', () => {
+    const result = new Anonymiser().anonymise({
+      id: 'L1',
+      ownerFirstName: 'Ada',
+      ownerLastName: 'Lovelace',
+      armyListText: 'Gladius',
+    });
+    expect(result).toEqual({ id: 'L1', armyListText: 'Gladius' });
+  });
 });

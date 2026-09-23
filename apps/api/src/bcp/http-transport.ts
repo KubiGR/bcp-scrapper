@@ -77,8 +77,11 @@ export class HttpTransport implements BcpTransport {
 
     for (let attempt = 1; ; attempt += 1) {
       let response: Response;
+      let body: unknown;
       try {
         response = await limiter.run(() => this.#send(url, request.path, attempt));
+        // A body cut off mid-download fails here; it is retried like a dropped connection.
+        if (response.ok) body = await response.json();
       } catch (error) {
         // Our own errors are final, e.g. a login BCP rejected while getting the token:
         // retrying would only re-send it, and wrapping it would hide it.
@@ -90,7 +93,7 @@ export class HttpTransport implements BcpTransport {
         continue;
       }
 
-      if (response.ok) return await response.json();
+      if (response.ok) return body;
 
       if (response.status === 401 && auth && !refreshedToken) {
         refreshedToken = true;

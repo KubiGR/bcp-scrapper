@@ -79,6 +79,28 @@ describe('HttpTransport', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it('retries a response whose body is cut off or not JSON, like a network error', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response('{"data": [', { status: 200 }))
+      .mockResolvedValueOnce(json({ ok: true }));
+
+    await expect(settle(makeTransport(fetchMock).get({ path: '/v1/x' }))).resolves.toEqual({
+      ok: true,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('gives up with BcpUnavailableError when every body fails to parse', async () => {
+    const fetchMock = vi.fn<typeof fetch>(() =>
+      Promise.resolve(new Response('<html>', { status: 200 })),
+    );
+    await expect(settle(makeTransport(fetchMock).get({ path: '/v1/x' }))).rejects.toBeInstanceOf(
+      BcpUnavailableError,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it('gives up with BcpRateLimitedError after repeated 429s', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()

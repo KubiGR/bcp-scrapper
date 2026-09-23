@@ -74,6 +74,16 @@ describe('API routes', () => {
     expect(badSync.status).toBe(400);
     expect(await badSync.json()).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
 
+    const notJson = await app.request('/api/sync', {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain' },
+      body: JSON.stringify({ kind: 'event', eventId: 'EVTTEAM0001' }),
+    });
+    expect(notJson.status).toBe(400);
+    expect(await notJson.json()).toMatchObject({
+      error: { code: 'VALIDATION_ERROR', message: 'Content-Type must be application/json' },
+    });
+
     expect((await app.request('/api/events?pageSize=1000')).status).toBe(400);
     expect((await app.request('/api/sync-runs/abc')).status).toBe(400);
     expect((await app.request('/api/sync-runs/999')).status).toBe(404);

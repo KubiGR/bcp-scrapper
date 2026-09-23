@@ -1,11 +1,12 @@
 import { count, eq } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
+import pino from 'pino';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { BcpSource, TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import { armyLists, events, games, players, teamMatchups, teams } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
-import { BcpAuthError, BcpUnavailableError } from '../errors';
+import { BcpAuthError, BcpRateLimitedError, BcpUnavailableError } from '../errors';
 import { findEvent } from '../repo/events';
 import { getSyncRun } from '../repo/sync-runs';
 import { sampleSource, silentLogger } from '../test/helpers';
@@ -128,6 +129,62 @@ describe('SyncRunner', () => {
     const run = await runToCompletion(runner, { kind: 'lists', eventId: EVENT });
 
     expect(run).toMatchObject({ status: 'failed', error: 'Session expired', done: 0 });
+  });
+
+  it('lists: aborts the whole run when BCP rate limits us', async () => {
+    const source = sampleSource();
+    const limited = withOverrides(source, {
+      getList: () => Promise.reject(new BcpRateLimitedError(60)),
+    });
+    const runner = new SyncRunner({ db, source: limited, logger: silentLogger });
+
+    const run = await runToCompletion(runner, { kind: 'lists', eventId: EVENT });
+
+    expect(run).toMatchObject({ status: 'failed', done: 0, failed: 0 });
+    expect(run?.error).toMatch(/rate limiting/);
+  });
+
+  it('catalog: fails instead of looping when BCP repeats a page cursor', async () => {
+    const source = sampleSource();
+    const looping = withOverrides(source, {
+      listEvents: async (range) => ({
+        ...(await source.listEvents(range, null)),
+        nextCursor: 'page-again',
+      }),
+    });
+    const runner = new SyncRunner({ db, source: looping, logger: silentLogger });
+
+    const run = await runToCompletion(runner, {
+      kind: 'catalog',
+      from: '2026-01-01',
+      to: '2026-12-31',
+    });
+
+    expect(run).toMatchObject({
+      status: 'failed',
+      error: 'BCP returned a repeated page cursor for /v1/events',
+    });
+  });
+
+  it('pairings: warns when a team round has matchups but no individual games', async () => {
+    const source = sampleSource();
+    const noGames = withOverrides(source, {
+      getGames: (eventId, round) =>
+        round === 2 ? Promise.resolve([]) : source.getGames(eventId, round),
+    });
+    const messages: string[] = [];
+    const logger = pino(
+      { level: 'warn' },
+      { write: (line: string) => messages.push((JSON.parse(line) as { msg: string }).msg) },
+    );
+    const runner = new SyncRunner({ db, source: noGames, logger });
+
+    const run = await runToCompletion(runner, { kind: 'pairings', eventId: EVENT });
+
+    expect(run).toMatchObject({ status: 'succeeded' });
+    expect(messages).toEqual([
+      'BCP returned no individual games for round 2; team matchups stored only',
+    ]);
   });
 
   it('returns the already-active run instead of starting a duplicate', async () => {

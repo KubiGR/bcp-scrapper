@@ -28,8 +28,8 @@ export class NotFoundError extends AppError {
 }
 
 export class ValidationError extends AppError {
-  constructor(issues: { path: string; message: string }[]) {
-    super('VALIDATION_ERROR', 400, 'Request validation failed', { details: { issues } });
+  constructor(issues: { path: string; message: string }[], message = 'Request validation failed') {
+    super('VALIDATION_ERROR', 400, message, { details: { issues } });
   }
 }
 

@@ -1,7 +1,7 @@
 import type { SyncRequest } from '@bcp/shared';
-import type { TournamentSource } from '../bcp/source';
+import { PageCursors, type TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
-import { BcpAuthError } from '../errors';
+import { BcpAuthError, BcpRateLimitedError } from '../errors';
 import type { Logger } from '../logger';
 import {
   findEvent,
@@ -44,12 +44,13 @@ export function runJob(ctx: JobContext, request: SyncRequest): Promise<void> {
 
 /** Every 40k event in the range, page by page. Progress counts events stored. */
 async function syncCatalog(ctx: JobContext, { from, to }: RequestOf<'catalog'>): Promise<void> {
+  const seen = new PageCursors('/v1/events');
   let cursor: string | null = null;
   do {
     const page = await ctx.source.listEvents({ from, to }, cursor);
     await upsertEventSummaries(ctx.db, page.items);
     await ctx.progress.succeeded(page.items.length);
-    cursor = page.nextCursor;
+    cursor = seen.next(page.nextCursor);
   } while (cursor !== null);
 }
 
@@ -87,6 +88,13 @@ async function syncPairings(ctx: JobContext, { eventId }: RequestOf<'pairings'>)
   for (let round = 1; round <= event.roundCount; round += 1) {
     const teamMatchups = event.isTeamEvent ? await ctx.source.getTeamMatchups(eventId, round) : [];
     const games = await ctx.source.getGames(eventId, round);
+    if (teamMatchups.length > 0 && games.length === 0) {
+      // Seen live for bracket/GW team events; plan 3 decides where their games live.
+      ctx.logger.warn(
+        { eventId, round },
+        `BCP returned no individual games for round ${round}; team matchups stored only`,
+      );
+    }
     await replaceRoundPairings(ctx.db, eventId, round, { teamMatchups, games });
     await ctx.progress.succeeded();
   }
@@ -94,7 +102,8 @@ async function syncPairings(ctx: JobContext, { eventId }: RequestOf<'pairings'>)
 
 /**
  * One request per missing list. A single failure is counted and skipped, so a retry
- * fetches only what is still missing. A broken login aborts, since every later list would fail too.
+ * fetches only what is still missing. A broken login or a rate limit aborts, since every later list
+ * would fail too.
  */
 async function syncLists(ctx: JobContext, { eventId }: RequestOf<'lists'>): Promise<void> {
   await ensureEventSynced(ctx, eventId);
@@ -112,7 +121,7 @@ async function syncLists(ctx: JobContext, { eventId }: RequestOf<'lists'>): Prom
       await saveArmyList(ctx.db, playerId, list);
       await ctx.progress.succeeded();
     } catch (error) {
-      if (error instanceof BcpAuthError) throw error;
+      if (error instanceof BcpAuthError || error instanceof BcpRateLimitedError) throw error;
       ctx.logger.warn({ err: error, playerId, listId }, 'Could not fetch list');
       await ctx.progress.failed();
     }
