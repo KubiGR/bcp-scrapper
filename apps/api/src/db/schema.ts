@@ -190,6 +190,48 @@ export const syncRuns = pgTable(
   ],
 );
 
+export const listQueueStatus = pgEnum('list_queue_status', [
+  'queued',
+  'fetching',
+  'done',
+  'failed',
+]);
+
+/** Army lists waiting to be fetched, one row per request; drained slowly by the ListQueueWorker. */
+export const listQueue = pgTable(
+  'list_queue',
+  {
+    id: serial('id').primaryKey(),
+    eventId: text('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'cascade' }),
+    playerId: text('player_id')
+      .notNull()
+      .references(() => players.id, { onDelete: 'cascade' }),
+    /** BCP list id when queued; the worker fetches exactly this list. */
+    listId: text('list_id').notNull(),
+    /** 0 = normal, 10 = a single list someone is waiting for. Higher is claimed first. */
+    priority: integer('priority').notNull().default(0),
+    status: listQueueStatus('status').notNull().default('queued'),
+    attempts: integer('attempts').notNull().default(0),
+    /** Not claimed before this time (backoff after a transient failure). */
+    notBefore: timestamptz('not_before').notNull().defaultNow(),
+    error: text('error'),
+    /** An ApiErrorCode, or NO_LIST when BCP has no such list. */
+    errorCode: text('error_code'),
+    queuedAt: timestamptz('queued_at').notNull().defaultNow(),
+    finishedAt: timestamptz('finished_at'),
+  },
+  (t) => [
+    // At most one open request per player: queueing twice is a no-op.
+    uniqueIndex('list_queue_one_open_idx')
+      .on(t.playerId)
+      .where(sql`${t.status} in ('queued', 'fetching')`),
+    index('list_queue_claim_idx').on(t.status, t.priority, t.queuedAt),
+    index('list_queue_event_idx').on(t.eventId, t.status),
+  ],
+);
+
 /** Single-row table holding the BCP login, so rotated refresh tokens survive restarts. */
 export const bcpSession = pgTable(
   'bcp_session',

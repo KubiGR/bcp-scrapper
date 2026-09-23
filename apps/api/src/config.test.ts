@@ -9,6 +9,7 @@ describe('loadConfig', () => {
     expect(config.TOURNAMENT_SOURCE).toBe('fixtures');
     expect(config.BCP_REQUESTS_PER_SECOND).toBe(2);
     expect(config.BCP_REFRESH_TOKEN).toBeUndefined();
+    expect(config.LIST_QUEUE_INTERVAL_MS).toBe(5000);
   });
 
   it('treats empty strings as unset, so a blank .env line does not fail validation', () => {
