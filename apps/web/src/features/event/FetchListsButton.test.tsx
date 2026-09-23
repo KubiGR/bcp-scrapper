@@ -26,7 +26,7 @@ describe('FetchListsButton', () => {
       <FetchListsButton
         event={anEventDetail({
           hideLists: true,
-          counts: { players: 8, teams: 4, listsAvailable: 7, listsFetched: 5 },
+          counts: { players: 8, teams: 4, listsAvailable: 7, listsFetched: 5, listsMissing: 2 },
           syncs: { event: null, pairings: null, lists: aSyncRun({ done: 5, failed: 2 }) },
         })}
       />,
@@ -40,7 +40,7 @@ describe('FetchListsButton', () => {
     const { unmount } = renderWithProviders(
       <FetchListsButton
         event={anEventDetail({
-          counts: { players: 8, teams: 4, listsAvailable: 7, listsFetched: 7 },
+          counts: { players: 8, teams: 4, listsAvailable: 7, listsFetched: 7, listsMissing: 0 },
         })}
       />,
     );
@@ -49,11 +49,22 @@ describe('FetchListsButton', () => {
     renderWithProviders(
       <FetchListsButton
         event={anEventDetail({
-          counts: { players: 8, teams: 4, listsAvailable: 0, listsFetched: 0 },
+          counts: { players: 8, teams: 4, listsAvailable: 0, listsFetched: 0, listsMissing: 0 },
         })}
       />,
     );
     expect(screen.getByRole('button', { name: 'No lists on BCP' })).toBeDisabled();
+  });
+
+  it('labels the button from listsMissing, not from available minus fetched', () => {
+    renderWithProviders(
+      <FetchListsButton
+        event={anEventDetail({
+          counts: { players: 8, teams: 4, listsAvailable: 7, listsFetched: 7, listsMissing: 1 },
+        })}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Fetch all lists (1 missing)' })).toBeEnabled();
   });
 
   it('shows the progress of a fetch that is already running, without a click', async () => {

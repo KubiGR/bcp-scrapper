@@ -3,6 +3,7 @@ import { and, count, eq, isNotNull, notInArray, sql } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { armyLists, players, teams } from '../db/schema';
+import { isMissingList, storedCurrentList } from './lists';
 import { excludedColumns } from './upsert';
 
 export async function upsertTeams(db: Db, list: Fetched<Team>[]): Promise<void> {
@@ -110,20 +111,24 @@ export async function listEventPlayers(db: Db, eventId: string): Promise<EventPl
 
 export async function countEventParticipants(db: Db, eventId: string): Promise<EventCounts> {
   const ofEvent = eq(players.eventId, eventId);
-  const [playerCount, teamCount, listsAvailable, fetched] = await Promise.all([
+  const [playerCount, teamCount, listsAvailable, lists] = await Promise.all([
     db.$count(players, ofEvent),
     db.$count(teams, eq(teams.eventId, eventId)),
     db.$count(players, and(ofEvent, isNotNull(players.listId))),
     db
-      .select({ n: count() })
-      .from(armyLists)
-      .innerJoin(players, eq(players.id, armyLists.playerId))
+      .select({
+        fetched: count(armyLists.playerId),
+        missing: sql<number>`count(*) filter (where ${isMissingList})`.mapWith(Number),
+      })
+      .from(players)
+      .leftJoin(armyLists, storedCurrentList)
       .where(ofEvent),
   ]);
   return {
     players: playerCount,
     teams: teamCount,
     listsAvailable,
-    listsFetched: fetched[0]?.n ?? 0,
+    listsFetched: lists[0]?.fetched ?? 0,
+    listsMissing: lists[0]?.missing ?? 0,
   };
 }

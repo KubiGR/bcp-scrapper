@@ -6,8 +6,9 @@ import { SyncRunError, useSync } from '../sync/use-sync';
 
 function buttonLabel(counts: EventCounts): string {
   if (counts.listsAvailable === 0) return 'No lists on BCP';
-  const missing = counts.listsAvailable - counts.listsFetched;
-  return missing > 0 ? `Fetch all lists (${missing} missing)` : 'All lists fetched';
+  return counts.listsMissing > 0
+    ? `Fetch all lists (${counts.listsMissing} missing)`
+    : 'All lists fetched';
 }
 
 const listsWere = (count: number) => (count === 1 ? '1 list was' : `${count} lists were`);
@@ -31,7 +32,6 @@ function FetchProgress({ run }: { run: SyncRun | null }) {
 export function FetchListsButton({ event }: { event: EventDetail }) {
   const sync = useSync({ label: 'Army lists', invalidate: [['event', event.bcpId]] });
   const { follow } = sync;
-  const missing = event.counts.listsAvailable - event.counts.listsFetched;
   const lastRun = event.syncs.lists;
   const activeRun = lastRun && isActiveRun(lastRun) ? lastRun : null;
   const syncing = sync.isSyncing || activeRun !== null;
@@ -48,7 +48,7 @@ export function FetchListsButton({ event }: { event: EventDetail }) {
         <Button
           size="sm"
           loading={syncing}
-          disabled={missing <= 0}
+          disabled={event.counts.listsMissing <= 0}
           onClick={() => {
             sync.start({ kind: 'lists', eventId: event.bcpId });
           }}

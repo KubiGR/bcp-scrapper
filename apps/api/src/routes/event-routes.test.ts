@@ -44,7 +44,7 @@ describe('event routes', () => {
     expect(await getJson<EventDetail>(`/api/events/${EVENT}`)).toMatchObject({
       bcpId: EVENT,
       stale: false,
-      counts: { players: 8, teams: 4, listsAvailable: 7, listsFetched: 7 },
+      counts: { players: 8, teams: 4, listsAvailable: 7, listsFetched: 7, listsMissing: 0 },
       syncs: {
         event: { status: 'succeeded' },
         lists: { status: 'succeeded', done: 7 },
@@ -58,7 +58,7 @@ describe('event routes', () => {
     expect(await getJson<EventDetail>('/api/events/EVTSMALL001')).toMatchObject({
       lastSyncedAt: null,
       stale: true,
-      counts: { players: 0, teams: 0, listsAvailable: 0, listsFetched: 0 },
+      counts: { players: 0, teams: 0, listsAvailable: 0, listsFetched: 0, listsMissing: 0 },
       syncs: { event: null, pairings: null, lists: null },
     });
     expect((await app.request('/api/events/NOPE')).status).toBe(404);

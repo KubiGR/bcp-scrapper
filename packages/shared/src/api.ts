@@ -89,8 +89,10 @@ export const EventCountsSchema = z.object({
   teams: z.number().int().nonnegative(),
   /** Players with a list on BCP. */
   listsAvailable: z.number().int().nonnegative(),
-  /** Lists stored locally. */
+  /** Players whose current BCP list is stored locally. */
   listsFetched: z.number().int().nonnegative(),
+  /** Players with a BCP list that isn't stored (never fetched, or replaced on BCP since). */
+  listsMissing: z.number().int().nonnegative(),
 });
 export type EventCounts = z.infer<typeof EventCountsSchema>;
 

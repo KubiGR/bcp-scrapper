@@ -5,8 +5,8 @@ import { armyLists, players, teams } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { sampleSource } from '../test/helpers';
 import { upsertEventDetail, upsertEventSummaries } from './events';
-import { saveArmyList } from './lists';
-import { replaceEventPlayers, replaceEventTeams } from './participants';
+import { findPlayersMissingLists, saveArmyList } from './lists';
+import { countEventParticipants, replaceEventPlayers, replaceEventTeams } from './participants';
 
 let db: Db;
 let close: () => Promise<void>;
@@ -80,5 +80,34 @@ describe('replaceEventTeams', () => {
     const kept = all.slice(1);
     await replaceEventTeams(db, EVENT, kept);
     expect(await teamIds()).toEqual(kept.map((team) => team.bcpId).sort());
+  });
+});
+
+describe('countEventParticipants', () => {
+  it("counts a stored list as fetched only while it is the player's current list", async () => {
+    const list = await source.getList('LS-ADA');
+    if (!list) throw new Error('fixture missing');
+    await saveArmyList(db, 'PL-ADA', list);
+    expect(await countEventParticipants(db, EVENT)).toMatchObject({
+      listsAvailable: 7,
+      listsFetched: 1,
+      listsMissing: 6,
+    });
+
+    // PL-ADA submitted a new list on BCP: the stored one is out of date.
+    const resynced = (await source.getPlayers(EVENT)).map((player) =>
+      player.bcpId === 'PL-ADA' ? { ...player, listBcpId: 'LS-ADA-2' } : player,
+    );
+    await replaceEventPlayers(db, EVENT, resynced);
+
+    expect(await countEventParticipants(db, EVENT)).toMatchObject({
+      listsAvailable: 7,
+      listsFetched: 0,
+      listsMissing: 7,
+    });
+    expect(await findPlayersMissingLists(db, EVENT)).toContainEqual({
+      playerId: 'PL-ADA',
+      listId: 'LS-ADA-2',
+    });
   });
 });

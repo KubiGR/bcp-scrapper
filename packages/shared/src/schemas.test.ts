@@ -94,7 +94,7 @@ describe('EventDetailSchema', () => {
       hideLists: false,
       lastSyncedAt: null,
       stale: true,
-      counts: { players: 0, teams: 0, listsAvailable: 0, listsFetched: 0 },
+      counts: { players: 0, teams: 0, listsAvailable: 0, listsFetched: 0, listsMissing: 0 },
       syncs: {
         event: { ...aRun, kind: 'event', eventId: 'E1', range: null },
         pairings: null,

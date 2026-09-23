@@ -42,7 +42,7 @@ export function anEventDetail(overrides: Partial<EventDetail> = {}): EventDetail
   return {
     ...anEvent(),
     stale: false,
-    counts: { players: 8, teams: 4, listsAvailable: 7, listsFetched: 0 },
+    counts: { players: 8, teams: 4, listsAvailable: 7, listsFetched: 0, listsMissing: 7 },
     syncs: { event: aSyncRun({ kind: 'event', total: 1, done: 1 }), pairings: null, lists: null },
     ...overrides,
   };

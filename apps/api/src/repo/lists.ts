@@ -4,7 +4,18 @@ import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { armyLists, players, teams } from '../db/schema';
 
-/** Players whose BCP list id we know but whose list text we have not stored yet. */
+/** Joins a player's stored list only while it is their current BCP list. */
+export const storedCurrentList = and(
+  eq(armyLists.playerId, players.id),
+  eq(armyLists.listId, players.listId),
+);
+
+/**
+ * Players with a BCP list we have not stored: never fetched, or the player has since submitted
+ * a different list (the stored one has another list id).
+ */
+export const isMissingList = and(isNotNull(players.listId), isNull(armyLists.playerId));
+
 export async function findPlayersMissingLists(
   db: Db,
   eventId: string,
@@ -12,8 +23,8 @@ export async function findPlayersMissingLists(
   const rows = await db
     .select({ playerId: players.id, listId: players.listId })
     .from(players)
-    .leftJoin(armyLists, eq(armyLists.playerId, players.id))
-    .where(and(eq(players.eventId, eventId), isNotNull(players.listId), isNull(armyLists.playerId)))
+    .leftJoin(armyLists, storedCurrentList)
+    .where(and(eq(players.eventId, eventId), isMissingList))
     .orderBy(players.id);
   return rows.flatMap(({ playerId, listId }) => (listId === null ? [] : [{ playerId, listId }]));
 }
