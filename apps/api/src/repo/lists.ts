@@ -69,6 +69,29 @@ export async function listEventArmyLists(db: Db, eventId: string): Promise<Expor
     .orderBy(sql`${players.placing} asc nulls last`, players.name);
 }
 
+/** A player an export has no list for, and why. */
+export interface MissingList {
+  player: string;
+  team: string | null;
+  reason: 'no list on BCP' | 'not fetched';
+}
+
+/** An event's players without a stored list, best placing first (unplaced last, by name). */
+export async function listEventMissingLists(db: Db, eventId: string): Promise<MissingList[]> {
+  const rows = await db
+    .select({ player: players.name, team: teams.name, listId: players.listId })
+    .from(players)
+    .leftJoin(armyLists, eq(armyLists.playerId, players.id))
+    .leftJoin(teams, eq(teams.id, players.teamId))
+    .where(and(eq(players.eventId, eventId), isNull(armyLists.playerId)))
+    .orderBy(sql`${players.placing} asc nulls last`, players.name);
+  return rows.map(({ player, team, listId }) => ({
+    player,
+    team,
+    reason: listId === null ? 'no list on BCP' : 'not fetched',
+  }));
+}
+
 export async function findPlayerList(db: Db, playerId: string): Promise<PlayerList | null> {
   const [row] = await db
     .select({

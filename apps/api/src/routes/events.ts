@@ -6,7 +6,7 @@ import { NotFoundError } from '../errors';
 import { getEventDetail } from '../event-detail';
 import { exportFileName, listsToText } from '../lists-export';
 import { findEvent, searchEvents } from '../repo/events';
-import { findPlayerList, listEventArmyLists } from '../repo/lists';
+import { findPlayerList, listEventArmyLists, listEventMissingLists } from '../repo/lists';
 import { listEventPlayers } from '../repo/participants';
 import { parseInput } from '../validation';
 
@@ -39,13 +39,16 @@ export function eventRoutes(deps: { db: Db; now: () => Date }) {
       const id = c.req.param('id');
       const { format } = parseInput(ExportQuerySchema, c.req.query());
       const event = await requireEvent(id);
-      const lists = await listEventArmyLists(deps.db, id);
+      const [lists, missing] = await Promise.all([
+        listEventArmyLists(deps.db, id),
+        listEventMissingLists(deps.db, id),
+      ]);
       c.header(
         'Content-Disposition',
         `attachment; filename="${exportFileName(event.name, format)}"`,
       );
-      if (format === 'json') return c.json({ event: { id, name: event.name }, lists });
-      return c.text(listsToText(event.name, lists));
+      if (format === 'json') return c.json({ event: { id, name: event.name }, lists, missing });
+      return c.text(listsToText(event.name, lists, missing));
     })
     .get('/players/:id/list', async (c) => {
       const id = c.req.param('id');

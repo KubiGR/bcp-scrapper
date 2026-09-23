@@ -96,6 +96,13 @@ describe('event routes', () => {
   });
 
   it('exports all fetched lists as text and JSON downloads', async () => {
+    await sync({ kind: 'event', eventId: EVENT });
+    const before = (await (
+      await app.request(`/api/events/${EVENT}/lists/export?format=json`)
+    ).json()) as { missing: { player: string; reason: string }[] };
+    expect(before.missing).toHaveLength(8);
+    expect(before.missing.filter((entry) => entry.reason === 'not fetched')).toHaveLength(7);
+
     await sync({ kind: 'lists', eventId: EVENT });
 
     const txt = await app.request(`/api/events/${EVENT}/lists/export`);
@@ -106,10 +113,17 @@ describe('event routes', () => {
     const text = await txt.text();
     expect(text).toContain('#1 · Finn Ford · Charlie Wing · Orks');
     expect(text).toContain('Gladius Task Force');
+    expect(
+      text.startsWith("Sample Team Open\n7 of 8 players' army lists\nMissing: Hal Hayes\n"),
+    ).toBe(true);
 
     const json = await app.request(`/api/events/${EVENT}/lists/export?format=json`);
     expect(json.headers.get('content-disposition')).toContain('sample-team-open-lists.json');
-    expect(((await json.json()) as { lists: unknown[] }).lists).toHaveLength(7);
+    const body = (await json.json()) as { lists: unknown[]; missing: unknown[] };
+    expect(body.lists).toHaveLength(7);
+    expect(body.missing).toEqual([
+      { player: 'Hal Hayes', team: expect.any(String), reason: 'no list on BCP' },
+    ]);
 
     expect((await app.request(`/api/events/${EVENT}/lists/export?format=pdf`)).status).toBe(400);
     expect((await app.request('/api/events/NOPE/lists/export')).status).toBe(404);

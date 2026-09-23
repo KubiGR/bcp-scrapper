@@ -24,11 +24,36 @@ describe('listsToText', () => {
       },
       { placing: null, player: 'Hal Hayes', team: null, faction: null, listId: 'L2', text: null },
     ]);
-    expect(text).toContain('Sample Team Open\n2 army lists');
+    expect(text.startsWith("Sample Team Open\n2 of 2 players' army lists\n\n")).toBe(true);
     expect(text).toContain('#1 · Finn Ford · Charlie Wing · Orks\n');
     expect(text).toContain('Warboss');
     expect(text).toContain('Hal Hayes\n');
     expect(text).toContain('(empty list)');
     expect(text.indexOf('Finn Ford')).toBeLessThan(text.indexOf('Hal Hayes'));
+  });
+
+  it('names the players whose list is missing', () => {
+    const text = listsToText(
+      'Sample Team Open',
+      [
+        {
+          placing: 1,
+          player: 'Finn Ford',
+          team: null,
+          faction: null,
+          listId: 'L1',
+          text: 'Warboss',
+        },
+      ],
+      [
+        { player: 'Ada Archer', team: 'Alpha Squad', reason: 'not fetched' },
+        { player: 'Hal Hayes', team: null, reason: 'no list on BCP' },
+      ],
+    );
+    expect(
+      text.startsWith(
+        "Sample Team Open\n1 of 3 players' army lists\nMissing: Ada Archer, Hal Hayes\n\n",
+      ),
+    ).toBe(true);
   });
 });
