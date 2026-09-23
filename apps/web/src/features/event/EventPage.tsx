@@ -10,7 +10,20 @@ import { EventHeader } from './EventHeader';
 import { eventQuery } from './event-queries';
 import { PlayersPanel } from './PlayersPanel';
 
-export function EventPage({ eventId }: { eventId: string }) {
+/** The event page's tabs, in order; the selected one lives in the URL (`?tab=`). */
+export const EVENT_TABS = [{ value: 'players', label: 'Players & lists' }] as const;
+export type EventTab = (typeof EVENT_TABS)[number]['value'];
+
+const isEventTab = (value: string | null): value is EventTab =>
+  EVENT_TABS.some((tab) => tab.value === value);
+
+interface EventPageProps {
+  eventId: string;
+  tab: EventTab;
+  onTabChange: (tab: EventTab) => void;
+}
+
+export function EventPage({ eventId, tab, onTabChange }: EventPageProps) {
   const event = useQuery(eventQuery(eventId));
   const { start, follow, isSyncing } = useSync({
     label: 'Event sync',
@@ -73,10 +86,20 @@ export function EventPage({ eventId }: { eventId: string }) {
           The last event sync failed: <SyncRunError run={eventRun} />
         </Text>
       )}
-      {/* Plan 3 adds the Rounds, Standings and Matchups tabs. */}
-      <Tabs defaultValue="players">
+      {/* Plan 3 adds the Rounds, Standings and Matchups tabs to EVENT_TABS. */}
+      <Tabs
+        value={tab}
+        onChange={(value) => {
+          if (isEventTab(value)) onTabChange(value);
+        }}
+        keepMounted={false}
+      >
         <Tabs.List>
-          <Tabs.Tab value="players">Players &amp; lists</Tabs.Tab>
+          {EVENT_TABS.map(({ value, label }) => (
+            <Tabs.Tab key={value} value={value}>
+              {label}
+            </Tabs.Tab>
+          ))}
         </Tabs.List>
         <Tabs.Panel value="players" pt="md">
           <PlayersPanel event={detail} loadingFromBcp={syncing && detail.lastSyncedAt === null} />

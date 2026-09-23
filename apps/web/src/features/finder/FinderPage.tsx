@@ -58,7 +58,11 @@ export function FinderPage() {
             update({ page });
           }}
           onOpen={(eventId) => {
-            void navigate({ to: '/events/$eventId', params: { eventId } });
+            void navigate({
+              to: '/events/$eventId',
+              params: { eventId },
+              search: { tab: 'players' },
+            });
           }}
           emptyText={isLatestView(search) ? LATEST_EMPTY : SEARCH_EMPTY}
         />

@@ -4,6 +4,8 @@ import { renderWithProviders, stubFetchRoutes } from '../../test/render';
 import { anEventDetail, aSyncRun } from '../../test/sample-data';
 import { EventPage } from './EventPage';
 
+const tabProps = { tab: 'players', onTabChange: () => undefined } as const;
+
 describe('EventPage', () => {
   it('offers to fetch an event that is not in the catalogue yet', async () => {
     stubFetchRoutes({
@@ -13,7 +15,7 @@ describe('EventPage', () => {
           { status: 404 },
         ),
     });
-    renderWithProviders(<EventPage eventId="NOPE" />);
+    renderWithProviders(<EventPage eventId="NOPE" {...tabProps} />);
     expect(await screen.findByText(/isn't in the local catalogue yet/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Fetch from BCP' })).toBeInTheDocument();
   });
@@ -28,7 +30,7 @@ describe('EventPage', () => {
       }),
       'POST /api/sync': aSyncRun({ kind: 'event', status: 'succeeded' }),
     });
-    renderWithProviders(<EventPage eventId="EVT1" />);
+    renderWithProviders(<EventPage eventId="EVT1" {...tabProps} />);
 
     expect(await screen.findByRole('heading', { name: 'Sample Team Open' })).toBeInTheDocument();
     await waitFor(() => {
@@ -47,7 +49,7 @@ describe('EventPage', () => {
       }),
       'GET /api/sync-runs/1': running,
     });
-    renderWithProviders(<EventPage eventId="EVT1" />);
+    renderWithProviders(<EventPage eventId="EVT1" {...tabProps} />);
 
     expect(await screen.findByRole('button', { name: 'Refresh from BCP' })).toBeDisabled();
     expect(fetchMock.mock.calls.some(([url]) => url === '/api/sync')).toBe(false);
@@ -64,7 +66,7 @@ describe('EventPage', () => {
         },
       }),
     });
-    renderWithProviders(<EventPage eventId="EVT1" />);
+    renderWithProviders(<EventPage eventId="EVT1" {...tabProps} />);
 
     expect(
       await screen.findByText(/The last event sync failed: BCP is unavailable/),
