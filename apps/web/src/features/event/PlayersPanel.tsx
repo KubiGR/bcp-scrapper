@@ -1,5 +1,5 @@
 import type { EventDetail, EventPlayer } from '@bcp/shared';
-import { Badge, Group, Select, Stack, Text, TextInput } from '@mantine/core';
+import { Badge, Group, Select, Stack, TextInput, UnstyledButton } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { DataTable } from 'mantine-datatable';
 import { useState } from 'react';
@@ -10,6 +10,7 @@ import { ExportMenu } from './ExportMenu';
 import { FetchListsButton } from './FetchListsButton';
 import { ListDrawer } from './ListDrawer';
 import { ListStatusBadge } from './ListStatusBadge';
+import classes from './PlayersPanel.module.css';
 import { factionsOf, filterPlayers, formatRecord } from './players-filter';
 
 function emptyText(loadingFromBcp: boolean, playerCount: number): string {
@@ -88,7 +89,15 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
                 title: 'Player',
                 render: (p) => (
                   <Group gap="xs" wrap="nowrap">
-                    <Text size="sm">{p.name}</Text>
+                    <UnstyledButton
+                      className={classes.playerName}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenPlayer(p);
+                      }}
+                    >
+                      {p.name}
+                    </UnstyledButton>
                     {p.dropped && (
                       <Badge size="xs" color="gray" variant="outline">
                         Dropped
