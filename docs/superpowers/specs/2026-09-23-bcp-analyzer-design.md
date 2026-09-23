@@ -43,6 +43,11 @@ Required headers: `client-id: web-app`, `env: bcp`, `accept: application/json`. 
 ### Authentication
 
 - BCP signs users in with OAuth (the SPA calls `/oauth/token` and receives `accessToken`, `idToken` and a refresh token).
+- **Refresh route (verified 2026-09-23):** `POST https://newprod-api.bestcoastpairings.com/oauth/token`, with **no `/v1` prefix**, unlike the data endpoints.
+  - Headers: `content-type: application/json` and `client-id: web-app`.
+  - Body: `{ "refresh_token": "…", "grant_type": "refresh_token" }`.
+  - An invalid token gets 401 `{"error":"invalid session, please log in again"}`.
+  - `/v1/oauth/token` doesn't exist; API Gateway answers 403 "Missing Authentication Token".
 - **Setup (one-off):** the user logs in at bestcoastpairings.com, copies the refresh token from the browser's local storage into `.env` as `BCP_REFRESH_TOKEN`, and the API exchanges it for access tokens automatically.
 - **To verify in step 1 of implementation:** the exact refresh-token request. If automatic refresh doesn't work, fall back to the user pasting `BCP_ACCESS_TOKEN`, and show a clear "BCP session expired — update your token" error when BCP returns 401.
 - Tokens are never logged or sent to the browser.
