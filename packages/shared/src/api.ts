@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { EventSummarySchema } from './domain';
 import { ApiErrorCodeSchema } from './error-code';
+import { MAX_LOSSES_LIMIT } from './lists';
 import { SyncRunSchema } from './sync';
 
 export const ApiErrorBodySchema = z.object({
@@ -146,3 +147,43 @@ export type PlayerList = z.infer<typeof PlayerListSchema>;
 
 export const ListExportFormatSchema = z.enum(['txt', 'json']);
 export type ListExportFormat = z.infer<typeof ListExportFormatSchema>;
+
+/** POST /api/events/:id/lists/queue: all missing lists, those passing a loss limit, or chosen players. */
+export const QueueListsRequestSchema = z
+  .object({
+    maxLosses: z.number().int().min(0).max(MAX_LOSSES_LIMIT).optional(),
+    playerIds: z.array(z.string().min(1)).min(1).max(1000).optional(),
+  })
+  .refine((request) => request.maxLosses === undefined || request.playerIds === undefined, {
+    message: 'Send `maxLosses` or `playerIds`, not both',
+  });
+export type QueueListsRequest = z.infer<typeof QueueListsRequestSchema>;
+
+const count = z.number().int().nonnegative();
+
+export const QueueListsResultSchema = z.object({
+  queued: count,
+  alreadyQueued: count,
+  alreadyFetched: count,
+  noListOnBcp: count,
+  /** Players with a missing list who don't pass `maxLosses`. */
+  notQualifying: count,
+  /** Until this request's lists are fetched, at the current pace; null when nothing is queued. */
+  estimatedSeconds: count.nullable(),
+});
+export type QueueListsResult = z.infer<typeof QueueListsResultSchema>;
+
+export const ListQueuePauseReasonSchema = z.enum(['user', 'login-rejected', 'rate-limited']);
+export type ListQueuePauseReason = z.infer<typeof ListQueuePauseReasonSchema>;
+
+export const ListQueueStateSchema = z.object({
+  paused: z.boolean(),
+  pausedReason: ListQueuePauseReasonSchema.nullable(),
+  /** Set when the pause lifts by itself (after a BCP rate limit). */
+  pausedUntil: z.iso.datetime().nullable(),
+  intervalMs: z.number().int().positive(),
+  totals: z.object({ queued: count, fetching: count, failed: count }),
+  /** Until the whole queue is empty, at the current pace; null when it is empty. */
+  estimatedSeconds: count.nullable(),
+});
+export type ListQueueState = z.infer<typeof ListQueueStateSchema>;
