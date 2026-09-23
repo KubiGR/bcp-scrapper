@@ -18,7 +18,13 @@ if (interrupted > 0)
 
 const { source, status } = createSource(config, { db: database.db, logger });
 const runner = new SyncRunner({ db: database.db, source, logger });
-const app = createApp({ db: database.db, runner, bcpStatus: status, logger });
+const app = createApp({
+  db: database.db,
+  runner,
+  bcpStatus: status,
+  logger,
+  listenHost: config.HOST,
+});
 
 const server = serve({ fetch: app.fetch, port: config.PORT, hostname: config.HOST }, (info) => {
   logger.info(

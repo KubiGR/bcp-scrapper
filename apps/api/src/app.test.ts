@@ -13,8 +13,9 @@ beforeAll(async () => {
 });
 afterAll(() => close());
 
-function makeApp() {
+function makeApp(listenHost?: string) {
   return createApp({
+    listenHost,
     db,
     runner: new SyncRunner({ db, source: sampleSource(), logger: silentLogger }),
     bcpStatus: () =>
@@ -77,5 +78,29 @@ describe('createApp', () => {
     expect(await response.json()).toEqual({
       error: { code: 'INTERNAL', message: 'Something went wrong' },
     });
+  });
+
+  it('rejects requests for an unexpected Host (DNS rebinding)', async () => {
+    const response = await makeApp().request('/api/health', {
+      headers: { host: 'evil.example' },
+    });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: { code: 'VALIDATION_ERROR', message: 'Unexpected Host header' },
+    });
+  });
+
+  it('accepts loopback Host headers, with or without a port', async () => {
+    for (const host of ['localhost:3001', '127.0.0.1:5173', '[::1]:3001', 'localhost']) {
+      const response = await makeApp().request('/api/health', { headers: { host } });
+      expect(response.status, host).toBe(200);
+    }
+  });
+
+  it('accepts any Host when the API was deliberately exposed with HOST=0.0.0.0', async () => {
+    const response = await makeApp('0.0.0.0').request('/api/health', {
+      headers: { host: 'evil.example' },
+    });
+    expect(response.status).toBe(200);
   });
 });
