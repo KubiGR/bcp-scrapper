@@ -12,6 +12,7 @@ import {
   finderWindow,
   isLatestView,
   toEventsQueryString,
+  type FinderChangeOptions,
   type FinderSearch,
 } from './finder-search';
 import { SizeFilter } from './SizeFilter';
@@ -30,8 +31,11 @@ export function FinderPage() {
   const window = finderWindow(search, now);
   const events = useQuery(eventsQuery(toEventsQueryString(search, now)));
 
-  const update = (changes: Partial<FinderSearch>) => {
-    void navigate({ search: (previous) => ({ ...previous, page: 1, ...changes }) });
+  const update = (changes: Partial<FinderSearch>, options?: FinderChangeOptions) => {
+    void navigate({
+      search: (previous) => ({ ...previous, page: 1, ...changes }),
+      replace: options?.replace,
+    });
   };
 
   return (

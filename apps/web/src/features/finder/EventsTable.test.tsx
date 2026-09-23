@@ -45,6 +45,8 @@ describe('EventsTable', () => {
     );
     expect(screen.getByText('432 players · 108 teams')).toBeInTheDocument();
     expect(screen.getByText('Teams')).toBeInTheDocument();
+    // Phrasing content only inside a button: no <p>.
+    expect(screen.getByRole('button', { name: 'Sample Team Open' }).querySelector('p')).toBeNull();
     fireEvent.click(screen.getByText('Sample Team Open'));
     expect(onOpen).toHaveBeenCalledWith('EVT1');
   });

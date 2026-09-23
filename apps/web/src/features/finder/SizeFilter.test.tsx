@@ -19,4 +19,11 @@ describe('SizeFilter', () => {
     expect(screen.getByLabelText('Min players')).toHaveValue('50');
     expect(screen.getByLabelText('Max players')).toHaveValue('120');
   });
+
+  it('writes typed bounds to the URL without adding history entries', () => {
+    const onChange = vi.fn();
+    renderWithProviders(<SizeFilter search={{ size: 'custom' }} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText('Min players'), { target: { value: '50' } });
+    expect(onChange).toHaveBeenCalledWith({ min: 50 }, { replace: true });
+  });
 });

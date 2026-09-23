@@ -34,7 +34,7 @@ export function EventHeader({ event, syncing, onRefresh }: EventHeaderProps) {
         <EventStatusBadges event={event} />
       </Group>
       {event.lastSyncedAt !== null && (
-        <Text size="xs" c="dimmed">
+        <Text size="xs" c="dimmed" className="numeric">
           Synced {formatDateTime(event.lastSyncedAt)}
         </Text>
       )}

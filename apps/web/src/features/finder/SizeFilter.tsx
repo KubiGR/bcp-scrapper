@@ -1,5 +1,10 @@
 import { Group, NumberInput, SegmentedControl, Stack, Text } from '@mantine/core';
-import { FinderSearchSchema, SIZE_PRESETS, type FinderSearch } from './finder-search';
+import {
+  FinderSearchSchema,
+  SIZE_PRESETS,
+  type FinderSearch,
+  type OnFinderChange,
+} from './finder-search';
 
 const OPTIONS = [
   ...SIZE_PRESETS.map((preset) => ({ label: preset.label, value: preset.value })),
@@ -8,7 +13,7 @@ const OPTIONS = [
 
 interface SizeFilterProps {
   search: Pick<FinderSearch, 'size' | 'min' | 'max'>;
-  onChange: (changes: Partial<FinderSearch>) => void;
+  onChange: OnFinderChange;
 }
 
 const countOrUndefined = (value: string | number) =>
@@ -36,7 +41,7 @@ export function SizeFilter({ search, onChange }: SizeFilterProps) {
             w={140}
             value={search.min ?? ''}
             onChange={(value) => {
-              onChange({ min: countOrUndefined(value) });
+              onChange({ min: countOrUndefined(value) }, { replace: true });
             }}
           />
           <NumberInput
@@ -45,7 +50,7 @@ export function SizeFilter({ search, onChange }: SizeFilterProps) {
             w={140}
             value={search.max ?? ''}
             onChange={(value) => {
-              onChange({ max: countOrUndefined(value) });
+              onChange({ max: countOrUndefined(value) }, { replace: true });
             }}
           />
         </Group>

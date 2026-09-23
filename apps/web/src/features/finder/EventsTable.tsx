@@ -61,7 +61,7 @@ export function EventsTable({
                   onOpen(event.bcpId);
                 }}
               >
-                <Text size="sm" fw={500}>
+                <Text component="span" size="sm" fw={500}>
                   {event.name}
                 </Text>
               </UnstyledButton>

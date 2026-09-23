@@ -32,6 +32,15 @@ export const FinderSearchSchema = z.object({
 });
 export type FinderSearch = z.infer<typeof FinderSearchSchema>;
 
+/** `replace`: typing into a field updates the URL without adding a history entry per edit. */
+export interface FinderChangeOptions {
+  replace?: boolean;
+}
+export type OnFinderChange = (
+  changes: Partial<FinderSearch>,
+  options?: FinderChangeOptions,
+) => void;
+
 export const isLatestView = (search: Pick<FinderSearch, 'from' | 'to'>) =>
   search.from === undefined && search.to === undefined;
 

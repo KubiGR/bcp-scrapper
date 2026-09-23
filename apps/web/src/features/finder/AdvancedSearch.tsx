@@ -11,12 +11,18 @@ import {
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useDebouncedCallback, useDisclosure } from '@mantine/hooks';
-import { FinderSearchSchema, isLatestView, type FinderSearch } from './finder-search';
+import { useState } from 'react';
+import {
+  FinderSearchSchema,
+  isLatestView,
+  type FinderSearch,
+  type OnFinderChange,
+} from './finder-search';
 
 interface AdvancedSearchProps {
   search: FinderSearch;
   window: DateRange;
-  onChange: (changes: Partial<FinderSearch>) => void;
+  onChange: OnFinderChange;
 }
 
 const TYPE_OPTIONS = [
@@ -29,15 +35,37 @@ const SORT_OPTIONS = [
   { label: 'Biggest', value: 'players' },
 ];
 
+const toParam = (text: string) => text.trim() || undefined;
+
+/**
+ * A text field bound to a URL param: typing shows at once and writes to the URL after a pause
+ * (replacing the history entry); when the URL changes elsewhere (back, "Back to latest"), the
+ * text follows it.
+ */
+function useUrlText(param: string | undefined, write: (value: string | undefined) => void) {
+  const [text, setText] = useState(param ?? '');
+  const [seen, setSeen] = useState(param);
+  const writeLater = useDebouncedCallback(write, 300);
+  if (param !== seen) {
+    setSeen(param);
+    // Our own write comes back as the trimmed text: keep what is being typed.
+    if (toParam(text) !== param) setText(param ?? '');
+  }
+  const onTextChange = (value: string) => {
+    setText(value);
+    writeLater(toParam(value));
+  };
+  return { text, onTextChange, cancel: writeLater.cancel };
+}
+
 export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps) {
   const [opened, { toggle }] = useDisclosure(!isLatestView(search));
-  // Text fields write to the URL after a pause, not on every keystroke.
-  const setName = useDebouncedCallback((value: string) => {
-    onChange({ q: value.trim() || undefined });
-  }, 300);
-  const setCountry = useDebouncedCallback((value: string) => {
-    onChange({ country: value.trim() || undefined });
-  }, 300);
+  const name = useUrlText(search.q, (q) => {
+    onChange({ q }, { replace: true });
+  });
+  const country = useUrlText(search.country, (value) => {
+    onChange({ country: value }, { replace: true });
+  });
 
   return (
     <Stack gap="sm">
@@ -51,7 +79,9 @@ export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps
             size="compact-sm"
             color="gray"
             onClick={() => {
-              onChange({ from: undefined, to: undefined });
+              name.cancel();
+              country.cancel();
+              onChange({ from: undefined, to: undefined, q: undefined, country: undefined });
             }}
           >
             Back to latest
@@ -73,17 +103,17 @@ export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps
           <TextInput
             label="Name"
             placeholder="e.g. Open, GT, Teams"
-            defaultValue={search.q ?? ''}
+            value={name.text}
             onChange={(e) => {
-              setName(e.currentTarget.value);
+              name.onTextChange(e.currentTarget.value);
             }}
           />
           <TextInput
             label="Country"
             placeholder="e.g. Germany"
-            defaultValue={search.country ?? ''}
+            value={country.text}
             onChange={(e) => {
-              setCountry(e.currentTarget.value);
+              country.onTextChange(e.currentTarget.value);
             }}
           />
           <Input.Wrapper label="Type">
