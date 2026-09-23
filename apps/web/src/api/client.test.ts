@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
 import { stubFetchJson } from '../test/render';
-import { ApiError, apiGet } from './client';
+import { ApiError, apiGet, apiPost } from './client';
 
 describe('apiGet', () => {
   it('parses successful responses with the given schema', async () => {
@@ -26,6 +26,26 @@ describe('apiGet', () => {
     await expect(apiGet('/api/x', z.unknown())).rejects.toMatchObject({
       code: 'NETWORK',
       message: expect.stringContaining('API server') as unknown,
+    });
+  });
+
+  it('POSTs JSON and parses the response', async () => {
+    const fetchMock = stubFetchJson({ status: 'ok' });
+    await expect(
+      apiPost('/api/x', { a: 1 }, z.object({ status: z.literal('ok') })),
+    ).resolves.toEqual({ status: 'ok' });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/x',
+      expect.objectContaining({ method: 'POST', body: '{"a":1}' }),
+    );
+  });
+
+  it('turns a response that breaks the contract into an ApiError, not a raw ZodError', async () => {
+    stubFetchJson({ status: 'nope' });
+    await expect(apiGet('/api/x', z.object({ status: z.literal('ok') }))).rejects.toMatchObject({
+      name: 'ApiError',
+      code: 'INTERNAL',
+      message: expect.stringContaining('/api/x') as unknown,
     });
   });
 });

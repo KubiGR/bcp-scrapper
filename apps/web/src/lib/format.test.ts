@@ -1,0 +1,26 @@
+import { describe, expect, it } from 'vitest';
+import { formatEventDates, formatEventSize } from './format';
+
+const utcDay = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'UTC' });
+
+describe('formatEventDates', () => {
+  it('shows calendar days in UTC, so an evening start never shifts a day', () => {
+    expect(formatEventDates('2026-08-08T23:30:00.000Z', null)).toBe(
+      utcDay.format(new Date('2026-08-08T12:00:00Z')),
+    );
+  });
+
+  it('shows a range for multi-day events', () => {
+    expect(formatEventDates('2026-08-08T08:00:00.000Z', '2026-08-09T18:00:00.000Z')).toBe(
+      utcDay.formatRange(new Date('2026-08-08T00:00:00Z'), new Date('2026-08-09T00:00:00Z')),
+    );
+  });
+});
+
+describe('formatEventSize', () => {
+  it('adds the team count when known', () => {
+    expect(formatEventSize({ playerCount: 432, teamCount: 108 })).toBe('432 players · 108 teams');
+    expect(formatEventSize({ playerCount: 64, teamCount: null })).toBe('64 players');
+    expect(formatEventSize({ playerCount: 1, teamCount: null })).toBe('1 player');
+  });
+});

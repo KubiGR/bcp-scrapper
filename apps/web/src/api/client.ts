@@ -15,11 +15,14 @@ export class ApiError extends Error {
   }
 }
 
-/** GETs JSON from our API and validates it, so components only ever see well-typed data. */
-export async function apiGet<S extends z.ZodType>(path: string, schema: S): Promise<z.output<S>> {
+async function request<S extends z.ZodType>(
+  path: string,
+  init: RequestInit,
+  schema: S,
+): Promise<z.output<S>> {
   let response: Response;
   try {
-    response = await fetch(path, { headers: { accept: 'application/json' } });
+    response = await fetch(path, init);
   } catch (error) {
     throw new ApiError(0, 'NETWORK', 'Cannot reach the API server. Is it running?', error);
   }
@@ -33,5 +36,37 @@ export async function apiGet<S extends z.ZodType>(path: string, schema: S): Prom
     }
     throw new ApiError(response.status, 'INTERNAL', `Request failed with HTTP ${response.status}`);
   }
-  return schema.parse(body);
+
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    throw new ApiError(
+      response.status,
+      'INTERNAL',
+      `The API sent an unexpected response for ${path}`,
+      parsed.error.issues,
+    );
+  }
+  return parsed.data;
+}
+
+/** GETs JSON from our API and validates it, so components only ever see well-typed data. */
+export function apiGet<S extends z.ZodType>(path: string, schema: S): Promise<z.output<S>> {
+  return request(path, { headers: { accept: 'application/json' } }, schema);
+}
+
+/** POSTs a JSON body; the API requires the JSON content type on every state change. */
+export function apiPost<S extends z.ZodType>(
+  path: string,
+  body: unknown,
+  schema: S,
+): Promise<z.output<S>> {
+  return request(
+    path,
+    {
+      method: 'POST',
+      headers: { accept: 'application/json', 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+    schema,
+  );
 }

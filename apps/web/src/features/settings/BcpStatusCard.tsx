@@ -1,7 +1,8 @@
 import type { BcpStatus } from '@bcp/shared';
-import { Alert, Badge, Button, Group, Skeleton, Stack, Text } from '@mantine/core';
+import { Badge, Group, Skeleton, Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import type { CSSProperties } from 'react';
+import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { formatDateTime } from '../../lib/format';
 import { bcpStatusQuery } from './bcp-status-query';
@@ -63,14 +64,7 @@ export function BcpStatusCard() {
   if (error) {
     return (
       <Panel title={PANEL_TITLE}>
-        <Alert color="red" title="Status unavailable">
-          <Stack gap="sm" align="flex-start">
-            <Text size="sm">{error.message}</Text>
-            <Button size="xs" color="red" variant="outline" onClick={() => void refetch()}>
-              Retry
-            </Button>
-          </Stack>
-        </Alert>
+        <ErrorState title="Status unavailable" error={error} onRetry={() => void refetch()} />
       </Panel>
     );
   }
