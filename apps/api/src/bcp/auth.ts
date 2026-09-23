@@ -150,7 +150,8 @@ export class BcpAuth implements AccessTokenProvider {
       throw new BcpAuthError('No BCP refresh token configured. Set BCP_REFRESH_TOKEN in .env.');
     }
 
-    const response = await this.#fetch(new URL('/v1/oauth/token', this.#options.apiUrl), {
+    // Unlike the data endpoints, BCP's token endpoint has no /v1 prefix.
+    const response = await this.#fetch(new URL('/oauth/token', this.#options.apiUrl), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'client-id': 'web-app' },
       body: JSON.stringify({ refresh_token: session.refreshToken, grant_type: 'refresh_token' }),

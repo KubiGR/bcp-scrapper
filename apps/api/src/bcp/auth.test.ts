@@ -69,7 +69,7 @@ describe('BcpAuth', () => {
 
     const [url, init] = fetchMock.mock.calls[0] ?? [];
     // eslint-disable-next-line @typescript-eslint/no-base-to-string -- url/body are string-like in this mock
-    expect(String(url)).toBe('https://bcp.test/v1/oauth/token');
+    expect(String(url)).toBe('https://bcp.test/oauth/token');
     // eslint-disable-next-line @typescript-eslint/no-base-to-string -- url/body are string-like in this mock
     expect(JSON.parse(String(init?.body))).toEqual({
       refresh_token: 'refresh-1',
