@@ -1,4 +1,5 @@
 import type { Player, Team } from '@bcp/shared';
+import { and, eq, notInArray } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { players, teams } from '../db/schema';
@@ -43,4 +44,37 @@ export async function upsertPlayers(db: Db, list: Fetched<Player>[]): Promise<vo
       })),
     )
     .onConflictDoUpdate({ target: players.id, set: excludedColumns(players, ['id', 'createdAt']) });
+}
+
+/**
+ * Makes an event's stored teams match BCP's active list: upserts it, then deletes the event's
+ * teams it no longer contains. An empty list deletes nothing (BCP may have hiccuped).
+ */
+export async function replaceEventTeams(
+  db: Db,
+  eventId: string,
+  list: Fetched<Team>[],
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    await upsertTeams(tx, list);
+    if (list.length === 0) return;
+    const keep = list.map((team) => team.bcpId);
+    await tx.delete(teams).where(and(eq(teams.eventId, eventId), notInArray(teams.id, keep)));
+  });
+}
+
+/**
+ * Like replaceEventTeams, for players. Deleting a player also deletes its stored army list.
+ */
+export async function replaceEventPlayers(
+  db: Db,
+  eventId: string,
+  list: Fetched<Player>[],
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    await upsertPlayers(tx, list);
+    if (list.length === 0) return;
+    const keep = list.map((player) => player.bcpId);
+    await tx.delete(players).where(and(eq(players.eventId, eventId), notInArray(players.id, keep)));
+  });
 }

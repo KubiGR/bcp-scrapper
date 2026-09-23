@@ -30,15 +30,12 @@ async function runToCompletion(runner: SyncRunner, request: Parameters<SyncRunne
 const rowCount = async (table: PgTable) => (await db.select({ n: count() }).from(table))[0]?.n;
 
 /**
- * A source that behaves exactly like `source` except for `getList`. `BcpSource` keeps its
+ * A source that behaves exactly like `source` except for `overrides`. `BcpSource` keeps its
  * transport in a `#private` field, so an `Object.create(source)` clone throws "Cannot read
  * private member" as soon as any inherited method other than the overridden one runs. Delegating
  * every method explicitly avoids relying on prototype inheritance from a class with private state.
  */
-function withListOverride(
-  source: BcpSource,
-  getList: TournamentSource['getList'],
-): TournamentSource {
+function withOverrides(source: BcpSource, overrides: Partial<TournamentSource>): TournamentSource {
   return {
     listEvents: (range, cursor) => source.listEvents(range, cursor),
     getEvent: (eventId) => source.getEvent(eventId),
@@ -46,7 +43,8 @@ function withListOverride(
     getTeams: (eventId) => source.getTeams(eventId),
     getTeamMatchups: (eventId, round) => source.getTeamMatchups(eventId, round),
     getGames: (eventId, round) => source.getGames(eventId, round),
-    getList,
+    getList: (listId) => source.getList(listId),
+    ...overrides,
   };
 }
 
@@ -82,13 +80,36 @@ describe('SyncRunner', () => {
     expect(draw).toMatchObject({ result: 'draw', firstTurn: 'b', teamMatchupId: 'TP-R2-2' });
   });
 
+  it('re-syncs drop the games and players BCP no longer lists', async () => {
+    const source = sampleSource();
+    await runToCompletion(new SyncRunner({ db, source, logger: silentLogger }), {
+      kind: 'pairings',
+      eventId: EVENT,
+    });
+
+    const shrunk = withOverrides(source, {
+      getPlayers: async (eventId) =>
+        (await source.getPlayers(eventId)).filter((player) => player.bcpId !== 'PL-HAL'),
+      getGames: async (eventId, round) =>
+        (await source.getGames(eventId, round)).filter((game) => game.bcpId !== 'GM-R1-4'),
+    });
+    const runner = new SyncRunner({ db, source: shrunk, logger: silentLogger });
+    await runToCompletion(runner, { kind: 'event', eventId: EVENT });
+    await runToCompletion(runner, { kind: 'pairings', eventId: EVENT });
+
+    expect(await rowCount(players)).toBe(7);
+    expect(await rowCount(games)).toBe(7);
+    expect(await rowCount(teamMatchups)).toBe(4);
+  });
+
   it('lists: fetches every missing list and counts failures without failing the run', async () => {
     const source = sampleSource();
-    const flaky = withListOverride(source, (listId) =>
-      listId === 'LS-GIA'
-        ? Promise.reject(new BcpUnavailableError('BCP hiccup'))
-        : source.getList(listId),
-    );
+    const flaky = withOverrides(source, {
+      getList: (listId) =>
+        listId === 'LS-GIA'
+          ? Promise.reject(new BcpUnavailableError('BCP hiccup'))
+          : source.getList(listId),
+    });
     const runner = new SyncRunner({ db, source: flaky, logger: silentLogger });
 
     const run = await runToCompletion(runner, { kind: 'lists', eventId: EVENT });
@@ -99,9 +120,9 @@ describe('SyncRunner', () => {
 
   it('lists: aborts the whole run when the BCP login is broken', async () => {
     const source = sampleSource();
-    const loggedOut = withListOverride(source, () =>
-      Promise.reject(new BcpAuthError('Session expired')),
-    );
+    const loggedOut = withOverrides(source, {
+      getList: () => Promise.reject(new BcpAuthError('Session expired')),
+    });
     const runner = new SyncRunner({ db, source: loggedOut, logger: silentLogger });
 
     const run = await runToCompletion(runner, { kind: 'lists', eventId: EVENT });

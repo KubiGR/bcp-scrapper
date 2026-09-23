@@ -11,8 +11,8 @@ import {
   type EventRow,
 } from '../repo/events';
 import { findPlayersMissingLists, saveArmyList } from '../repo/lists';
-import { upsertGames, upsertTeamMatchups } from '../repo/pairings';
-import { upsertPlayers, upsertTeams } from '../repo/participants';
+import { replaceRoundPairings } from '../repo/pairings';
+import { replaceEventPlayers, replaceEventTeams } from '../repo/participants';
 
 export interface Progress {
   setTotal(total: number): Promise<void>;
@@ -53,12 +53,14 @@ async function syncCatalog(ctx: JobContext, { from, to }: RequestOf<'catalog'>):
   } while (cursor !== null);
 }
 
-/** Event detail, teams (team events only) and players. */
+/** Event detail, teams (team events only) and players. Drops teams and players BCP removed. */
 async function syncEvent(ctx: JobContext, eventId: string): Promise<EventRow> {
   const event = await ctx.source.getEvent(eventId);
   await upsertEventDetail(ctx.db, event);
-  if (event.isTeamEvent) await upsertTeams(ctx.db, await ctx.source.getTeams(eventId));
-  await upsertPlayers(ctx.db, await ctx.source.getPlayers(eventId));
+  if (event.isTeamEvent) {
+    await replaceEventTeams(ctx.db, eventId, await ctx.source.getTeams(eventId));
+  }
+  await replaceEventPlayers(ctx.db, eventId, await ctx.source.getPlayers(eventId));
   await markEventSynced(ctx.db, eventId);
 
   const row = await findEvent(ctx.db, eventId);
@@ -78,15 +80,14 @@ async function syncEventJob(ctx: JobContext, { eventId }: RequestOf<'event'>): P
   await ctx.progress.succeeded();
 }
 
-/** Team matchups and games for every round. Progress counts rounds. */
+/** Team matchups and games for every round, replacing what was stored. Progress counts rounds. */
 async function syncPairings(ctx: JobContext, { eventId }: RequestOf<'pairings'>): Promise<void> {
   const event = await ensureEventSynced(ctx, eventId);
   await ctx.progress.setTotal(event.roundCount);
   for (let round = 1; round <= event.roundCount; round += 1) {
-    if (event.isTeamEvent) {
-      await upsertTeamMatchups(ctx.db, await ctx.source.getTeamMatchups(eventId, round));
-    }
-    await upsertGames(ctx.db, await ctx.source.getGames(eventId, round));
+    const teamMatchups = event.isTeamEvent ? await ctx.source.getTeamMatchups(eventId, round) : [];
+    const games = await ctx.source.getGames(eventId, round);
+    await replaceRoundPairings(ctx.db, eventId, round, { teamMatchups, games });
     await ctx.progress.succeeded();
   }
 }

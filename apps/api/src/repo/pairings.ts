@@ -1,4 +1,5 @@
 import type { Game, TeamMatchup } from '@bcp/shared';
+import { and, eq, notInArray } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { games, teamMatchups } from '../db/schema';
@@ -54,4 +55,44 @@ export async function upsertGames(db: Db, list: Fetched<Game>[]): Promise<void> 
       })),
     )
     .onConflictDoUpdate({ target: games.id, set: excludedColumns(games, ['id', 'createdAt']) });
+}
+
+export interface RoundPairings {
+  teamMatchups: Fetched<TeamMatchup>[];
+  games: Fetched<Game>[];
+}
+
+/**
+ * Makes one stored round match what BCP returned: upserts the given rows, then deletes the
+ * round's rows BCP no longer lists. An empty list deletes nothing, since the round may be
+ * unplayed or BCP may have answered with a transient empty page.
+ */
+export async function replaceRoundPairings(
+  db: Db,
+  eventId: string,
+  round: number,
+  pairings: RoundPairings,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    await upsertTeamMatchups(tx, pairings.teamMatchups);
+    await upsertGames(tx, pairings.games);
+    if (pairings.teamMatchups.length > 0) {
+      const keep = pairings.teamMatchups.map((matchup) => matchup.bcpId);
+      await tx
+        .delete(teamMatchups)
+        .where(
+          and(
+            eq(teamMatchups.eventId, eventId),
+            eq(teamMatchups.round, round),
+            notInArray(teamMatchups.id, keep),
+          ),
+        );
+    }
+    if (pairings.games.length > 0) {
+      const keep = pairings.games.map((game) => game.bcpId);
+      await tx
+        .delete(games)
+        .where(and(eq(games.eventId, eventId), eq(games.round, round), notInArray(games.id, keep)));
+    }
+  });
 }
