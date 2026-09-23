@@ -169,21 +169,22 @@ interface TournamentSource {
 
 ## 8. API routes (`apps/api/src/routes/`)
 
-| Method & path                                                                     | Purpose                                                                                                    |
-| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `GET /api/events?from&to&country&minPlayers&maxPlayers&type&q&sort&page&pageSize` | Search the **local** catalogue. `sort` is `date` (newest first, the default) or `players` (biggest first). |
-| `GET /api/catalog/coverage`                                                       | Merged date ranges already fetched from BCP (see §7)                                                       |
-| `GET /api/events/:id`                                                             | Event detail with sync status for each kind                                                                |
-| `GET /api/events/:id/players`                                                     | Players with faction, placing, record, and whether their list has been fetched                             |
-| `GET /api/events/:id/lists/export?format=txt\|json`                               | Download all fetched lists                                                                                 |
-| `GET /api/players/:id/list`                                                       | A single army list                                                                                         |
-| `GET /api/events/:id/rounds`                                                      | Pairings and results for each round (team matchups with nested games)                                      |
-| `GET /api/events/:id/standings`                                                   | Team standings with points per round                                                                       |
-| `GET /api/events/:id/teams/:teamId`                                               | A team's players with per-round results                                                                    |
-| `GET /api/events/:id/matchups?minGames`                                           | Faction matchup matrix for one event                                                                       |
-| `GET /api/matchups?eventIds=…&minGames`                                           | Faction matchup matrix combined across the given events                                                    |
-| `POST /api/sync`                                                                  | Start a sync (see §7)                                                                                      |
-| `GET /api/sync-runs/:id`                                                          | Sync progress                                                                                              |
+| Method & path                                                                     | Purpose                                                                                                                               |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/events?from&to&country&minPlayers&maxPlayers&type&q&sort&page&pageSize` | Search the **local** catalogue. `sort` is `date` (newest first, the default) or `players` (biggest first).                            |
+| `GET /api/catalog/coverage`                                                       | Merged date ranges already fetched from BCP (see §7)                                                                                  |
+| `POST /api/catalog/latest`                                                        | Re-syncs the latest window (last 30 days plus the next 7) if no covering sync finished in the last 6 hours; returns `{ window, run }` |
+| `GET /api/events/:id`                                                             | Event detail with sync status for each kind                                                                                           |
+| `GET /api/events/:id/players`                                                     | Players with faction, placing, record, and whether their list has been fetched                                                        |
+| `GET /api/events/:id/lists/export?format=txt\|json`                               | Download all fetched lists                                                                                                            |
+| `GET /api/players/:id/list`                                                       | A single army list                                                                                                                    |
+| `GET /api/events/:id/rounds`                                                      | Pairings and results for each round (team matchups with nested games)                                                                 |
+| `GET /api/events/:id/standings`                                                   | Team standings with points per round                                                                                                  |
+| `GET /api/events/:id/teams/:teamId`                                               | A team's players with per-round results                                                                                               |
+| `GET /api/events/:id/matchups?minGames`                                           | Faction matchup matrix for one event                                                                                                  |
+| `GET /api/matchups?eventIds=…&minGames`                                           | Faction matchup matrix combined across the given events                                                                               |
+| `POST /api/sync`                                                                  | Start a sync (see §7)                                                                                                                 |
+| `GET /api/sync-runs/:id`                                                          | Sync progress                                                                                                                         |
 
 Every error response has the shape `{ error: { code, message, details? } }`.
 
