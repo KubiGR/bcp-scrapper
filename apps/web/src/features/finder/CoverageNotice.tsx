@@ -1,4 +1,4 @@
-import { daysIn, estimateCatalogRequests, findGaps, type DateRange } from '@bcp/shared';
+import { daysIn, estimateCatalogRequests, findGaps, toIsoDate, type DateRange } from '@bcp/shared';
 import { Alert, Button, Group, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { formatIsoDay } from '../../lib/format';
@@ -40,7 +40,16 @@ export function CoverageNotice({ window }: { window: DateRange }) {
   if (!coverage.data) return null;
 
   const activeRun = coverage.data.activeRun;
-  const gaps = findGaps(window, coverage.data.ranges);
+  // Coverage stops at the day each run finished (future days keep changing), so only days up to
+  // today can ever count as fetched: gaps are looked for up to today.
+  const today = toIsoDate(new Date());
+  const gaps =
+    window.from > today
+      ? []
+      : findGaps(
+          { from: window.from, to: window.to < today ? window.to : today },
+          coverage.data.ranges,
+        );
   const busy = sync.isSyncing || activeRun !== null;
   if (!busy && gaps.length === 0) return null;
 

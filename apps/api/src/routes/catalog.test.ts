@@ -1,5 +1,7 @@
 import {
+  addDays,
   latestWindow,
+  toIsoDate,
   type BcpStatus,
   type CatalogCoverage,
   type LatestRefresh,
@@ -66,8 +68,9 @@ describe('catalogue routes', () => {
     expect(first.run).toMatchObject({ kind: 'catalog', range: window });
     await runner.idle();
 
+    // The days after the run finished (the rest of the window) don't count as covered.
     expect(await coverage()).toMatchObject({
-      ranges: [{ from: window.from, to: window.to }],
+      ranges: [{ from: window.from, to: toIsoDate(new Date()) }],
       lastSyncedAt: expect.any(String),
       activeRun: null,
     });
@@ -91,6 +94,22 @@ describe('catalogue routes', () => {
       await runner.idle();
     }
     expect((await coverage()).ranges).toMatchObject([{ from: '2026-01-01', to: '2026-02-10' }]);
+  });
+
+  it('only counts the days up to when a run finished as covered', async () => {
+    const today = toIsoDate(new Date());
+    for (const range of [
+      { from: addDays(today, -10), to: addDays(today, 30) },
+      { from: addDays(today, 40), to: addDays(today, 50) },
+    ]) {
+      await app.request('/api/sync', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ kind: 'catalog', ...range }),
+      });
+      await runner.idle();
+    }
+    expect((await coverage()).ranges).toMatchObject([{ from: addDays(today, -10), to: today }]);
   });
 
   it('requires a JSON content type (any casing) for the refresh', async () => {
