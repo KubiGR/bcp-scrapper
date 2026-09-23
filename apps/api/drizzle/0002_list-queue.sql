@@ -17,5 +17,5 @@ CREATE TABLE "list_queue" (
 ALTER TABLE "list_queue" ADD CONSTRAINT "list_queue_event_id_events_id_fk" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "list_queue" ADD CONSTRAINT "list_queue_player_id_players_id_fk" FOREIGN KEY ("player_id") REFERENCES "public"."players"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "list_queue_one_open_idx" ON "list_queue" USING btree ("player_id") WHERE "list_queue"."status" in ('queued', 'fetching');--> statement-breakpoint
-CREATE INDEX "list_queue_claim_idx" ON "list_queue" USING btree ("status","priority","queued_at");--> statement-breakpoint
+CREATE INDEX "list_queue_claim_idx" ON "list_queue" USING btree ("status","priority" desc,"queued_at");--> statement-breakpoint
 CREATE INDEX "list_queue_event_idx" ON "list_queue" USING btree ("event_id","status");

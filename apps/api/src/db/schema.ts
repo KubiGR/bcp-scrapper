@@ -1,5 +1,5 @@
 import type { ApiErrorCode } from '@bcp/shared';
-import { sql } from 'drizzle-orm';
+import { desc, sql } from 'drizzle-orm';
 import {
   boolean,
   check,
@@ -227,7 +227,7 @@ export const listQueue = pgTable(
     uniqueIndex('list_queue_one_open_idx')
       .on(t.playerId)
       .where(sql`${t.status} in ('queued', 'fetching')`),
-    index('list_queue_claim_idx').on(t.status, t.priority, t.queuedAt),
+    index('list_queue_claim_idx').on(t.status, desc(t.priority), t.queuedAt),
     index('list_queue_event_idx').on(t.eventId, t.status),
   ],
 );

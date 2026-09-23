@@ -53,7 +53,12 @@ export class ListQueueWorker {
   constructor(options: ListQueueWorkerOptions) {
     this.#options = options;
     this.intervalMs = options.intervalMs;
-    this.#now = options.now ?? (() => new Date());
+    // A few ms ahead of the real clock: Postgres' `now()` (used for `not_before`'s default) has
+    // microsecond precision, while `Date.now()` truncates to whole milliseconds. Without this,
+    // a row inserted and then claimed within the same millisecond can look "not due yet" and the
+    // worker (or a test's drainQueue) sees a false 'idle'. Callers that inject their own `now`
+    // (tests driving an explicit clock) are unaffected.
+    this.#now = options.now ?? (() => new Date(Date.now() + 5));
   }
 
   /** Puts rows cut off by a previous process back in the queue, then ticks every interval. */
@@ -61,7 +66,10 @@ export class ListQueueWorker {
     const requeued = await requeueInterrupted(this.#options.db);
     if (requeued > 0) this.#options.logger.warn({ requeued }, 'Requeued interrupted list fetches');
     this.#timer = setInterval(() => {
-      void this.tick();
+      void this.tick().catch((error: unknown) => {
+        // A rejection here would otherwise be unhandled and crash the process (Node >= 15).
+        this.#options.logger.error({ err: error }, 'List queue tick failed');
+      });
     }, this.intervalMs);
   }
 
@@ -132,13 +140,18 @@ export class ListQueueWorker {
     if (!claimed) return 'idle';
 
     const startedAt = performance.now();
-    const log = (status: TickOutcome) => {
-      logger.info(
+    const log = (
+      status: TickOutcome,
+      level: 'info' | 'warn' = 'info',
+      extra: Record<string, unknown> = {},
+    ) => {
+      logger[level](
         {
           eventId: claimed.eventId,
           playerId: claimed.playerId,
           status,
           durationMs: Math.round(performance.now() - startedAt),
+          ...extra,
         },
         'List queue fetch',
       );
@@ -158,16 +171,13 @@ export class ListQueueWorker {
       if (error instanceof BcpAuthError) {
         await releaseList(db, claimed.id);
         this.pause('login-rejected');
-        logger.warn('List queue paused: BCP rejected the login');
-        return 'paused';
+        return log('paused', 'warn', { reason: 'login-rejected' });
       }
       if (error instanceof BcpRateLimitedError) {
         await releaseList(db, claimed.id);
-        this.pause(
-          'rate-limited',
-          new Date(this.#now().getTime() + error.retryAfterSeconds * 1000),
-        );
-        return 'paused';
+        const until = new Date(this.#now().getTime() + error.retryAfterSeconds * 1000);
+        this.pause('rate-limited', until);
+        return log('paused', 'warn', { reason: 'rate-limited', until: until.toISOString() });
       }
       if (claimed.attempts < MAX_ATTEMPTS) {
         const wait =

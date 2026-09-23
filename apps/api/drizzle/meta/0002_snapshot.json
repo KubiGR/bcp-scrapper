@@ -1,5 +1,5 @@
 {
-  "id": "30c6ed99-3bd9-4ac0-b70a-83fe7c68d484",
+  "id": "f477d247-1ff1-4c27-9d14-955fd2514a45",
   "prevId": "310014eb-4143-4198-b7f7-8601a8965604",
   "version": "7",
   "dialect": "postgresql",
@@ -576,9 +576,9 @@
               "nulls": "last"
             },
             {
-              "expression": "priority",
-              "isExpression": false,
+              "expression": "\"priority\" desc",
               "asc": true,
+              "isExpression": true,
               "nulls": "last"
             },
             {

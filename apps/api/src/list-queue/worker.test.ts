@@ -4,6 +4,7 @@ import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
 import { BcpAuthError, BcpRateLimitedError, BcpUnavailableError } from '../errors';
 import { upsertEventDetail } from '../repo/events';
+import * as listQueueRepo from '../repo/list-queue';
 import { claimNextList, enqueueLists, queueTotals, SINGLE_LIST_PRIORITY } from '../repo/list-queue';
 import { findPlayerList } from '../repo/lists';
 import { upsertPlayers } from '../repo/participants';
@@ -148,5 +149,29 @@ describe('ListQueueWorker', () => {
     expect(await w.estimateSecondsFor()).toBe(10);
     expect(await w.estimateSecondsFor(EVENT)).toBe(10);
     expect(await w.estimateSecondsFor('OTHER')).toBeNull();
+  });
+
+  it('recovers from a tick that throws inside the interval, instead of an unhandled rejection', async () => {
+    await enqueueLists(db, EVENT, [ada], 0);
+    const claimSpy = vi
+      .spyOn(listQueueRepo, 'claimNextList')
+      .mockRejectedValueOnce(new Error('boom'));
+    const w = new ListQueueWorker({ db, source, logger: silentLogger, intervalMs: 20 });
+    try {
+      await w.start();
+      // The interval fires, the claim rejects, and start()'s setInterval callback must not let
+      // that rejection go unhandled (it would otherwise crash the process on Node >= 15).
+      await vi.waitFor(() => {
+        expect(claimSpy).toHaveBeenCalled();
+      });
+      // #ticking was reset despite the failure, so the next tick (using the real claimNextList)
+      // goes on to fetch the row normally.
+      await vi.waitFor(async () => {
+        expect(await findPlayerList(db, 'PL-ADA')).not.toBeNull();
+      });
+    } finally {
+      w.stop();
+      claimSpy.mockRestore();
+    }
   });
 });
