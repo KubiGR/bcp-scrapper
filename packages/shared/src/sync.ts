@@ -32,5 +32,7 @@ export const SyncRunSchema = z.object({
   error: z.string().nullable(),
   startedAt: z.iso.datetime(),
   finishedAt: z.iso.datetime().nullable(),
+  /** The requested date range of a catalogue run; null for event-scoped runs. */
+  range: z.object({ from: z.iso.date(), to: z.iso.date() }).nullable(),
 });
 export type SyncRun = z.infer<typeof SyncRunSchema>;

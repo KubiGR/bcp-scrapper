@@ -1,5 +1,6 @@
 import type { SyncKind, SyncRequest, SyncRun } from '@bcp/shared';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import type { Db } from '../db/client';
 import { syncRuns } from '../db/schema';
 
@@ -8,6 +9,15 @@ const ACTIVE = ['queued', 'running'] as const;
 
 export function eventIdOf(request: SyncRequest): string | null {
   return request.kind === 'catalog' ? null : request.eventId;
+}
+
+const CatalogParamsSchema = z.object({ from: z.iso.date(), to: z.iso.date() });
+
+/** A catalogue run's requested range, read back from its stored params. */
+function rangeOf(row: SyncRunRow): { from: string; to: string } | null {
+  if (row.kind !== 'catalog') return null;
+  const parsed = CatalogParamsSchema.safeParse(row.params);
+  return parsed.success ? parsed.data : null;
 }
 
 function toSyncRun(row: SyncRunRow): SyncRun {
@@ -22,6 +32,7 @@ function toSyncRun(row: SyncRunRow): SyncRun {
     error: row.error,
     startedAt: row.startedAt.toISOString(),
     finishedAt: row.finishedAt?.toISOString() ?? null,
+    range: rangeOf(row),
   };
 }
 

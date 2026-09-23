@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EventListQuerySchema, SyncRequestSchema } from './index';
+import { EventDetailSchema, EventListQuerySchema, SyncRequestSchema, SyncRunSchema } from './index';
 
 describe('SyncRequestSchema', () => {
   it('accepts a catalogue sync with a valid date range', () => {
@@ -51,5 +51,55 @@ describe('EventListQuerySchema', () => {
 
   it('rejects page sizes above 100', () => {
     expect(EventListQuerySchema.safeParse({ pageSize: '500' }).success).toBe(false);
+  });
+});
+
+const aRun = {
+  id: 1,
+  kind: 'catalog',
+  eventId: null,
+  status: 'succeeded',
+  total: null,
+  done: 3,
+  failed: 0,
+  error: null,
+  startedAt: '2026-09-23T10:00:00.000Z',
+  finishedAt: '2026-09-23T10:01:00.000Z',
+  range: { from: '2026-08-24', to: '2026-09-30' },
+};
+
+describe('SyncRunSchema', () => {
+  it('carries the date range of catalogue runs', () => {
+    expect(SyncRunSchema.parse(aRun).range).toEqual({ from: '2026-08-24', to: '2026-09-30' });
+    expect(SyncRunSchema.safeParse({ ...aRun, range: undefined }).success).toBe(false);
+  });
+});
+
+describe('EventDetailSchema', () => {
+  it('parses detail with counts, freshness and the latest run per kind', () => {
+    const detail = {
+      bcpId: 'E1',
+      name: 'Open',
+      startDate: '2026-03-28T09:00:00.000Z',
+      endDate: null,
+      country: null,
+      city: null,
+      playerCount: 8,
+      teamCount: 4,
+      isTeamEvent: true,
+      isOnline: false,
+      roundCount: 2,
+      ended: true,
+      hideLists: false,
+      lastSyncedAt: null,
+      stale: true,
+      counts: { players: 0, teams: 0, listsAvailable: 0, listsFetched: 0 },
+      syncs: {
+        event: { ...aRun, kind: 'event', eventId: 'E1', range: null },
+        pairings: null,
+        lists: null,
+      },
+    };
+    expect(EventDetailSchema.parse(detail).syncs.event?.kind).toBe('event');
   });
 });

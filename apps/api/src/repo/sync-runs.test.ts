@@ -72,4 +72,15 @@ describe('sync runs', () => {
       error: 'Interrupted by a server restart',
     });
   });
+
+  it('exposes the date range of catalogue runs only', async () => {
+    const catalog = await createSyncRun(db, {
+      kind: 'catalog',
+      from: '2026-01-01',
+      to: '2026-01-31',
+    });
+    const event = await createSyncRun(db, { kind: 'event', eventId: 'E1' });
+    expect(catalog?.range).toEqual({ from: '2026-01-01', to: '2026-01-31' });
+    expect(event?.range).toBeNull();
+  });
 });
