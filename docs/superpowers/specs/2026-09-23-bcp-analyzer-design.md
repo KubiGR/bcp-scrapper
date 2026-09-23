@@ -220,12 +220,15 @@ Routes use TanStack Router. All filters and tab choices are stored in the URL, s
 
 **UI conventions**
 
-- **Dark sci-fi HUD theme, dark only** (no light mode, no toggle):
-  - A near-black navy background with a faint neon grid.
-  - Content sits in `Panel` surfaces: translucent, with a cyan edge and a cut corner.
-  - Neon cyan is the primary accent and plasma magenta the secondary.
-  - Fonts: Orbitron for headings, Exo 2 for body text, JetBrains Mono with tabular numbers for figures.
-  - Motion is minimal and respects `prefers-reduced-motion`.
+- **Minimal sci-fi theme, dark only** (no light mode, no toggle). Sci-fi colours, but restrained; no kitsch.
+  - A flat near-black navy page. No grid, no glow.
+  - Content sits in flat `Panel` surfaces with a hairline border and a small muted monospace caption.
+  - Neon cyan is the only accent in the interface chrome, used for active/focus states, primary actions and status. Plasma magenta is reserved for data, e.g. side B in matchups.
+  - Fonts:
+    - Orbitron only for the "BCP Analyzer" wordmark.
+    - Exo 2 for headings (semibold, normal case) and body text.
+    - JetBrains Mono with tabular numbers for figures and captions.
+  - No text glow and no decorative animation.
   - Text keeps WCAG AA contrast.
 - Mantine `AppShell`, with the Mantine theme defined in one file (`apps/web/src/theme.ts`).
 - The heatmap is a custom component built on Mantine's `Table`. It uses a diverging scale (red → grey → green) and prints the numbers in each cell, so it doesn't rely on colour alone.

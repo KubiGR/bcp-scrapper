@@ -1,4 +1,4 @@
-import { createTheme, Title, type MantineColorsTuple } from '@mantine/core';
+import { createTheme, type MantineColorsTuple } from '@mantine/core';
 
 /**
  * Near-black navy. Mantine's dark scheme uses dark[7] for the page, dark[6] for surfaces,
@@ -53,12 +53,17 @@ export const theme = createTheme({
   black: '#060a16',
   fontFamily: '"Exo 2 Variable", system-ui, sans-serif',
   fontFamilyMonospace: '"JetBrains Mono Variable", ui-monospace, monospace',
-  headings: { fontFamily: '"Orbitron Variable", "Exo 2 Variable", sans-serif', fontWeight: '700' },
+  headings: {
+    fontFamily: '"Exo 2 Variable", sans-serif',
+    fontWeight: '600',
+    // Fluid sizing: shrinks on narrow phones so titles fit their container, and locks back
+    // to the original fixed size from ~600px viewport width up, so desktop and tablet are
+    // pixel-identical to before.
+    sizes: {
+      h1: { fontSize: 'clamp(1.25rem, 4vw + 0.625rem, 2.125rem)', lineHeight: '1.3' },
+      h2: { fontSize: 'clamp(1rem, 4vw + 0.125rem, 1.625rem)', lineHeight: '1.35' },
+    },
+  },
   defaultRadius: 0,
   cursorType: 'pointer',
-  components: {
-    Title: Title.extend({
-      styles: { root: { textTransform: 'uppercase', letterSpacing: '0.08em' } },
-    }),
-  },
 });

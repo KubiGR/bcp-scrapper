@@ -12,7 +12,6 @@ const PANEL_TITLE = 'BCP uplink';
 interface StatusView {
   label: string;
   color: string;
-  live: boolean;
   description: string;
 }
 
@@ -21,7 +20,6 @@ function describeStatus(status: BcpStatus): StatusView {
     return {
       label: 'Offline · fixtures',
       color: 'gray',
-      live: false,
       description:
         'Serving saved sample data. Set TOURNAMENT_SOURCE=bcp in .env to connect to Best Coast Pairings.',
     };
@@ -30,7 +28,6 @@ function describeStatus(status: BcpStatus): StatusView {
     return {
       label: 'Connected',
       color: 'neon',
-      live: true,
       description: status.accessTokenExpiresAt
         ? `Token valid until ${formatDateTime(status.accessTokenExpiresAt)}. It refreshes automatically.`
         : 'Token active. It refreshes automatically.',
@@ -39,7 +36,6 @@ function describeStatus(status: BcpStatus): StatusView {
   return {
     label: 'Not connected',
     color: 'red',
-    live: false,
     description:
       'No valid BCP login. Add BCP_REFRESH_TOKEN to .env (see the README) and restart the API.',
   };
@@ -77,11 +73,7 @@ export function BcpStatusCard() {
     <Panel title={PANEL_TITLE}>
       <Stack gap="xs">
         <Group gap="sm">
-          <span
-            className={view.live ? `${classes.light} ${classes.pulse}` : classes.light}
-            style={lightStyle}
-            aria-hidden
-          />
+          <span className={classes.light} style={lightStyle} aria-hidden />
           <Badge color={view.color} variant="outline" size="lg" radius={0}>
             {view.label}
           </Badge>

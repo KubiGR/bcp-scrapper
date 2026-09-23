@@ -12,11 +12,12 @@ export function AppLayout() {
     <AppShell header={{ height: 60 }} padding="lg">
       <AppShell.Header className={classes.header}>
         <Container size="xl" h="100%">
-          <Group h="100%" justify="space-between">
+          <Group h="100%" justify="space-between" wrap="nowrap">
             <Link to="/" className={classes.brand}>
-              BCP<span className={classes.brandAccent}>//</span>Analyzer
+              <span className={classes.brandMark} aria-hidden />
+              BCP Analyzer
             </Link>
-            <Group component="nav" gap="xl">
+            <Group component="nav" gap="xl" wrap="nowrap" className={classes.nav}>
               {NAV_ITEMS.map((item) => (
                 <Link key={item.to} to={item.to} className={classes.navLink}>
                   {item.label}
