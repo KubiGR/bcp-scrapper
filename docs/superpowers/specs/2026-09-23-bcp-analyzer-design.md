@@ -150,9 +150,11 @@ interface TournamentSource {
 | `pairings` | Team matchups and games for every round                                     | 2 × rounds (+ paging)                                           |
 | `lists`    | One request per player with a `listId` and no stored list                   | about 1 per player                                              |
 
-- `POST /api/sync` with `{ kind, eventId?, from?, to? }` creates a `sync_runs` row and returns `{ syncRunId }` immediately. The work continues in an in-process runner.
+- `POST /api/sync` with `{ kind, eventId?, from?, to? }` creates a `sync_runs` row and returns the `SyncRun` (202) immediately; clients poll it by `id`. The body must be `application/json`. The work continues in an in-process runner.
 - Each item is saved as soon as it's fetched. A retry only fetches what's still missing.
-- Only one sync of a given kind can run for the same target at a time. A second request returns the id of the run already in progress.
+- Only one sync of a given kind can run for the same target at a time. A second request returns the run already in progress.
+  - For `catalog` the target is global, so only one catalogue run can be active at a time, whatever its date range. The finder's gap fetch (plan 2) must wait for or chain onto an active catalogue run, not assume its own range was accepted.
+- Re-syncs replace data: a non-empty BCP list for an event's players or teams, or for a round's pairings, deletes the stored rows that BCP no longer returns. An empty list leaves the stored rows untouched.
 - The web app polls `GET /api/sync-runs/:id` every 2 seconds while a sync is running.
 - **Freshness:**
   - Ended events are cached until the user presses "Refresh".
@@ -221,7 +223,7 @@ Routes use TanStack Router. All filters and tab choices are stored in the URL, s
     - **Team detail** (`/events/$eventId/teams/$teamId`): each player's per-round results.
     - **Faction matchups:** heatmap with a min-games control. Clicking a cell lists the games behind it.
 - **`/analysis/matchups`:** choose several synced team events and see the combined heatmap.
-- **`/settings`:** BCP connection status (token valid or expired) and when the token was last refreshed. Shows no secrets.
+- **`/settings`:** BCP connection state (`fixtures` · `connected` · `rejected` (login expired: copy a fresh refresh token) · `missing`), token expiry and when it was last refreshed. Shows no secrets. The API and Postgres bind to localhost only.
 
 **UI conventions**
 
