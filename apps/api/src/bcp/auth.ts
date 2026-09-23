@@ -14,7 +14,7 @@ export interface BcpSession {
   refreshToken: string | null;
   accessTokenExpiresAt: Date | null;
   lastRefreshAt: Date | null;
-  /** sha256 of the BCP_REFRESH_TOKEN this session was seeded from, so a new .env token takes over. */
+  /** sha256 of the .env tokens this session was seeded from, so a changed .env token takes over. */
   seedTokenHash: string | null;
 }
 
@@ -64,6 +64,12 @@ export function decodeJwtExpiry(token: string): Date | null {
 }
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
+
+/** Fingerprint of both .env tokens, or null when neither is set. */
+function seedHashOf(refreshToken: string | undefined, accessToken: string | undefined) {
+  if (!refreshToken && !accessToken) return null;
+  return sha256(`${refreshToken ?? ''}\n${accessToken ?? ''}`);
+}
 
 export function createMemorySessionStore(initial: BcpSession | null = null): BcpSessionStore {
   let session = initial;
@@ -135,10 +141,10 @@ export class BcpAuth implements AccessTokenProvider {
     if (this.#session) return this.#session;
 
     const { envRefreshToken, envAccessToken, store } = this.#options;
-    const seedHash = envRefreshToken ? sha256(envRefreshToken) : null;
+    const seedHash = seedHashOf(envRefreshToken, envAccessToken);
     const stored = await store.load();
-    // A stored session wins (it may hold a rotated refresh token), unless the user has
-    // since put a different refresh token into .env, e.g. after logging in again.
+    // A stored session wins (it may hold a rotated refresh token), unless the user has since
+    // changed a token in .env, e.g. after logging in again or pasting a fallback access token.
     if (stored && (seedHash === null || stored.seedTokenHash === seedHash)) {
       this.#session = stored;
       return stored;

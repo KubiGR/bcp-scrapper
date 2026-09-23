@@ -174,6 +174,29 @@ describe('BcpAuth', () => {
       refresh_token: 'brand-new',
     });
   });
+
+  it('re-seeds from .env when only BCP_ACCESS_TOKEN changed, so the fallback works', async () => {
+    const store = createMemorySessionStore();
+    const refused = vi.fn<typeof fetch>().mockResolvedValue(new Response('no', { status: 401 }));
+    const before = makeAuth({
+      store,
+      envRefreshToken: 'dead',
+      envAccessToken: fakeJwt(NOW - 1000),
+      fetch: refused,
+    });
+    await expect(before.getAccessToken()).rejects.toBeInstanceOf(BcpAuthError);
+
+    const fetchMock = vi.fn<typeof fetch>();
+    const fresh = fakeJwt(NOW + 3_600_000);
+    const after = makeAuth({
+      store,
+      envRefreshToken: 'dead',
+      envAccessToken: fresh,
+      fetch: fetchMock,
+    });
+    expect(await after.getAccessToken()).toBe(fresh);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 describe('BcpAuth.status', () => {
