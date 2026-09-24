@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import type { EventSizeRule } from '@bcp/shared';
 import { pino } from 'pino';
 import { vi } from 'vitest';
 import { FixtureTransport } from '../bcp/fixture-transport';
@@ -7,6 +8,9 @@ import type { Db } from '../db/client';
 import { FetchQueueWorker } from '../fetch-queue/worker';
 
 export const silentLogger = pino({ level: 'silent' });
+
+/** The sample fixtures are tiny (8 players, 2 rounds): keep everything rather than filtering by size. */
+export const ALL_EVENTS: EventSizeRule = { minRounds: 0, minPlayers: 0 };
 
 export const SAMPLE_FIXTURES_DIR = fileURLToPath(
   new URL('../../../../fixtures/bcp/sample', import.meta.url),

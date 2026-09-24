@@ -1,9 +1,9 @@
 import { addDays, toIsoDate, type DateRange } from '@bcp/shared';
 import { z } from 'zod';
 
+// Every stored event has 20+ players (the finder only shows big events), so "All" means 20+.
 export const SIZE_PRESETS = [
-  { value: 'all', label: 'All', minPlayers: 0 },
-  { value: '16', label: '16+', minPlayers: 16 },
+  { value: 'all', label: 'All (20+)', minPlayers: 0 },
   { value: '40', label: '40+', minPlayers: 40 },
   { value: '100', label: '100+', minPlayers: 100 },
   { value: '200', label: '200+', minPlayers: 200 },
@@ -19,7 +19,7 @@ const optionalText = z.string().trim().min(1).optional().catch(undefined);
 
 /** The finder's URL search params. Anything malformed falls back to its default, so a bad link still opens. */
 export const FinderSearchSchema = z.object({
-  size: z.enum(['all', '16', '40', '100', '200', 'custom']).catch('40'),
+  size: z.enum(['all', '40', '100', '200', 'custom']).catch('40'),
   min: optionalCount,
   max: optionalCount,
   from: optionalDay,

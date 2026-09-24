@@ -7,7 +7,7 @@ import { createTestDb, resetDb } from '../db/test-db';
 import { syncEvent } from '../sync/jobs';
 import { syncRoundPairings } from '../sync/round-pairings';
 import { SyncRunner } from '../sync/runner';
-import { sampleSource, silentLogger, testFetchQueue } from '../test/helpers';
+import { ALL_EVENTS, sampleSource, silentLogger, testFetchQueue } from '../test/helpers';
 
 const EVENT = 'EVTBRACKET01';
 let db: Db;
@@ -30,7 +30,7 @@ beforeEach(async () => {
   const source = sampleSource();
   app = createApp({
     db,
-    runner: new SyncRunner({ db, source, logger: silentLogger }),
+    runner: new SyncRunner({ db, source, logger: silentLogger, eventRule: ALL_EVENTS }),
     fetchQueue: testFetchQueue(db, source),
     bcpStatus: () =>
       Promise.resolve({
@@ -40,6 +40,7 @@ beforeEach(async () => {
         lastRefreshAt: null,
       }),
     logger: silentLogger,
+    eventRule: ALL_EVENTS,
   });
 });
 

@@ -71,3 +71,19 @@ export function findGaps(window: DateRange, covered: DateRange[]): DateRange[] {
 export function estimateCatalogRequests(range: DateRange): number {
   return Math.max(1, Math.ceil((daysIn(range) * EVENTS_PER_DAY_ESTIMATE) / EVENTS_PER_PAGE));
 }
+
+export interface EventSizeRule {
+  minRounds: number;
+  minPlayers: number;
+}
+
+/** RTTs (3 rounds or fewer) and events under 20 players are not stored or shown. */
+export const BIG_EVENTS: EventSizeRule = { minRounds: 4, minPlayers: 20 };
+
+/** Big enough to keep: at least `minRounds` rounds and `minPlayers` players. An unknown round count (0) is small. */
+export function isBigEvent(
+  event: { roundCount: number; playerCount: number },
+  rule: EventSizeRule,
+): boolean {
+  return event.roundCount >= rule.minRounds && event.playerCount >= rule.minPlayers;
+}

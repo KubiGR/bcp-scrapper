@@ -19,6 +19,10 @@ const EnvSchema = z.object({
   BCP_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(4),
   /** One fetch-queue job (a list, an event or a pairings round) every N ms. Keep it gentle. */
   FETCH_QUEUE_INTERVAL_MS: z.coerce.number().int().min(100).default(5000),
+  /** Events smaller than this are not stored or shown (RTTs and small events). */
+  MIN_EVENT_ROUNDS: z.coerce.number().int().min(0).default(4),
+  /** Events smaller than this are not stored or shown (RTTs and small events). */
+  MIN_EVENT_PLAYERS: z.coerce.number().int().min(0).default(20),
 });
 
 export type Config = z.infer<typeof EnvSchema>;

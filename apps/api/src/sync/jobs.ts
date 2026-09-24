@@ -1,4 +1,4 @@
-import type { SyncRequest } from '@bcp/shared';
+import { isBigEvent, type EventSizeRule, type SyncRequest } from '@bcp/shared';
 import { PageCursors, type TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import type { Logger } from '../logger';
@@ -22,6 +22,8 @@ export interface JobContext {
   source: TournamentSource;
   progress: Progress;
   logger: Logger;
+  /** BCP's search can't filter by size, so pages are read in full; only big events are stored. */
+  eventRule: EventSizeRule;
 }
 
 type RequestOf<K extends SyncRequest['kind']> = Extract<SyncRequest, { kind: K }>;
@@ -35,14 +37,15 @@ export function runJob(ctx: JobContext, request: SyncRequest): Promise<void> {
   }
 }
 
-/** Every 40k event in the range, page by page. Progress counts events stored. */
+/** Every 40k event in the range, page by page. Only big events are stored; progress counts those. */
 async function syncCatalog(ctx: JobContext, { from, to }: RequestOf<'catalog'>): Promise<void> {
   const seen = new PageCursors('/v1/events');
   let cursor: string | null = null;
   do {
     const page = await ctx.source.listEvents({ from, to }, cursor);
-    await upsertEventSummaries(ctx.db, page.items);
-    await ctx.progress.succeeded(page.items.length);
+    const big = page.items.filter((event) => isBigEvent(event, ctx.eventRule));
+    await upsertEventSummaries(ctx.db, big);
+    await ctx.progress.succeeded(big.length);
     cursor = seen.next(page.nextCursor);
   } while (cursor !== null);
 }

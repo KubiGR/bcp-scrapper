@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  BIG_EVENTS,
   daysIn,
   estimateCatalogRequests,
   findGaps,
+  isBigEvent,
   latestWindow,
   mergeRanges,
   toIsoDate,
+  type EventSizeRule,
 } from './catalog';
 
 describe('dates', () => {
@@ -79,5 +82,28 @@ describe('estimateCatalogRequests', () => {
   it('estimates about one request per two days, at least one', () => {
     expect(estimateCatalogRequests({ from: '2026-09-01', to: '2026-09-01' })).toBe(1);
     expect(estimateCatalogRequests({ from: '2026-01-01', to: '2026-12-31' })).toBe(183);
+  });
+});
+
+describe('isBigEvent', () => {
+  it('keeps events with at least the required rounds and players', () => {
+    expect(isBigEvent({ roundCount: 4, playerCount: 20 }, BIG_EVENTS)).toBe(true);
+  });
+
+  it('drops an event with too few rounds despite many players', () => {
+    expect(isBigEvent({ roundCount: 3, playerCount: 200 }, BIG_EVENTS)).toBe(false);
+  });
+
+  it('drops an event with too few players despite enough rounds', () => {
+    expect(isBigEvent({ roundCount: 5, playerCount: 19 }, BIG_EVENTS)).toBe(false);
+  });
+
+  it('treats an unknown round count (0) as small', () => {
+    expect(isBigEvent({ roundCount: 0, playerCount: 200 }, BIG_EVENTS)).toBe(false);
+  });
+
+  it('a rule of {0, 0} keeps everything', () => {
+    const rule: EventSizeRule = { minRounds: 0, minPlayers: 0 };
+    expect(isBigEvent({ roundCount: 0, playerCount: 0 }, rule)).toBe(true);
   });
 });

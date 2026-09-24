@@ -1,4 +1,4 @@
-import type { SyncRequest, SyncRun } from '@bcp/shared';
+import type { EventSizeRule, SyncRequest, SyncRun } from '@bcp/shared';
 import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import { AppError } from '../errors';
@@ -19,6 +19,7 @@ export interface SyncRunnerDeps {
   db: Db;
   source: TournamentSource;
   logger: Logger;
+  eventRule: EventSizeRule;
 }
 
 const describeError = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -60,7 +61,7 @@ export class SyncRunner {
   }
 
   async #execute(runId: number, request: SyncRequest): Promise<void> {
-    const { db, source } = this.#deps;
+    const { db, source, eventRule } = this.#deps;
     const logger = this.#deps.logger.child({ syncRunId: runId, kind: request.kind });
     const progress: Progress = {
       setTotal: (total) => setSyncRunTotal(db, runId, total),
@@ -70,7 +71,7 @@ export class SyncRunner {
 
     try {
       await markSyncRunRunning(db, runId);
-      await runJob({ db, source, progress, logger }, request);
+      await runJob({ db, source, progress, logger, eventRule }, request);
       await finishSyncRun(db, runId, { status: 'succeeded' });
       logger.info('Sync finished');
     } catch (error) {

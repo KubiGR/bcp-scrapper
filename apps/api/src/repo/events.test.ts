@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { EventListQuerySchema } from '@bcp/shared';
+import { BIG_EVENTS, EventListQuerySchema } from '@bcp/shared';
 import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
-import { sampleSource } from '../test/helpers';
+import { ALL_EVENTS, sampleSource } from '../test/helpers';
 import {
+  deleteSmallEvents,
   findEvent,
   markEventSynced,
   searchEvents,
@@ -49,14 +50,14 @@ describe('event upserts', () => {
 
 describe('searchEvents', () => {
   it('lists newest first with a total', async () => {
-    const result = await searchEvents(db, query({}));
+    const result = await searchEvents(db, query({}), ALL_EVENTS);
     expect(result.total).toBe(3);
     expect(result.items.map((e) => e.bcpId)).toEqual(['EVTSMALL001', 'EVTSINGLE01', 'EVTTEAM0001']);
   });
 
   it('filters by minimum players, type, name, country and date', async () => {
     const ids = async (input: Record<string, string>) =>
-      (await searchEvents(db, query(input))).items.map((e) => e.bcpId);
+      (await searchEvents(db, query(input), ALL_EVENTS)).items.map((e) => e.bcpId);
 
     expect(await ids({ minPlayers: '40' })).toEqual(['EVTSINGLE01']);
     expect(await ids({ minPlayers: '1', maxPlayers: '10' })).toEqual(['EVTTEAM0001']);
@@ -68,7 +69,7 @@ describe('searchEvents', () => {
   });
 
   it('sorts biggest first when asked', async () => {
-    const result = await searchEvents(db, query({ sort: 'players' }));
+    const result = await searchEvents(db, query({ sort: 'players' }), ALL_EVENTS);
     expect(result.items.map((e) => [e.bcpId, e.playerCount])).toEqual([
       ['EVTSINGLE01', 64],
       ['EVTTEAM0001', 8],
@@ -77,12 +78,33 @@ describe('searchEvents', () => {
   });
 
   it('treats % and _ in the search text literally', async () => {
-    expect((await searchEvents(db, query({ q: '%' }))).total).toBe(0);
+    expect((await searchEvents(db, query({ q: '%' }), ALL_EVENTS)).total).toBe(0);
   });
 
   it('paginates', async () => {
-    const page2 = await searchEvents(db, query({ page: '2', pageSize: '2' }));
+    const page2 = await searchEvents(db, query({ page: '2', pageSize: '2' }), ALL_EVENTS);
     expect(page2.items.map((e) => e.bcpId)).toEqual(['EVTTEAM0001']);
     expect(page2.total).toBe(3);
+  });
+
+  it('only shows big events for a rule that excludes small ones', async () => {
+    // EVTSINGLE01 (64 players, 5 rounds) is the only fixture event meeting BIG_EVENTS.
+    const result = await searchEvents(db, query({}), BIG_EVENTS);
+    expect(result.items.map((e) => e.bcpId)).toEqual(['EVTSINGLE01']);
+    expect(result.total).toBe(1);
+  });
+});
+
+describe('deleteSmallEvents', () => {
+  it('deletes every stored event that is not big, keeping the rest', async () => {
+    // EVTSINGLE01 (64/5) is big; EVTSMALL001 (0/3) and EVTTEAM0001 (8/2) are small.
+    const deleted = await deleteSmallEvents(db, BIG_EVENTS);
+    expect(deleted).toBe(2);
+    const remaining = (await searchEvents(db, query({}), ALL_EVENTS)).items.map((e) => e.bcpId);
+    expect(remaining).toEqual(['EVTSINGLE01']);
+  });
+
+  it('deletes nothing for a rule that keeps everything', async () => {
+    expect(await deleteSmallEvents(db, ALL_EVENTS)).toBe(0);
   });
 });

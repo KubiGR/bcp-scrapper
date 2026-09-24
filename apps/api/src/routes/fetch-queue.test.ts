@@ -17,7 +17,13 @@ import { claimNextJob, markJobFailed } from '../repo/fetch-queue';
 import { createTestDb, resetDb } from '../db/test-db';
 import type { FetchQueueWorker } from '../fetch-queue/worker';
 import { SyncRunner } from '../sync/runner';
-import { drainQueue, sampleSource, silentLogger, testFetchQueue } from '../test/helpers';
+import {
+  ALL_EVENTS,
+  drainQueue,
+  sampleSource,
+  silentLogger,
+  testFetchQueue,
+} from '../test/helpers';
 
 const EVENT = 'EVTTEAM0001';
 let db: Db;
@@ -30,10 +36,11 @@ function build(source: TournamentSource = sampleSource()) {
   fetchQueue = testFetchQueue(db, source);
   app = createApp({
     db,
-    runner: new SyncRunner({ db, source, logger: silentLogger }),
+    runner: new SyncRunner({ db, source, logger: silentLogger, eventRule: ALL_EVENTS }),
     fetchQueue,
     bcpStatus: () => Promise.resolve(status),
     logger: silentLogger,
+    eventRule: ALL_EVENTS,
   });
 }
 

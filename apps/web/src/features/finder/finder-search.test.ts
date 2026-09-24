@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   FinderSearchSchema,
   finderWindow,
+  SIZE_PRESETS,
   sizeBounds,
   toEventsQueryString,
   type FinderSearch,
@@ -27,6 +28,25 @@ describe('FinderSearchSchema', () => {
         page: -3,
       }),
     ).toEqual({ size: '40', type: 'all', sort: 'date', page: 1 });
+  });
+
+  it('falls back to the default for the removed 16+ preset, e.g. from an old link', () => {
+    expect(FinderSearchSchema.parse({ size: '16' })).toEqual({
+      size: '40',
+      type: 'all',
+      sort: 'date',
+      page: 1,
+    });
+  });
+});
+
+describe('SIZE_PRESETS', () => {
+  it('has no 16+ preset: every stored event has 20+ players', () => {
+    expect(SIZE_PRESETS.map((preset) => preset.value)).toEqual(['all', '40', '100', '200']);
+  });
+
+  it('labels "all" as "All (20+)", the smallest an event can be', () => {
+    expect(SIZE_PRESETS.find((preset) => preset.value === 'all')?.label).toBe('All (20+)');
   });
 });
 

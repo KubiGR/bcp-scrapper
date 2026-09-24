@@ -1,4 +1,4 @@
-import { EventListQuerySchema, ListExportFormatSchema } from '@bcp/shared';
+import { EventListQuerySchema, ListExportFormatSchema, type EventSizeRule } from '@bcp/shared';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { Db } from '../db/client';
@@ -14,11 +14,16 @@ import { requireEvent } from './require-event';
 
 const ExportQuerySchema = z.object({ format: ListExportFormatSchema.default('txt') });
 
-export function eventRoutes(deps: { db: Db; now: () => Date; fetchQueue: FetchQueueWorker }) {
+export function eventRoutes(deps: {
+  db: Db;
+  now: () => Date;
+  fetchQueue: FetchQueueWorker;
+  eventRule: EventSizeRule;
+}) {
   return new Hono()
     .get('/events', async (c) => {
       const query = parseInput(EventListQuerySchema, c.req.query());
-      return c.json(await searchEvents(deps.db, query));
+      return c.json(await searchEvents(deps.db, query, deps.eventRule));
     })
     .get('/events/:id', async (c) => {
       const id = c.req.param('id');

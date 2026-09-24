@@ -29,6 +29,9 @@ at `localhost:5434`.
 The API and the database bind to localhost (127.0.0.1) only, so neither is reachable from your network.
 
 Out of the box the API serves the sample data in `fixtures/bcp/sample` (`TOURNAMENT_SOURCE=fixtures`).
+The sample fixtures are tiny (8 players, 2 rounds), so with `TOURNAMENT_SOURCE=fixtures` set both
+`MIN_EVENT_ROUNDS=0` and `MIN_EVENT_PLAYERS=0` in `.env`, or the finder's size rule (4+ rounds,
+20+ players by default) hides them.
 
 ## Connecting to BCP
 
@@ -47,8 +50,9 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
 
 ## Using it
 
-- **Tournaments** (the start page) shows the biggest events of the last 30 days. Pick a size
-  (All · 16+ · 40+ · 100+ · 200+, or Custom min/max). **Advanced search** adds a date range, name,
+- **Tournaments** (the start page) shows the biggest events of the last 30 days. Only big events
+  (4+ rounds, 20+ players) are kept — RTTs and other small events aren't stored. Pick a size
+  (All (20+) · 40+ · 100+ · 200+, or Custom min/max). **Advanced search** adds a date range, name,
   country, singles/teams and newest/biggest sorting. When a date range hasn't been fetched from BCP
   yet, the page says so and offers **Fetch** (with the approximate number of requests).
 - **An event page** loads its players from BCP the first time you open it. **Fetch lists** queues
@@ -84,6 +88,11 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
 `FETCH_QUEUE_INTERVAL_MS` sets the background fetch queue's pace in ms (default 5000, minimum
 100): one request — an army list, an event sync or a pairings round — every interval. Keep it
 gentle. The older `LIST_QUEUE_INTERVAL_MS` name still works.
+
+`MIN_EVENT_ROUNDS` (default 4) and `MIN_EVENT_PLAYERS` (default 20) are the finder's size rule:
+events smaller than this are not stored or shown (RTTs and small events). Existing small events
+are deleted at API startup. Set both to `0` with `TOURNAMENT_SOURCE=fixtures` so the tiny sample
+fixtures show up in dev and e2e.
 
 ## Layout
 

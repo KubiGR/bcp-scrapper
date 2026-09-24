@@ -4,7 +4,7 @@ import type { Db } from './db/client';
 import { createTestDb } from './db/test-db';
 import { BcpRateLimitedError, NotFoundError } from './errors';
 import { SyncRunner } from './sync/runner';
-import { sampleSource, silentLogger, testFetchQueue } from './test/helpers';
+import { ALL_EVENTS, sampleSource, silentLogger, testFetchQueue } from './test/helpers';
 
 let db: Db;
 let close: () => Promise<void>;
@@ -17,7 +17,12 @@ function makeApp(listenHost?: string) {
   return createApp({
     listenHost,
     db,
-    runner: new SyncRunner({ db, source: sampleSource(), logger: silentLogger }),
+    runner: new SyncRunner({
+      db,
+      source: sampleSource(),
+      logger: silentLogger,
+      eventRule: ALL_EVENTS,
+    }),
     fetchQueue: testFetchQueue(db),
     bcpStatus: () =>
       Promise.resolve({
@@ -27,6 +32,7 @@ function makeApp(listenHost?: string) {
         lastRefreshAt: null,
       }),
     logger: silentLogger,
+    eventRule: ALL_EVENTS,
   });
 }
 

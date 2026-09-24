@@ -1,5 +1,11 @@
-import type { EventListItem, EventListQuery, EventListResponse, EventSummary } from '@bcp/shared';
-import { and, desc, eq, gte, ilike, lt, lte, type SQL } from 'drizzle-orm';
+import type {
+  EventListItem,
+  EventListQuery,
+  EventListResponse,
+  EventSizeRule,
+  EventSummary,
+} from '@bcp/shared';
+import { and, desc, eq, gte, ilike, lt, lte, or, type SQL } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { events } from '../db/schema';
@@ -63,6 +69,20 @@ export async function findEvent(db: Db, id: string): Promise<EventRow | undefine
   return row;
 }
 
+/**
+ * Deletes every stored event that isn't big under `rule` (foreign keys cascade to its teams,
+ * players, army lists, team matchups, games and fetch-queue jobs; `sync_runs` has no event FK
+ * and keeps its history). An event opened directly by URL is stored for that session but removed
+ * again here at the next startup if it's small.
+ */
+export async function deleteSmallEvents(db: Db, rule: EventSizeRule): Promise<number> {
+  const rows = await db
+    .delete(events)
+    .where(or(lt(events.roundCount, rule.minRounds), lt(events.playerCount, rule.minPlayers)))
+    .returning({ id: events.id });
+  return rows.length;
+}
+
 export function toEventListItem(row: EventRow): EventListItem {
   return {
     bcpId: row.id,
@@ -92,8 +112,15 @@ function startOfNextDay(date: string): Date {
   return next;
 }
 
-export async function searchEvents(db: Db, query: EventListQuery): Promise<EventListResponse> {
-  const filters: SQL[] = [];
+export async function searchEvents(
+  db: Db,
+  query: EventListQuery,
+  rule: EventSizeRule,
+): Promise<EventListResponse> {
+  const filters: SQL[] = [
+    gte(events.roundCount, rule.minRounds),
+    gte(events.playerCount, rule.minPlayers),
+  ];
   if (query.from) filters.push(gte(events.startDate, startOfDay(query.from)));
   if (query.to) filters.push(lt(events.startDate, startOfNextDay(query.to)));
   if (query.country) filters.push(ilike(events.country, escapeLike(query.country)));

@@ -1,3 +1,4 @@
+import { BIG_EVENTS } from '@bcp/shared';
 import { count } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -7,7 +8,7 @@ import { events, players, teams } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { findEvent } from '../repo/events';
 import { getSyncRun } from '../repo/sync-runs';
-import { sampleSource, silentLogger } from '../test/helpers';
+import { ALL_EVENTS, sampleSource, silentLogger } from '../test/helpers';
 import { SyncRunner } from './runner';
 
 let db: Db;
@@ -50,7 +51,12 @@ function withOverrides(source: BcpSource, overrides: Partial<TournamentSource>):
 
 describe('SyncRunner', () => {
   it('catalog: pages through every search page', async () => {
-    const runner = new SyncRunner({ db, source: sampleSource(), logger: silentLogger });
+    const runner = new SyncRunner({
+      db,
+      source: sampleSource(),
+      logger: silentLogger,
+      eventRule: ALL_EVENTS,
+    });
     const run = await runToCompletion(runner, {
       kind: 'catalog',
       from: '2026-01-01',
@@ -60,8 +66,31 @@ describe('SyncRunner', () => {
     expect(await rowCount(events)).toBe(3);
   });
 
+  it('catalog: stores only events big enough for the runner’s size rule', async () => {
+    // Of the 3 fixture events, only EVTSINGLE01 (64 players, 5 rounds) meets BIG_EVENTS.
+    const runner = new SyncRunner({
+      db,
+      source: sampleSource(),
+      logger: silentLogger,
+      eventRule: BIG_EVENTS,
+    });
+    const run = await runToCompletion(runner, {
+      kind: 'catalog',
+      from: '2026-01-01',
+      to: '2026-12-31',
+    });
+    expect(run).toMatchObject({ status: 'succeeded', done: 1 });
+    expect(await rowCount(events)).toBe(1);
+    expect(await findEvent(db, 'EVTSINGLE01')).toBeDefined();
+  });
+
   it('event: stores detail, teams and players', async () => {
-    const runner = new SyncRunner({ db, source: sampleSource(), logger: silentLogger });
+    const runner = new SyncRunner({
+      db,
+      source: sampleSource(),
+      logger: silentLogger,
+      eventRule: ALL_EVENTS,
+    });
     const run = await runToCompletion(runner, { kind: 'event', eventId: EVENT });
     expect(run).toMatchObject({ status: 'succeeded', total: 1, done: 1 });
     expect(await rowCount(teams)).toBe(4);
@@ -71,16 +100,24 @@ describe('SyncRunner', () => {
 
   it('re-syncs drop the players BCP no longer lists', async () => {
     const source = sampleSource();
-    await runToCompletion(new SyncRunner({ db, source, logger: silentLogger }), {
-      kind: 'event',
-      eventId: EVENT,
-    });
+    await runToCompletion(
+      new SyncRunner({ db, source, logger: silentLogger, eventRule: ALL_EVENTS }),
+      {
+        kind: 'event',
+        eventId: EVENT,
+      },
+    );
 
     const shrunk = withOverrides(source, {
       getPlayers: async (eventId) =>
         (await source.getPlayers(eventId)).filter((player) => player.bcpId !== 'PL-HAL'),
     });
-    const runner = new SyncRunner({ db, source: shrunk, logger: silentLogger });
+    const runner = new SyncRunner({
+      db,
+      source: shrunk,
+      logger: silentLogger,
+      eventRule: ALL_EVENTS,
+    });
     await runToCompletion(runner, { kind: 'event', eventId: EVENT });
 
     expect(await rowCount(players)).toBe(7);
@@ -91,7 +128,12 @@ describe('SyncRunner', () => {
     const broken = withOverrides(source, {
       getEvent: () => Promise.reject(new Error('kaboom')),
     });
-    const runner = new SyncRunner({ db, source: broken, logger: silentLogger });
+    const runner = new SyncRunner({
+      db,
+      source: broken,
+      logger: silentLogger,
+      eventRule: ALL_EVENTS,
+    });
 
     const run = await runToCompletion(runner, { kind: 'event', eventId: EVENT });
 
@@ -106,7 +148,12 @@ describe('SyncRunner', () => {
         nextCursor: 'page-again',
       }),
     });
-    const runner = new SyncRunner({ db, source: looping, logger: silentLogger });
+    const runner = new SyncRunner({
+      db,
+      source: looping,
+      logger: silentLogger,
+      eventRule: ALL_EVENTS,
+    });
 
     const run = await runToCompletion(runner, {
       kind: 'catalog',
@@ -122,7 +169,12 @@ describe('SyncRunner', () => {
   });
 
   it('returns the already-active run instead of starting a duplicate', async () => {
-    const runner = new SyncRunner({ db, source: sampleSource(), logger: silentLogger });
+    const runner = new SyncRunner({
+      db,
+      source: sampleSource(),
+      logger: silentLogger,
+      eventRule: ALL_EVENTS,
+    });
     const [a, b] = await Promise.all([
       runner.start({ kind: 'event', eventId: EVENT }),
       runner.start({ kind: 'event', eventId: EVENT }),

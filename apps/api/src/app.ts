@@ -1,4 +1,4 @@
-import type { ApiErrorBody, BcpStatus } from '@bcp/shared';
+import type { ApiErrorBody, BcpStatus, EventSizeRule } from '@bcp/shared';
 import { Hono } from 'hono';
 import type { Db } from './db/client';
 import { AppError, BcpRateLimitedError, toErrorBody } from './errors';
@@ -18,6 +18,8 @@ export interface AppDeps {
   fetchQueue: FetchQueueWorker;
   bcpStatus: () => Promise<BcpStatus>;
   logger: Logger;
+  /** The finder only shows events meeting this rule; a small event still opens by direct link. */
+  eventRule: EventSizeRule;
   /** Injectable clock for freshness rules; defaults to the real time. */
   now?: () => Date;
   /** The address the server listens on (config HOST); `0.0.0.0` turns the Host guard off. */

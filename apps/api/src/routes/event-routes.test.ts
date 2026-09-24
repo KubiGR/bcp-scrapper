@@ -5,7 +5,13 @@ import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
 import type { FetchQueueWorker } from '../fetch-queue/worker';
 import { SyncRunner } from '../sync/runner';
-import { drainQueue, sampleSource, silentLogger, testFetchQueue } from '../test/helpers';
+import {
+  ALL_EVENTS,
+  drainQueue,
+  sampleSource,
+  silentLogger,
+  testFetchQueue,
+} from '../test/helpers';
 
 const status: BcpStatus = {
   source: 'fixtures',
@@ -23,7 +29,12 @@ let app: ReturnType<typeof createApp>;
 
 beforeAll(async () => {
   ({ db, close } = await createTestDb());
-  runner = new SyncRunner({ db, source: sampleSource(), logger: silentLogger });
+  runner = new SyncRunner({
+    db,
+    source: sampleSource(),
+    logger: silentLogger,
+    eventRule: ALL_EVENTS,
+  });
   fetchQueue = testFetchQueue(db);
   app = createApp({
     db,
@@ -31,6 +42,7 @@ beforeAll(async () => {
     fetchQueue,
     bcpStatus: () => Promise.resolve(status),
     logger: silentLogger,
+    eventRule: ALL_EVENTS,
   });
 });
 afterAll(() => close());

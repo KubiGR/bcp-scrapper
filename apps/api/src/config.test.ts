@@ -27,4 +27,16 @@ describe('loadConfig', () => {
     expect(loadConfig({ LIST_QUEUE_INTERVAL_MS: '400' }).FETCH_QUEUE_INTERVAL_MS).toBe(400);
     expect(loadConfig({}).FETCH_QUEUE_INTERVAL_MS).toBe(5000);
   });
+
+  it('defaults the big-event size rule to 4 rounds and 20 players', () => {
+    const config = loadConfig({});
+    expect(config.MIN_EVENT_ROUNDS).toBe(4);
+    expect(config.MIN_EVENT_PLAYERS).toBe(20);
+  });
+
+  it('reads the size rule from the environment, e.g. 0/0 for tiny fixtures', () => {
+    const config = loadConfig({ MIN_EVENT_ROUNDS: '0', MIN_EVENT_PLAYERS: '0' });
+    expect(config.MIN_EVENT_ROUNDS).toBe(0);
+    expect(config.MIN_EVENT_PLAYERS).toBe(0);
+  });
 });
