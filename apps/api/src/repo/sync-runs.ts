@@ -127,18 +127,18 @@ export async function listSucceededCatalogRuns(db: Db): Promise<CatalogRunRange[
   });
 }
 
-/** The most recent run of each event-scoped kind for one event. */
+/** The most recent event run for one event (retired pairings runs stay as history only). */
 export async function latestEventSyncRuns(db: Db, eventId: string): Promise<EventSyncs> {
   const rows = await db
     .select()
     .from(syncRuns)
     .where(eq(syncRuns.eventId, eventId))
     .orderBy(desc(syncRuns.id));
-  const latest = (kind: 'event' | 'pairings') => {
+  const latest = (kind: 'event') => {
     const row = rows.find((candidate) => candidate.kind === kind);
     return row ? toSyncRun(row) : null;
   };
-  return { event: latest('event'), pairings: latest('pairings') };
+  return { event: latest('event') };
 }
 
 /** Runs are in-process; any still active at startup were cut off by a restart. */

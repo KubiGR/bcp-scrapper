@@ -3,6 +3,8 @@ import type { Db } from './db/client';
 import { isEventStale } from './freshness';
 import type { FetchQueueWorker } from './fetch-queue/worker';
 import { findEvent, toEventListItem } from './repo/events';
+import { eventPairingsJobs } from './repo/fetch-queue';
+import { storedPairingsSummary } from './repo/pairings';
 import { countEventParticipants } from './repo/participants';
 import { latestEventSyncRuns } from './repo/sync-runs';
 
@@ -15,16 +17,26 @@ export async function getEventDetail(
   const { db } = deps;
   const row = await findEvent(db, eventId);
   if (!row) return null;
-  const [counts, syncs, listQueueSeconds] = await Promise.all([
+  const [counts, syncs, queueSeconds, stored, jobs] = await Promise.all([
     countEventParticipants(db, eventId),
     latestEventSyncRuns(db, eventId),
     deps.fetchQueue.estimateSecondsFor(eventId),
+    storedPairingsSummary(db, eventId),
+    eventPairingsJobs(db, eventId),
   ]);
   return {
     ...toEventListItem(row),
     stale: isEventStale(row, now),
     counts,
     syncs,
-    listQueueSeconds,
+    queueSeconds,
+    pairings: {
+      syncedAt: row.pairingsSyncedAt?.toISOString() ?? null,
+      roundCount: row.roundCount,
+      roundsDone: stored.rounds,
+      queued: jobs.queued,
+      failed: jobs.failed,
+      gamesAvailable: stored.matchups === 0 || stored.games > 0,
+    },
   };
 }

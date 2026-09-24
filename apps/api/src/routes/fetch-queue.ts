@@ -4,8 +4,9 @@ import { z } from 'zod';
 import type { Db } from '../db/client';
 import { BcpAuthError } from '../errors';
 import { queueEventLists } from '../fetch-queue/queue-lists';
+import { queueEventPairings } from '../fetch-queue/queue-pairings';
 import type { FetchQueueWorker } from '../fetch-queue/worker';
-import { cancelQueuedLists, retryFailedJobs } from '../repo/fetch-queue';
+import { cancelQueuedLists, retryFailedJobs, USER_WAITING_PRIORITY } from '../repo/fetch-queue';
 import type { SyncRunner } from '../sync/runner';
 import { parseInput } from '../validation';
 import { requireEvent } from './require-event';
@@ -38,6 +39,10 @@ export function fetchQueueRoutes(deps: {
         const id = c.req.param('id');
         await requireEvent(db, id);
         return c.json({ removed: await cancelQueuedLists(db, id) });
+      })
+      .post('/events/:id/pairings/queue', requireJson, async (c) => {
+        // The event page asks for these, so its jobs jump the queue.
+        return c.json(await queueEventPairings(deps, c.req.param('id'), USER_WAITING_PRIORITY));
       })
       .post('/fetch-queue/retry-failed', requireJson, async (c) => {
         const { eventId } = parseInput(

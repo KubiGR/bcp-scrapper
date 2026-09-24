@@ -5,7 +5,7 @@ import { games, teamMatchups } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { sampleSource } from '../test/helpers';
 import { upsertEventDetail } from './events';
-import { replaceRoundPairings } from './pairings';
+import { replaceRoundPairings, storedPairingsSummary } from './pairings';
 
 let db: Db;
 let close: () => Promise<void>;
@@ -76,5 +76,21 @@ describe('replaceRoundPairings', () => {
 
     expect(await gameIds(1)).toHaveLength(4);
     expect(await matchupIds(1)).toHaveLength(2);
+  });
+});
+
+describe('storedPairingsSummary', () => {
+  it('counts distinct rounds, team matchups and games of one event', async () => {
+    const matchups =
+      (await source.getTeamMatchups(EVENT, 1)).length +
+      (await source.getTeamMatchups(EVENT, 2)).length;
+    const stored =
+      (await source.getGames(EVENT, 1)).length + (await source.getGames(EVENT, 2)).length;
+    expect(await storedPairingsSummary(db, EVENT)).toEqual({ rounds: 2, matchups, games: stored });
+    expect(await storedPairingsSummary(db, 'EVTSINGLE01')).toEqual({
+      rounds: 0,
+      matchups: 0,
+      games: 0,
+    });
   });
 });

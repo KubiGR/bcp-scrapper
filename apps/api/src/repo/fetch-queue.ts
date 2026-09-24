@@ -1,10 +1,28 @@
-import { and, count, desc, eq, gt, inArray, isNull, ne, notExists, or, sql } from 'drizzle-orm';
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNull,
+  lt,
+  ne,
+  notExists,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from '../db/client';
-import { fetchQueue } from '../db/schema';
+import { events, fetchQueue } from '../db/schema';
 
-/** Priority of a single list someone is waiting for; normal requests are 0. */
-export const SINGLE_LIST_PRIORITY = 10;
+export type FetchJobKind = (typeof fetchQueue.$inferSelect)['kind'];
+
+/** Priority of work someone is waiting for (a single list, an event page's pairings); normal is 0. */
+export const USER_WAITING_PRIORITY = 10;
+/** Priority of a single list someone is waiting for. */
+export const SINGLE_LIST_PRIORITY = USER_WAITING_PRIORITY;
 /** `error_code` of a list BCP says doesn't exist; never retried. */
 export const NO_LIST_CODE = 'NO_LIST';
 
@@ -12,11 +30,19 @@ export type FetchQueueStatus = (typeof fetchQueue.$inferSelect)['status'];
 
 export interface ClaimedJob {
   id: number;
+  kind: FetchJobKind;
   eventId: string;
-  playerId: string;
-  listId: string;
+  playerId: string | null;
+  listId: string | null;
+  round: number | null;
+  followUp: string | null;
+  priority: number;
   attempts: number;
 }
+
+const OPEN = ['queued', 'fetching'] as const;
+const PAIRINGS_KINDS = ['event', 'pairings-round'] as const;
+const ALL_KINDS: readonly FetchJobKind[] = ['list', 'event', 'pairings-round'];
 
 /**
  * Queues lists; a player with an open request is skipped. At the single-list priority, open
@@ -32,7 +58,7 @@ export async function enqueueLists(
   if (items.length === 0) return 0;
   const inserted = await db
     .insert(fetchQueue)
-    .values(items.map((item) => ({ eventId, ...item, priority })))
+    .values(items.map((item) => ({ kind: 'list' as const, eventId, ...item, priority })))
     .onConflictDoNothing()
     .returning({ id: fetchQueue.id });
   if (priority === SINGLE_LIST_PRIORITY) {
@@ -41,6 +67,7 @@ export async function enqueueLists(
       .set({ priority })
       .where(
         and(
+          eq(fetchQueue.kind, 'list'),
           inArray(
             fetchQueue.playerId,
             items.map((item) => item.playerId),
@@ -50,6 +77,69 @@ export async function enqueueLists(
       );
   }
   return inserted.length;
+}
+
+/**
+ * Queues an event's pairings. With rounds, one pairings-round job per round (rounds with an open
+ * job are skipped). With `rounds: null` (the event was never synced, so its round count is
+ * unknown) one event job whose follow-up queues the rounds when it is done. At the user-waiting
+ * priority, the event's queued pairings jobs are raised too, so an event page jumps the queue.
+ */
+export async function enqueueEventPairings(
+  db: Db,
+  eventId: string,
+  { rounds, priority }: { rounds: number[] | null; priority: number },
+): Promise<{ eventQueued: boolean; queuedRounds: number }> {
+  let result: { eventQueued: boolean; queuedRounds: number };
+  if (rounds === null) {
+    await db
+      .insert(fetchQueue)
+      .values({ kind: 'event', eventId, priority, followUp: 'pairings' })
+      .onConflictDoNothing();
+    // Queued before without the follow-up (or both callers raced): make sure pairings follow.
+    await db
+      .update(fetchQueue)
+      .set({ followUp: 'pairings' })
+      .where(
+        and(
+          eq(fetchQueue.eventId, eventId),
+          eq(fetchQueue.kind, 'event'),
+          inArray(fetchQueue.status, [...OPEN]),
+        ),
+      );
+    result = { eventQueued: true, queuedRounds: 0 };
+  } else {
+    const inserted =
+      rounds.length === 0
+        ? []
+        : await db
+            .insert(fetchQueue)
+            .values(
+              rounds.map((round) => ({
+                kind: 'pairings-round' as const,
+                eventId,
+                round,
+                priority,
+              })),
+            )
+            .onConflictDoNothing()
+            .returning({ id: fetchQueue.id });
+    result = { eventQueued: false, queuedRounds: inserted.length };
+  }
+  if (priority >= USER_WAITING_PRIORITY) {
+    await db
+      .update(fetchQueue)
+      .set({ priority })
+      .where(
+        and(
+          eq(fetchQueue.eventId, eventId),
+          inArray(fetchQueue.kind, [...PAIRINGS_KINDS]),
+          eq(fetchQueue.status, 'queued'),
+          lt(fetchQueue.priority, priority),
+        ),
+      );
+  }
+  return result;
 }
 
 /** Atomically takes the next due row (highest priority, then oldest) and marks it fetching. */
@@ -67,9 +157,13 @@ export async function claimNextJob(db: Db, now: Date): Promise<ClaimedJob | null
     .where(eq(fetchQueue.id, next))
     .returning({
       id: fetchQueue.id,
+      kind: fetchQueue.kind,
       eventId: fetchQueue.eventId,
       playerId: fetchQueue.playerId,
       listId: fetchQueue.listId,
+      round: fetchQueue.round,
+      followUp: fetchQueue.followUp,
+      priority: fetchQueue.priority,
       attempts: fetchQueue.attempts,
     });
   return row ?? null;
@@ -125,17 +219,24 @@ export async function requeueInterrupted(db: Db): Promise<number> {
   return rows.length;
 }
 
+/** Removes an event's queued list jobs; its pairings jobs stay. */
 export async function cancelQueuedLists(db: Db, eventId: string): Promise<number> {
   const rows = await db
     .delete(fetchQueue)
-    .where(and(eq(fetchQueue.eventId, eventId), eq(fetchQueue.status, 'queued')))
+    .where(
+      and(
+        eq(fetchQueue.eventId, eventId),
+        eq(fetchQueue.kind, 'list'),
+        eq(fetchQueue.status, 'queued'),
+      ),
+    )
     .returning({ id: fetchQueue.id });
   return rows.length;
 }
 
 /**
  * Failed rows (except "no list on BCP") go back to the queue with a fresh attempt count. Only a
- * player's newest row is retried: a failure superseded by a newer request (open or done) stays
+ * target's newest row is retried: a failure superseded by a newer request (open or done) stays
  * as history, so retrying never collides with an open row or refetches an older list.
  */
 export async function retryFailedJobs(db: Db, eventId?: string): Promise<number> {
@@ -152,7 +253,15 @@ export async function retryFailedJobs(db: Db, eventId?: string): Promise<number>
           db
             .select({ id: newer.id })
             .from(newer)
-            .where(and(eq(newer.playerId, fetchQueue.playerId), gt(newer.id, fetchQueue.id))),
+            .where(
+              and(
+                eq(newer.kind, fetchQueue.kind),
+                eq(newer.eventId, fetchQueue.eventId),
+                sql`${newer.playerId} is not distinct from ${fetchQueue.playerId}`,
+                sql`${newer.round} is not distinct from ${fetchQueue.round}`,
+                gt(newer.id, fetchQueue.id),
+              ),
+            ),
         ),
       ),
     )
@@ -161,46 +270,127 @@ export async function retryFailedJobs(db: Db, eventId?: string): Promise<number>
 }
 
 /**
- * The newest row per player. A player's queue state is their newest request; older failures
- * that were retried or superseded don't count.
+ * The newest job per target `(kind, event, player, round)`; nulls compare equal in DISTINCT ON.
+ * A target's queue state is its newest job; older failures that were retried or superseded
+ * don't count.
  */
-function newestRowPerPlayer(db: Db, eventId?: string) {
+function newestJobPerTarget(db: Db, where?: SQL) {
   return db
-    .selectDistinctOn([fetchQueue.playerId], {
-      playerId: fetchQueue.playerId,
-      eventId: fetchQueue.eventId,
-      status: fetchQueue.status,
-      error: fetchQueue.error,
-      errorCode: fetchQueue.errorCode,
-    })
+    .selectDistinctOn(
+      [fetchQueue.kind, fetchQueue.eventId, fetchQueue.playerId, fetchQueue.round],
+      {
+        kind: fetchQueue.kind,
+        eventId: fetchQueue.eventId,
+        playerId: fetchQueue.playerId,
+        round: fetchQueue.round,
+        status: fetchQueue.status,
+        error: fetchQueue.error,
+        errorCode: fetchQueue.errorCode,
+      },
+    )
     .from(fetchQueue)
-    .where(eventId === undefined ? undefined : eq(fetchQueue.eventId, eventId))
-    .orderBy(fetchQueue.playerId, desc(fetchQueue.id));
+    .where(where)
+    .orderBy(
+      fetchQueue.kind,
+      fetchQueue.eventId,
+      fetchQueue.playerId,
+      fetchQueue.round,
+      desc(fetchQueue.id),
+    );
 }
 
+interface JobTotals {
+  queued: number;
+  fetching: number;
+  failed: number;
+}
+
+/** Open and failed jobs, summed and per kind (every kind present, zeros included). */
 export async function queueTotals(
   db: Db,
-): Promise<{ queued: number; fetching: number; failed: number }> {
+): Promise<JobTotals & { byKind: Record<FetchJobKind, JobTotals> }> {
   const open = await db
-    .select({ status: fetchQueue.status, n: count() })
+    .select({ kind: fetchQueue.kind, status: fetchQueue.status, n: count() })
     .from(fetchQueue)
-    .where(inArray(fetchQueue.status, ['queued', 'fetching']))
-    .groupBy(fetchQueue.status);
-  const newest = await newestRowPerPlayer(db);
-  const of = (status: FetchQueueStatus) => open.find((row) => row.status === status)?.n ?? 0;
-  return {
-    queued: of('queued'),
-    fetching: of('fetching'),
-    failed: newest.filter((row) => isRetryableFailure(row)).length,
+    .where(inArray(fetchQueue.status, [...OPEN]))
+    .groupBy(fetchQueue.kind, fetchQueue.status);
+  const newest = await newestJobPerTarget(db);
+  const of = (kind: FetchJobKind, status: FetchQueueStatus) =>
+    open.find((row) => row.kind === kind && row.status === status)?.n ?? 0;
+  const totalsOf = (kind: FetchJobKind): JobTotals => ({
+    queued: of(kind, 'queued'),
+    fetching: of(kind, 'fetching'),
+    failed: newest.filter((row) => row.kind === kind && isRetryableFailure(row)).length,
+  });
+  const byKind = {
+    list: totalsOf('list'),
+    event: totalsOf('event'),
+    'pairings-round': totalsOf('pairings-round'),
   };
+  const sum = (key: keyof JobTotals) =>
+    ALL_KINDS.reduce((total, kind) => total + byKind[kind][key], 0);
+  return { queued: sum('queued'), fetching: sum('fetching'), failed: sum('failed'), byKind };
+}
+
+/** Open pairings work for an event, and rounds whose newest pairings job failed. */
+export async function eventPairingsJobs(
+  db: Db,
+  eventId: string,
+): Promise<{ queued: number; failed: number }> {
+  const [open] = await db
+    .select({ n: count() })
+    .from(fetchQueue)
+    .where(
+      and(
+        eq(fetchQueue.eventId, eventId),
+        inArray(fetchQueue.kind, [...PAIRINGS_KINDS]),
+        inArray(fetchQueue.status, [...OPEN]),
+      ),
+    );
+  const newest = await newestJobPerTarget(
+    db,
+    and(eq(fetchQueue.eventId, eventId), eq(fetchQueue.kind, 'pairings-round')),
+  );
+  return {
+    queued: open?.n ?? 0,
+    failed: newest.filter((row) => row.status === 'failed').length,
+  };
+}
+
+/**
+ * Sets `events.pairings_synced_at` when no pairings job of the event is open and every round
+ * 1..roundCount has a newest pairings-round job that is done. Returns whether it did.
+ */
+export async function markPairingsSyncedIfComplete(
+  db: Db,
+  eventId: string,
+  roundCount: number,
+  at = new Date(),
+): Promise<boolean> {
+  if (roundCount === 0) return false;
+  const { queued } = await eventPairingsJobs(db, eventId);
+  if (queued > 0) return false;
+  const newest = await newestJobPerTarget(
+    db,
+    and(eq(fetchQueue.eventId, eventId), eq(fetchQueue.kind, 'pairings-round')),
+  );
+  const done = new Set(newest.filter((row) => row.status === 'done').map((row) => row.round));
+  for (let round = 1; round <= roundCount; round += 1) if (!done.has(round)) return false;
+  await db.update(events).set({ pairingsSyncedAt: at }).where(eq(events.id, eventId));
+  return true;
 }
 
 /** Queued rows in the order the worker will claim them. */
 export async function queuedInOrder(
   db: Db,
-): Promise<{ id: number; eventId: string; playerId: string }[]> {
+): Promise<{ id: number; kind: FetchJobKind; eventId: string; playerId: string | null }[]> {
   return db
-    .select({ id: fetchQueue.id, eventId: fetchQueue.eventId, playerId: fetchQueue.playerId })
+    .select({
+      id: fetchQueue.id,
+      kind: fetchQueue.kind,
+      eventId: fetchQueue.eventId,
+      playerId: fetchQueue.playerId,
+    })
     .from(fetchQueue)
     .where(eq(fetchQueue.status, 'queued'))
     .orderBy(desc(fetchQueue.priority), fetchQueue.queuedAt, fetchQueue.id);
@@ -224,11 +414,14 @@ export async function latestQueueRowsByPlayer(
   db: Db,
   eventId: string,
 ): Promise<Map<string, LatestQueueRow>> {
-  const rows = await newestRowPerPlayer(db, eventId);
-  return new Map(
-    rows.map((row) => [
-      row.playerId,
-      { status: row.status, error: row.error, errorCode: row.errorCode },
-    ]),
+  const rows = await newestJobPerTarget(
+    db,
+    and(eq(fetchQueue.kind, 'list'), eq(fetchQueue.eventId, eventId)),
   );
+  const byPlayer = new Map<string, LatestQueueRow>();
+  for (const row of rows) {
+    if (row.playerId === null) continue;
+    byPlayer.set(row.playerId, { status: row.status, error: row.error, errorCode: row.errorCode });
+  }
+  return byPlayer;
 }

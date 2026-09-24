@@ -1,21 +1,26 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { BcpSource } from '../bcp/source';
+import { eq } from 'drizzle-orm';
+import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
+import { events, fetchQueue, games } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { BcpAuthError, BcpRateLimitedError, BcpUnavailableError } from '../errors';
-import { upsertEventDetail } from '../repo/events';
+import { upsertEventDetail, upsertEventSummaries } from '../repo/events';
 import * as fetchQueueRepo from '../repo/fetch-queue';
 import {
   claimNextJob,
+  enqueueEventPairings,
   enqueueLists,
   latestQueueRowsByPlayer,
   NO_LIST_CODE,
   queueTotals,
   SINGLE_LIST_PRIORITY,
+  USER_WAITING_PRIORITY,
 } from '../repo/fetch-queue';
 import { findPlayerList } from '../repo/lists';
+import { storedPairingsSummary } from '../repo/pairings';
 import { upsertPlayers } from '../repo/participants';
-import { sampleSource, silentLogger } from '../test/helpers';
+import { drainQueue, sampleSource, silentLogger } from '../test/helpers';
 import { FetchQueueWorker } from './worker';
 
 const EVENT = 'EVTTEAM0001';
@@ -33,14 +38,27 @@ beforeEach(async () => {
   await upsertPlayers(db, await source.getPlayers(EVENT));
 });
 
+/** A plain source forwarding every method to `inner`, so tests can replace some. */
+function delegate(inner: TournamentSource): TournamentSource {
+  return {
+    listEvents: (range, cursor) => inner.listEvents(range, cursor),
+    getEvent: (id) => inner.getEvent(id),
+    getPlayers: (id) => inner.getPlayers(id),
+    getTeams: (id) => inner.getTeams(id),
+    getTeamMatchups: (id, round) => inner.getTeamMatchups(id, round),
+    getGames: (id, round) => inner.getGames(id, round),
+    getEventGames: (id, round) => inner.getEventGames(id, round),
+    getList: (listId) => inner.getList(listId),
+  };
+}
+
 /** The sample source, with getList replaced. */
-function withGetList(getList: BcpSource['getList']): BcpSource {
-  // The worker only calls getList, so the other (private-field) methods are never reached.
-  return Object.assign(Object.create(source) as BcpSource, { getList });
+function withGetList(getList: TournamentSource['getList']): TournamentSource {
+  return { ...delegate(source), getList };
 }
 
 function worker(
-  src: BcpSource = source,
+  src: TournamentSource = source,
   now = () => new Date(),
   loginRejected?: () => Promise<boolean>,
 ) {
@@ -74,7 +92,7 @@ describe('FetchQueueWorker', () => {
     await enqueueLists(db, EVENT, [{ playerId: 'PL-HAL', listId: 'LS-NONE' }], 0);
     expect(await worker().tick()).toBe('failed');
     // Final, so it isn't counted among the failures waiting for a retry.
-    expect(await queueTotals(db)).toEqual({ queued: 0, fetching: 0, failed: 0 });
+    expect(await queueTotals(db)).toMatchObject({ queued: 0, fetching: 0, failed: 0 });
     expect((await latestQueueRowsByPlayer(db, EVENT)).get('PL-HAL')).toMatchObject({
       status: 'failed',
       errorCode: NO_LIST_CODE,
@@ -94,7 +112,7 @@ describe('FetchQueueWorker', () => {
     expect(await w.tick()).toBe('retry');
     clock = new Date(clock.getTime() + 5 * 60_000 + 1000);
     expect(await w.tick()).toBe('failed');
-    expect(await queueTotals(db)).toEqual({ queued: 0, fetching: 0, failed: 1 });
+    expect(await queueTotals(db)).toMatchObject({ queued: 0, fetching: 0, failed: 1 });
   });
 
   it('pauses on a rejected login, keeps the row queued, and sends nothing more', async () => {
@@ -105,7 +123,7 @@ describe('FetchQueueWorker', () => {
     expect(await w.tick()).toBe('paused');
     expect(await w.tick()).toBe('paused');
     expect(getList).toHaveBeenCalledTimes(1);
-    expect(await queueTotals(db)).toEqual({ queued: 2, fetching: 0, failed: 0 });
+    expect(await queueTotals(db)).toMatchObject({ queued: 2, fetching: 0, failed: 0 });
     expect(await w.state()).toMatchObject({ paused: true, pausedReason: 'login-rejected' });
 
     w.resume();
@@ -120,7 +138,7 @@ describe('FetchQueueWorker', () => {
 
     expect(await w.tick()).toBe('paused');
     expect(loginRejected).toHaveBeenCalledTimes(1);
-    expect(await queueTotals(db)).toEqual({ queued: 2, fetching: 0, failed: 0 });
+    expect(await queueTotals(db)).toMatchObject({ queued: 2, fetching: 0, failed: 0 });
     expect(await w.state()).toMatchObject({ paused: true, pausedReason: 'login-rejected' });
   });
 
@@ -177,7 +195,7 @@ describe('FetchQueueWorker', () => {
         release = () => {
           resolve(source.getList(listId));
         };
-      }).then((list) => list as Awaited<ReturnType<BcpSource['getList']>>),
+      }).then((list) => list as Awaited<ReturnType<TournamentSource['getList']>>),
     );
     const w = worker(slow);
     await enqueueLists(db, EVENT, [ada, ben], 0);
@@ -200,7 +218,7 @@ describe('FetchQueueWorker', () => {
         release = () => {
           resolve(source.getList(listId));
         };
-      }).then((list) => list as Awaited<ReturnType<BcpSource['getList']>>),
+      }).then((list) => list as Awaited<ReturnType<TournamentSource['getList']>>),
     );
     const w = worker(slow);
     await enqueueLists(db, EVENT, [ada], 0);
@@ -266,5 +284,60 @@ describe('FetchQueueWorker', () => {
       await w.stop();
       claimSpy.mockRestore();
     }
+  });
+});
+
+describe('pairings jobs', () => {
+  const BRACKET = 'EVTBRACKET01';
+
+  async function catalogueOnly(eventId: string) {
+    // In the catalogue but never synced: the round count comes from the event sync.
+    await upsertEventSummaries(db, [await source.getEvent(eventId)]);
+  }
+
+  it('an event job syncs the event, then queues its rounds, which fetch the games', async () => {
+    await catalogueOnly(BRACKET);
+    await enqueueEventPairings(db, BRACKET, { rounds: null, priority: USER_WAITING_PRIORITY });
+    const w = worker();
+
+    expect(await w.tick()).toBe('fetched'); // the event job
+    const rounds = await db
+      .select({ round: fetchQueue.round, priority: fetchQueue.priority })
+      .from(fetchQueue)
+      .where(eq(fetchQueue.kind, 'pairings-round'))
+      .orderBy(fetchQueue.id);
+    expect(rounds).toEqual([
+      { round: 1, priority: 10 },
+      { round: 2, priority: 10 },
+      { round: 3, priority: 10 },
+    ]);
+
+    await drainQueue(w);
+    const [event] = await db.select().from(events).where(eq(events.id, BRACKET));
+    expect(event?.pairingsSyncedAt).toBeInstanceOf(Date);
+    expect(await db.select().from(games).where(eq(games.eventId, BRACKET))).toHaveLength(14);
+  });
+
+  it('stores matchups only when neither endpoint has games', async () => {
+    await upsertEventDetail(db, await source.getEvent(BRACKET));
+    await enqueueEventPairings(db, BRACKET, { rounds: [1], priority: 0 });
+    const noGames: TournamentSource = {
+      ...delegate(source),
+      getEventGames: () => Promise.resolve([]),
+    };
+    expect(await worker(noGames).tick()).toBe('fetched');
+    expect(await storedPairingsSummary(db, BRACKET)).toEqual({ rounds: 1, matchups: 3, games: 0 });
+  });
+
+  it('backs off a failing round job like a list', async () => {
+    await upsertEventDetail(db, await source.getEvent(BRACKET));
+    await enqueueEventPairings(db, BRACKET, { rounds: [1], priority: 0 });
+    const failing: TournamentSource = {
+      ...delegate(source),
+      getTeamMatchups: () => Promise.reject(new BcpUnavailableError('BCP down')),
+    };
+    expect(await worker(failing).tick()).toBe('retry');
+    const [row] = await db.select().from(fetchQueue);
+    expect(row).toMatchObject({ status: 'queued', attempts: 1, error: 'BCP down' });
   });
 });

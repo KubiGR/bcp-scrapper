@@ -13,7 +13,6 @@ export const SyncRequestSchema = z
   .discriminatedUnion('kind', [
     z.object({ kind: z.literal('catalog'), from: z.iso.date(), to: z.iso.date() }),
     z.object({ kind: z.literal('event'), eventId }),
-    z.object({ kind: z.literal('pairings'), eventId }),
   ])
   .refine((request) => request.kind !== 'catalog' || request.from <= request.to, {
     message: '`from` must be on or before `to`',

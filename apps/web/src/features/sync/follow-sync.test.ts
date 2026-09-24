@@ -23,7 +23,7 @@ describe('startAndFollow', () => {
     const seen: string[] = [];
 
     const finished = await startAndFollow(
-      { kind: 'pairings', eventId: 'EVT1' },
+      { kind: 'event', eventId: 'EVT1' },
       (run) => {
         seen.push(run.status);
       },

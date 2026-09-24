@@ -50,6 +50,8 @@ export const events = pgTable(
     hideLists: boolean('hide_lists').notNull(),
     /** When event detail, teams and players were last fetched. Null = only seen in the catalogue. */
     lastSyncedAt: timestamptz('last_synced_at'),
+    /** Set when every round's pairings were fetched by the fetch queue. */
+    pairingsSyncedAt: timestamptz('pairings_synced_at'),
     rawSummary: jsonb('raw_summary'),
     rawDetail: jsonb('raw_detail'),
     ...auditColumns,
@@ -197,20 +199,26 @@ export const fetchQueueStatus = pgEnum('fetch_queue_status', [
   'failed',
 ]);
 
-/** Jobs waiting to reach BCP (army lists for now), one row per request; drained slowly by the FetchQueueWorker. */
+export const fetchJobKind = pgEnum('fetch_job_kind', ['list', 'event', 'pairings-round']);
+
+/** Jobs waiting to reach BCP (army lists, events, pairing rounds), one row per request; drained slowly by the FetchQueueWorker. */
 export const fetchQueue = pgTable(
   'fetch_queue',
   {
     id: serial('id').primaryKey(),
+    kind: fetchJobKind('kind').notNull().default('list'),
     eventId: text('event_id')
       .notNull()
       .references(() => events.id, { onDelete: 'cascade' }),
-    playerId: text('player_id')
-      .notNull()
-      .references(() => players.id, { onDelete: 'cascade' }),
+    /** Only list jobs have a player and list. */
+    playerId: text('player_id').references(() => players.id, { onDelete: 'cascade' }),
     /** BCP list id when queued; the worker fetches exactly this list. */
-    listId: text('list_id').notNull(),
-    /** 0 = normal, 10 = a single list someone is waiting for. Higher is claimed first. */
+    listId: text('list_id'),
+    /** Only pairings-round jobs have a round. */
+    round: integer('round'),
+    /** 'pairings' on an event job queued so pairings can follow: it queues the rounds when done. */
+    followUp: text('follow_up'),
+    /** 0 = normal, 10 = work someone is waiting for. Higher is claimed first. */
     priority: integer('priority').notNull().default(0),
     status: fetchQueueStatus('status').notNull().default('queued'),
     attempts: integer('attempts').notNull().default(0),
@@ -223,12 +231,23 @@ export const fetchQueue = pgTable(
     finishedAt: timestamptz('finished_at'),
   },
   (t) => [
-    // At most one open request per player: queueing twice is a no-op.
+    // At most one open job per target: queueing twice is a no-op.
     uniqueIndex('fetch_queue_one_open_idx')
       .on(t.playerId)
-      .where(sql`${t.status} in ('queued', 'fetching')`),
+      .where(sql`${t.kind} = 'list' and ${t.status} in ('queued', 'fetching')`),
+    uniqueIndex('fetch_queue_one_open_event_idx')
+      .on(t.eventId)
+      .where(sql`${t.kind} = 'event' and ${t.status} in ('queued', 'fetching')`),
+    uniqueIndex('fetch_queue_one_open_round_idx')
+      .on(t.eventId, t.round)
+      .where(sql`${t.kind} = 'pairings-round' and ${t.status} in ('queued', 'fetching')`),
     index('fetch_queue_claim_idx').on(t.status, desc(t.priority), t.queuedAt),
     index('fetch_queue_event_idx').on(t.eventId, t.status),
+    check(
+      'fetch_queue_list_target',
+      sql`${t.kind} <> 'list' or (${t.playerId} is not null and ${t.listId} is not null)`,
+    ),
+    check('fetch_queue_round_target', sql`${t.kind} <> 'pairings-round' or ${t.round} is not null`),
   ],
 );
 

@@ -80,7 +80,7 @@ function FetchThisList({
 function QueuedStatus({ eventId, player }: { eventId: string; player: EventPlayer }) {
   const event = useQuery(eventQuery(eventId));
   const queue = useQuery(fetchQueueQuery);
-  const seconds = event.data?.listQueueSeconds ?? null;
+  const seconds = event.data?.queueSeconds ?? null;
   const paused = queue.data?.paused ?? false;
 
   let status: ReactNode;

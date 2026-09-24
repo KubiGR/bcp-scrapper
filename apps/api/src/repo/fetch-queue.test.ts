@@ -1,23 +1,27 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { fetchQueue } from '../db/schema';
+import { events, fetchQueue } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { sampleSource } from '../test/helpers';
 import { upsertEventDetail, upsertEventSummaries } from './events';
 import {
   cancelQueuedLists,
   claimNextJob,
+  enqueueEventPairings,
   enqueueLists,
+  eventPairingsJobs,
   latestQueueRowsByPlayer,
   markJobDone,
   markJobFailed,
+  markPairingsSyncedIfComplete,
   NO_LIST_CODE,
   queuedInOrder,
   queueTotals,
   requeueInterrupted,
   retryFailedJobs,
   SINGLE_LIST_PRIORITY,
+  USER_WAITING_PRIORITY,
 } from './fetch-queue';
 import { replaceEventPlayers, upsertPlayers } from './participants';
 
@@ -47,7 +51,7 @@ describe('fetch queue repository', () => {
   it('queues each player at most once while open', async () => {
     expect(await enqueueLists(db, EVENT, [ada, ben], 0)).toBe(2);
     expect(await enqueueLists(db, EVENT, [ada, cara], 0)).toBe(1);
-    expect(await queueTotals(db)).toEqual({ queued: 3, fetching: 0, failed: 0 });
+    expect(await queueTotals(db)).toMatchObject({ queued: 3, fetching: 0, failed: 0 });
   });
 
   it('claims higher priority first, then oldest, one row at a time', async () => {
@@ -57,7 +61,7 @@ describe('fetch queue repository', () => {
     const first = await claimNextJob(db, soon());
     expect(first).toMatchObject({ playerId: 'PL-CARA', listId: 'LS-CARA', attempts: 1 });
     expect((await claimNextJob(db, soon()))?.playerId).toBe('PL-ADA');
-    expect(await queueTotals(db)).toEqual({ queued: 1, fetching: 2, failed: 0 });
+    expect(await queueTotals(db)).toMatchObject({ queued: 1, fetching: 2, failed: 0 });
   });
 
   it('bumps an already-queued normal request when the same list is asked for directly', async () => {
@@ -76,7 +80,7 @@ describe('fetch queue repository', () => {
     await enqueueLists(db, EVENT, [ada], 0);
     await claimNextJob(db, soon());
     expect(await requeueInterrupted(db)).toBe(1);
-    expect(await queueTotals(db)).toEqual({ queued: 1, fetching: 0, failed: 0 });
+    expect(await queueTotals(db)).toMatchObject({ queued: 1, fetching: 0, failed: 0 });
   });
 
   it('cancels an event’s queued rows and retries failed ones except "no list"', async () => {
@@ -91,7 +95,7 @@ describe('fetch queue repository', () => {
     expect(await cancelQueuedLists(db, EVENT)).toBe(1);
     expect(await retryFailedJobs(db, EVENT)).toBe(1);
     // "No list on BCP" is final: it isn't counted as a failure waiting for a retry.
-    expect(await queueTotals(db)).toEqual({ queued: 1, fetching: 0, failed: 0 });
+    expect(await queueTotals(db)).toMatchObject({ queued: 1, fetching: 0, failed: 0 });
   });
 
   it('reports queue order and each player’s newest row', async () => {
@@ -166,5 +170,102 @@ describe('fetch queue repository', () => {
       expect(await retryFailedJobs(db)).toBe(2);
       expect(await queueTotals(db)).toMatchObject({ queued: 2 });
     });
+  });
+});
+
+describe('pairings jobs', () => {
+  const claim = async () => {
+    const job = await claimNextJob(db, soon());
+    if (!job) throw new Error('nothing claimed');
+    return job;
+  };
+  const kinds = async () =>
+    (await db.select().from(fetchQueue).orderBy(fetchQueue.id)).map((r) => [
+      r.kind,
+      r.round,
+      r.priority,
+      r.status,
+    ]);
+
+  it('queues each round once while open, alongside list jobs', async () => {
+    await enqueueLists(db, EVENT, [ada], 0);
+    expect(await enqueueEventPairings(db, EVENT, { rounds: [1, 2], priority: 0 })).toEqual({
+      eventQueued: false,
+      queuedRounds: 2,
+    });
+    expect(await enqueueEventPairings(db, EVENT, { rounds: [1, 2], priority: 0 })).toEqual({
+      eventQueued: false,
+      queuedRounds: 0,
+    });
+    expect(await kinds()).toEqual([
+      ['list', null, 0, 'queued'],
+      ['pairings-round', 1, 0, 'queued'],
+      ['pairings-round', 2, 0, 'queued'],
+    ]);
+  });
+
+  it('raises an event’s queued jobs when the user asks from the event page', async () => {
+    await enqueueEventPairings(db, EVENT, { rounds: [1, 2], priority: 0 });
+    await enqueueEventPairings(db, EVENT, { rounds: [1, 2], priority: USER_WAITING_PRIORITY });
+    expect((await kinds()).map(([, , priority]) => priority)).toEqual([10, 10]);
+  });
+
+  it('queues one event job with a pairings follow-up for a never-synced event', async () => {
+    expect(await enqueueEventPairings(db, EVENT, { rounds: null, priority: 0 })).toEqual({
+      eventQueued: true,
+      queuedRounds: 0,
+    });
+    expect(
+      await enqueueEventPairings(db, EVENT, { rounds: null, priority: USER_WAITING_PRIORITY }),
+    ).toEqual({
+      eventQueued: true,
+      queuedRounds: 0,
+    });
+    const rows = await db.select().from(fetchQueue);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ kind: 'event', followUp: 'pairings', priority: 10 });
+  });
+
+  it('retries a failed round only when it is that round’s newest job', async () => {
+    await enqueueEventPairings(db, EVENT, { rounds: [1], priority: 0 });
+    const first = await claim();
+    await markJobFailed(db, first.id, 'BCP down', 'BCP_UNAVAILABLE');
+    await enqueueEventPairings(db, EVENT, { rounds: [1], priority: 0 });
+    expect(await retryFailedJobs(db, EVENT)).toBe(0); // a newer round-1 job is open
+    const second = await claim();
+    await markJobFailed(db, second.id, 'BCP down', 'BCP_UNAVAILABLE');
+    expect(await retryFailedJobs(db, EVENT)).toBe(1);
+  });
+
+  it('counts totals by kind and an event’s pairings jobs', async () => {
+    await enqueueLists(db, EVENT, [ada, ben], 0);
+    await enqueueEventPairings(db, EVENT, { rounds: [1, 2], priority: 0 });
+    const firstClaimed = await claim(); // Ada's list: queued first
+    await markJobFailed(db, firstClaimed.id, 'x', 'INTERNAL');
+    const totals = await queueTotals(db);
+    expect(totals.byKind['pairings-round']).toEqual({ queued: 2, fetching: 0, failed: 0 });
+    expect(totals.byKind.list).toEqual({ queued: 1, fetching: 0, failed: 1 });
+    expect(totals.byKind.event).toEqual({ queued: 0, fetching: 0, failed: 0 });
+    expect(totals).toMatchObject({ queued: 3, fetching: 0, failed: 1 });
+    expect(await eventPairingsJobs(db, EVENT)).toEqual({ queued: 2, failed: 0 });
+  });
+
+  it('cancelling an event’s queued lists leaves its pairings jobs', async () => {
+    await enqueueLists(db, EVENT, [ada], 0);
+    await enqueueEventPairings(db, EVENT, { rounds: [1], priority: 0 });
+    expect(await cancelQueuedLists(db, EVENT)).toBe(1);
+    expect(await kinds()).toEqual([['pairings-round', 1, 0, 'queued']]);
+  });
+
+  it('marks pairings synced once every round’s newest job is done', async () => {
+    await enqueueEventPairings(db, EVENT, { rounds: [1, 2], priority: 0 });
+    const one = await claim();
+    await markJobDone(db, one.id);
+    expect(await markPairingsSyncedIfComplete(db, EVENT, 2)).toBe(false);
+    const two = await claim();
+    await markJobDone(db, two.id);
+    expect(await markPairingsSyncedIfComplete(db, EVENT, 2)).toBe(true);
+    const [event] = await db.select().from(events).where(eq(events.id, EVENT));
+    expect(event?.pairingsSyncedAt).toBeInstanceOf(Date);
   });
 });

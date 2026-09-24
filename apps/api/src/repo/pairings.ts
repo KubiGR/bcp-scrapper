@@ -1,5 +1,5 @@
 import type { Game, TeamMatchup } from '@bcp/shared';
-import { and, eq, notInArray } from 'drizzle-orm';
+import { and, count, eq, notInArray } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { games, teamMatchups } from '../db/schema';
@@ -95,4 +95,26 @@ export async function replaceRoundPairings(
         .where(and(eq(games.eventId, eventId), eq(games.round, round), notInArray(games.id, keep)));
     }
   });
+}
+
+/** How much of an event's pairings is stored: distinct rounds, team matchups and games. */
+export async function storedPairingsSummary(
+  db: Db,
+  eventId: string,
+): Promise<{ rounds: number; matchups: number; games: number }> {
+  const [matchupRounds, gameRounds] = await Promise.all([
+    db
+      .select({ round: teamMatchups.round, n: count() })
+      .from(teamMatchups)
+      .where(eq(teamMatchups.eventId, eventId))
+      .groupBy(teamMatchups.round),
+    db
+      .select({ round: games.round, n: count() })
+      .from(games)
+      .where(eq(games.eventId, eventId))
+      .groupBy(games.round),
+  ]);
+  const rounds = new Set([...matchupRounds, ...gameRounds].map((row) => row.round));
+  const sum = (rows: { n: number }[]) => rows.reduce((total, row) => total + row.n, 0);
+  return { rounds: rounds.size, matchups: sum(matchupRounds), games: sum(gameRounds) };
 }

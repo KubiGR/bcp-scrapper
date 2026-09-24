@@ -104,17 +104,33 @@ export type EventCounts = z.infer<typeof EventCountsSchema>;
 /** The most recent run of each event-scoped kind, whatever its status. */
 export const EventSyncsSchema = z.object({
   event: SyncRunSchema.nullable(),
-  pairings: SyncRunSchema.nullable(),
 });
 export type EventSyncs = z.infer<typeof EventSyncsSchema>;
+
+/** What is stored and queued of an event's pairings. */
+export const EventPairingsSchema = z.object({
+  /** Set when every round's newest fetch succeeded (fetch queue); null otherwise. */
+  syncedAt: z.iso.datetime().nullable(),
+  roundCount: z.number().int().nonnegative(),
+  /** Rounds with stored team matchups or games. */
+  roundsDone: z.number().int().nonnegative(),
+  /** Open event/pairings jobs for this event. */
+  queued: z.number().int().nonnegative(),
+  /** Rounds whose newest pairings job failed. */
+  failed: z.number().int().nonnegative(),
+  /** False when team matchups are stored but BCP served no individual games. */
+  gamesAvailable: z.boolean(),
+});
+export type EventPairings = z.infer<typeof EventPairingsSchema>;
 
 export const EventDetailSchema = EventListItemSchema.extend({
   /** True when the page should (re)load the event from BCP: never synced, or running and > 10 min old. */
   stale: z.boolean(),
   counts: EventCountsSchema,
   syncs: EventSyncsSchema,
-  /** Seconds until this event's queued lists are fetched; null when none are queued. */
-  listQueueSeconds: z.number().int().nonnegative().nullable(),
+  /** Seconds until this event's queued jobs (lists and pairings) are done; null when none. */
+  queueSeconds: z.number().int().nonnegative().nullable(),
+  pairings: EventPairingsSchema,
 });
 export type EventDetail = z.infer<typeof EventDetailSchema>;
 
@@ -192,6 +208,23 @@ export const QueueListsResultSchema = z.object({
 });
 export type QueueListsResult = z.infer<typeof QueueListsResultSchema>;
 
+export const QueuePairingsResultSchema = z.object({
+  /** An event job was queued (or already open) because the event was never synced. */
+  eventQueued: z.boolean(),
+  queuedRounds: z.number().int().nonnegative(),
+  estimatedSeconds: z.number().int().nonnegative().nullable(),
+});
+export type QueuePairingsResult = z.infer<typeof QueuePairingsResultSchema>;
+
+export const FetchJobKindSchema = z.enum(['list', 'event', 'pairings-round']);
+export type FetchJobKind = z.infer<typeof FetchJobKindSchema>;
+
+const JobTotalsSchema = z.object({
+  queued: z.number().int().nonnegative(),
+  fetching: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+});
+
 export const FetchQueuePauseReasonSchema = z.enum(['user', 'login-rejected', 'rate-limited']);
 export type FetchQueuePauseReason = z.infer<typeof FetchQueuePauseReasonSchema>;
 
@@ -201,7 +234,8 @@ export const FetchQueueStateSchema = z.object({
   /** Set when the pause lifts by itself (after a BCP rate limit). */
   pausedUntil: z.iso.datetime().nullable(),
   intervalMs: z.number().int().positive(),
-  totals: z.object({ queued: count, fetching: count, failed: count }),
+  /** Sums over all kinds, and per kind. */
+  totals: JobTotalsSchema.extend({ byKind: z.record(FetchJobKindSchema, JobTotalsSchema) }),
   /** Until the whole queue is empty, at the current pace; null when it is empty. */
   estimatedSeconds: count.nullable(),
 });

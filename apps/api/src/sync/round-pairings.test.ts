@@ -1,5 +1,7 @@
 import { eq } from 'drizzle-orm';
+import pino from 'pino';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import { games, teamMatchups } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
@@ -43,5 +45,33 @@ describe('syncRoundPairings', () => {
       .from(teamMatchups)
       .where(eq(teamMatchups.eventId, 'EVTBRACKET01'));
     expect(matchups.find((m) => m.id === 'TPB-R1-3')).toMatchObject({ teamBId: null, pointsA: 40 });
+  });
+
+  it('warns when a team round has matchups but neither endpoint has games', async () => {
+    await upsertEventDetail(db, await source.getEvent('EVTTEAM0001'));
+    const messages: string[] = [];
+    const logger = pino(
+      { level: 'warn' },
+      { write: (line: string) => messages.push((JSON.parse(line) as { msg: string }).msg) },
+    );
+    const noGames: TournamentSource = {
+      listEvents: (range, cursor) => source.listEvents(range, cursor),
+      getEvent: (id) => source.getEvent(id),
+      getPlayers: (id) => source.getPlayers(id),
+      getTeams: (id) => source.getTeams(id),
+      getTeamMatchups: (id, round) => source.getTeamMatchups(id, round),
+      getGames: () => Promise.resolve([]),
+      getEventGames: () => Promise.resolve([]),
+      getList: (listId) => source.getList(listId),
+    };
+    const outcome = await syncRoundPairings(
+      { db, source: noGames, logger },
+      { id: 'EVTTEAM0001', isTeamEvent: true },
+      2,
+    );
+    expect(outcome).toEqual({ matchups: 2, games: 0, gamesFrom: 'none' });
+    expect(messages).toEqual([
+      'BCP returned no individual games for round 2; team matchups stored only',
+    ]);
   });
 });

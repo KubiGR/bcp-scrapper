@@ -20,7 +20,7 @@ describe('EventQueueLine', () => {
       'DELETE /api/events/EVT1/lists/queue': { removed: 3 },
       'POST /api/fetch-queue/retry-failed': { requeued: 1 },
     });
-    renderWithProviders(<EventQueueLine event={anEventDetail({ counts, listQueueSeconds: 15 })} />);
+    renderWithProviders(<EventQueueLine event={anEventDetail({ counts, queueSeconds: 15 })} />);
     expect(
       screen.getByText(
         (_, el) =>
@@ -45,7 +45,7 @@ describe('EventQueueLine', () => {
       'DELETE /api/events/EVT1/lists/queue': failing('Could not cancel.'),
       'POST /api/fetch-queue/retry-failed': failing('Could not retry.'),
     });
-    renderWithProviders(<EventQueueLine event={anEventDetail({ counts, listQueueSeconds: 15 })} />);
+    renderWithProviders(<EventQueueLine event={anEventDetail({ counts, queueSeconds: 15 })} />);
     fireEvent.click(screen.getByRole('button', { name: 'Cancel queued' }));
     fireEvent.click(screen.getByRole('button', { name: 'Retry failed' }));
     expect(await screen.findByText('Could not cancel.')).toBeInTheDocument();

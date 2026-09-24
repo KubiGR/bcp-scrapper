@@ -23,10 +23,10 @@ export function EventQueueLine({ event }: { event: EventDetail }) {
         <span className="numeric">{listsQueued}</span> queued ·{' '}
         <span className="numeric">{listsFetched}</span> fetched ·{' '}
         <span className="numeric">{listsFailed}</span> failed
-        {event.listQueueSeconds !== null && (
+        {event.queueSeconds !== null && (
           <>
             {' '}
-            · about <span className="numeric">{formatDuration(event.listQueueSeconds)}</span> left
+            · about <span className="numeric">{formatDuration(event.queueSeconds)}</span> left
           </>
         )}
       </Text>

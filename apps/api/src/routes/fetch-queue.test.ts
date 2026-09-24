@@ -4,6 +4,7 @@ import type {
   EventPlayersResponse,
   FetchQueueState,
   QueueListsResult,
+  QueuePairingsResult,
 } from '@bcp/shared';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -11,6 +12,7 @@ import { createApp } from '../app';
 import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import { players } from '../db/schema';
+import { upsertEventSummaries } from '../repo/events';
 import { claimNextJob, markJobFailed } from '../repo/fetch-queue';
 import { createTestDb, resetDb } from '../db/test-db';
 import type { FetchQueueWorker } from '../fetch-queue/worker';
@@ -77,7 +79,7 @@ describe('fetch queue routes', () => {
     const detail = await json<EventDetail>(await app.request(`/api/events/${EVENT}`));
     expect(detail).toMatchObject({
       counts: { listsQueued: 7, listsFailed: 0 },
-      listQueueSeconds: 35,
+      queueSeconds: 35,
     });
     expect((await playersOf()).find((p) => p.bcpId === 'PL-ADA')).toMatchObject({
       listStatus: 'queued',
@@ -217,5 +219,50 @@ describe('fetch queue routes', () => {
     expect(
       (await json<FetchQueueState>(await send('POST', '/api/fetch-queue/resume', {}))).paused,
     ).toBe(false);
+  });
+});
+
+describe('pairings queue route', () => {
+  const BRACKET = 'EVTBRACKET01';
+
+  it('queues a never-synced event, and the worker fetches all its rounds', async () => {
+    await upsertEventSummaries(db, [await sampleSource().getEvent(BRACKET)]);
+    const queued = await json<QueuePairingsResult>(
+      await send('POST', `/api/events/${BRACKET}/pairings/queue`, {}),
+    );
+    expect(queued).toEqual({ eventQueued: true, queuedRounds: 0, estimatedSeconds: 5 });
+
+    await drainQueue(fetchQueue);
+    const detail = await json<EventDetail>(await app.request(`/api/events/${BRACKET}`));
+    expect(detail.pairings).toMatchObject({
+      roundCount: 3,
+      roundsDone: 3,
+      queued: 0,
+      failed: 0,
+      gamesAvailable: true,
+    });
+    expect(detail.pairings.syncedAt).not.toBeNull();
+  });
+
+  it('queues each round of a synced event once', async () => {
+    await send('POST', `/api/events/${EVENT}/lists/queue`, {}); // loads EVENT's players
+    const first = await json<QueuePairingsResult>(
+      await send('POST', `/api/events/${EVENT}/pairings/queue`, {}),
+    );
+    expect(first.queuedRounds).toBe(2);
+    const again = await json<QueuePairingsResult>(
+      await send('POST', `/api/events/${EVENT}/pairings/queue`, {}),
+    );
+    expect(again.queuedRounds).toBe(0);
+    expect(
+      (await json<EventDetail>(await app.request(`/api/events/${EVENT}`))).pairings.queued,
+    ).toBe(2);
+  });
+
+  it('404s an unknown event and rejects the retired pairings sync kind', async () => {
+    expect((await send('POST', '/api/events/NOPE/pairings/queue', {})).status).toBe(404);
+    expect((await send('POST', '/api/sync', { kind: 'pairings', eventId: EVENT })).status).toBe(
+      400,
+    );
   });
 });

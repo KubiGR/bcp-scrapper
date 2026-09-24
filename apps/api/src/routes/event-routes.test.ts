@@ -72,7 +72,15 @@ describe('event routes', () => {
       },
       syncs: {
         event: { status: 'succeeded' },
-        pairings: null,
+      },
+      queueSeconds: null,
+      pairings: {
+        syncedAt: null,
+        roundCount: 2,
+        roundsDone: 0,
+        queued: 0,
+        failed: 0,
+        gamesAvailable: true,
       },
     });
   });
@@ -91,7 +99,9 @@ describe('event routes', () => {
         listsQueued: 0,
         listsFailed: 0,
       },
-      syncs: { event: null, pairings: null },
+      syncs: { event: null },
+      queueSeconds: null,
+      pairings: { syncedAt: null, roundsDone: 0, queued: 0, failed: 0, gamesAvailable: true },
     });
     expect((await app.request('/api/events/NOPE')).status).toBe(404);
   });

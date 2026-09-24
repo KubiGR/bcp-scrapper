@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
+import { syncRuns } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import {
   createSyncRun,
@@ -8,6 +9,7 @@ import {
   finishSyncRun,
   getSyncRun,
   incrementSyncRun,
+  latestEventSyncRuns,
   markSyncRunRunning,
   setSyncRunTotal,
 } from './sync-runs';
@@ -22,9 +24,9 @@ beforeEach(() => resetDb(db));
 
 describe('sync runs', () => {
   it('tracks a run from queued to succeeded', async () => {
-    const run = await createSyncRun(db, { kind: 'pairings', eventId: 'E1' });
+    const run = await createSyncRun(db, { kind: 'event', eventId: 'E1' });
     expect(run).toMatchObject({
-      kind: 'pairings',
+      kind: 'event',
       eventId: 'E1',
       status: 'queued',
       done: 0,
@@ -51,10 +53,10 @@ describe('sync runs', () => {
   });
 
   it('refuses a second active run for the same kind and event', async () => {
-    const first = await createSyncRun(db, { kind: 'pairings', eventId: 'E1' });
-    expect(await createSyncRun(db, { kind: 'pairings', eventId: 'E1' })).toBeNull();
-    expect(await findActiveSyncRun(db, 'pairings', 'E1')).toEqual(first);
-    expect(await createSyncRun(db, { kind: 'pairings', eventId: 'E2' })).not.toBeNull();
+    const first = await createSyncRun(db, { kind: 'event', eventId: 'E1' });
+    expect(await createSyncRun(db, { kind: 'event', eventId: 'E1' })).toBeNull();
+    expect(await findActiveSyncRun(db, 'event', 'E1')).toEqual(first);
+    expect(await createSyncRun(db, { kind: 'event', eventId: 'E2' })).not.toBeNull();
     expect(
       await createSyncRun(db, { kind: 'catalog', from: '2026-01-01', to: '2026-01-31' }),
     ).not.toBeNull();
@@ -82,5 +84,18 @@ describe('sync runs', () => {
     const event = await createSyncRun(db, { kind: 'event', eventId: 'E1' });
     expect(catalog?.range).toEqual({ from: '2026-01-01', to: '2026-01-31' });
     expect(event?.range).toBeNull();
+  });
+
+  it('reports an event’s latest event run, ignoring retired pairings runs', async () => {
+    const older = await createSyncRun(db, { kind: 'event', eventId: 'E1' });
+    if (!older) throw new Error('not created');
+    await finishSyncRun(db, older.id, { status: 'succeeded' });
+    const newer = await createSyncRun(db, { kind: 'event', eventId: 'E1' });
+    // History from before pairings moved to the fetch queue.
+    await db
+      .insert(syncRuns)
+      .values({ kind: 'pairings', eventId: 'E1', params: {}, status: 'succeeded' });
+    expect(await latestEventSyncRuns(db, 'E1')).toEqual({ event: newer });
+    expect(await latestEventSyncRuns(db, 'E2')).toEqual({ event: null });
   });
 });

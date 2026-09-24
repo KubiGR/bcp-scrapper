@@ -2,6 +2,7 @@ import type { FetchQueueState } from '@bcp/shared';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders, renderWithRouter, stubFetchRoutes } from '../../test/render';
+import { listJobTotals } from '../../test/sample-data';
 import { QueueControls } from './QueueControls';
 
 const base: FetchQueueState = {
@@ -9,7 +10,7 @@ const base: FetchQueueState = {
   pausedReason: null,
   pausedUntil: null,
   intervalMs: 5000,
-  totals: { queued: 3, fetching: 1, failed: 2 },
+  totals: listJobTotals({ queued: 3, fetching: 1, failed: 2 }),
   estimatedSeconds: 20,
 };
 

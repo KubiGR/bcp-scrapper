@@ -24,8 +24,12 @@ describe('SyncRequestSchema', () => {
   });
 
   it('requires an eventId for event-scoped syncs', () => {
-    expect(SyncRequestSchema.safeParse({ kind: 'pairings' }).success).toBe(false);
-    expect(SyncRequestSchema.safeParse({ kind: 'pairings', eventId: 'EVT1' }).success).toBe(true);
+    expect(SyncRequestSchema.safeParse({ kind: 'event' }).success).toBe(false);
+    expect(SyncRequestSchema.safeParse({ kind: 'event', eventId: 'EVT1' }).success).toBe(true);
+  });
+
+  it('rejects the retired pairings kind', () => {
+    expect(SyncRequestSchema.safeParse({ kind: 'pairings', eventId: 'E1' }).success).toBe(false);
   });
 
   it('rejects the retired lists kind', () => {
@@ -116,9 +120,16 @@ describe('EventDetailSchema', () => {
       },
       syncs: {
         event: { ...aRun, kind: 'event', eventId: 'E1', range: null },
-        pairings: null,
       },
-      listQueueSeconds: null,
+      queueSeconds: null,
+      pairings: {
+        syncedAt: null,
+        roundCount: 2,
+        roundsDone: 0,
+        queued: 0,
+        failed: 0,
+        gamesAvailable: true,
+      },
     };
     expect(EventDetailSchema.parse(detail).syncs.event?.kind).toBe('event');
   });
@@ -149,7 +160,16 @@ describe('FetchQueueStateSchema', () => {
       pausedReason: 'login-rejected',
       pausedUntil: null,
       intervalMs: 5000,
-      totals: { queued: 3, fetching: 0, failed: 1 },
+      totals: {
+        queued: 3,
+        fetching: 0,
+        failed: 1,
+        byKind: {
+          list: { queued: 1, fetching: 0, failed: 1 },
+          event: { queued: 0, fetching: 0, failed: 0 },
+          'pairings-round': { queued: 2, fetching: 0, failed: 0 },
+        },
+      },
       estimatedSeconds: 15,
     };
     expect(FetchQueueStateSchema.parse(state)).toEqual(state);

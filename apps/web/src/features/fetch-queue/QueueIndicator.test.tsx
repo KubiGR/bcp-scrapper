@@ -8,6 +8,7 @@ import {
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
+import { listJobTotals } from '../../test/sample-data';
 import { QueueIndicator } from './QueueIndicator';
 
 const state = (changes: Partial<FetchQueueState> = {}): FetchQueueState => ({
@@ -15,7 +16,7 @@ const state = (changes: Partial<FetchQueueState> = {}): FetchQueueState => ({
   pausedReason: null,
   pausedUntil: null,
   intervalMs: 5000,
-  totals: { queued: 0, fetching: 0, failed: 0 },
+  totals: listJobTotals({ queued: 0, fetching: 0, failed: 0 }),
   estimatedSeconds: null,
   ...changes,
 });
@@ -40,7 +41,7 @@ describe('QueueIndicator', () => {
   it('shows how many lists are queued and roughly how long they take', async () => {
     stubFetchRoutes({
       'GET /api/fetch-queue': state({
-        totals: { queued: 34, fetching: 1, failed: 0 },
+        totals: listJobTotals({ queued: 34, fetching: 1, failed: 0 }),
         estimatedSeconds: 175,
       }),
     });
@@ -53,7 +54,7 @@ describe('QueueIndicator', () => {
   it('shows failures even when nothing is queued', async () => {
     stubFetchRoutes({
       'GET /api/fetch-queue': state({
-        totals: { queued: 0, fetching: 0, failed: 3 },
+        totals: listJobTotals({ queued: 0, fetching: 0, failed: 3 }),
       }),
     });
     renderInRouter();
@@ -63,7 +64,7 @@ describe('QueueIndicator', () => {
   it('shows both queued and failed counts, with the estimate', async () => {
     stubFetchRoutes({
       'GET /api/fetch-queue': state({
-        totals: { queued: 2, fetching: 0, failed: 1 },
+        totals: listJobTotals({ queued: 2, fetching: 0, failed: 1 }),
         estimatedSeconds: 10,
       }),
     });
@@ -86,7 +87,7 @@ describe('QueueIndicator', () => {
       'GET /api/fetch-queue': state({
         paused: true,
         pausedReason: 'login-rejected',
-        totals: { queued: 5, fetching: 0, failed: 0 },
+        totals: listJobTotals({ queued: 5, fetching: 0, failed: 0 }),
       }),
     });
     renderInRouter();

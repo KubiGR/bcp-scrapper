@@ -3,18 +3,24 @@ import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import { AppError, BcpAuthError, BcpRateLimitedError } from '../errors';
 import type { Logger } from '../logger';
+import { findEvent } from '../repo/events';
 import {
   claimNextJob,
+  enqueueEventPairings,
   markJobDone,
   markJobFailed,
+  markPairingsSyncedIfComplete,
   NO_LIST_CODE,
   queuedInOrder,
   queueTotals,
   releaseJob,
   requeueInterrupted,
   retryJobLater,
+  type ClaimedJob,
 } from '../repo/fetch-queue';
 import { saveArmyList } from '../repo/lists';
+import { syncEvent } from '../sync/jobs';
+import { syncRoundPairings } from '../sync/round-pairings';
 
 /** Waits after the 1st and 2nd failed attempt; the 3rd failure is final. */
 const BACKOFF_MS = [60_000, 5 * 60_000, 15 * 60_000] as const;
@@ -95,7 +101,7 @@ export class FetchQueueWorker {
     this.#pause = null;
   }
 
-  /** Claims and fetches at most one list. */
+  /** Claims and runs at most one job. */
   async tick(): Promise<TickOutcome> {
     if (this.#inFlight) return 'busy';
     if (this.#isPaused()) return 'paused';
@@ -121,7 +127,7 @@ export class FetchQueueWorker {
   }
 
   /**
-   * Seconds until the queue (or, given an event, that event's queued lists) is done at the
+   * Seconds until the queue (or, given an event, that event's queued jobs) is done at the
    * current pace; null when there is nothing queued.
    */
   async estimateSecondsFor(eventId?: string): Promise<number | null> {
@@ -157,7 +163,7 @@ export class FetchQueueWorker {
   }
 
   async #fetchNext(): Promise<TickOutcome> {
-    const { db, source, logger } = this.#options;
+    const { db, logger } = this.#options;
     const claimed = await claimNextJob(db, this.#now());
     if (!claimed) return 'idle';
 
@@ -169,8 +175,10 @@ export class FetchQueueWorker {
     ) => {
       logger[level](
         {
+          kind: claimed.kind,
           eventId: claimed.eventId,
-          playerId: claimed.playerId,
+          ...(claimed.playerId === null ? {} : { playerId: claimed.playerId }),
+          ...(claimed.round === null ? {} : { round: claimed.round }),
           status,
           durationMs: Math.round(performance.now() - startedAt),
           ...extra,
@@ -181,14 +189,14 @@ export class FetchQueueWorker {
     };
 
     try {
-      const list = await source.getList(claimed.listId);
-      if (list === null) {
-        await markJobFailed(db, claimed.id, 'No list on BCP', NO_LIST_CODE);
-        return log('failed');
+      switch (claimed.kind) {
+        case 'list':
+          return log(await this.#fetchList(claimed));
+        case 'event':
+          return log(await this.#fetchEvent(claimed));
+        case 'pairings-round':
+          return log(await this.#fetchRound(claimed));
       }
-      await saveArmyList(db, claimed.playerId, list);
-      await markJobDone(db, claimed.id);
-      return log('fetched');
     } catch (error) {
       if (error instanceof BcpAuthError && (await this.#isLoginRejected())) {
         await releaseJob(db, claimed.id);
@@ -216,5 +224,51 @@ export class FetchQueueWorker {
       await markJobFailed(db, claimed.id, messageOf(error), code);
       return log('failed');
     }
+  }
+
+  async #fetchList(job: ClaimedJob): Promise<TickOutcome> {
+    const { db, source } = this.#options;
+    if (job.playerId === null || job.listId === null) {
+      await markJobFailed(db, job.id, 'List job without player or list', 'INTERNAL');
+      return 'failed';
+    }
+    const list = await source.getList(job.listId);
+    if (list === null) {
+      await markJobFailed(db, job.id, 'No list on BCP', NO_LIST_CODE);
+      return 'failed';
+    }
+    await saveArmyList(db, job.playerId, list);
+    await markJobDone(db, job.id);
+    return 'fetched';
+  }
+
+  /** Event detail, teams and players; with a pairings follow-up, then queues every round. */
+  async #fetchEvent(job: ClaimedJob): Promise<TickOutcome> {
+    const { db, source } = this.#options;
+    const event = await syncEvent({ db, source }, job.eventId);
+    await markJobDone(db, job.id);
+    if (job.followUp === 'pairings') {
+      const rounds = Array.from({ length: event.roundCount }, (_, index) => index + 1);
+      await enqueueEventPairings(db, job.eventId, { rounds, priority: job.priority });
+    }
+    return 'fetched';
+  }
+
+  /** One round's team matchups and games; marks the event's pairings synced after the last. */
+  async #fetchRound(job: ClaimedJob): Promise<TickOutcome> {
+    const { db, source, logger } = this.#options;
+    const event = await findEvent(db, job.eventId);
+    if (!event || job.round === null) {
+      await markJobFailed(db, job.id, 'Round job for an unknown event or round', 'NOT_FOUND');
+      return 'failed';
+    }
+    await syncRoundPairings(
+      { db, source, logger },
+      { id: event.id, isTeamEvent: event.isTeamEvent },
+      job.round,
+    );
+    await markJobDone(db, job.id);
+    await markPairingsSyncedIfComplete(db, event.id, event.roundCount);
+    return 'fetched';
   }
 }

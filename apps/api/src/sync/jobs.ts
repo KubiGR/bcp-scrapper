@@ -10,7 +10,6 @@ import {
   type EventRow,
 } from '../repo/events';
 import { replaceEventPlayers, replaceEventTeams } from '../repo/participants';
-import { syncRoundPairings } from './round-pairings';
 
 export interface Progress {
   setTotal(total: number): Promise<void>;
@@ -33,8 +32,6 @@ export function runJob(ctx: JobContext, request: SyncRequest): Promise<void> {
       return syncCatalog(ctx, request);
     case 'event':
       return syncEventJob(ctx, request);
-    case 'pairings':
-      return syncPairings(ctx, request);
   }
 }
 
@@ -81,14 +78,4 @@ async function syncEventJob(ctx: JobContext, { eventId }: RequestOf<'event'>): P
   await ctx.progress.setTotal(1);
   await syncEvent(ctx, eventId);
   await ctx.progress.succeeded();
-}
-
-/** Team matchups and games for every round, replacing what was stored. Progress counts rounds. */
-async function syncPairings(ctx: JobContext, { eventId }: RequestOf<'pairings'>): Promise<void> {
-  const event = await ensureEventSynced(ctx, eventId);
-  await ctx.progress.setTotal(event.roundCount);
-  for (let round = 1; round <= event.roundCount; round += 1) {
-    await syncRoundPairings({ ...ctx }, { id: eventId, isTeamEvent: event.isTeamEvent }, round);
-    await ctx.progress.succeeded();
-  }
 }

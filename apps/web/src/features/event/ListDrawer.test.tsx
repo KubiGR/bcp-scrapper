@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { FetchQueueState } from '@bcp/shared';
 import { fetchQueueQuery } from '../fetch-queue/fetch-queue-queries';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
-import { aPlayer, anEventDetail } from '../../test/sample-data';
+import { aPlayer, anEventDetail, listJobTotals } from '../../test/sample-data';
 import { ListDrawer } from './ListDrawer';
 
 const running: FetchQueueState = {
@@ -11,14 +11,14 @@ const running: FetchQueueState = {
   pausedReason: null,
   pausedUntil: null,
   intervalMs: 5000,
-  totals: { queued: 3, fetching: 0, failed: 0 },
+  totals: listJobTotals({ queued: 3, fetching: 0, failed: 0 }),
   estimatedSeconds: 15,
 };
 
 /** Stubs the event (with its lists' estimate) and the queue state the queued status reads. */
-function stubQueue(listQueueSeconds: number | null, state: FetchQueueState = running) {
+function stubQueue(queueSeconds: number | null, state: FetchQueueState = running) {
   return stubFetchRoutes({
-    'GET /api/events/EVT1': anEventDetail({ bcpId: 'EVT1', listQueueSeconds }),
+    'GET /api/events/EVT1': anEventDetail({ bcpId: 'EVT1', queueSeconds }),
     'GET /api/fetch-queue': state,
   });
 }

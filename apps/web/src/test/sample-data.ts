@@ -1,4 +1,10 @@
-import type { EventDetail, EventListItem, EventPlayer, SyncRun } from '@bcp/shared';
+import type {
+  EventDetail,
+  EventListItem,
+  EventPlayer,
+  FetchQueueState,
+  SyncRun,
+} from '@bcp/shared';
 
 export function aSyncRun(overrides: Partial<SyncRun> = {}): SyncRun {
   return {
@@ -51,8 +57,16 @@ export function anEventDetail(overrides: Partial<EventDetail> = {}): EventDetail
       listsQueued: 0,
       listsFailed: 0,
     },
-    syncs: { event: aSyncRun({ kind: 'event', total: 1, done: 1 }), pairings: null },
-    listQueueSeconds: null,
+    syncs: { event: aSyncRun({ kind: 'event', total: 1, done: 1 }) },
+    queueSeconds: null,
+    pairings: {
+      syncedAt: null,
+      roundCount: 2,
+      roundsDone: 0,
+      queued: 0,
+      failed: 0,
+      gamesAvailable: true,
+    },
     ...overrides,
   };
 }
@@ -74,4 +88,12 @@ export function aPlayer(overrides: Partial<EventPlayer> = {}): EventPlayer {
     listErrorCode: null,
     ...overrides,
   };
+}
+
+type JobTotals = Omit<FetchQueueState['totals'], 'byKind'>;
+
+/** Queue totals where every job is a list job (the other kinds are empty). */
+export function listJobTotals(totals: JobTotals): FetchQueueState['totals'] {
+  const none = { queued: 0, fetching: 0, failed: 0 };
+  return { ...totals, byKind: { list: totals, event: none, 'pairings-round': none } };
 }

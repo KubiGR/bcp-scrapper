@@ -1,10 +1,9 @@
-import { count, eq } from 'drizzle-orm';
+import { count } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
-import pino from 'pino';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { BcpSource, TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
-import { events, games, players, teamMatchups, teams } from '../db/schema';
+import { events, players, teams } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { findEvent } from '../repo/events';
 import { getSyncRun } from '../repo/sync-runs';
@@ -70,37 +69,21 @@ describe('SyncRunner', () => {
     expect((await findEvent(db, EVENT))?.lastSyncedAt).toBeInstanceOf(Date);
   });
 
-  it('pairings: syncs the event first when needed, then every round', async () => {
-    const runner = new SyncRunner({ db, source: sampleSource(), logger: silentLogger });
-    const run = await runToCompletion(runner, { kind: 'pairings', eventId: EVENT });
-    expect(run).toMatchObject({ status: 'succeeded', total: 2, done: 2 });
-    expect(await rowCount(players)).toBe(8);
-    expect(await rowCount(teamMatchups)).toBe(4);
-    expect(await rowCount(games)).toBe(8);
-    const [draw] = await db.select().from(games).where(eq(games.id, 'GM-R2-4'));
-    expect(draw).toMatchObject({ result: 'draw', firstTurn: 'b', teamMatchupId: 'TP-R2-2' });
-  });
-
-  it('re-syncs drop the games and players BCP no longer lists', async () => {
+  it('re-syncs drop the players BCP no longer lists', async () => {
     const source = sampleSource();
     await runToCompletion(new SyncRunner({ db, source, logger: silentLogger }), {
-      kind: 'pairings',
+      kind: 'event',
       eventId: EVENT,
     });
 
     const shrunk = withOverrides(source, {
       getPlayers: async (eventId) =>
         (await source.getPlayers(eventId)).filter((player) => player.bcpId !== 'PL-HAL'),
-      getGames: async (eventId, round) =>
-        (await source.getGames(eventId, round)).filter((game) => game.bcpId !== 'GM-R1-4'),
     });
     const runner = new SyncRunner({ db, source: shrunk, logger: silentLogger });
     await runToCompletion(runner, { kind: 'event', eventId: EVENT });
-    await runToCompletion(runner, { kind: 'pairings', eventId: EVENT });
 
     expect(await rowCount(players)).toBe(7);
-    expect(await rowCount(games)).toBe(7);
-    expect(await rowCount(teamMatchups)).toBe(4);
   });
 
   it('records INTERNAL as the code of an unexpected failure', async () => {
@@ -136,28 +119,6 @@ describe('SyncRunner', () => {
       error: 'BCP returned a repeated page cursor for /v1/events',
       errorCode: 'BCP_UNAVAILABLE',
     });
-  });
-
-  it('pairings: warns when a team round has matchups but no individual games', async () => {
-    const source = sampleSource();
-    const noGames = withOverrides(source, {
-      getGames: (eventId, round) =>
-        round === 2 ? Promise.resolve([]) : source.getGames(eventId, round),
-      getEventGames: () => Promise.resolve([]),
-    });
-    const messages: string[] = [];
-    const logger = pino(
-      { level: 'warn' },
-      { write: (line: string) => messages.push((JSON.parse(line) as { msg: string }).msg) },
-    );
-    const runner = new SyncRunner({ db, source: noGames, logger });
-
-    const run = await runToCompletion(runner, { kind: 'pairings', eventId: EVENT });
-
-    expect(run).toMatchObject({ status: 'succeeded' });
-    expect(messages).toEqual([
-      'BCP returned no individual games for round 2; team matchups stored only',
-    ]);
   });
 
   it('returns the already-active run instead of starting a duplicate', async () => {
