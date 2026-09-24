@@ -4,12 +4,13 @@ import type { Db } from '../db/client';
 import { listQueue } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { sampleSource } from '../test/helpers';
-import { upsertEventDetail } from './events';
+import { upsertEventDetail, upsertEventSummaries } from './events';
 import {
   cancelQueuedLists,
   claimNextList,
   enqueueLists,
   latestQueueRowsByPlayer,
+  markListDone,
   markListFailed,
   NO_LIST_CODE,
   queuedInOrder,
@@ -18,7 +19,7 @@ import {
   retryFailedLists,
   SINGLE_LIST_PRIORITY,
 } from './list-queue';
-import { upsertPlayers } from './participants';
+import { replaceEventPlayers, upsertPlayers } from './participants';
 
 const EVENT = 'EVTTEAM0001';
 let db: Db;
@@ -104,5 +105,60 @@ describe('list queue repository', () => {
     expect(latest.get('PL-BEN')).toEqual({ status: 'queued', error: null });
     const [row] = await db.select().from(listQueue).where(eq(listQueue.playerId, 'PL-ADA'));
     expect(row?.finishedAt).toBeInstanceOf(Date);
+  });
+
+  describe('retryFailedLists', () => {
+    /** Queues the players, then claims every queued row and marks it failed with `code`. */
+    async function failAll(eventId: string, items: (typeof ada)[], code = 'BCP_UNAVAILABLE') {
+      await enqueueLists(db, eventId, items, 0);
+      let claimed = await claimNextList(db, soon());
+      while (claimed) {
+        await markListFailed(db, claimed.id, 'BCP hiccup', code);
+        claimed = await claimNextList(db, soon());
+      }
+    }
+    const rowsOf = (playerId: string) =>
+      db.select().from(listQueue).where(eq(listQueue.playerId, playerId)).orderBy(listQueue.id);
+
+    it('requeues a retryable failure with a fresh attempt count', async () => {
+      await failAll(EVENT, [ada]);
+      expect(await retryFailedLists(db, EVENT)).toBe(1);
+      const [row] = await rowsOf('PL-ADA');
+      expect(row).toMatchObject({ status: 'queued', attempts: 0, error: null, errorCode: null });
+    });
+
+    it('leaves a failure alone when the player has a newer open row', async () => {
+      await failAll(EVENT, [ada]);
+      await enqueueLists(db, EVENT, [ada], 0);
+      expect(await retryFailedLists(db, EVENT)).toBe(0);
+      expect((await rowsOf('PL-ADA')).map((row) => row.status)).toEqual(['failed', 'queued']);
+    });
+
+    it('leaves a failure alone when the player has a newer done row', async () => {
+      await failAll(EVENT, [ada]);
+      await enqueueLists(db, EVENT, [ada], 0);
+      const claimed = await claimNextList(db, soon());
+      if (!claimed) throw new Error('nothing claimed');
+      await markListDone(db, claimed.id);
+      expect(await retryFailedLists(db)).toBe(0);
+      expect((await rowsOf('PL-ADA')).map((row) => row.status)).toEqual(['failed', 'done']);
+    });
+
+    it('resets failures across events without an eventId, but not "no list"', async () => {
+      const other = 'EVTSINGLE01';
+      await upsertEventSummaries(
+        db,
+        (await sampleSource().listEvents({ from: '2026-01-01', to: '2026-12-31' }, null)).items,
+      );
+      const [first] = await sampleSource().getPlayers(EVENT);
+      if (!first) throw new Error('fixture missing');
+      await replaceEventPlayers(db, other, [{ ...first, bcpId: 'PL-OTHER', eventBcpId: other }]);
+      await failAll(EVENT, [ada]);
+      await failAll(other, [{ playerId: 'PL-OTHER', listId: 'LS-OTHER' }]);
+      await failAll(EVENT, [ben], NO_LIST_CODE);
+
+      expect(await retryFailedLists(db)).toBe(2);
+      expect(await queueTotals(db)).toMatchObject({ queued: 2 });
+    });
   });
 });

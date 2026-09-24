@@ -55,4 +55,17 @@ describe('QueueControls', () => {
       );
     });
   });
+
+  it('shows why retrying failed', async () => {
+    stubFetchRoutes({
+      'POST /api/list-queue/retry-failed': () =>
+        Response.json(
+          { error: { code: 'INTERNAL', message: 'Could not retry.' } },
+          { status: 500 },
+        ),
+    });
+    renderWithProviders(<QueueControls state={base} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry 2 failed' }));
+    expect(await screen.findByText('Could not retry.')).toBeInTheDocument();
+  });
 });

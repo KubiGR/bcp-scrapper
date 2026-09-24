@@ -1,4 +1,5 @@
-import { and, count, desc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, inArray, isNull, ne, notExists, or, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from '../db/client';
 import { listQueue } from '../db/schema';
 
@@ -132,8 +133,13 @@ export async function cancelQueuedLists(db: Db, eventId: string): Promise<number
   return rows.length;
 }
 
-/** Failed rows (except "no list on BCP") go back to the queue with a fresh attempt count. */
+/**
+ * Failed rows (except "no list on BCP") go back to the queue with a fresh attempt count. Only a
+ * player's newest row is retried: a failure superseded by a newer request (open or done) stays
+ * as history, so retrying never collides with an open row or refetches an older list.
+ */
 export async function retryFailedLists(db: Db, eventId?: string): Promise<number> {
+  const newer = alias(listQueue, 'newer');
   const rows = await db
     .update(listQueue)
     .set({ status: 'queued', attempts: 0, notBefore: new Date(), error: null, errorCode: null })
@@ -142,6 +148,12 @@ export async function retryFailedLists(db: Db, eventId?: string): Promise<number
         eq(listQueue.status, 'failed'),
         or(isNull(listQueue.errorCode), ne(listQueue.errorCode, NO_LIST_CODE)),
         eventId === undefined ? undefined : eq(listQueue.eventId, eventId),
+        notExists(
+          db
+            .select({ id: newer.id })
+            .from(newer)
+            .where(and(eq(newer.playerId, listQueue.playerId), gt(newer.id, listQueue.id))),
+        ),
       ),
     )
     .returning({ id: listQueue.id });

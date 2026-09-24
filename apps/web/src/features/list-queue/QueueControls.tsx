@@ -66,10 +66,18 @@ export function QueueControls({ state }: { state: ListQueueState }) {
         )}
       </Text>
       <PausedNote state={state} />
-      {toggle.error && (
-        <Text size="sm" c="red">
-          {toggle.error.message}
-        </Text>
+      {(
+        [
+          ['toggle', toggle.error],
+          ['retry', retry.error],
+        ] as const
+      ).map(
+        ([key, error]) =>
+          error && (
+            <Text key={key} size="sm" c="red">
+              {error.message}
+            </Text>
+          ),
       )}
       <Group gap="xs">
         <Button

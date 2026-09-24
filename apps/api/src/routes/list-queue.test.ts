@@ -11,6 +11,7 @@ import { createApp } from '../app';
 import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import { players } from '../db/schema';
+import { claimNextList, markListFailed } from '../repo/list-queue';
 import { createTestDb, resetDb } from '../db/test-db';
 import type { ListQueueWorker } from '../list-queue/worker';
 import { SyncRunner } from '../sync/runner';
@@ -152,6 +153,21 @@ describe('list queue routes', () => {
     ).toEqual({
       requeued: 0,
     });
+  });
+
+  it('retries a retryable failure on request, and the worker then fetches it', async () => {
+    await queue({ playerIds: ['PL-ADA'] });
+    const claimed = await claimNextList(db, new Date(Date.now() + 60_000));
+    if (!claimed) throw new Error('nothing claimed');
+    await markListFailed(db, claimed.id, 'BCP is unavailable', 'BCP_UNAVAILABLE');
+    expect((await playersOf()).find((p) => p.bcpId === 'PL-ADA')?.listStatus).toBe('failed');
+
+    expect(
+      await json(await send('POST', '/api/list-queue/retry-failed', { eventId: EVENT })),
+    ).toEqual({ requeued: 1 });
+    expect((await playersOf()).find((p) => p.bcpId === 'PL-ADA')?.listStatus).toBe('queued');
+    await drainQueue(listQueue);
+    expect((await playersOf()).find((p) => p.bcpId === 'PL-ADA')?.listStatus).toBe('fetched');
   });
 
   it('cancels an event’s queued lists', async () => {

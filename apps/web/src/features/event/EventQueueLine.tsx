@@ -55,6 +55,19 @@ export function EventQueueLine({ event }: { event: EventDetail }) {
           Retry failed
         </Button>
       )}
+      {(
+        [
+          ['cancel', cancel.error],
+          ['retry', retry.error],
+        ] as const
+      ).map(
+        ([key, error]) =>
+          error && (
+            <Text key={key} size="sm" c="red">
+              {error.message}
+            </Text>
+          ),
+      )}
     </Group>
   );
 }

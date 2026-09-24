@@ -38,6 +38,20 @@ describe('EventQueueLine', () => {
     });
   });
 
+  it('shows why cancelling or retrying failed', async () => {
+    const failing = (message: string) => () =>
+      Response.json({ error: { code: 'INTERNAL', message } }, { status: 500 });
+    stubFetchRoutes({
+      'DELETE /api/events/EVT1/lists/queue': failing('Could not cancel.'),
+      'POST /api/list-queue/retry-failed': failing('Could not retry.'),
+    });
+    renderWithProviders(<EventQueueLine event={anEventDetail({ counts, listQueueSeconds: 15 })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel queued' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry failed' }));
+    expect(await screen.findByText('Could not cancel.')).toBeInTheDocument();
+    expect(await screen.findByText('Could not retry.')).toBeInTheDocument();
+  });
+
   it('is hidden when nothing is queued or failed', () => {
     const { container } = renderWithProviders(<EventQueueLine event={anEventDetail()} />);
     expect(container.querySelector('[aria-live]')).toBeNull();
