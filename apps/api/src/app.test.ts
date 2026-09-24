@@ -4,7 +4,7 @@ import type { Db } from './db/client';
 import { createTestDb } from './db/test-db';
 import { BcpRateLimitedError, NotFoundError } from './errors';
 import { SyncRunner } from './sync/runner';
-import { sampleSource, silentLogger, testListQueue } from './test/helpers';
+import { sampleSource, silentLogger, testFetchQueue } from './test/helpers';
 
 let db: Db;
 let close: () => Promise<void>;
@@ -18,7 +18,7 @@ function makeApp(listenHost?: string) {
     listenHost,
     db,
     runner: new SyncRunner({ db, source: sampleSource(), logger: silentLogger }),
-    listQueue: testListQueue(db),
+    fetchQueue: testFetchQueue(db),
     bcpStatus: () =>
       Promise.resolve({
         source: 'fixtures',

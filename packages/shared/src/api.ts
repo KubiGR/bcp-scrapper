@@ -192,12 +192,12 @@ export const QueueListsResultSchema = z.object({
 });
 export type QueueListsResult = z.infer<typeof QueueListsResultSchema>;
 
-export const ListQueuePauseReasonSchema = z.enum(['user', 'login-rejected', 'rate-limited']);
-export type ListQueuePauseReason = z.infer<typeof ListQueuePauseReasonSchema>;
+export const FetchQueuePauseReasonSchema = z.enum(['user', 'login-rejected', 'rate-limited']);
+export type FetchQueuePauseReason = z.infer<typeof FetchQueuePauseReasonSchema>;
 
-export const ListQueueStateSchema = z.object({
+export const FetchQueueStateSchema = z.object({
   paused: z.boolean(),
-  pausedReason: ListQueuePauseReasonSchema.nullable(),
+  pausedReason: FetchQueuePauseReasonSchema.nullable(),
   /** Set when the pause lifts by itself (after a BCP rate limit). */
   pausedUntil: z.iso.datetime().nullable(),
   intervalMs: z.number().int().positive(),
@@ -205,4 +205,4 @@ export const ListQueueStateSchema = z.object({
   /** Until the whole queue is empty, at the current pace; null when it is empty. */
   estimatedSeconds: count.nullable(),
 });
-export type ListQueueState = z.infer<typeof ListQueueStateSchema>;
+export type FetchQueueState = z.infer<typeof FetchQueueStateSchema>;

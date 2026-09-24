@@ -2,7 +2,7 @@ import { AppShell, Container, Group } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { Link, Outlet } from '@tanstack/react-router';
 import { FinderSearchSchema } from '../features/finder/finder-search';
-import { QueueIndicator } from '../features/list-queue/QueueIndicator';
+import { QueueIndicator } from '../features/fetch-queue/QueueIndicator';
 import classes from './AppLayout.module.css';
 
 const FINDER_DEFAULTS = FinderSearchSchema.parse({});

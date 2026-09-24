@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatDuration } from '../../lib/format';
-import { describeQueueResult } from './list-queue-api';
+import { describeQueueResult } from './fetch-queue-api';
 
 const result = {
   queued: 7,

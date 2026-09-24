@@ -2,19 +2,19 @@ import type { ApiErrorBody, BcpStatus } from '@bcp/shared';
 import { Hono } from 'hono';
 import type { Db } from './db/client';
 import { AppError, BcpRateLimitedError, toErrorBody } from './errors';
-import type { ListQueueWorker } from './list-queue/worker';
+import type { FetchQueueWorker } from './fetch-queue/worker';
 import type { Logger } from './logger';
 import { bcpRoutes } from './routes/bcp';
 import { catalogRoutes } from './routes/catalog';
 import { eventRoutes } from './routes/events';
-import { listQueueRoutes } from './routes/list-queue';
+import { fetchQueueRoutes } from './routes/fetch-queue';
 import { syncRoutes } from './routes/sync';
 import type { SyncRunner } from './sync/runner';
 
 export interface AppDeps {
   db: Db;
   runner: SyncRunner;
-  listQueue: ListQueueWorker;
+  fetchQueue: FetchQueueWorker;
   bcpStatus: () => Promise<BcpStatus>;
   logger: Logger;
   /** Injectable clock for freshness rules; defaults to the real time. */
@@ -78,7 +78,7 @@ export function createApp(deps: AppDeps) {
   app.route('/api', syncRoutes(deps));
   app.route('/api', bcpRoutes(deps));
   app.route('/api', catalogRoutes({ ...deps, now }));
-  app.route('/api', listQueueRoutes(deps));
+  app.route('/api', fetchQueueRoutes(deps));
 
   return app;
 }

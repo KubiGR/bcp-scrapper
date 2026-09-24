@@ -2,7 +2,7 @@ import type {
   BcpStatus,
   EventDetail,
   EventPlayersResponse,
-  ListQueueState,
+  FetchQueueState,
   QueueListsResult,
 } from '@bcp/shared';
 import { eq } from 'drizzle-orm';
@@ -11,25 +11,25 @@ import { createApp } from '../app';
 import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import { players } from '../db/schema';
-import { claimNextList, markListFailed } from '../repo/list-queue';
+import { claimNextJob, markJobFailed } from '../repo/fetch-queue';
 import { createTestDb, resetDb } from '../db/test-db';
-import type { ListQueueWorker } from '../list-queue/worker';
+import type { FetchQueueWorker } from '../fetch-queue/worker';
 import { SyncRunner } from '../sync/runner';
-import { drainQueue, sampleSource, silentLogger, testListQueue } from '../test/helpers';
+import { drainQueue, sampleSource, silentLogger, testFetchQueue } from '../test/helpers';
 
 const EVENT = 'EVTTEAM0001';
 let db: Db;
 let close: () => Promise<void>;
 let status: BcpStatus;
-let listQueue: ListQueueWorker;
+let fetchQueue: FetchQueueWorker;
 let app: ReturnType<typeof createApp>;
 
 function build(source: TournamentSource = sampleSource()) {
-  listQueue = testListQueue(db, source);
+  fetchQueue = testFetchQueue(db, source);
   app = createApp({
     db,
     runner: new SyncRunner({ db, source, logger: silentLogger }),
-    listQueue,
+    fetchQueue,
     bcpStatus: () => Promise.resolve(status),
     logger: silentLogger,
   });
@@ -62,7 +62,7 @@ const queue = async (body: object) =>
 const playersOf = async () =>
   (await json<EventPlayersResponse>(await app.request(`/api/events/${EVENT}/players`))).items;
 
-describe('list queue routes', () => {
+describe('fetch queue routes', () => {
   it('queues every missing list, loading the event first; queueing again is a no-op', async () => {
     expect(await queue({})).toEqual({
       queued: 7,
@@ -94,7 +94,7 @@ describe('list queue routes', () => {
   it('queues a single list ahead of the rest, and it arrives when the worker runs', async () => {
     await queue({});
     expect(await queue({ playerIds: ['PL-EVE'] })).toMatchObject({ queued: 0, alreadyQueued: 1 });
-    await listQueue.tick();
+    await fetchQueue.tick();
     expect((await playersOf()).find((p) => p.bcpId === 'PL-EVE')?.listStatus).toBe('fetched');
   });
 
@@ -116,7 +116,7 @@ describe('list queue routes', () => {
 
   it('shows a list BCP replaced after it was stored as available again', async () => {
     await queue({ playerIds: ['PL-ADA'] });
-    await drainQueue(listQueue);
+    await drainQueue(fetchQueue);
     await db.update(players).set({ listId: 'LS-ADA-2' }).where(eq(players.id, 'PL-ADA'));
 
     expect((await playersOf()).find((p) => p.bcpId === 'PL-ADA')?.listStatus).toBe('available');
@@ -139,7 +139,7 @@ describe('list queue routes', () => {
     };
     build(noEveList);
     await queue({ playerIds: ['PL-EVE'] });
-    await drainQueue(listQueue);
+    await drainQueue(fetchQueue);
 
     expect((await playersOf()).find((p) => p.bcpId === 'PL-EVE')).toMatchObject({
       listStatus: 'failed',
@@ -149,12 +149,12 @@ describe('list queue routes', () => {
     expect(
       (await json<EventDetail>(await app.request(`/api/events/${EVENT}`))).counts.listsFailed,
     ).toBe(0);
-    expect((await json<ListQueueState>(await app.request('/api/list-queue'))).totals.failed).toBe(
+    expect((await json<FetchQueueState>(await app.request('/api/fetch-queue'))).totals.failed).toBe(
       0,
     );
     // Retry-failed leaves it alone, and so does queueing the event's missing lists again...
     expect(
-      await json(await send('POST', '/api/list-queue/retry-failed', { eventId: EVENT })),
+      await json(await send('POST', '/api/fetch-queue/retry-failed', { eventId: EVENT })),
     ).toEqual({ requeued: 0 });
     expect(await queue({})).toMatchObject({ queued: 6, noListOnBcp: 2 });
     expect((await playersOf()).find((p) => p.bcpId === 'PL-EVE')?.listStatus).toBe('failed');
@@ -164,9 +164,9 @@ describe('list queue routes', () => {
 
   it('retries a retryable failure on request, and the worker then fetches it', async () => {
     await queue({ playerIds: ['PL-ADA'] });
-    const claimed = await claimNextList(db, new Date(Date.now() + 60_000));
+    const claimed = await claimNextJob(db, new Date(Date.now() + 60_000));
     if (!claimed) throw new Error('nothing claimed');
-    await markListFailed(db, claimed.id, 'BCP is unavailable', 'BCP_UNAVAILABLE');
+    await markJobFailed(db, claimed.id, 'BCP is unavailable', 'BCP_UNAVAILABLE');
     expect((await playersOf()).find((p) => p.bcpId === 'PL-ADA')).toMatchObject({
       listStatus: 'failed',
       listErrorCode: 'BCP_UNAVAILABLE',
@@ -174,15 +174,15 @@ describe('list queue routes', () => {
     expect(
       (await json<EventDetail>(await app.request(`/api/events/${EVENT}`))).counts.listsFailed,
     ).toBe(1);
-    expect((await json<ListQueueState>(await app.request('/api/list-queue'))).totals.failed).toBe(
+    expect((await json<FetchQueueState>(await app.request('/api/fetch-queue'))).totals.failed).toBe(
       1,
     );
 
     expect(
-      await json(await send('POST', '/api/list-queue/retry-failed', { eventId: EVENT })),
+      await json(await send('POST', '/api/fetch-queue/retry-failed', { eventId: EVENT })),
     ).toEqual({ requeued: 1 });
     expect((await playersOf()).find((p) => p.bcpId === 'PL-ADA')?.listStatus).toBe('queued');
-    await drainQueue(listQueue);
+    await drainQueue(fetchQueue);
     expect((await playersOf()).find((p) => p.bcpId === 'PL-ADA')?.listStatus).toBe('fetched');
   });
 
@@ -191,31 +191,31 @@ describe('list queue routes', () => {
     expect(await json(await send('DELETE', `/api/events/${EVENT}/lists/queue`))).toEqual({
       removed: 7,
     });
-    expect((await json<ListQueueState>(await app.request('/api/list-queue'))).totals.queued).toBe(
+    expect((await json<FetchQueueState>(await app.request('/api/fetch-queue'))).totals.queued).toBe(
       0,
     );
   });
 
   it('pauses and resumes, but refuses to resume while BCP rejects the login', async () => {
     expect(
-      await json<ListQueueState>(await send('POST', '/api/list-queue/pause', {})),
+      await json<FetchQueueState>(await send('POST', '/api/fetch-queue/pause', {})),
     ).toMatchObject({
       paused: true,
       pausedReason: 'user',
     });
     expect(
-      (await json<ListQueueState>(await send('POST', '/api/list-queue/resume', {}))).paused,
+      (await json<FetchQueueState>(await send('POST', '/api/fetch-queue/resume', {}))).paused,
     ).toBe(false);
 
-    listQueue.pause('login-rejected');
+    fetchQueue.pause('login-rejected');
     status = { ...status, source: 'bcp', state: 'rejected' };
-    const refused = await send('POST', '/api/list-queue/resume', {});
+    const refused = await send('POST', '/api/fetch-queue/resume', {});
     expect(refused.status).toBe(502);
     expect(await refused.json()).toMatchObject({ error: { code: 'BCP_AUTH' } });
 
     status = { ...status, state: 'connected' };
     expect(
-      (await json<ListQueueState>(await send('POST', '/api/list-queue/resume', {}))).paused,
+      (await json<FetchQueueState>(await send('POST', '/api/fetch-queue/resume', {}))).paused,
     ).toBe(false);
   });
 });

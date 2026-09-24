@@ -1,16 +1,16 @@
 import { qualifiesForMaxLosses, type QueueListsRequest, type QueueListsResult } from '@bcp/shared';
 import type { Db } from '../db/client';
 import { ValidationError } from '../errors';
-import { enqueueLists, NO_LIST_CODE, SINGLE_LIST_PRIORITY } from '../repo/list-queue';
+import { enqueueLists, NO_LIST_CODE, SINGLE_LIST_PRIORITY } from '../repo/fetch-queue';
 import { findPlayersMissingLists } from '../repo/lists';
 import { listEventPlayers } from '../repo/participants';
 import type { SyncRunner } from '../sync/runner';
-import type { ListQueueWorker } from './worker';
+import type { FetchQueueWorker } from './worker';
 
 export interface QueueListsDeps {
   db: Db;
   runner: SyncRunner;
-  listQueue: ListQueueWorker;
+  fetchQueue: FetchQueueWorker;
 }
 
 /**
@@ -82,6 +82,6 @@ export async function queueEventLists(
     queued,
     ...counts,
     notQualifying,
-    estimatedSeconds: await deps.listQueue.estimateSecondsFor(eventId),
+    estimatedSeconds: await deps.fetchQueue.estimateSecondsFor(eventId),
   };
 }

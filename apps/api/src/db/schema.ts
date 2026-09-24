@@ -190,16 +190,16 @@ export const syncRuns = pgTable(
   ],
 );
 
-export const listQueueStatus = pgEnum('list_queue_status', [
+export const fetchQueueStatus = pgEnum('fetch_queue_status', [
   'queued',
   'fetching',
   'done',
   'failed',
 ]);
 
-/** Army lists waiting to be fetched, one row per request; drained slowly by the ListQueueWorker. */
-export const listQueue = pgTable(
-  'list_queue',
+/** Jobs waiting to reach BCP (army lists for now), one row per request; drained slowly by the FetchQueueWorker. */
+export const fetchQueue = pgTable(
+  'fetch_queue',
   {
     id: serial('id').primaryKey(),
     eventId: text('event_id')
@@ -212,7 +212,7 @@ export const listQueue = pgTable(
     listId: text('list_id').notNull(),
     /** 0 = normal, 10 = a single list someone is waiting for. Higher is claimed first. */
     priority: integer('priority').notNull().default(0),
-    status: listQueueStatus('status').notNull().default('queued'),
+    status: fetchQueueStatus('status').notNull().default('queued'),
     attempts: integer('attempts').notNull().default(0),
     /** Not claimed before this time (backoff after a transient failure). */
     notBefore: timestamptz('not_before').notNull().defaultNow(),
@@ -224,11 +224,11 @@ export const listQueue = pgTable(
   },
   (t) => [
     // At most one open request per player: queueing twice is a no-op.
-    uniqueIndex('list_queue_one_open_idx')
+    uniqueIndex('fetch_queue_one_open_idx')
       .on(t.playerId)
       .where(sql`${t.status} in ('queued', 'fetching')`),
-    index('list_queue_claim_idx').on(t.status, desc(t.priority), t.queuedAt),
-    index('list_queue_event_idx').on(t.eventId, t.status),
+    index('fetch_queue_claim_idx').on(t.status, desc(t.priority), t.queuedAt),
+    index('fetch_queue_event_idx').on(t.eventId, t.status),
   ],
 );
 

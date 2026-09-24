@@ -2,11 +2,11 @@ import { Skeleton, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
-import { listQueueQuery } from './list-queue-queries';
+import { fetchQueueQuery } from './fetch-queue-queries';
 import { QueueControls } from './QueueControls';
 
-export function ListQueueCard() {
-  const queue = useQuery(listQueueQuery);
+export function FetchQueueCard() {
+  const queue = useQuery(fetchQueueQuery);
   return (
     <Panel title="List queue">
       {queue.isPending && <Skeleton height={56} />}

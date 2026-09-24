@@ -1,10 +1,10 @@
-import type { ListQueueState } from '@bcp/shared';
+import type { FetchQueueState } from '@bcp/shared';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders, renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { QueueControls } from './QueueControls';
 
-const base: ListQueueState = {
+const base: FetchQueueState = {
   paused: false,
   pausedReason: null,
   pausedUntil: null,
@@ -16,7 +16,7 @@ const base: ListQueueState = {
 describe('QueueControls', () => {
   it('shows the totals and pauses the queue', async () => {
     const fetchMock = stubFetchRoutes({
-      'POST /api/list-queue/pause': { ...base, paused: true, pausedReason: 'user' },
+      'POST /api/fetch-queue/pause': { ...base, paused: true, pausedReason: 'user' },
     });
     renderWithProviders(<QueueControls state={base} />);
     expect(
@@ -26,13 +26,13 @@ describe('QueueControls', () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     await waitFor(() => {
-      expect(fetchMock.mock.calls.some(([url]) => url === '/api/list-queue/pause')).toBe(true);
+      expect(fetchMock.mock.calls.some(([url]) => url === '/api/fetch-queue/pause')).toBe(true);
     });
   });
 
   it('shows why resuming failed', async () => {
     stubFetchRoutes({
-      'POST /api/list-queue/resume': () =>
+      'POST /api/fetch-queue/resume': () =>
         Response.json(
           { error: { code: 'BCP_AUTH', message: 'BCP still rejects the login.' } },
           { status: 502 },
@@ -46,11 +46,11 @@ describe('QueueControls', () => {
   });
 
   it('retries all failed lists', async () => {
-    const fetchMock = stubFetchRoutes({ 'POST /api/list-queue/retry-failed': { requeued: 2 } });
+    const fetchMock = stubFetchRoutes({ 'POST /api/fetch-queue/retry-failed': { requeued: 2 } });
     renderWithProviders(<QueueControls state={base} />);
     fireEvent.click(screen.getByRole('button', { name: 'Retry 2 failed' }));
     await waitFor(() => {
-      expect(fetchMock.mock.calls.some(([url]) => url === '/api/list-queue/retry-failed')).toBe(
+      expect(fetchMock.mock.calls.some(([url]) => url === '/api/fetch-queue/retry-failed')).toBe(
         true,
       );
     });
@@ -58,7 +58,7 @@ describe('QueueControls', () => {
 
   it('shows why retrying failed', async () => {
     stubFetchRoutes({
-      'POST /api/list-queue/retry-failed': () =>
+      'POST /api/fetch-queue/retry-failed': () =>
         Response.json(
           { error: { code: 'INTERNAL', message: 'Could not retry.' } },
           { status: 500 },

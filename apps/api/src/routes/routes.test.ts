@@ -4,7 +4,7 @@ import { createApp } from '../app';
 import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
 import { SyncRunner } from '../sync/runner';
-import { sampleSource, silentLogger, testListQueue } from '../test/helpers';
+import { sampleSource, silentLogger, testFetchQueue } from '../test/helpers';
 
 let db: Db;
 let close: () => Promise<void>;
@@ -24,7 +24,7 @@ beforeAll(async () => {
   app = createApp({
     db,
     runner,
-    listQueue: testListQueue(db),
+    fetchQueue: testFetchQueue(db),
     bcpStatus: () => Promise.resolve(status),
     logger: silentLogger,
   });

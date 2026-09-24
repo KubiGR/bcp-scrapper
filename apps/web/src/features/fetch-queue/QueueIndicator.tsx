@@ -1,7 +1,7 @@
 import { Popover, UnstyledButton } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { formatDuration } from '../../lib/format';
-import { listQueueQuery } from './list-queue-queries';
+import { fetchQueueQuery } from './fetch-queue-queries';
 import { QueueControls } from './QueueControls';
 import classes from './QueueIndicator.module.css';
 
@@ -10,7 +10,7 @@ import classes from './QueueIndicator.module.css';
  * lists, failed ones, or a pause (so Resume stays reachable even once the queue drains).
  */
 export function QueueIndicator() {
-  const { data: state } = useQuery(listQueueQuery);
+  const { data: state } = useQuery(fetchQueueQuery);
   if (!state) return null;
   const { queued, fetching, failed } = state.totals;
   const inProgress = queued + fetching;

@@ -2,7 +2,7 @@ import type { EventDetail } from '@bcp/shared';
 import { Button, Group, Text } from '@mantine/core';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDuration } from '../../lib/format';
-import { cancelQueued, listQueueQuery, retryFailed } from '../list-queue/list-queue-queries';
+import { cancelQueued, fetchQueueQuery, retryFailed } from '../fetch-queue/fetch-queue-queries';
 
 /** "3 queued · 3 fetched · 1 failed · about 15 s left", with Cancel and Retry. */
 export function EventQueueLine({ event }: { event: EventDetail }) {
@@ -10,7 +10,7 @@ export function EventQueueLine({ event }: { event: EventDetail }) {
   const refresh = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ['event', event.bcpId] }),
-      queryClient.invalidateQueries({ queryKey: listQueueQuery.queryKey }),
+      queryClient.invalidateQueries({ queryKey: fetchQueueQuery.queryKey }),
     ]);
   const cancel = useMutation({ mutationFn: () => cancelQueued(event.bcpId), onSuccess: refresh });
   const retry = useMutation({ mutationFn: () => retryFailed(event.bcpId), onSuccess: refresh });

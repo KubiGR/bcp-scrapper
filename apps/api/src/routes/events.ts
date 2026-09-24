@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { Db } from '../db/client';
 import { NotFoundError } from '../errors';
 import { getEventDetail } from '../event-detail';
-import type { ListQueueWorker } from '../list-queue/worker';
+import type { FetchQueueWorker } from '../fetch-queue/worker';
 import { exportFileName, listsToText } from '../lists-export';
 import { searchEvents } from '../repo/events';
 import { findPlayerList, listEventArmyLists, listEventMissingLists } from '../repo/lists';
@@ -14,7 +14,7 @@ import { requireEvent } from './require-event';
 
 const ExportQuerySchema = z.object({ format: ListExportFormatSchema.default('txt') });
 
-export function eventRoutes(deps: { db: Db; now: () => Date; listQueue: ListQueueWorker }) {
+export function eventRoutes(deps: { db: Db; now: () => Date; fetchQueue: FetchQueueWorker }) {
   return new Hono()
     .get('/events', async (c) => {
       const query = parseInput(EventListQuerySchema, c.req.query());

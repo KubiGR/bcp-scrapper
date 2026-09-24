@@ -1,11 +1,11 @@
-import type { ListQueueState } from '@bcp/shared';
+import type { FetchQueueState } from '@bcp/shared';
 import { Anchor, Button, Group, Stack, Text } from '@mantine/core';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { formatDateTime, formatDuration } from '../../lib/format';
-import { listQueueQuery, pauseQueue, resumeQueue, retryFailed } from './list-queue-queries';
+import { fetchQueueQuery, pauseQueue, resumeQueue, retryFailed } from './fetch-queue-queries';
 
-function PausedNote({ state }: { state: ListQueueState }) {
+function PausedNote({ state }: { state: FetchQueueState }) {
   switch (state.pausedReason) {
     case 'login-rejected':
       return (
@@ -37,9 +37,9 @@ function PausedNote({ state }: { state: ListQueueState }) {
 }
 
 /** Totals plus Pause/Resume and Retry, shared by the header popover and the Settings card. */
-export function QueueControls({ state }: { state: ListQueueState }) {
+export function QueueControls({ state }: { state: FetchQueueState }) {
   const queryClient = useQueryClient();
-  const refresh = () => queryClient.invalidateQueries({ queryKey: listQueueQuery.queryKey });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: fetchQueueQuery.queryKey });
   const toggle = useMutation({
     mutationFn: () => (state.paused ? resumeQueue() : pauseQueue()),
     onSuccess: refresh,

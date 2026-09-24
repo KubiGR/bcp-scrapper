@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 import { FixtureTransport } from '../bcp/fixture-transport';
 import { BcpSource, type TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
-import { ListQueueWorker } from '../list-queue/worker';
+import { FetchQueueWorker } from '../fetch-queue/worker';
 
 export const silentLogger = pino({ level: 'silent' });
 
@@ -29,12 +29,15 @@ export async function settle<T>(promise: Promise<T>): Promise<T> {
 }
 
 /** A worker for tests: never started, driven by tick() (or drainQueue). */
-export function testListQueue(db: Db, source: TournamentSource = sampleSource()): ListQueueWorker {
-  return new ListQueueWorker({ db, source, logger: silentLogger, intervalMs: 5000 });
+export function testFetchQueue(
+  db: Db,
+  source: TournamentSource = sampleSource(),
+): FetchQueueWorker {
+  return new FetchQueueWorker({ db, source, logger: silentLogger, intervalMs: 5000 });
 }
 
 /** Ticks until nothing is left to claim (or the worker pauses). */
-export async function drainQueue(worker: ListQueueWorker): Promise<void> {
+export async function drainQueue(worker: FetchQueueWorker): Promise<void> {
   for (let i = 0; i < 1000; i += 1) {
     const outcome = await worker.tick();
     if (outcome === 'idle' || outcome === 'paused') return;

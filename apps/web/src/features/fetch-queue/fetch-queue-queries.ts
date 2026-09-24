@@ -1,24 +1,24 @@
-import { ListQueueStateSchema, type ListQueueState } from '@bcp/shared';
+import { FetchQueueStateSchema, type FetchQueueState } from '@bcp/shared';
 import { queryOptions } from '@tanstack/react-query';
 import { z } from 'zod';
 import { apiDelete, apiGet, apiPost } from '../../api/client';
 
-const hasWork = (state: ListQueueState | undefined) =>
+const hasWork = (state: FetchQueueState | undefined) =>
   state !== undefined && (state.totals.queued > 0 || state.totals.fetching > 0);
 
 /** Polls quickly while lists are being fetched, and rarely otherwise (another tab may queue some). */
-export const listQueueQuery = queryOptions({
-  queryKey: ['list-queue'],
-  queryFn: () => apiGet('/api/list-queue', ListQueueStateSchema),
+export const fetchQueueQuery = queryOptions({
+  queryKey: ['fetch-queue'],
+  queryFn: () => apiGet('/api/fetch-queue', FetchQueueStateSchema),
   refetchInterval: (query) => (hasWork(query.state.data) ? 5000 : 30_000),
 });
 
-export const pauseQueue = () => apiPost('/api/list-queue/pause', {}, ListQueueStateSchema);
-export const resumeQueue = () => apiPost('/api/list-queue/resume', {}, ListQueueStateSchema);
+export const pauseQueue = () => apiPost('/api/fetch-queue/pause', {}, FetchQueueStateSchema);
+export const resumeQueue = () => apiPost('/api/fetch-queue/resume', {}, FetchQueueStateSchema);
 
 export const retryFailed = (eventId?: string) =>
   apiPost(
-    '/api/list-queue/retry-failed',
+    '/api/fetch-queue/retry-failed',
     eventId === undefined ? {} : { eventId },
     z.object({ requeued: z.number().int() }),
   );

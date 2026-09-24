@@ -3,7 +3,7 @@ import { and, count, eq, isNotNull, notInArray, sql } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { armyLists, players, teams } from '../db/schema';
-import { isRetryableFailure, latestQueueRowsByPlayer, type LatestQueueRow } from './list-queue';
+import { isRetryableFailure, latestQueueRowsByPlayer, type LatestQueueRow } from './fetch-queue';
 import { findPlayersMissingLists, isMissingList, storedCurrentList } from './lists';
 import { excludedColumns } from './upsert';
 

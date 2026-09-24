@@ -18,7 +18,7 @@ describe('EventQueueLine', () => {
   it('shows progress and lets the user cancel or retry', async () => {
     const fetchMock = stubFetchRoutes({
       'DELETE /api/events/EVT1/lists/queue': { removed: 3 },
-      'POST /api/list-queue/retry-failed': { requeued: 1 },
+      'POST /api/fetch-queue/retry-failed': { requeued: 1 },
     });
     renderWithProviders(<EventQueueLine event={anEventDetail({ counts, listQueueSeconds: 15 })} />);
     expect(
@@ -33,7 +33,7 @@ describe('EventQueueLine', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry failed' }));
     await waitFor(() => {
       expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(
-        expect.arrayContaining(['/api/events/EVT1/lists/queue', '/api/list-queue/retry-failed']),
+        expect.arrayContaining(['/api/events/EVT1/lists/queue', '/api/fetch-queue/retry-failed']),
       );
     });
   });
@@ -43,7 +43,7 @@ describe('EventQueueLine', () => {
       Response.json({ error: { code: 'INTERNAL', message } }, { status: 500 });
     stubFetchRoutes({
       'DELETE /api/events/EVT1/lists/queue': failing('Could not cancel.'),
-      'POST /api/list-queue/retry-failed': failing('Could not retry.'),
+      'POST /api/fetch-queue/retry-failed': failing('Could not retry.'),
     });
     renderWithProviders(<EventQueueLine event={anEventDetail({ counts, listQueueSeconds: 15 })} />);
     fireEvent.click(screen.getByRole('button', { name: 'Cancel queued' }));

@@ -1,6 +1,6 @@
 import { Stack, Title } from '@mantine/core';
 import { createFileRoute } from '@tanstack/react-router';
-import { ListQueueCard } from '../features/list-queue/ListQueueCard';
+import { FetchQueueCard } from '../features/fetch-queue/FetchQueueCard';
 import { BcpStatusCard } from '../features/settings/BcpStatusCard';
 
 export const Route = createFileRoute('/settings')({ component: SettingsPage });
@@ -10,7 +10,7 @@ function SettingsPage() {
     <Stack gap="lg" maw={720}>
       <Title order={1}>Settings</Title>
       <BcpStatusCard />
-      <ListQueueCard />
+      <FetchQueueCard />
     </Stack>
   );
 }

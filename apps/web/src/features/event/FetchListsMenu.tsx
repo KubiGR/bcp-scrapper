@@ -2,8 +2,8 @@ import type { EventDetail, EventPlayer, QueueListsRequest } from '@bcp/shared';
 import { Button, Menu, Stack, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { describeQueueResult, queueLists } from '../list-queue/list-queue-api';
-import { listQueueQuery } from '../list-queue/list-queue-queries';
+import { describeQueueResult, queueLists } from '../fetch-queue/fetch-queue-api';
+import { fetchQueueQuery } from '../fetch-queue/fetch-queue-queries';
 import { lossLabel, lossOptions, missingListCount } from './players-filter';
 
 interface FetchListsMenuProps {
@@ -18,7 +18,7 @@ export function FetchListsMenu({ event, players }: FetchListsMenuProps) {
     onSuccess: async (result) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['event', event.bcpId] }),
-        queryClient.invalidateQueries({ queryKey: listQueueQuery.queryKey }),
+        queryClient.invalidateQueries({ queryKey: fetchQueueQuery.queryKey }),
       ]);
       notifications.show({
         color: 'neon',

@@ -1,16 +1,16 @@
 import { and, count, desc, eq, gt, inArray, isNull, ne, notExists, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from '../db/client';
-import { listQueue } from '../db/schema';
+import { fetchQueue } from '../db/schema';
 
 /** Priority of a single list someone is waiting for; normal requests are 0. */
 export const SINGLE_LIST_PRIORITY = 10;
 /** `error_code` of a list BCP says doesn't exist; never retried. */
 export const NO_LIST_CODE = 'NO_LIST';
 
-export type ListQueueStatus = (typeof listQueue.$inferSelect)['status'];
+export type FetchQueueStatus = (typeof fetchQueue.$inferSelect)['status'];
 
-export interface ClaimedList {
+export interface ClaimedJob {
   id: number;
   eventId: string;
   playerId: string;
@@ -31,21 +31,21 @@ export async function enqueueLists(
 ): Promise<number> {
   if (items.length === 0) return 0;
   const inserted = await db
-    .insert(listQueue)
+    .insert(fetchQueue)
     .values(items.map((item) => ({ eventId, ...item, priority })))
     .onConflictDoNothing()
-    .returning({ id: listQueue.id });
+    .returning({ id: fetchQueue.id });
   if (priority === SINGLE_LIST_PRIORITY) {
     await db
-      .update(listQueue)
+      .update(fetchQueue)
       .set({ priority })
       .where(
         and(
           inArray(
-            listQueue.playerId,
+            fetchQueue.playerId,
             items.map((item) => item.playerId),
           ),
-          eq(listQueue.status, 'queued'),
+          eq(fetchQueue.status, 'queued'),
         ),
       );
   }
@@ -53,83 +53,83 @@ export async function enqueueLists(
 }
 
 /** Atomically takes the next due row (highest priority, then oldest) and marks it fetching. */
-export async function claimNextList(db: Db, now: Date): Promise<ClaimedList | null> {
+export async function claimNextJob(db: Db, now: Date): Promise<ClaimedJob | null> {
   const next = sql`(
-    select ${listQueue.id} from ${listQueue}
-    where ${listQueue.status} = 'queued' and ${listQueue.notBefore} <= ${now.toISOString()}::timestamptz
-    order by ${listQueue.priority} desc, ${listQueue.queuedAt}, ${listQueue.id}
+    select ${fetchQueue.id} from ${fetchQueue}
+    where ${fetchQueue.status} = 'queued' and ${fetchQueue.notBefore} <= ${now.toISOString()}::timestamptz
+    order by ${fetchQueue.priority} desc, ${fetchQueue.queuedAt}, ${fetchQueue.id}
     limit 1
     for update skip locked
   )`;
   const [row] = await db
-    .update(listQueue)
-    .set({ status: 'fetching', attempts: sql`${listQueue.attempts} + 1` })
-    .where(eq(listQueue.id, next))
+    .update(fetchQueue)
+    .set({ status: 'fetching', attempts: sql`${fetchQueue.attempts} + 1` })
+    .where(eq(fetchQueue.id, next))
     .returning({
-      id: listQueue.id,
-      eventId: listQueue.eventId,
-      playerId: listQueue.playerId,
-      listId: listQueue.listId,
-      attempts: listQueue.attempts,
+      id: fetchQueue.id,
+      eventId: fetchQueue.eventId,
+      playerId: fetchQueue.playerId,
+      listId: fetchQueue.listId,
+      attempts: fetchQueue.attempts,
     });
   return row ?? null;
 }
 
-export async function markListDone(db: Db, id: number): Promise<void> {
+export async function markJobDone(db: Db, id: number): Promise<void> {
   await db
-    .update(listQueue)
+    .update(fetchQueue)
     .set({ status: 'done', error: null, errorCode: null, finishedAt: new Date() })
-    .where(eq(listQueue.id, id));
+    .where(eq(fetchQueue.id, id));
 }
 
-export async function markListFailed(
+export async function markJobFailed(
   db: Db,
   id: number,
   error: string,
   code: string,
 ): Promise<void> {
   await db
-    .update(listQueue)
+    .update(fetchQueue)
     .set({ status: 'failed', error, errorCode: code, finishedAt: new Date() })
-    .where(eq(listQueue.id, id));
+    .where(eq(fetchQueue.id, id));
 }
 
 /** Back to the queue after a transient failure, not before `notBefore`. */
-export async function retryListLater(
+export async function retryJobLater(
   db: Db,
   id: number,
   notBefore: Date,
   error: string,
 ): Promise<void> {
   await db
-    .update(listQueue)
+    .update(fetchQueue)
     .set({ status: 'queued', notBefore, error })
-    .where(eq(listQueue.id, id));
+    .where(eq(fetchQueue.id, id));
 }
 
 /** Back to the queue without counting the attempt (the worker paused; the list wasn't at fault). */
-export async function releaseList(db: Db, id: number): Promise<void> {
+export async function releaseJob(db: Db, id: number): Promise<void> {
   await db
-    .update(listQueue)
-    .set({ status: 'queued', attempts: sql`greatest(${listQueue.attempts} - 1, 0)` })
-    .where(eq(listQueue.id, id));
+    .update(fetchQueue)
+    .set({ status: 'queued', attempts: sql`greatest(${fetchQueue.attempts} - 1, 0)` })
+    .where(eq(fetchQueue.id, id));
 }
 
 /** Rows left fetching by a process that stopped go back to the queue. */
 export async function requeueInterrupted(db: Db): Promise<number> {
   const rows = await db
-    .update(listQueue)
+    .update(fetchQueue)
     .set({ status: 'queued' })
-    .where(eq(listQueue.status, 'fetching'))
-    .returning({ id: listQueue.id });
+    .where(eq(fetchQueue.status, 'fetching'))
+    .returning({ id: fetchQueue.id });
   return rows.length;
 }
 
 export async function cancelQueuedLists(db: Db, eventId: string): Promise<number> {
   const rows = await db
-    .delete(listQueue)
-    .where(and(eq(listQueue.eventId, eventId), eq(listQueue.status, 'queued')))
-    .returning({ id: listQueue.id });
+    .delete(fetchQueue)
+    .where(and(eq(fetchQueue.eventId, eventId), eq(fetchQueue.status, 'queued')))
+    .returning({ id: fetchQueue.id });
   return rows.length;
 }
 
@@ -138,25 +138,25 @@ export async function cancelQueuedLists(db: Db, eventId: string): Promise<number
  * player's newest row is retried: a failure superseded by a newer request (open or done) stays
  * as history, so retrying never collides with an open row or refetches an older list.
  */
-export async function retryFailedLists(db: Db, eventId?: string): Promise<number> {
-  const newer = alias(listQueue, 'newer');
+export async function retryFailedJobs(db: Db, eventId?: string): Promise<number> {
+  const newer = alias(fetchQueue, 'newer');
   const rows = await db
-    .update(listQueue)
+    .update(fetchQueue)
     .set({ status: 'queued', attempts: 0, notBefore: new Date(), error: null, errorCode: null })
     .where(
       and(
-        eq(listQueue.status, 'failed'),
-        or(isNull(listQueue.errorCode), ne(listQueue.errorCode, NO_LIST_CODE)),
-        eventId === undefined ? undefined : eq(listQueue.eventId, eventId),
+        eq(fetchQueue.status, 'failed'),
+        or(isNull(fetchQueue.errorCode), ne(fetchQueue.errorCode, NO_LIST_CODE)),
+        eventId === undefined ? undefined : eq(fetchQueue.eventId, eventId),
         notExists(
           db
             .select({ id: newer.id })
             .from(newer)
-            .where(and(eq(newer.playerId, listQueue.playerId), gt(newer.id, listQueue.id))),
+            .where(and(eq(newer.playerId, fetchQueue.playerId), gt(newer.id, fetchQueue.id))),
         ),
       ),
     )
-    .returning({ id: listQueue.id });
+    .returning({ id: fetchQueue.id });
   return rows.length;
 }
 
@@ -166,28 +166,28 @@ export async function retryFailedLists(db: Db, eventId?: string): Promise<number
  */
 function newestRowPerPlayer(db: Db, eventId?: string) {
   return db
-    .selectDistinctOn([listQueue.playerId], {
-      playerId: listQueue.playerId,
-      eventId: listQueue.eventId,
-      status: listQueue.status,
-      error: listQueue.error,
-      errorCode: listQueue.errorCode,
+    .selectDistinctOn([fetchQueue.playerId], {
+      playerId: fetchQueue.playerId,
+      eventId: fetchQueue.eventId,
+      status: fetchQueue.status,
+      error: fetchQueue.error,
+      errorCode: fetchQueue.errorCode,
     })
-    .from(listQueue)
-    .where(eventId === undefined ? undefined : eq(listQueue.eventId, eventId))
-    .orderBy(listQueue.playerId, desc(listQueue.id));
+    .from(fetchQueue)
+    .where(eventId === undefined ? undefined : eq(fetchQueue.eventId, eventId))
+    .orderBy(fetchQueue.playerId, desc(fetchQueue.id));
 }
 
 export async function queueTotals(
   db: Db,
 ): Promise<{ queued: number; fetching: number; failed: number }> {
   const open = await db
-    .select({ status: listQueue.status, n: count() })
-    .from(listQueue)
-    .where(inArray(listQueue.status, ['queued', 'fetching']))
-    .groupBy(listQueue.status);
+    .select({ status: fetchQueue.status, n: count() })
+    .from(fetchQueue)
+    .where(inArray(fetchQueue.status, ['queued', 'fetching']))
+    .groupBy(fetchQueue.status);
   const newest = await newestRowPerPlayer(db);
-  const of = (status: ListQueueStatus) => open.find((row) => row.status === status)?.n ?? 0;
+  const of = (status: FetchQueueStatus) => open.find((row) => row.status === status)?.n ?? 0;
   return {
     queued: of('queued'),
     fetching: of('fetching'),
@@ -200,14 +200,14 @@ export async function queuedInOrder(
   db: Db,
 ): Promise<{ id: number; eventId: string; playerId: string }[]> {
   return db
-    .select({ id: listQueue.id, eventId: listQueue.eventId, playerId: listQueue.playerId })
-    .from(listQueue)
-    .where(eq(listQueue.status, 'queued'))
-    .orderBy(desc(listQueue.priority), listQueue.queuedAt, listQueue.id);
+    .select({ id: fetchQueue.id, eventId: fetchQueue.eventId, playerId: fetchQueue.playerId })
+    .from(fetchQueue)
+    .where(eq(fetchQueue.status, 'queued'))
+    .orderBy(desc(fetchQueue.priority), fetchQueue.queuedAt, fetchQueue.id);
 }
 
 export interface LatestQueueRow {
-  status: ListQueueStatus;
+  status: FetchQueueStatus;
   error: string | null;
   errorCode: string | null;
 }

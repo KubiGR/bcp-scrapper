@@ -1,12 +1,12 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { ListQueueState } from '@bcp/shared';
-import { listQueueQuery } from '../list-queue/list-queue-queries';
+import type { FetchQueueState } from '@bcp/shared';
+import { fetchQueueQuery } from '../fetch-queue/fetch-queue-queries';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
 import { aPlayer, anEventDetail } from '../../test/sample-data';
 import { ListDrawer } from './ListDrawer';
 
-const running: ListQueueState = {
+const running: FetchQueueState = {
   paused: false,
   pausedReason: null,
   pausedUntil: null,
@@ -16,10 +16,10 @@ const running: ListQueueState = {
 };
 
 /** Stubs the event (with its lists' estimate) and the queue state the queued status reads. */
-function stubQueue(listQueueSeconds: number | null, state: ListQueueState = running) {
+function stubQueue(listQueueSeconds: number | null, state: FetchQueueState = running) {
   return stubFetchRoutes({
     'GET /api/events/EVT1': anEventDetail({ bcpId: 'EVT1', listQueueSeconds }),
-    'GET /api/list-queue': state,
+    'GET /api/fetch-queue': state,
   });
 }
 
@@ -92,10 +92,10 @@ describe('ListDrawer', () => {
     const { queryClient } = renderWithProviders(
       <ListDrawer eventId="EVT1" player={aPlayer({ listStatus: 'available' })} onClose={vi.fn()} />,
     );
-    queryClient.setQueryData(listQueueQuery.queryKey, running);
+    queryClient.setQueryData(fetchQueueQuery.queryKey, running);
     fireEvent.click(screen.getByRole('button', { name: 'Fetch this list' }));
     await waitFor(() => {
-      expect(queryClient.getQueryState(listQueueQuery.queryKey)?.isInvalidated).toBe(true);
+      expect(queryClient.getQueryState(fetchQueueQuery.queryKey)?.isInvalidated).toBe(true);
     });
   });
 

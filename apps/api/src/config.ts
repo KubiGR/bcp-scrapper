@@ -17,8 +17,8 @@ const EnvSchema = z.object({
   BCP_MAX_CONCURRENCY: z.coerce.number().int().positive().default(2),
   BCP_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
   BCP_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(4),
-  /** One army-list request every N ms. Keep it gentle: BCP has no public API. */
-  LIST_QUEUE_INTERVAL_MS: z.coerce.number().int().min(100).default(5000),
+  /** One fetch-queue job (a list, an event or a pairings round) every N ms. Keep it gentle. */
+  FETCH_QUEUE_INTERVAL_MS: z.coerce.number().int().min(100).default(5000),
 });
 
 export type Config = z.infer<typeof EnvSchema>;
@@ -26,6 +26,8 @@ export type Config = z.infer<typeof EnvSchema>;
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   // `KEY=` in .env yields "", which should mean "not set" rather than "invalid".
   const defined = Object.fromEntries(Object.entries(env).filter(([, value]) => value !== ''));
+  // Plan 3 called it LIST_QUEUE_INTERVAL_MS; keep honouring existing .env files.
+  defined.FETCH_QUEUE_INTERVAL_MS ??= defined.LIST_QUEUE_INTERVAL_MS;
   const result = EnvSchema.safeParse(defined);
   if (!result.success) {
     throw new Error(`Invalid environment:\n${z.prettifyError(result.error)}`);

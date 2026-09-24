@@ -14,8 +14,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { ErrorState } from '../../components/ErrorState';
 import { formatDuration } from '../../lib/format';
-import { queueLists } from '../list-queue/list-queue-api';
-import { listQueueQuery } from '../list-queue/list-queue-queries';
+import { queueLists } from '../fetch-queue/fetch-queue-api';
+import { fetchQueueQuery } from '../fetch-queue/fetch-queue-queries';
 import { eventQuery, playerListQuery } from './event-queries';
 
 interface ListDrawerProps {
@@ -53,7 +53,7 @@ function FetchThisList({
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: ['event', eventId] }),
-        queryClient.invalidateQueries({ queryKey: listQueueQuery.queryKey }),
+        queryClient.invalidateQueries({ queryKey: fetchQueueQuery.queryKey }),
       ]),
   });
   return (
@@ -79,7 +79,7 @@ function FetchThisList({
 /** Where a queued list stands: paused, being fetched, or about how long this event's lists take. */
 function QueuedStatus({ eventId, player }: { eventId: string; player: EventPlayer }) {
   const event = useQuery(eventQuery(eventId));
-  const queue = useQuery(listQueueQuery);
+  const queue = useQuery(fetchQueueQuery);
   const seconds = event.data?.listQueueSeconds ?? null;
   const paused = queue.data?.paused ?? false;
 

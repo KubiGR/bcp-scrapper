@@ -1,19 +1,19 @@
-import type { ListQueuePauseReason, ListQueueState } from '@bcp/shared';
+import type { FetchQueuePauseReason, FetchQueueState } from '@bcp/shared';
 import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import { AppError, BcpAuthError, BcpRateLimitedError } from '../errors';
 import type { Logger } from '../logger';
 import {
-  claimNextList,
-  markListDone,
-  markListFailed,
+  claimNextJob,
+  markJobDone,
+  markJobFailed,
   NO_LIST_CODE,
   queuedInOrder,
   queueTotals,
-  releaseList,
+  releaseJob,
   requeueInterrupted,
-  retryListLater,
-} from '../repo/list-queue';
+  retryJobLater,
+} from '../repo/fetch-queue';
 import { saveArmyList } from '../repo/lists';
 
 /** Waits after the 1st and 2nd failed attempt; the 3rd failure is final. */
@@ -22,7 +22,7 @@ const MAX_ATTEMPTS = 3;
 
 export type TickOutcome = 'idle' | 'busy' | 'paused' | 'fetched' | 'failed' | 'retry';
 
-export interface ListQueueWorkerOptions {
+export interface FetchQueueWorkerOptions {
   db: Db;
   source: TournamentSource;
   logger: Logger;
@@ -37,27 +37,27 @@ export interface ListQueueWorkerOptions {
 }
 
 interface Pause {
-  reason: ListQueuePauseReason;
+  reason: FetchQueuePauseReason;
   until: Date | null;
 }
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /**
- * Drains the list queue gently: every `intervalMs` it claims at most one list, fetches it through
+ * Drains the fetch queue gently: every `intervalMs` it claims at most one job, fetches it through
  * the rate-limited BCP client and stores it. It pauses itself when BCP rejects the login (until
  * resumed) or rate-limits us (until the limit has passed).
  */
-export class ListQueueWorker {
+export class FetchQueueWorker {
   readonly intervalMs: number;
-  readonly #options: ListQueueWorkerOptions;
+  readonly #options: FetchQueueWorkerOptions;
   readonly #now: () => Date;
   #timer: ReturnType<typeof setInterval> | null = null;
   /** The tick in flight, if any; stop() waits for it. */
   #inFlight: Promise<TickOutcome> | null = null;
   #pause: Pause | null = null;
 
-  constructor(options: ListQueueWorkerOptions) {
+  constructor(options: FetchQueueWorkerOptions) {
     this.#options = options;
     this.intervalMs = options.intervalMs;
     // A few ms ahead of the real clock: Postgres' `now()` (used for `not_before`'s default) has
@@ -75,7 +75,7 @@ export class ListQueueWorker {
     this.#timer = setInterval(() => {
       void this.tick().catch((error: unknown) => {
         // A rejection here would otherwise be unhandled and crash the process (Node >= 15).
-        this.#options.logger.error({ err: error }, 'List queue tick failed');
+        this.#options.logger.error({ err: error }, 'Fetch queue tick failed');
       });
     }, this.intervalMs);
   }
@@ -87,7 +87,7 @@ export class ListQueueWorker {
     await this.#inFlight?.catch(() => undefined);
   }
 
-  pause(reason: ListQueuePauseReason = 'user', until: Date | null = null): void {
+  pause(reason: FetchQueuePauseReason = 'user', until: Date | null = null): void {
     this.#pause = { reason, until };
   }
 
@@ -108,7 +108,7 @@ export class ListQueueWorker {
     }
   }
 
-  async state(): Promise<ListQueueState> {
+  async state(): Promise<FetchQueueState> {
     const paused = this.#isPaused();
     return {
       paused,
@@ -158,7 +158,7 @@ export class ListQueueWorker {
 
   async #fetchNext(): Promise<TickOutcome> {
     const { db, source, logger } = this.#options;
-    const claimed = await claimNextList(db, this.#now());
+    const claimed = await claimNextJob(db, this.#now());
     if (!claimed) return 'idle';
 
     const startedAt = performance.now();
@@ -175,7 +175,7 @@ export class ListQueueWorker {
           durationMs: Math.round(performance.now() - startedAt),
           ...extra,
         },
-        'List queue fetch',
+        'Fetch queue job',
       );
       return status;
     };
@@ -183,20 +183,20 @@ export class ListQueueWorker {
     try {
       const list = await source.getList(claimed.listId);
       if (list === null) {
-        await markListFailed(db, claimed.id, 'No list on BCP', NO_LIST_CODE);
+        await markJobFailed(db, claimed.id, 'No list on BCP', NO_LIST_CODE);
         return log('failed');
       }
       await saveArmyList(db, claimed.playerId, list);
-      await markListDone(db, claimed.id);
+      await markJobDone(db, claimed.id);
       return log('fetched');
     } catch (error) {
       if (error instanceof BcpAuthError && (await this.#isLoginRejected())) {
-        await releaseList(db, claimed.id);
+        await releaseJob(db, claimed.id);
         this.pause('login-rejected');
         return log('paused', 'warn', { reason: 'login-rejected' });
       }
       if (error instanceof BcpRateLimitedError) {
-        await releaseList(db, claimed.id);
+        await releaseJob(db, claimed.id);
         const until = new Date(this.#now().getTime() + error.retryAfterSeconds * 1000);
         this.pause('rate-limited', until);
         return log('paused', 'warn', { reason: 'rate-limited', until: until.toISOString() });
@@ -204,7 +204,7 @@ export class ListQueueWorker {
       if (claimed.attempts < MAX_ATTEMPTS) {
         const wait =
           BACKOFF_MS[claimed.attempts - 1] ?? BACKOFF_MS[BACKOFF_MS.length - 1] ?? 60_000;
-        await retryListLater(
+        await retryJobLater(
           db,
           claimed.id,
           new Date(this.#now().getTime() + wait),
@@ -213,7 +213,7 @@ export class ListQueueWorker {
         return log('retry');
       }
       const code = error instanceof AppError ? error.code : 'INTERNAL';
-      await markListFailed(db, claimed.id, messageOf(error), code);
+      await markJobFailed(db, claimed.id, messageOf(error), code);
       return log('failed');
     }
   }

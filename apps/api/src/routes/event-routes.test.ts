@@ -3,9 +3,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
-import type { ListQueueWorker } from '../list-queue/worker';
+import type { FetchQueueWorker } from '../fetch-queue/worker';
 import { SyncRunner } from '../sync/runner';
-import { drainQueue, sampleSource, silentLogger, testListQueue } from '../test/helpers';
+import { drainQueue, sampleSource, silentLogger, testFetchQueue } from '../test/helpers';
 
 const status: BcpStatus = {
   source: 'fixtures',
@@ -18,17 +18,17 @@ const EVENT = 'EVTTEAM0001';
 let db: Db;
 let close: () => Promise<void>;
 let runner: SyncRunner;
-let listQueue: ListQueueWorker;
+let fetchQueue: FetchQueueWorker;
 let app: ReturnType<typeof createApp>;
 
 beforeAll(async () => {
   ({ db, close } = await createTestDb());
   runner = new SyncRunner({ db, source: sampleSource(), logger: silentLogger });
-  listQueue = testListQueue(db);
+  fetchQueue = testFetchQueue(db);
   app = createApp({
     db,
     runner,
-    listQueue,
+    fetchQueue,
     bcpStatus: () => Promise.resolve(status),
     logger: silentLogger,
   });
@@ -50,7 +50,7 @@ async function fetchAllLists() {
     headers: { 'content-type': 'application/json' },
     body: '{}',
   });
-  await drainQueue(listQueue);
+  await drainQueue(fetchQueue);
 }
 const getJson = async <T>(path: string) => (await (await app.request(path)).json()) as T;
 

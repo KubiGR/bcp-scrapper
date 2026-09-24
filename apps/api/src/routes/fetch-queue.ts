@@ -3,9 +3,9 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { Db } from '../db/client';
 import { BcpAuthError } from '../errors';
-import { queueEventLists } from '../list-queue/queue-lists';
-import type { ListQueueWorker } from '../list-queue/worker';
-import { cancelQueuedLists, retryFailedLists } from '../repo/list-queue';
+import { queueEventLists } from '../fetch-queue/queue-lists';
+import type { FetchQueueWorker } from '../fetch-queue/worker';
+import { cancelQueuedLists, retryFailedJobs } from '../repo/fetch-queue';
 import type { SyncRunner } from '../sync/runner';
 import { parseInput } from '../validation';
 import { requireEvent } from './require-event';
@@ -13,13 +13,13 @@ import { requireJson } from './require-json';
 
 const RetryFailedSchema = z.object({ eventId: z.string().min(1).optional() });
 
-export function listQueueRoutes(deps: {
+export function fetchQueueRoutes(deps: {
   db: Db;
   runner: SyncRunner;
-  listQueue: ListQueueWorker;
+  fetchQueue: FetchQueueWorker;
   bcpStatus: () => Promise<BcpStatus>;
 }) {
-  const { db, listQueue } = deps;
+  const { db, fetchQueue } = deps;
   return (
     new Hono()
       .post('/events/:id/lists/queue', requireJson, async (c) => {
@@ -39,20 +39,20 @@ export function listQueueRoutes(deps: {
         await requireEvent(db, id);
         return c.json({ removed: await cancelQueuedLists(db, id) });
       })
-      .post('/list-queue/retry-failed', requireJson, async (c) => {
+      .post('/fetch-queue/retry-failed', requireJson, async (c) => {
         const { eventId } = parseInput(
           RetryFailedSchema,
           await c.req.json<unknown>().catch(() => null),
         );
-        return c.json({ requeued: await retryFailedLists(db, eventId) });
+        return c.json({ requeued: await retryFailedJobs(db, eventId) });
       })
-      .get('/list-queue', async (c) => c.json(await listQueue.state()))
-      .post('/list-queue/pause', requireJson, async (c) => {
-        listQueue.pause('user');
-        return c.json(await listQueue.state());
+      .get('/fetch-queue', async (c) => c.json(await fetchQueue.state()))
+      .post('/fetch-queue/pause', requireJson, async (c) => {
+        fetchQueue.pause('user');
+        return c.json(await fetchQueue.state());
       })
-      .post('/list-queue/resume', requireJson, async (c) => {
-        if ((await listQueue.state()).pausedReason === 'login-rejected') {
+      .post('/fetch-queue/resume', requireJson, async (c) => {
+        if ((await fetchQueue.state()).pausedReason === 'login-rejected') {
           const { state } = await deps.bcpStatus();
           if (state === 'rejected' || state === 'missing') {
             throw new BcpAuthError(
@@ -60,8 +60,8 @@ export function listQueueRoutes(deps: {
             );
           }
         }
-        listQueue.resume();
-        return c.json(await listQueue.state());
+        fetchQueue.resume();
+        return c.json(await fetchQueue.state());
       })
   );
 }

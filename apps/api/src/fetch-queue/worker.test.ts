@@ -4,19 +4,19 @@ import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
 import { BcpAuthError, BcpRateLimitedError, BcpUnavailableError } from '../errors';
 import { upsertEventDetail } from '../repo/events';
-import * as listQueueRepo from '../repo/list-queue';
+import * as fetchQueueRepo from '../repo/fetch-queue';
 import {
-  claimNextList,
+  claimNextJob,
   enqueueLists,
   latestQueueRowsByPlayer,
   NO_LIST_CODE,
   queueTotals,
   SINGLE_LIST_PRIORITY,
-} from '../repo/list-queue';
+} from '../repo/fetch-queue';
 import { findPlayerList } from '../repo/lists';
 import { upsertPlayers } from '../repo/participants';
 import { sampleSource, silentLogger } from '../test/helpers';
-import { ListQueueWorker } from './worker';
+import { FetchQueueWorker } from './worker';
 
 const EVENT = 'EVTTEAM0001';
 let db: Db;
@@ -44,7 +44,7 @@ function worker(
   now = () => new Date(),
   loginRejected?: () => Promise<boolean>,
 ) {
-  return new ListQueueWorker({
+  return new FetchQueueWorker({
     db,
     source: src,
     logger: silentLogger,
@@ -57,7 +57,7 @@ function worker(
 const ada = { playerId: 'PL-ADA', listId: 'LS-ADA' };
 const ben = { playerId: 'PL-BEN', listId: 'LS-BEN' };
 
-describe('ListQueueWorker', () => {
+describe('FetchQueueWorker', () => {
   it('fetches one list per tick, priority first, and stores it', async () => {
     await enqueueLists(db, EVENT, [ada], 0);
     await enqueueLists(db, EVENT, [ben], SINGLE_LIST_PRIORITY);
@@ -227,7 +227,7 @@ describe('ListQueueWorker', () => {
   it('puts rows interrupted by a restart back in the queue on start', async () => {
     await enqueueLists(db, EVENT, [ada], 0);
     // A previous process claimed the row, then stopped before finishing it.
-    await claimNextList(db, new Date(Date.now() + 1000));
+    await claimNextJob(db, new Date(Date.now() + 1000));
     expect((await queueTotals(db)).fetching).toBe(1);
 
     const restarted = worker();
@@ -247,9 +247,9 @@ describe('ListQueueWorker', () => {
   it('recovers from a tick that throws inside the interval, instead of an unhandled rejection', async () => {
     await enqueueLists(db, EVENT, [ada], 0);
     const claimSpy = vi
-      .spyOn(listQueueRepo, 'claimNextList')
+      .spyOn(fetchQueueRepo, 'claimNextJob')
       .mockRejectedValueOnce(new Error('boom'));
-    const w = new ListQueueWorker({ db, source, logger: silentLogger, intervalMs: 20 });
+    const w = new FetchQueueWorker({ db, source, logger: silentLogger, intervalMs: 20 });
     try {
       await w.start();
       // The interval fires, the claim rejects, and start()'s setInterval callback must not let
@@ -257,7 +257,7 @@ describe('ListQueueWorker', () => {
       await vi.waitFor(() => {
         expect(claimSpy).toHaveBeenCalled();
       });
-      // The in-flight tick was cleared despite the failure, so the next tick (using the real claimNextList)
+      // The in-flight tick was cleared despite the failure, so the next tick (using the real claimNextJob)
       // goes on to fetch the row normally.
       await vi.waitFor(async () => {
         expect(await findPlayerList(db, 'PL-ADA')).not.toBeNull();

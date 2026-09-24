@@ -5,7 +5,7 @@ import {
   SyncRequestSchema,
   SyncRunSchema,
   QueueListsRequestSchema,
-  ListQueueStateSchema,
+  FetchQueueStateSchema,
 } from './index';
 
 describe('SyncRequestSchema', () => {
@@ -142,7 +142,7 @@ describe('QueueListsRequestSchema', () => {
   });
 });
 
-describe('ListQueueStateSchema', () => {
+describe('FetchQueueStateSchema', () => {
   it('parses a paused queue', () => {
     const state = {
       paused: true,
@@ -152,6 +152,6 @@ describe('ListQueueStateSchema', () => {
       totals: { queued: 3, fetching: 0, failed: 1 },
       estimatedSeconds: 15,
     };
-    expect(ListQueueStateSchema.parse(state)).toEqual(state);
+    expect(FetchQueueStateSchema.parse(state)).toEqual(state);
   });
 });

@@ -1,4 +1,4 @@
-import type { ListQueueState } from '@bcp/shared';
+import type { FetchQueueState } from '@bcp/shared';
 import {
   createMemoryHistory,
   createRootRoute,
@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
 import { QueueIndicator } from './QueueIndicator';
 
-const state = (changes: Partial<ListQueueState> = {}): ListQueueState => ({
+const state = (changes: Partial<FetchQueueState> = {}): FetchQueueState => ({
   paused: false,
   pausedReason: null,
   pausedUntil: null,
@@ -29,7 +29,7 @@ function renderInRouter() {
 
 describe('QueueIndicator', () => {
   it('is hidden when the queue is empty', async () => {
-    const fetchMock = stubFetchRoutes({ 'GET /api/list-queue': state() });
+    const fetchMock = stubFetchRoutes({ 'GET /api/fetch-queue': state() });
     renderInRouter();
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalled();
@@ -39,7 +39,7 @@ describe('QueueIndicator', () => {
 
   it('shows how many lists are queued and roughly how long they take', async () => {
     stubFetchRoutes({
-      'GET /api/list-queue': state({
+      'GET /api/fetch-queue': state({
         totals: { queued: 34, fetching: 1, failed: 0 },
         estimatedSeconds: 175,
       }),
@@ -52,7 +52,7 @@ describe('QueueIndicator', () => {
 
   it('shows failures even when nothing is queued', async () => {
     stubFetchRoutes({
-      'GET /api/list-queue': state({
+      'GET /api/fetch-queue': state({
         totals: { queued: 0, fetching: 0, failed: 3 },
       }),
     });
@@ -62,7 +62,7 @@ describe('QueueIndicator', () => {
 
   it('shows both queued and failed counts, with the estimate', async () => {
     stubFetchRoutes({
-      'GET /api/list-queue': state({
+      'GET /api/fetch-queue': state({
         totals: { queued: 2, fetching: 0, failed: 1 },
         estimatedSeconds: 10,
       }),
@@ -75,7 +75,7 @@ describe('QueueIndicator', () => {
 
   it('stays visible when paused with an empty queue, so Resume stays reachable', async () => {
     stubFetchRoutes({
-      'GET /api/list-queue': state({ paused: true, pausedReason: 'user' }),
+      'GET /api/fetch-queue': state({ paused: true, pausedReason: 'user' }),
     });
     renderInRouter();
     expect(await screen.findByRole('button', { name: 'Lists · paused' })).toBeInTheDocument();
@@ -83,7 +83,7 @@ describe('QueueIndicator', () => {
 
   it('turns red with a Settings link when BCP rejected the login', async () => {
     stubFetchRoutes({
-      'GET /api/list-queue': state({
+      'GET /api/fetch-queue': state({
         paused: true,
         pausedReason: 'login-rejected',
         totals: { queued: 5, fetching: 0, failed: 0 },

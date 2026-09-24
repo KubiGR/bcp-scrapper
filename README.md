@@ -75,7 +75,7 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
 `record-fixtures` stores the BCP session (and any rotated refresh token) in Postgres, so
 **`pnpm db:up` must already be running** before you use it.
 
-`LIST_QUEUE_INTERVAL_MS` sets the background list pace in ms (default 5000). Keep it gentle.
+`FETCH_QUEUE_INTERVAL_MS` sets the background list pace in ms (default 5000). Keep it gentle.
 
 ## Layout
 
