@@ -51,9 +51,13 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
   (All · 16+ · 40+ · 100+ · 200+, or Custom min/max). **Advanced search** adds a date range, name,
   country, singles/teams and newest/biggest sorting. When a date range hasn't been fetched from BCP
   yet, the page says so and offers **Fetch** (with the approximate number of requests).
-- **An event page** loads its players from BCP the first time you open it. **Fetch all lists**
-  downloads every army list (about 2 per second), **Export lists** saves them as `.txt` or `.json`,
-  and clicking a player shows their list with a copy button.
+- **An event page** loads its players from BCP the first time you open it. **Fetch lists** queues
+  army lists for a background worker that fetches **one list every 5 seconds**, so BCP is never
+  flooded: choose **All missing lists**, or only the good results (**X-0**, **X-1 or better**, …;
+  draws don't count as losses). Clicking a player shows their list; if it isn't fetched yet,
+  **Fetch this list** jumps the queue. The header shows the queue while it's working (click it to
+  pause or resume); if BCP rejects your login the queue pauses itself — fix the token, restart,
+  and resume. **Export lists** saves what's fetched as `.txt` or `.json`.
 - No Docker? `DATABASE_URL=pglite://memory pnpm dev` runs everything in memory (lost on restart).
 
 ## Commands
@@ -70,6 +74,8 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
 
 `record-fixtures` stores the BCP session (and any rotated refresh token) in Postgres, so
 **`pnpm db:up` must already be running** before you use it.
+
+`LIST_QUEUE_INTERVAL_MS` sets the background list pace in ms (default 5000). Keep it gentle.
 
 ## Layout
 
