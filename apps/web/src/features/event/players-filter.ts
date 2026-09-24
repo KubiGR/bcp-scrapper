@@ -54,3 +54,36 @@ export function missingListCount(players: EventPlayer[], maxLosses: number | nul
 }
 
 export const lossLabel = (losses: number) => (losses === 0 ? 'X-0 only' : `X-${losses} or better`);
+
+export interface PlayerGroup {
+  teamId: string | null;
+  teamName: string;
+  teamPlacing: number | null;
+  players: EventPlayer[];
+}
+
+/**
+ * Players grouped by team, teams in BCP placing order (unplaced teams after, by name), players
+ * without a team last. Player order within a group is kept.
+ */
+export function groupPlayersByTeam(players: EventPlayer[]): PlayerGroup[] {
+  const groups = new Map<string | null, PlayerGroup>();
+  for (const player of players) {
+    const group = groups.get(player.teamId) ?? {
+      teamId: player.teamId,
+      teamName: player.teamId === null ? 'No team' : (player.teamName ?? 'Unknown team'),
+      teamPlacing: player.teamPlacing,
+      players: [],
+    };
+    group.players.push(player);
+    groups.set(player.teamId, group);
+  }
+  const rank = (group: PlayerGroup) =>
+    group.teamId === null ? 2 : group.teamPlacing === null ? 1 : 0;
+  return [...groups.values()].sort(
+    (a, b) =>
+      rank(a) - rank(b) ||
+      (a.teamPlacing ?? 0) - (b.teamPlacing ?? 0) ||
+      a.teamName.localeCompare(b.teamName),
+  );
+}

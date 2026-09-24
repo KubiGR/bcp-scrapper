@@ -57,6 +57,32 @@ describe('QueueControls', () => {
     });
   });
 
+  it('breaks the open jobs down by kind', () => {
+    renderWithProviders(
+      <QueueControls
+        state={{
+          ...base,
+          totals: {
+            queued: 15,
+            fetching: 1,
+            failed: 0,
+            byKind: {
+              list: { queued: 3, fetching: 0, failed: 0 },
+              event: { queued: 0, fetching: 1, failed: 0 },
+              'pairings-round': { queued: 12, fetching: 0, failed: 0 },
+            },
+          },
+        }}
+      />,
+    );
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === 'P' && el.textContent === 'Lists 3 · Pairing rounds 12 · Events 1',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('shows why retrying failed', async () => {
     stubFetchRoutes({
       'POST /api/fetch-queue/retry-failed': () =>

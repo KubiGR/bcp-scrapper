@@ -102,7 +102,12 @@ function listStateOf(
 export async function listEventPlayers(db: Db, eventId: string): Promise<EventPlayer[]> {
   const [rows, queue] = await Promise.all([
     db
-      .select({ player: players, teamName: teams.name, storedListId: armyLists.listId })
+      .select({
+        player: players,
+        teamName: teams.name,
+        teamPlacing: teams.placing,
+        storedListId: armyLists.listId,
+      })
       .from(players)
       .leftJoin(teams, eq(teams.id, players.teamId))
       // Only the player's current BCP list counts: one BCP replaced since is "available" again.
@@ -111,10 +116,12 @@ export async function listEventPlayers(db: Db, eventId: string): Promise<EventPl
       .orderBy(sql`${players.placing} asc nulls last`, players.name),
     latestQueueRowsByPlayer(db, eventId),
   ]);
-  return rows.map(({ player, teamName, storedListId }) => ({
+  return rows.map(({ player, teamName, teamPlacing, storedListId }) => ({
     bcpId: player.id,
     name: player.name,
     teamName,
+    teamId: player.teamId,
+    teamPlacing,
     faction: player.faction,
     parentFaction: player.parentFaction,
     placing: player.placing,

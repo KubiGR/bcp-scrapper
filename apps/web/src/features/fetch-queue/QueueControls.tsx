@@ -52,6 +52,18 @@ export function QueueControls({ state }: { state: FetchQueueState }) {
   });
   const { queued, fetching, failed } = state.totals;
   const inProgress = queued + fetching;
+  const byKindLine = (
+    [
+      ['list', 'Lists'],
+      ['pairings-round', 'Pairing rounds'],
+      ['event', 'Events'],
+    ] as const
+  )
+    .map(([kind, label]) => {
+      const open = state.totals.byKind[kind].queued + state.totals.byKind[kind].fetching;
+      return open > 0 ? { label, open } : null;
+    })
+    .filter((entry) => entry !== null);
 
   return (
     <Stack gap="xs">
@@ -65,6 +77,16 @@ export function QueueControls({ state }: { state: FetchQueueState }) {
           </>
         )}
       </Text>
+      {byKindLine.length > 0 && (
+        <Text size="sm" c="dimmed">
+          {byKindLine.map(({ label, open }, i) => (
+            <span key={label}>
+              {i > 0 && ' · '}
+              {label} <span className="numeric">{open}</span>
+            </span>
+          ))}
+        </Text>
+      )}
       <PausedNote state={state} />
       {(
         [

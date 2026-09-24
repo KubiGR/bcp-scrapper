@@ -6,8 +6,8 @@ import { QueueControls } from './QueueControls';
 import classes from './QueueIndicator.module.css';
 
 /**
- * "Lists · 34 queued · ~3 min" in the header while there is anything to show: queued/fetching
- * lists, failed ones, or a pause (so Resume stays reachable even once the queue drains).
+ * "Fetching · 12 jobs · ~1 min" in the header while there is anything to show: queued/fetching
+ * jobs, failed ones, or a pause (so Resume stays reachable even once the queue drains).
  */
 export function QueueIndicator() {
   const { data: state } = useQuery(fetchQueueQuery);
@@ -18,10 +18,10 @@ export function QueueIndicator() {
 
   const loginExpired = state.pausedReason === 'login-rejected';
   const label = loginExpired
-    ? 'Lists paused: login expired'
+    ? 'Fetching paused: login expired'
     : [
-        'Lists',
-        inProgress > 0 ? `${inProgress} queued` : null,
+        'Fetching',
+        inProgress > 0 ? `${inProgress} job${inProgress === 1 ? '' : 's'}` : null,
         failed > 0 ? `${failed} failed` : null,
         state.paused
           ? 'paused'

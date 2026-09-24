@@ -76,6 +76,8 @@ export function aPlayer(overrides: Partial<EventPlayer> = {}): EventPlayer {
     bcpId: 'PL-ADA',
     name: 'Ada Archer',
     teamName: 'Alpha Squad',
+    teamId: 'TM-ALPHA',
+    teamPlacing: 2,
     faction: 'Space Marines',
     parentFaction: 'Space Marines',
     placing: 2,

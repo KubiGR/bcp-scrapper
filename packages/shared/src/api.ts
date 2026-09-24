@@ -148,6 +148,9 @@ export const EventPlayerSchema = z.object({
   bcpId: z.string().min(1),
   name: z.string(),
   teamName: z.string().nullable(),
+  teamId: z.string().nullable(),
+  /** The team's BCP placing, for ordering teams. */
+  teamPlacing: z.number().int().nullable(),
   faction: z.string().nullable(),
   parentFaction: z.string().nullable(),
   placing: z.number().int().nullable(),

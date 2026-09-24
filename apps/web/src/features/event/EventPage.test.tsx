@@ -89,4 +89,16 @@ describe('EventPage', () => {
     expect(await screen.findByRole('tab', { name: 'Rounds' })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Standings' })).toBeNull();
   });
+
+  it('falls back to Players & lists on a singles event asked to show a tab it does not have', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': { items: [] },
+      'GET /api/events/EVT1': anEventDetail({ isTeamEvent: false }),
+    });
+    renderWithProviders(<EventPage eventId="EVT1" {...tabProps} tab="standings" />);
+
+    const playersTab = await screen.findByRole('tab', { name: 'Players & lists' });
+    expect(playersTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('tab', { name: 'Standings' })).toBeNull();
+  });
 });

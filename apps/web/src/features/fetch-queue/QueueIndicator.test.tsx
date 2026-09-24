@@ -35,7 +35,7 @@ describe('QueueIndicator', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalled();
     });
-    expect(screen.queryByRole('button', { name: /Lists/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Fetching/ })).toBeNull();
   });
 
   it('shows how many lists are queued and roughly how long they take', async () => {
@@ -47,7 +47,7 @@ describe('QueueIndicator', () => {
     });
     renderInRouter();
     expect(
-      await screen.findByRole('button', { name: /Lists · 35 queued · ~3 min/ }),
+      await screen.findByRole('button', { name: /Fetching · 35 jobs · ~3 min/ }),
     ).toBeInTheDocument();
   });
 
@@ -58,7 +58,7 @@ describe('QueueIndicator', () => {
       }),
     });
     renderInRouter();
-    expect(await screen.findByRole('button', { name: 'Lists · 3 failed' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Fetching · 3 failed' })).toBeInTheDocument();
   });
 
   it('shows both queued and failed counts, with the estimate', async () => {
@@ -70,7 +70,7 @@ describe('QueueIndicator', () => {
     });
     renderInRouter();
     expect(
-      await screen.findByRole('button', { name: 'Lists · 2 queued · 1 failed · ~10 s' }),
+      await screen.findByRole('button', { name: 'Fetching · 2 jobs · 1 failed · ~10 s' }),
     ).toBeInTheDocument();
   });
 
@@ -79,7 +79,7 @@ describe('QueueIndicator', () => {
       'GET /api/fetch-queue': state({ paused: true, pausedReason: 'user' }),
     });
     renderInRouter();
-    expect(await screen.findByRole('button', { name: 'Lists · paused' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Fetching · paused' })).toBeInTheDocument();
   });
 
   it('turns red with a Settings link when BCP rejected the login', async () => {
@@ -92,7 +92,7 @@ describe('QueueIndicator', () => {
     });
     renderInRouter();
     expect(
-      await screen.findByRole('button', { name: /Lists paused: login expired/ }),
+      await screen.findByRole('button', { name: /Fetching paused: login expired/ }),
     ).toBeInTheDocument();
   });
 });

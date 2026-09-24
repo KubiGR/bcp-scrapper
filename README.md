@@ -55,9 +55,15 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
   army lists for a background worker that fetches **one list every 5 seconds**, so BCP is never
   flooded: choose **All missing lists**, or only the good results (**X-0**, **X-1 or better**, …;
   draws don't count as losses). Clicking a player shows their list; if it isn't fetched yet,
-  **Fetch this list** jumps the queue. The header shows the queue while it's working (click it to
-  pause or resume); if BCP rejects your login the queue pauses itself — fix the token and restart
-  the API (a restart clears the pause). **Export lists** saves what's fetched as `.txt` or `.json`.
+  **Fetch this list** jumps the queue. The header shows the fetch queue while it's working (click
+  it to pause or resume); if BCP rejects your login the queue pauses itself — fix the token and
+  restart the API (a restart clears the pause). **Export lists** saves what's fetched as `.txt` or
+  `.json`.
+- **Team events** also have **Rounds** (each team matchup opens to its games) and **Standings**
+  (click a team for each player's games). Their data comes from **Fetch pairings**, which queues
+  one request per round in the same background queue as army lists. For bracket-style events
+  (e.g. GW team events) BCP has no victory points, so VP shows as "–".
+- The **Players & lists** tab groups a team event's players by team, collapsibly.
 - No Docker? `DATABASE_URL=pglite://memory pnpm dev` runs everything in memory (lost on restart).
 
 ## Commands
@@ -75,7 +81,9 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
 `record-fixtures` stores the BCP session (and any rotated refresh token) in Postgres, so
 **`pnpm db:up` must already be running** before you use it.
 
-`FETCH_QUEUE_INTERVAL_MS` sets the background list pace in ms (default 5000). Keep it gentle.
+`FETCH_QUEUE_INTERVAL_MS` sets the background fetch queue's pace in ms (default 5000, minimum
+100): one request — an army list, an event sync or a pairings round — every interval. Keep it
+gentle. The older `LIST_QUEUE_INTERVAL_MS` name still works.
 
 ## Layout
 

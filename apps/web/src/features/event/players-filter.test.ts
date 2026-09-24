@@ -4,6 +4,7 @@ import {
   factionsOf,
   filterPlayers,
   formatRecord,
+  groupPlayersByTeam,
   lossOptions,
   missingListCount,
 } from './players-filter';
@@ -85,5 +86,23 @@ describe('record filter and missing counts', () => {
       }),
     ];
     expect(missingListCount(withNoList, null)).toBe(4);
+  });
+});
+
+describe('groupPlayersByTeam', () => {
+  it('groups by team in placing order, with teamless players last', () => {
+    const groups = groupPlayersByTeam([
+      aPlayer({ bcpId: 'A', teamId: 'T2', teamName: 'Bravo', teamPlacing: 2 }),
+      aPlayer({ bcpId: 'B', teamId: null, teamName: null, teamPlacing: null }),
+      aPlayer({ bcpId: 'C', teamId: 'T1', teamName: 'Alpha', teamPlacing: 1 }),
+      aPlayer({ bcpId: 'D', teamId: 'T2', teamName: 'Bravo', teamPlacing: 2 }),
+      aPlayer({ bcpId: 'E', teamId: 'T3', teamName: 'Charlie', teamPlacing: null }),
+    ]);
+    expect(groups.map((g) => [g.teamName, g.players.map((p) => p.bcpId)])).toEqual([
+      ['Alpha', ['C']],
+      ['Bravo', ['A', 'D']],
+      ['Charlie', ['E']],
+      ['No team', ['B']],
+    ]);
   });
 });

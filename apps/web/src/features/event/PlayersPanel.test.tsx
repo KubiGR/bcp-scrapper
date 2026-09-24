@@ -43,4 +43,34 @@ describe('PlayersPanel', () => {
 
     expect(await screen.findByText(/Gladius Task Force/)).toBeInTheDocument();
   });
+
+  it('groups a team event’s players by team, collapsibly', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [
+          aPlayer({
+            bcpId: 'P1',
+            name: 'Ada Archer',
+            teamId: 'TM-ALPHA',
+            teamName: 'Alpha Squad',
+            teamPlacing: 2,
+          }),
+          aPlayer({
+            bcpId: 'P2',
+            name: 'Cara Cole',
+            teamId: 'TM-CHARLIE',
+            teamName: 'Charlie Wing',
+            teamPlacing: 1,
+          }),
+        ],
+      },
+    });
+    renderWithProviders(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
+    const charlie = await screen.findByRole('button', { name: /Charlie Wing/ });
+    const alpha = screen.getByRole('button', { name: /Alpha Squad/ });
+    expect(charlie.compareDocumentPosition(alpha) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(charlie).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(charlie);
+    expect(charlie).toHaveAttribute('aria-expanded', 'false');
+  });
 });

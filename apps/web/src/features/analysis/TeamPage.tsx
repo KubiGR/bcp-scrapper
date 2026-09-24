@@ -18,6 +18,14 @@ function RoundCell({ cell }: { cell: PlayerRound | null }) {
           {formatPoints(cell.gamePoints)}–{formatPoints(cell.opponentGamePoints)}
         </span>
       </Text>
+      {(cell.vp !== null || cell.opponentVp !== null) && (
+        <Text size="sm">
+          VP{' '}
+          <span className="numeric">
+            {formatPoints(cell.vp)}–{formatPoints(cell.opponentVp)}
+          </span>
+        </Text>
+      )}
       <Text size="xs" c="dimmed">
         {cell.opponent
           ? `${cell.opponent.name} (${cell.opponent.faction ?? 'unknown faction'})`

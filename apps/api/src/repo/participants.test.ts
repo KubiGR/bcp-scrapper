@@ -6,7 +6,12 @@ import { createTestDb, resetDb } from '../db/test-db';
 import { sampleSource } from '../test/helpers';
 import { upsertEventDetail, upsertEventSummaries } from './events';
 import { findPlayersMissingLists, saveArmyList } from './lists';
-import { countEventParticipants, replaceEventPlayers, replaceEventTeams } from './participants';
+import {
+  countEventParticipants,
+  listEventPlayers,
+  replaceEventPlayers,
+  replaceEventTeams,
+} from './participants';
 
 let db: Db;
 let close: () => Promise<void>;
@@ -80,6 +85,13 @@ describe('replaceEventTeams', () => {
     const kept = all.slice(1);
     await replaceEventTeams(db, EVENT, kept);
     expect(await teamIds()).toEqual(kept.map((team) => team.bcpId).sort());
+  });
+});
+
+describe('listEventPlayers', () => {
+  it('lists each player’s team id and placing', async () => {
+    const ada = (await listEventPlayers(db, EVENT)).find((p) => p.bcpId === 'PL-ADA');
+    expect(ada).toMatchObject({ teamId: 'TM-ALPHA', teamName: 'Alpha Squad', teamPlacing: 2 });
   });
 });
 
