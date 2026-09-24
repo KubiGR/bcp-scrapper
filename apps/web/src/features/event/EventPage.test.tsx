@@ -70,4 +70,23 @@ describe('EventPage', () => {
       await screen.findByText(/The last event sync failed: BCP is unavailable/),
     ).toBeInTheDocument();
   });
+
+  it('shows Rounds and Standings tabs on team events, only Rounds on singles', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': { items: [] },
+      'GET /api/events/EVT1': anEventDetail(),
+    });
+    const { unmount } = renderWithProviders(<EventPage eventId="EVT1" {...tabProps} />);
+    expect(await screen.findByRole('tab', { name: 'Standings' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Rounds' })).toBeInTheDocument();
+    unmount();
+
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': { items: [] },
+      'GET /api/events/EVT1': anEventDetail({ isTeamEvent: false }),
+    });
+    renderWithProviders(<EventPage eventId="EVT1" {...tabProps} />);
+    expect(await screen.findByRole('tab', { name: 'Rounds' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Standings' })).toBeNull();
+  });
 });

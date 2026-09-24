@@ -4,6 +4,9 @@ import { useEffect } from 'react';
 import { ApiError } from '../../api/client';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
+import { PairingsGate } from '../analysis/PairingsGate';
+import { RoundsPanel } from '../analysis/RoundsPanel';
+import { StandingsPanel } from '../analysis/StandingsPanel';
 import { isActiveRun } from '../sync/follow-sync';
 import { SyncRunError, useSync } from '../sync/use-sync';
 import { EventHeader } from './EventHeader';
@@ -11,8 +14,16 @@ import { eventQuery } from './event-queries';
 import { PlayersPanel } from './PlayersPanel';
 
 /** The event page's tabs, in order; the selected one lives in the URL (`?tab=`). */
-export const EVENT_TABS = [{ value: 'players', label: 'Players & lists' }] as const;
+export const EVENT_TABS = [
+  { value: 'players', label: 'Players & lists' },
+  { value: 'rounds', label: 'Rounds' },
+  { value: 'standings', label: 'Standings' },
+] as const;
 export type EventTab = (typeof EVENT_TABS)[number]['value'];
+
+/** Standings only make sense for team events. */
+export const tabsFor = (event: { isTeamEvent: boolean }) =>
+  EVENT_TABS.filter((tab) => tab.value !== 'standings' || event.isTeamEvent);
 
 const isEventTab = (value: string | null): value is EventTab =>
   EVENT_TABS.some((tab) => tab.value === value);
@@ -72,6 +83,7 @@ export function EventPage({ eventId, tab, onTabChange }: EventPageProps) {
   }
 
   const detail = event.data;
+  const activeTab = tabsFor(detail).some((t) => t.value === tab) ? tab : 'players';
   return (
     <Stack gap="lg">
       <EventHeader
@@ -86,16 +98,15 @@ export function EventPage({ eventId, tab, onTabChange }: EventPageProps) {
           The last event sync failed: <SyncRunError run={eventRun} />
         </Text>
       )}
-      {/* Plan 3 adds the Rounds, Standings and Matchups tabs to EVENT_TABS. */}
       <Tabs
-        value={tab}
+        value={activeTab}
         onChange={(value) => {
           if (isEventTab(value)) onTabChange(value);
         }}
         keepMounted={false}
       >
         <Tabs.List>
-          {EVENT_TABS.map(({ value, label }) => (
+          {tabsFor(detail).map(({ value, label }) => (
             <Tabs.Tab key={value} value={value}>
               {label}
             </Tabs.Tab>
@@ -104,6 +115,18 @@ export function EventPage({ eventId, tab, onTabChange }: EventPageProps) {
         <Tabs.Panel value="players" pt="md">
           <PlayersPanel event={detail} loadingFromBcp={syncing && detail.lastSyncedAt === null} />
         </Tabs.Panel>
+        <Tabs.Panel value="rounds" pt="md">
+          <PairingsGate event={detail}>
+            <RoundsPanel event={detail} />
+          </PairingsGate>
+        </Tabs.Panel>
+        {detail.isTeamEvent && (
+          <Tabs.Panel value="standings" pt="md">
+            <PairingsGate event={detail}>
+              <StandingsPanel event={detail} />
+            </PairingsGate>
+          </Tabs.Panel>
+        )}
       </Tabs>
     </Stack>
   );

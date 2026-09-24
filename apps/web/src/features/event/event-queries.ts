@@ -14,7 +14,10 @@ export const eventQuery = (eventId: string) =>
   queryOptions({
     queryKey: ['event', eventId],
     queryFn: () => apiGet(`/api/events/${enc(eventId)}`, EventDetailSchema),
-    refetchInterval: (query) => ((query.state.data?.counts.listsQueued ?? 0) > 0 ? 5000 : false),
+    refetchInterval: (query) => {
+      const detail = query.state.data;
+      return detail && (detail.counts.listsQueued > 0 || detail.pairings.queued > 0) ? 5000 : false;
+    },
   });
 
 export const playersQuery = (eventId: string) =>
