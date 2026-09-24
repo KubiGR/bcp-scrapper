@@ -12,6 +12,8 @@ export interface PlayerRow {
   name: string;
   faction: string | null;
   teamId: string | null;
+  /** The army's disposition (BCP's subFaction), e.g. "Take and Hold". */
+  disposition: string | null;
 }
 
 /** `teamBId` is null for a bye. */

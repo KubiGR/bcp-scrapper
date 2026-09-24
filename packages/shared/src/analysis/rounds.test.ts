@@ -32,9 +32,15 @@ const input: EventAnalysisInput = {
     { id: 'JADE', name: 'Jade Court', placing: 3 },
   ],
   players: [
-    { id: 'R1', name: 'Rhea Stone', faction: 'Adepta Sororitas', teamId: 'RED' },
-    { id: 'B1', name: 'Bea Moss', faction: 'Necrons', teamId: 'BLUE' },
-    { id: 'J1', name: 'Jon Reed', faction: "T'au Empire", teamId: 'JADE' },
+    {
+      id: 'R1',
+      name: 'Rhea Stone',
+      faction: 'Adepta Sororitas',
+      teamId: 'RED',
+      disposition: 'Take and Hold',
+    },
+    { id: 'B1', name: 'Bea Moss', faction: 'Necrons', teamId: 'BLUE', disposition: null },
+    { id: 'J1', name: 'Jon Reed', faction: "T'au Empire", teamId: 'JADE', disposition: null },
   ],
   matchups: [
     { id: 'M2', round: 1, tableNo: 2, teamAId: 'JADE', teamBId: null, pointsA: 20, pointsB: null },
@@ -56,7 +62,7 @@ describe('buildRounds', () => {
       outcomeA: 'win',
     });
     expect(first?.games[0]).toMatchObject({
-      playerA: { name: 'Rhea Stone', faction: 'Adepta Sororitas' },
+      playerA: { name: 'Rhea Stone', faction: 'Adepta Sororitas', disposition: 'Take and Hold' },
       playerB: { name: 'Bea Moss' },
       vpA: null,
     });
@@ -76,6 +82,7 @@ describe('buildRounds', () => {
       name: 'Unknown player',
       faction: null,
       teamId: null,
+      disposition: null,
     });
   });
 

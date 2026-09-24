@@ -96,6 +96,7 @@ export const players = pgTable(
     draws: integer('draws').notNull(),
     dropped: boolean('dropped').notNull(),
     listId: text('list_id'),
+    disposition: text('disposition'),
     raw: jsonb('raw').notNull(),
     ...auditColumns,
   },

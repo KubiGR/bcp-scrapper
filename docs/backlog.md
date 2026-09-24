@@ -10,7 +10,6 @@ Ideas and follow-ups that aren't scheduled yet. Newest requests first within eac
 
 - **Compact lists with 40kCompactor.** A "Compact on 40kCompactor" button in the list drawer copies the list to the clipboard and opens https://desjani.github.io/40kCompactor/ in a new tab (paste, then Compact). The site takes no URL input and has no license, so we link to it rather than bundle its code. Chosen 2026-09-24: copy + open.
 - **Archetypes, team compositions and popular armies.** Analyse which army archetypes are played, how teams are composed (faction mixes per team), and which armies are most popular, per event and across events.
-- **The mission played.** Show the mission each game or round was played on, and use it in the analysis (for example, results by mission).
 - **Pairing process.** Defender/attacker/refusal picks, if a source for them is ever found (BCP doesn't expose them).
 - **Top-N list fetching.** Queue lists by placing (top 8, top 16) in addition to "X-n or better".
 

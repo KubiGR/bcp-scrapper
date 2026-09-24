@@ -16,6 +16,7 @@ export async function loadEventAnalysis(db: Db, eventId: string): Promise<EventA
         name: players.name,
         faction: players.faction,
         teamId: players.teamId,
+        disposition: players.disposition,
       })
       .from(players)
       .where(eq(players.eventId, eventId)),

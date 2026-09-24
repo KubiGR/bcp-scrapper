@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { DataTable, type DataTableColumn } from 'mantine-datatable';
 import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
+import { DispositionText } from '../../components/DispositionText';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { EventQueueLine } from './EventQueueLine';
@@ -23,6 +24,7 @@ import { ListDrawer } from './ListDrawer';
 import { ListStatusBadge } from './ListStatusBadge';
 import classes from './PlayersPanel.module.css';
 import {
+  dispositionsOf,
   factionsOf,
   filterPlayers,
   formatRecord,
@@ -81,6 +83,11 @@ function playerColumns({ showTeam, onOpen }: PlayerColumnsOptions): DataTableCol
     },
     { accessor: 'faction', title: 'Faction', render: (p) => p.faction ?? '—' },
     {
+      accessor: 'disposition',
+      title: 'Disposition',
+      render: (p) => (p.disposition ? <DispositionText disposition={p.disposition} /> : '—'),
+    },
+    {
       accessor: 'wins',
       title: 'W-L-D',
       textAlign: 'right',
@@ -104,12 +111,13 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
   const players = useQuery(playersQuery(event.bcpId));
   const [query, setQuery] = useState('');
   const [faction, setFaction] = useState<string | null>(null);
+  const [disposition, setDisposition] = useState<string | null>(null);
   const [maxLosses, setMaxLosses] = useState<number | null>(null);
   const [openPlayerId, setOpenPlayerId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const all = players.data?.items ?? [];
   const openPlayer = all.find((p) => p.bcpId === openPlayerId) ?? null;
-  const filtered = filterPlayers(all, { query, faction, maxLosses });
+  const filtered = filterPlayers(all, { query, faction, maxLosses, disposition });
 
   const toggleGroup = (key: string) => {
     setCollapsed((prev) => {
@@ -142,6 +150,16 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
             data={factionsOf(all)}
             value={faction}
             onChange={setFaction}
+            clearable
+            searchable
+            w={220}
+          />
+          <Select
+            aria-label="Disposition"
+            placeholder="All dispositions"
+            data={dispositionsOf(all)}
+            value={disposition}
+            onChange={setDisposition}
             clearable
             searchable
             w={220}

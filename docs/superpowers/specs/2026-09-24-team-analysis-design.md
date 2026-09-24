@@ -91,6 +91,7 @@ The calculations are pure functions in `@bcp/shared` (`analysis/*.ts`). The API 
    - `minGames` (default 3) hides cells with fewer games. Byes and games with an unknown result are left out.
    - **Scoring scale:** each game has a scale of `points_a + points_b`. An event's scale is the most common game scale. The game-points toggle is enabled only when every included event has the same scale; otherwise it is disabled and says "Events use different scoring".
    - **Drill-down:** a cell lists its games (event, round, table, players, factions, result, game points).
+   - **Disposition filter:** the matrix can be limited to games where the row side (or both sides) played a given disposition (`players.disposition`).
 6. **Cross-event** (`/analysis/matchups`, plan 5):
    - A date range, defaulting to the last 90 days.
    - The team events in the catalogue in that range, each with its pairings state: synced (`pairings_synced_at` set), partial (some round jobs done or failed), missing, or fetching (open jobs).

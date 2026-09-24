@@ -5,7 +5,13 @@ import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { anEventDetail, aPlayer } from '../../test/sample-data';
 import { RoundsPanel } from './RoundsPanel';
 
-const player = (id: string, name: string, faction: string) => ({ id, name, faction, teamId: null });
+const player = (id: string, name: string, faction: string) => ({
+  id,
+  name,
+  faction,
+  teamId: null,
+  disposition: null,
+});
 const rounds: RoundsResponse = {
   gamesAvailable: true,
   rounds: [

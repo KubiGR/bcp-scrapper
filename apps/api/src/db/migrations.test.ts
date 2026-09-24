@@ -10,3 +10,17 @@ describe('0003_fetch-queue migration', () => {
     expect(sql).not.toMatch(/DROP TABLE|CREATE TABLE/i);
   });
 });
+
+const dispositionSql = readFileSync(
+  new URL('../../drizzle/0005_player-disposition.sql', import.meta.url),
+  'utf8',
+);
+
+describe('0005_player-disposition migration', () => {
+  it('adds the column and backfills it from the stored raw JSON', () => {
+    expect(dispositionSql).toContain('ADD COLUMN "disposition" text');
+    expect(dispositionSql).toContain(
+      `UPDATE "players" SET "disposition" = NULLIF(trim("raw"->'subFaction'->>'name'), '') WHERE "disposition" IS NULL;`,
+    );
+  });
+});

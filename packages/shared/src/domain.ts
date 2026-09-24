@@ -50,6 +50,8 @@ export const PlayerSchema = z.object({
   draws: z.number().int().nonnegative(),
   dropped: z.boolean(),
   listBcpId: z.string().nullable(),
+  /** The army's disposition (BCP's subFaction), e.g. "Take and Hold". */
+  disposition: z.string().nullable(),
 });
 export type Player = z.infer<typeof PlayerSchema>;
 

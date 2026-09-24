@@ -28,12 +28,24 @@ const game = (
 const input: EventAnalysisInput = {
   teams: [{ id: 'RED', name: 'Red Legion', placing: 1 }],
   players: [
-    { id: 'R1', name: 'Rhea Stone', faction: 'Adepta Sororitas', teamId: 'RED' },
-    { id: 'R2', name: 'Rolf Hart', faction: 'Space Marines', teamId: 'RED' },
-    { id: 'B1', name: 'Bea Moss', faction: 'Necrons', teamId: 'BLUE' },
-    { id: 'B2', name: 'Bram Holt', faction: 'Aeldari', teamId: 'BLUE' },
-    { id: 'J1', name: 'Jon Reed', faction: "T'au Empire", teamId: 'JADE' },
-    { id: 'J2', name: 'Juno Frey', faction: 'Adepta Sororitas', teamId: 'JADE' },
+    { id: 'R1', name: 'Rhea Stone', faction: 'Adepta Sororitas', teamId: 'RED', disposition: null },
+    { id: 'R2', name: 'Rolf Hart', faction: 'Space Marines', teamId: 'RED', disposition: null },
+    { id: 'B1', name: 'Bea Moss', faction: 'Necrons', teamId: 'BLUE', disposition: null },
+    {
+      id: 'B2',
+      name: 'Bram Holt',
+      faction: 'Aeldari',
+      teamId: 'BLUE',
+      disposition: 'Reconnaissance',
+    },
+    { id: 'J1', name: 'Jon Reed', faction: "T'au Empire", teamId: 'JADE', disposition: null },
+    {
+      id: 'J2',
+      name: 'Juno Frey',
+      faction: 'Adepta Sororitas',
+      teamId: 'JADE',
+      disposition: 'Disruption',
+    },
   ],
   matchups: [],
   games: [
@@ -55,7 +67,13 @@ describe('computeTeamContribution', () => {
     expect(rolf?.perRound).toEqual([
       {
         round: 1,
-        opponent: { id: 'B2', name: 'Bram Holt', faction: 'Aeldari', teamId: 'BLUE' },
+        opponent: {
+          id: 'B2',
+          name: 'Bram Holt',
+          faction: 'Aeldari',
+          teamId: 'BLUE',
+          disposition: 'Reconnaissance',
+        },
         outcome: 'draw',
         gamePoints: 10,
         opponentGamePoints: 10,
@@ -64,7 +82,13 @@ describe('computeTeamContribution', () => {
       },
       {
         round: 2,
-        opponent: { id: 'J2', name: 'Juno Frey', faction: 'Adepta Sororitas', teamId: 'JADE' },
+        opponent: {
+          id: 'J2',
+          name: 'Juno Frey',
+          faction: 'Adepta Sororitas',
+          teamId: 'JADE',
+          disposition: 'Disruption',
+        },
         outcome: 'draw',
         gamePoints: 10,
         opponentGamePoints: 10,

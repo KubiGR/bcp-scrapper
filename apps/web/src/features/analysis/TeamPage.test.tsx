@@ -7,7 +7,13 @@ import { TeamPage } from './TeamPage';
 
 const round1: PlayerRound = {
   round: 1,
-  opponent: { id: 'B1', name: 'Bea Moss', faction: 'Necrons', teamId: 'BLUE' },
+  opponent: {
+    id: 'B1',
+    name: 'Bea Moss',
+    faction: 'Necrons',
+    teamId: 'BLUE',
+    disposition: 'Reconnaissance',
+  },
   outcome: 'win',
   gamePoints: 20,
   opponentGamePoints: 0,
@@ -20,7 +26,13 @@ const detail: TeamDetailResponse = {
   rounds: [{ round: 1, bracket: false }],
   players: [
     {
-      player: { id: 'R1', name: 'Rhea Stone', faction: 'Adepta Sororitas', teamId: 'RED' },
+      player: {
+        id: 'R1',
+        name: 'Rhea Stone',
+        faction: 'Adepta Sororitas',
+        teamId: 'RED',
+        disposition: 'Take and Hold',
+      },
       perRound: [round1],
       totals: { wins: 1, losses: 0, draws: 0, points: 20 },
     },
@@ -41,6 +53,9 @@ describe('TeamPage', () => {
       screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === 'W 20–0'),
     ).toBeInTheDocument();
     expect(screen.getByText(/Bea Moss/)).toBeInTheDocument();
+    // The player's own and the opponent's disposition badges.
+    expect(screen.getByText('Take and Hold')).toBeInTheDocument();
+    expect(screen.getByText('Reconnaissance')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Sample Team Open/ }).getAttribute('href')).toBe(
       '/events/EVT1?tab=standings',
     );
@@ -54,7 +69,13 @@ describe('TeamPage', () => {
       ...detail,
       players: [
         {
-          player: { id: 'R1', name: 'Rhea Stone', faction: 'Adepta Sororitas', teamId: 'RED' },
+          player: {
+            id: 'R1',
+            name: 'Rhea Stone',
+            faction: 'Adepta Sororitas',
+            teamId: 'RED',
+            disposition: 'Take and Hold',
+          },
           perRound: [{ ...round1, vp: 80, opponentVp: 60 }],
           totals: { wins: 1, losses: 0, draws: 0, points: 20 },
         },
@@ -111,7 +132,13 @@ describe('TeamPage', () => {
   });
 
   it('shows the team’s matches from its point of view, in round order', async () => {
-    const player = (id: string, name: string) => ({ id, name, faction: null, teamId: null });
+    const player = (id: string, name: string) => ({
+      id,
+      name,
+      faction: null,
+      teamId: null,
+      disposition: null,
+    });
     const rounds: RoundsResponse = {
       gamesAvailable: true,
       rounds: [

@@ -4,12 +4,13 @@ export interface PlayerFilter {
   query: string;
   faction: string | null;
   maxLosses: number | null;
+  disposition: string | null;
 }
 
 /** Players whose name or team contains the query (case-insensitive), in the chosen faction. */
 export function filterPlayers(
   players: EventPlayer[],
-  { query, faction, maxLosses }: PlayerFilter,
+  { query, faction, maxLosses, disposition }: PlayerFilter,
 ): EventPlayer[] {
   const needle = query.trim().toLocaleLowerCase();
   const matchesText = (player: EventPlayer) =>
@@ -19,6 +20,7 @@ export function filterPlayers(
   return players.filter(
     (player) =>
       (faction === null || player.faction === faction) &&
+      (disposition === null || player.disposition === disposition) &&
       matchesText(player) &&
       (maxLosses === null || qualifiesForMaxLosses(player, maxLosses)),
   );
@@ -28,6 +30,14 @@ export function filterPlayers(
 export function factionsOf(players: EventPlayer[]): string[] {
   const factions = new Set(players.flatMap((player) => (player.faction ? [player.faction] : [])));
   return [...factions].sort((a, b) => a.localeCompare(b));
+}
+
+/** The dispositions present, alphabetically, for the disposition filter. */
+export function dispositionsOf(players: EventPlayer[]): string[] {
+  const dispositions = new Set(
+    players.flatMap((player) => (player.disposition ? [player.disposition] : [])),
+  );
+  return [...dispositions].sort((a, b) => a.localeCompare(b));
 }
 
 export function formatRecord(player: Pick<EventPlayer, 'wins' | 'losses' | 'draws'>): string {

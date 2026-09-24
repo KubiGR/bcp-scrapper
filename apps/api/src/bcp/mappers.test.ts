@@ -164,12 +164,31 @@ describe('mapPlayer', () => {
       draws: 1,
       dropped: false,
       listBcpId: 'L1',
+      disposition: null,
     });
   });
 
   it('falls back to "Unknown player" when BCP hides the user', () => {
     const raw = parseBcp(RawPlayer, { id: 'P2', user: null }, 'test');
     expect(mapPlayer(raw, 'E1')).toMatchObject({ name: 'Unknown player', teamBcpId: null });
+  });
+
+  it('reads the disposition from subFaction, trimmed', () => {
+    const raw = parseBcp(
+      RawPlayer,
+      {
+        id: 'P3',
+        user: { firstName: 'Cara' },
+        subFaction: { id: 'SF-1', name: ' Take and Hold ' },
+      },
+      'test',
+    );
+    expect(mapPlayer(raw, 'E1').disposition).toBe('Take and Hold');
+  });
+
+  it('is null without a subFaction', () => {
+    const raw = parseBcp(RawPlayer, { id: 'P4', user: { firstName: 'Dan' } }, 'test');
+    expect(mapPlayer(raw, 'E1').disposition).toBeNull();
   });
 });
 

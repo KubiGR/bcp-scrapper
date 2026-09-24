@@ -85,6 +85,7 @@ export function aPlayer(overrides: Partial<EventPlayer> = {}): EventPlayer {
     losses: 0,
     draws: 0,
     dropped: false,
+    disposition: 'Take and Hold',
     listStatus: 'fetched',
     listError: null,
     listErrorCode: null,

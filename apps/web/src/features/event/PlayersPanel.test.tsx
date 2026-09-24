@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { anEventDetail, aPlayer } from '../../test/sample-data';
@@ -118,6 +118,36 @@ describe('PlayersPanel', () => {
       name: (_, el) => el.textContent.startsWith('No team'),
     });
     expect(noTeam).toBeInTheDocument();
+  });
+
+  it('shows a Disposition column, "—" when unset, and a disposition filter', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [
+          aPlayer({ bcpId: 'P1', name: 'Ada Archer', disposition: 'Take and Hold' }),
+          aPlayer({ bcpId: 'P2', name: 'Cara Cole', disposition: 'Disruption' }),
+          aPlayer({ bcpId: 'P3', name: 'Nyx None', disposition: null }),
+        ],
+      },
+    });
+    renderWithRouter(
+      <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
+    );
+
+    const adaRow = (await screen.findByText('Ada Archer')).closest('tr');
+    const caraRow = screen.getByText('Cara Cole').closest('tr');
+    expect(adaRow && within(adaRow).getByText('Take and Hold')).toBeInTheDocument();
+    expect(caraRow && within(caraRow).getByText('Disruption')).toBeInTheDocument();
+
+    const dispositionFilter = screen.getByRole('combobox', { name: 'Disposition' });
+    expect(dispositionFilter).toHaveAttribute('placeholder', 'All dispositions');
+
+    fireEvent.click(dispositionFilter);
+    const option = await screen.findByRole('option', { name: 'Disruption' });
+    fireEvent.click(option);
+
+    expect(await screen.findByText('Cara Cole')).toBeInTheDocument();
+    expect(screen.queryByText('Ada Archer')).not.toBeInTheDocument();
   });
 
   it('shows the no-players message for a team event with no players yet', async () => {

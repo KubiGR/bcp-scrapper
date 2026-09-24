@@ -158,6 +158,8 @@ export const EventPlayerSchema = z.object({
   losses: z.number().int().nonnegative(),
   draws: z.number().int().nonnegative(),
   dropped: z.boolean(),
+  /** The army's disposition (BCP's subFaction), e.g. "Take and Hold". */
+  disposition: z.string().nullable(),
   listStatus: ListStatusSchema,
   /** Why the newest list request failed (only when `listStatus` is failed). */
   listError: z.string().nullable(),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { aPlayer } from '../../test/sample-data';
 import {
+  dispositionsOf,
   factionsOf,
   filterPlayers,
   formatRecord,
@@ -12,13 +13,15 @@ import {
 const players = [
   aPlayer(),
   aPlayer({ bcpId: 'PL-FINN', name: 'Finn Ford', teamName: 'Charlie Wing', faction: 'Orks' }),
-  aPlayer({ bcpId: 'PL-SOLO', name: 'Solo', teamName: null, faction: null }),
+  aPlayer({ bcpId: 'PL-SOLO', name: 'Solo', teamName: null, faction: null, disposition: null }),
 ];
 
 describe('filterPlayers', () => {
   it('matches player or team names, ignoring case and surrounding spaces', () => {
     const names = (query: string) =>
-      filterPlayers(players, { query, faction: null, maxLosses: null }).map((p) => p.name);
+      filterPlayers(players, { query, faction: null, maxLosses: null, disposition: null }).map(
+        (p) => p.name,
+      );
     expect(names('  ADA ')).toEqual(['Ada Archer']);
     expect(names('charlie')).toEqual(['Finn Ford']);
     expect(names('')).toHaveLength(3);
@@ -26,9 +29,40 @@ describe('filterPlayers', () => {
 
   it('filters by faction, combined with the text', () => {
     expect(
-      filterPlayers(players, { query: '', faction: 'Orks', maxLosses: null }).map((p) => p.name),
+      filterPlayers(players, {
+        query: '',
+        faction: 'Orks',
+        maxLosses: null,
+        disposition: null,
+      }).map((p) => p.name),
     ).toEqual(['Finn Ford']);
-    expect(filterPlayers(players, { query: 'ada', faction: 'Orks', maxLosses: null })).toEqual([]);
+    expect(
+      filterPlayers(players, { query: 'ada', faction: 'Orks', maxLosses: null, disposition: null }),
+    ).toEqual([]);
+  });
+
+  it('filters by disposition, combined with the other filters', () => {
+    const withDispositions = [
+      aPlayer({ bcpId: 'A', name: 'Ada Archer', disposition: 'Take and Hold' }),
+      aPlayer({ bcpId: 'B', name: 'Ben Baker', disposition: 'Disruption' }),
+      aPlayer({ bcpId: 'C', name: 'Cara Cole', disposition: null }),
+    ];
+    expect(
+      filterPlayers(withDispositions, {
+        query: '',
+        faction: null,
+        maxLosses: null,
+        disposition: 'Disruption',
+      }).map((p) => p.bcpId),
+    ).toEqual(['B']);
+    expect(
+      filterPlayers(withDispositions, {
+        query: '',
+        faction: null,
+        maxLosses: null,
+        disposition: null,
+      }),
+    ).toHaveLength(3);
   });
 });
 
@@ -36,6 +70,18 @@ describe('factionsOf / formatRecord', () => {
   it('lists distinct factions alphabetically and formats W-L-D', () => {
     expect(factionsOf(players)).toEqual(['Orks', 'Space Marines']);
     expect(formatRecord(aPlayer({ wins: 3, losses: 1, draws: 1 }))).toBe('3-1-1');
+  });
+});
+
+describe('dispositionsOf', () => {
+  it('lists distinct dispositions alphabetically, leaving out null', () => {
+    const withDispositions = [
+      aPlayer({ bcpId: 'A', disposition: 'Take and Hold' }),
+      aPlayer({ bcpId: 'B', disposition: 'Disruption' }),
+      aPlayer({ bcpId: 'C', disposition: 'Take and Hold' }),
+      aPlayer({ bcpId: 'D', disposition: null }),
+    ];
+    expect(dispositionsOf(withDispositions)).toEqual(['Disruption', 'Take and Hold']);
   });
 });
 
@@ -59,7 +105,9 @@ describe('record filter and missing counts', () => {
 
   it('filters by loss limit (draws are not losses; no games never qualifies)', () => {
     expect(
-      filterPlayers(list, { query: '', faction: null, maxLosses: 0 }).map((p) => p.bcpId),
+      filterPlayers(list, { query: '', faction: null, maxLosses: 0, disposition: null }).map(
+        (p) => p.bcpId,
+      ),
     ).toEqual(['A', 'C']);
   });
 

@@ -3,6 +3,7 @@ import { Accordion, Group, Skeleton, Stack, Table, Text, Title } from '@mantine/
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
+import { DispositionText } from '../../components/DispositionText';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { eventQuery, playersQuery } from '../event/event-queries';
@@ -31,11 +32,22 @@ function RoundCell({ cell }: { cell: PlayerRound | null }) {
           </span>
         </Text>
       )}
-      <Text size="xs" c="dimmed">
-        {cell.opponent
-          ? `${cell.opponent.name} (${cell.opponent.faction ?? 'unknown faction'})`
-          : 'Bye'}
-      </Text>
+      {cell.opponent ? (
+        <Text size="xs" c="dimmed">
+          {cell.opponent.name} ({cell.opponent.faction ?? 'unknown faction'}
+          {cell.opponent.disposition && (
+            <>
+              {' · '}
+              <DispositionText disposition={cell.opponent.disposition} />
+            </>
+          )}
+          )
+        </Text>
+      ) : (
+        <Text size="xs" c="dimmed">
+          Bye
+        </Text>
+      )}
     </Stack>
   );
 }
@@ -181,6 +193,12 @@ export function TeamPage({ eventId, teamId }: { eventId: string; teamId: string 
                     <Text size="sm">{row.player.name}</Text>
                     <Text size="xs" c="dimmed">
                       {row.player.faction ?? 'Unknown faction'}
+                      {row.player.disposition && (
+                        <>
+                          {' · '}
+                          <DispositionText disposition={row.player.disposition} />
+                        </>
+                      )}
                     </Text>
                   </Table.Td>
                   {row.perRound.map((cell, index) => (

@@ -2,7 +2,13 @@ import type { MatchupView } from '@bcp/shared';
 import { describe, expect, it } from 'vitest';
 import { matchupFor } from './team-matches';
 
-const player = (id: string, name: string) => ({ id, name, faction: null, teamId: null });
+const player = (id: string, name: string) => ({
+  id,
+  name,
+  faction: null,
+  teamId: null,
+  disposition: null,
+});
 
 const matchup: MatchupView = {
   id: 'M1',

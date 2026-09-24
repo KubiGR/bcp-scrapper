@@ -71,6 +71,8 @@ export const RawPlayer = z.object({
   faction: z
     .object({ name: z.string(), parentFaction: z.object({ name: z.string() }).nullish() })
     .nullish(),
+  /** The army's disposition (BCP's subFaction), e.g. "Take and Hold". */
+  subFaction: z.object({ name: z.string() }).nullish(),
   placing: z.number().nullish(),
   dropped: z.boolean().nullish(),
   listId: z.string().nullish(),

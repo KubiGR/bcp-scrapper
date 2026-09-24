@@ -16,6 +16,8 @@ export const PlayerRefSchema = z.object({
   name: z.string(),
   faction: z.string().nullable(),
   teamId: z.string().nullable(),
+  /** The army's disposition (BCP's subFaction), e.g. "Take and Hold". */
+  disposition: z.string().nullable(),
 });
 export type PlayerRef = z.infer<typeof PlayerRefSchema>;
 

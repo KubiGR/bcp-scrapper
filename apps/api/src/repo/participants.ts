@@ -42,6 +42,7 @@ export async function upsertPlayers(db: Db, list: Fetched<Player>[]): Promise<vo
         draws: player.draws,
         dropped: player.dropped,
         listId: player.listBcpId,
+        disposition: player.disposition,
         raw: player.raw,
       })),
     )
@@ -129,6 +130,7 @@ export async function listEventPlayers(db: Db, eventId: string): Promise<EventPl
     losses: player.losses,
     draws: player.draws,
     dropped: player.dropped,
+    disposition: player.disposition,
     ...listStateOf(player.listId, storedListId, queue.get(player.id)),
   }));
 }
