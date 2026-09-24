@@ -4,6 +4,7 @@ import type { Db } from './db/client';
 import { AppError, BcpRateLimitedError, toErrorBody } from './errors';
 import type { FetchQueueWorker } from './fetch-queue/worker';
 import type { Logger } from './logger';
+import { analysisRoutes } from './routes/analysis';
 import { bcpRoutes } from './routes/bcp';
 import { catalogRoutes } from './routes/catalog';
 import { eventRoutes } from './routes/events';
@@ -79,6 +80,7 @@ export function createApp(deps: AppDeps) {
   app.route('/api', bcpRoutes(deps));
   app.route('/api', catalogRoutes({ ...deps, now }));
   app.route('/api', fetchQueueRoutes(deps));
+  app.route('/api', analysisRoutes(deps));
 
   return app;
 }
