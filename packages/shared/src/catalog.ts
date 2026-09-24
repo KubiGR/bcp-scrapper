@@ -72,6 +72,27 @@ export function estimateCatalogRequests(range: DateRange): number {
   return Math.max(1, Math.ceil((daysIn(range) * EVENTS_PER_DAY_ESTIMATE) / EVENTS_PER_PAGE));
 }
 
+export type EventPhase = 'upcoming' | 'running' | 'finished';
+
+/** Grace after the last day before a not-closed event counts as finished (timezones, late results). */
+export const FINISHED_GRACE_MS = 24 * 3_600_000;
+
+/**
+ * Finished when BCP says it ended, or its last day (end date, else start date) is more than a
+ * day behind us — organisers often forget to close events in BCP. Upcoming before it starts.
+ */
+export function eventPhase(
+  event: { startDate: string | Date; endDate: string | Date | null; ended: boolean },
+  now: Date,
+): EventPhase {
+  if (event.ended) return 'finished';
+  const lastDay = new Date(event.endDate ?? event.startDate);
+  if (lastDay.getTime() + FINISHED_GRACE_MS < now.getTime()) return 'finished';
+  const start = new Date(event.startDate);
+  if (start.getTime() > now.getTime()) return 'upcoming';
+  return 'running';
+}
+
 export interface EventSizeRule {
   minRounds: number;
   minPlayers: number;

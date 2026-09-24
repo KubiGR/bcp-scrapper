@@ -4,6 +4,7 @@ import {
   BIG_EVENTS,
   daysIn,
   estimateCatalogRequests,
+  eventPhase,
   findGaps,
   isBigEvent,
   latestWindow,
@@ -105,5 +106,50 @@ describe('isBigEvent', () => {
   it('a rule of {0, 0} keeps everything', () => {
     const rule: EventSizeRule = { minRounds: 0, minPlayers: 0 };
     expect(isBigEvent({ roundCount: 0, playerCount: 0 }, rule)).toBe(true);
+  });
+});
+
+describe('eventPhase', () => {
+  const now = new Date('2026-09-24T12:00:00Z');
+
+  it('is finished when BCP says it ended, regardless of dates', () => {
+    expect(eventPhase({ startDate: '2026-09-01T00:00:00Z', endDate: null, ended: true }, now)).toBe(
+      'finished',
+    );
+  });
+
+  it('is finished when the last day is more than a day behind now, even if not ended (the Studs case)', () => {
+    expect(
+      eventPhase(
+        { startDate: '2026-09-19T09:00:00Z', endDate: '2026-09-20T23:00:00Z', ended: false },
+        now,
+      ),
+    ).toBe('finished');
+  });
+
+  it('is still running within the grace period after the last day', () => {
+    const endDate = new Date(now.getTime() - 12 * 3_600_000).toISOString();
+    expect(eventPhase({ startDate: '2026-09-20T09:00:00Z', endDate, ended: false }, now)).toBe(
+      'running',
+    );
+  });
+
+  it('falls back to startDate as the last day when there is no endDate', () => {
+    const startDate = new Date(now.getTime() - 3 * 86_400_000).toISOString();
+    expect(eventPhase({ startDate, endDate: null, ended: false }, now)).toBe('finished');
+  });
+
+  it('is upcoming before the event starts', () => {
+    const startDate = new Date(now.getTime() + 86_400_000).toISOString();
+    expect(eventPhase({ startDate, endDate: null, ended: false }, now)).toBe('upcoming');
+  });
+
+  it('is running during the event', () => {
+    expect(
+      eventPhase(
+        { startDate: '2026-09-23T09:00:00Z', endDate: '2026-09-25T18:00:00Z', ended: false },
+        now,
+      ),
+    ).toBe('running');
   });
 });

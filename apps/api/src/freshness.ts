@@ -1,4 +1,4 @@
-import type { DateRange } from '@bcp/shared';
+import { eventPhase, type DateRange } from '@bcp/shared';
 
 /** The latest window counts as fresh this long after a covering catalogue sync (spec §7). */
 export const CATALOG_MAX_AGE_MS = 6 * 3_600_000;
@@ -20,14 +20,15 @@ export function isLatestFresh(window: DateRange, runs: FinishedRange[], now: Dat
 }
 
 /**
- * Whether the event page should (re)load the event from BCP: never synced, or still running and
- * synced 10+ minutes ago. Ended events stay cached until the user presses Refresh.
+ * Whether the event page should (re)load the event from BCP: never synced, or its phase is
+ * `running` and it was synced 10+ minutes ago. Upcoming and finished events stay cached until
+ * the user presses Refresh.
  */
 export function isEventStale(
-  event: { ended: boolean; lastSyncedAt: Date | null },
+  event: { startDate: Date; endDate: Date | null; ended: boolean; lastSyncedAt: Date | null },
   now: Date,
 ): boolean {
   if (event.lastSyncedAt === null) return true;
-  if (event.ended) return false;
+  if (eventPhase(event, now) !== 'running') return false;
   return now.getTime() - event.lastSyncedAt.getTime() >= RUNNING_EVENT_MAX_AGE_MS;
 }
