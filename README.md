@@ -56,8 +56,8 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
   flooded: choose **All missing lists**, or only the good results (**X-0**, **X-1 or better**, …;
   draws don't count as losses). Clicking a player shows their list; if it isn't fetched yet,
   **Fetch this list** jumps the queue. The header shows the queue while it's working (click it to
-  pause or resume); if BCP rejects your login the queue pauses itself — fix the token, restart,
-  and resume. **Export lists** saves what's fetched as `.txt` or `.json`.
+  pause or resume); if BCP rejects your login the queue pauses itself — fix the token and restart
+  the API (a restart clears the pause). **Export lists** saves what's fetched as `.txt` or `.json`.
 - No Docker? `DATABASE_URL=pglite://memory pnpm dev` runs everything in memory (lost on restart).
 
 ## Commands
