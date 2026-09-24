@@ -51,6 +51,16 @@ describe('QueueIndicator', () => {
     ).toBeInTheDocument();
   });
 
+  it('uses the singular "job" for exactly one', async () => {
+    stubFetchRoutes({
+      'GET /api/fetch-queue': state({
+        totals: listJobTotals({ queued: 1, fetching: 0, failed: 0 }),
+      }),
+    });
+    renderInRouter();
+    expect(await screen.findByRole('button', { name: /Fetching · 1 job\b/ })).toBeInTheDocument();
+  });
+
   it('shows failures even when nothing is queued', async () => {
     stubFetchRoutes({
       'GET /api/fetch-queue': state({

@@ -73,4 +73,32 @@ describe('PlayersPanel', () => {
     fireEvent.click(charlie);
     expect(charlie).toHaveAttribute('aria-expanded', 'false');
   });
+
+  it('shows the no-players message for a team event with no players yet', async () => {
+    stubFetchRoutes({ 'GET /api/events/EVT1/players': { items: [] } });
+    renderWithProviders(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
+    expect(
+      await screen.findByText('No players loaded yet. Use "Refresh from BCP".'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows the no-match message for a team event whose filter matches nothing', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [aPlayer({ bcpId: 'P1', name: 'Ada Archer', teamId: 'TM-ALPHA' })],
+      },
+    });
+    renderWithProviders(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
+    await screen.findByRole('button', { name: /Alpha Squad/ });
+    fireEvent.change(screen.getByLabelText('Search players'), {
+      target: { value: 'nobody matches this' },
+    });
+    expect(await screen.findByText('No players match the filter.')).toBeInTheDocument();
+  });
+
+  it('shows the loading message for a team event while loading from BCP', async () => {
+    stubFetchRoutes({ 'GET /api/events/EVT1/players': { items: [] } });
+    renderWithProviders(<PlayersPanel event={anEventDetail()} loadingFromBcp />);
+    expect(await screen.findByText('Loading players from BCP…')).toBeInTheDocument();
+  });
 });

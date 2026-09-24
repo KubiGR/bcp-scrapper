@@ -170,6 +170,17 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
 
       {players.error ? (
         <ErrorState error={players.error} onRetry={() => void players.refetch()} />
+      ) : grouped && groups.length === 0 ? (
+        <Panel p={0}>
+          <DataTable<EventPlayer>
+            records={[]}
+            idAccessor="bcpId"
+            fetching={players.isFetching || loadingFromBcp}
+            minHeight={220}
+            noRecordsText={emptyText(loadingFromBcp, all.length)}
+            columns={playerColumns({ showTeam: false, onOpen: setOpenPlayerId })}
+          />
+        </Panel>
       ) : grouped ? (
         <Stack gap="sm">
           {groups.map((group) => {
