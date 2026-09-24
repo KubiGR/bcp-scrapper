@@ -28,6 +28,12 @@ export interface ListQueueWorkerOptions {
   logger: Logger;
   intervalMs: number;
   now?: () => Date;
+  /**
+   * Whether BCP rejects the login itself, asked once after a list fetch fails with an auth error.
+   * True (or no check given): the whole queue pauses until resumed. False: BCP refused just this
+   * list, so the row is backed off like any other failure instead of wedging the queue.
+   */
+  loginRejected?: () => Promise<boolean>;
 }
 
 interface Pause {
@@ -134,6 +140,18 @@ export class ListQueueWorker {
     return true;
   }
 
+  /** Asks the login check; when it can't tell (no check, or it fails), assumes the worst. */
+  async #isLoginRejected(): Promise<boolean> {
+    const { loginRejected, logger } = this.#options;
+    if (!loginRejected) return true;
+    try {
+      return await loginRejected();
+    } catch (error) {
+      logger.warn({ err: error }, 'Could not check the BCP login after an auth error');
+      return true;
+    }
+  }
+
   async #fetchNext(): Promise<TickOutcome> {
     const { db, source, logger } = this.#options;
     const claimed = await claimNextList(db, this.#now());
@@ -168,7 +186,7 @@ export class ListQueueWorker {
       await markListDone(db, claimed.id);
       return log('fetched');
     } catch (error) {
-      if (error instanceof BcpAuthError) {
+      if (error instanceof BcpAuthError && (await this.#isLoginRejected())) {
         await releaseList(db, claimed.id);
         this.pause('login-rejected');
         return log('paused', 'warn', { reason: 'login-rejected' });

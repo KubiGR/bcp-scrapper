@@ -39,8 +39,19 @@ function withGetList(getList: BcpSource['getList']): BcpSource {
   return Object.assign(Object.create(source) as BcpSource, { getList });
 }
 
-function worker(src: BcpSource = source, now = () => new Date()) {
-  return new ListQueueWorker({ db, source: src, logger: silentLogger, intervalMs: 5000, now });
+function worker(
+  src: BcpSource = source,
+  now = () => new Date(),
+  loginRejected?: () => Promise<boolean>,
+) {
+  return new ListQueueWorker({
+    db,
+    source: src,
+    logger: silentLogger,
+    intervalMs: 5000,
+    now,
+    loginRejected,
+  });
 }
 
 const ada = { playerId: 'PL-ADA', listId: 'LS-ADA' };
@@ -99,6 +110,45 @@ describe('ListQueueWorker', () => {
 
     w.resume();
     expect((await w.state()).paused).toBe(false);
+  });
+
+  it('pauses on an auth error when the login check says the login is rejected', async () => {
+    const getList = vi.fn(() => Promise.reject(new BcpAuthError('Session expired')));
+    const loginRejected = vi.fn(() => Promise.resolve(true));
+    const w = worker(withGetList(getList), undefined, loginRejected);
+    await enqueueLists(db, EVENT, [ada, ben], 0);
+
+    expect(await w.tick()).toBe('paused');
+    expect(loginRejected).toHaveBeenCalledTimes(1);
+    expect(await queueTotals(db)).toEqual({ queued: 2, fetching: 0, failed: 0 });
+    expect(await w.state()).toMatchObject({ paused: true, pausedReason: 'login-rejected' });
+  });
+
+  it('backs off one list BCP refuses while the login works, and goes on with the next', async () => {
+    let clock = new Date('2030-01-01T00:00:00Z');
+    const getList = vi.fn((listId: string) =>
+      listId === 'LS-ADA' ? Promise.reject(new BcpAuthError('Forbidden')) : source.getList(listId),
+    );
+    const w = worker(
+      withGetList(getList),
+      () => clock,
+      () => Promise.resolve(false),
+    );
+    await enqueueLists(db, EVENT, [ada, ben], 0);
+
+    expect(await w.tick()).toBe('retry');
+    expect((await w.state()).paused).toBe(false);
+    expect(await w.tick()).toBe('fetched');
+    expect(await findPlayerList(db, 'PL-BEN')).not.toBeNull();
+
+    clock = new Date(clock.getTime() + 61_000);
+    expect(await w.tick()).toBe('retry');
+    clock = new Date(clock.getTime() + 5 * 60_000 + 1000);
+    expect(await w.tick()).toBe('failed');
+    expect((await latestQueueRowsByPlayer(db, EVENT)).get('PL-ADA')).toMatchObject({
+      status: 'failed',
+      errorCode: 'BCP_AUTH',
+    });
   });
 
   it('pauses until a BCP rate limit has passed, then resumes by itself', async () => {

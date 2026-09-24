@@ -24,6 +24,13 @@ const listQueue = new ListQueueWorker({
   source,
   logger: logger.child({ module: 'list-queue' }),
   intervalMs: config.LIST_QUEUE_INTERVAL_MS,
+  // Asked once per auth error: BCP refusing one list must not pause the queue while the login
+  // works. The status check refreshes a stale login at most once (single-flight) and never
+  // resends a refresh token BCP already refused.
+  loginRejected: async () => {
+    const { state } = await status();
+    return state === 'rejected' || state === 'missing';
+  },
 });
 await listQueue.start();
 const app = createApp({
