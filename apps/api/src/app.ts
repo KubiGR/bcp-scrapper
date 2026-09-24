@@ -9,6 +9,7 @@ import { bcpRoutes } from './routes/bcp';
 import { catalogRoutes } from './routes/catalog';
 import { eventRoutes } from './routes/events';
 import { fetchQueueRoutes } from './routes/fetch-queue';
+import { matchupsRoutes } from './routes/matchups';
 import { syncRoutes } from './routes/sync';
 import type { SyncRunner } from './sync/runner';
 
@@ -83,6 +84,7 @@ export function createApp(deps: AppDeps) {
   app.route('/api', catalogRoutes({ ...deps, now }));
   app.route('/api', fetchQueueRoutes(deps));
   app.route('/api', analysisRoutes(deps));
+  app.route('/api', matchupsRoutes({ ...deps, now }));
 
   return app;
 }
