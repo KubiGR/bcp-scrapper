@@ -19,7 +19,11 @@ describe('QueueControls', () => {
       'POST /api/list-queue/pause': { ...base, paused: true, pausedReason: 'user' },
     });
     renderWithProviders(<QueueControls state={base} />);
-    expect(screen.getByText(/4 in progress/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, el) => el?.tagName === 'P' && el.textContent.includes('4 in progress · 2 failed'),
+      ),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     await waitFor(() => {
       expect(fetchMock.mock.calls.some(([url]) => url === '/api/list-queue/pause')).toBe(true);

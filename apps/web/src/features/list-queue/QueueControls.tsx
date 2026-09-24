@@ -55,10 +55,14 @@ export function QueueControls({ state }: { state: ListQueueState }) {
 
   return (
     <Stack gap="xs">
-      <Text size="sm" aria-live="polite" className="numeric">
-        {inProgress} in progress · {failed} failed
+      <Text size="sm" aria-live="polite">
+        <span className="numeric">{inProgress}</span> in progress ·{' '}
+        <span className="numeric">{failed}</span> failed
         {state.estimatedSeconds !== null && !state.paused && (
-          <> · about {formatDuration(state.estimatedSeconds)} left</>
+          <>
+            {' '}
+            · about <span className="numeric">{formatDuration(state.estimatedSeconds)}</span> left
+          </>
         )}
       </Text>
       <PausedNote state={state} />

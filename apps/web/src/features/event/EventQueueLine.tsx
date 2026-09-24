@@ -19,11 +19,16 @@ export function EventQueueLine({ event }: { event: EventDetail }) {
 
   return (
     <Group gap="sm" wrap="wrap">
-      <Text size="sm" c="dimmed" aria-live="polite" className="numeric">
-        {listsQueued} queued · {listsFetched} fetched · {listsFailed} failed
-        {event.listQueueSeconds !== null
-          ? ` · about ${formatDuration(event.listQueueSeconds)} left`
-          : ''}
+      <Text size="sm" c="dimmed" aria-live="polite">
+        <span className="numeric">{listsQueued}</span> queued ·{' '}
+        <span className="numeric">{listsFetched}</span> fetched ·{' '}
+        <span className="numeric">{listsFailed}</span> failed
+        {event.listQueueSeconds !== null && (
+          <>
+            {' '}
+            · about <span className="numeric">{formatDuration(event.listQueueSeconds)}</span> left
+          </>
+        )}
       </Text>
       {listsQueued > 0 && (
         <Button

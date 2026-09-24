@@ -22,7 +22,11 @@ describe('EventQueueLine', () => {
     });
     renderWithProviders(<EventQueueLine event={anEventDetail({ counts, listQueueSeconds: 15 })} />);
     expect(
-      screen.getByText(/3 queued · 3 fetched · 1 failed · about 15 s left/),
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === 'P' &&
+          el.textContent.includes('3 queued · 3 fetched · 1 failed · about 15 s left'),
+      ),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel queued' }));
