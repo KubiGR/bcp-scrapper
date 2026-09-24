@@ -105,7 +105,7 @@ describe('ListDrawer', () => {
     expect(
       await screen.findByText(
         (_, el) =>
-          el?.tagName === 'P' && el.textContent === "Queued · about 15 s for this event's lists.",
+          el?.tagName === 'P' && el.textContent === "Queued · about 15 s for this event's queue.",
       ),
     ).toBeInTheDocument();
   });

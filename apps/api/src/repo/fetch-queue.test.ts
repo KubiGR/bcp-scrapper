@@ -268,4 +268,32 @@ describe('pairings jobs', () => {
     const [event] = await db.select().from(events).where(eq(events.id, EVENT));
     expect(event?.pairingsSyncedAt).toBeInstanceOf(Date);
   });
+
+  it('counts a round whose newest job failed', async () => {
+    await enqueueEventPairings(db, EVENT, { rounds: [1, 2], priority: 0 });
+    const one = await claim();
+    await markJobFailed(db, one.id, 'BCP down', 'BCP_UNAVAILABLE');
+    expect(await eventPairingsJobs(db, EVENT)).toEqual({ queued: 1, failed: 1 });
+  });
+
+  it('counts a failed event load as failed until it is retried', async () => {
+    await enqueueEventPairings(db, EVENT, { rounds: null, priority: 0 });
+    const job = await claim();
+    await markJobFailed(db, job.id, 'BCP down', 'BCP_UNAVAILABLE');
+    expect(await eventPairingsJobs(db, EVENT)).toEqual({ queued: 0, failed: 1 });
+    expect(await retryFailedJobs(db, EVENT)).toBe(1);
+    expect(await eventPairingsJobs(db, EVENT)).toEqual({ queued: 1, failed: 0 });
+  });
+
+  it('is not synced while a done round has a newer queued or failed job', async () => {
+    await enqueueEventPairings(db, EVENT, { rounds: [1, 2], priority: 0 });
+    await markJobDone(db, (await claim()).id);
+    await markJobDone(db, (await claim()).id);
+    await enqueueEventPairings(db, EVENT, { rounds: [1], priority: 0 }); // round 1 again
+    expect(await markPairingsSyncedIfComplete(db, EVENT, 2)).toBe(false);
+    await markJobFailed(db, (await claim()).id, 'BCP down', 'BCP_UNAVAILABLE');
+    expect(await markPairingsSyncedIfComplete(db, EVENT, 2)).toBe(false);
+    const [event] = await db.select().from(events).where(eq(events.id, EVENT));
+    expect(event?.pairingsSyncedAt).toBeNull();
+  });
 });

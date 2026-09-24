@@ -76,7 +76,7 @@ function FetchThisList({
   );
 }
 
-/** Where a queued list stands: paused, being fetched, or about how long this event's lists take. */
+/** Where a queued list stands: paused, being fetched, or about how long this event's queue takes. */
 function QueuedStatus({ eventId, player }: { eventId: string; player: EventPlayer }) {
   const event = useQuery(eventQuery(eventId));
   const queue = useQuery(fetchQueueQuery);
@@ -90,7 +90,7 @@ function QueuedStatus({ eventId, player }: { eventId: string; player: EventPlaye
     status = (
       <>
         Queued · about <span className="numeric">{formatDuration(seconds)}</span> for this event's
-        lists.
+        queue.
       </>
     );
   } else status = 'Queued.';

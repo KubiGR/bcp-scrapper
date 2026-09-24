@@ -332,7 +332,10 @@ export async function queueTotals(
   return { queued: sum('queued'), fetching: sum('fetching'), failed: sum('failed'), byKind };
 }
 
-/** Open pairings work for an event, and rounds whose newest pairings job failed. */
+/**
+ * Open pairings work for an event, and failures: rounds whose newest pairings-round job failed,
+ * plus one when the event's newest event job (the load that queues the rounds) failed.
+ */
 export async function eventPairingsJobs(
   db: Db,
   eventId: string,
@@ -349,7 +352,7 @@ export async function eventPairingsJobs(
     );
   const newest = await newestJobPerTarget(
     db,
-    and(eq(fetchQueue.eventId, eventId), eq(fetchQueue.kind, 'pairings-round')),
+    and(eq(fetchQueue.eventId, eventId), inArray(fetchQueue.kind, [...PAIRINGS_KINDS])),
   );
   return {
     queued: open?.n ?? 0,

@@ -246,11 +246,13 @@ export class FetchQueueWorker {
   async #fetchEvent(job: ClaimedJob): Promise<TickOutcome> {
     const { db, source } = this.#options;
     const event = await syncEvent({ db, source }, job.eventId);
-    await markJobDone(db, job.id);
     if (job.followUp === 'pairings') {
+      // Before markJobDone, so a failure here retries this job rather than a done row. Queueing
+      // again is a no-op for rounds already open.
       const rounds = Array.from({ length: event.roundCount }, (_, index) => index + 1);
       await enqueueEventPairings(db, job.eventId, { rounds, priority: job.priority });
     }
+    await markJobDone(db, job.id);
     return 'fetched';
   }
 
@@ -268,7 +270,12 @@ export class FetchQueueWorker {
       job.round,
     );
     await markJobDone(db, job.id);
-    await markPairingsSyncedIfComplete(db, event.id, event.roundCount);
+    try {
+      await markPairingsSyncedIfComplete(db, event.id, event.roundCount);
+    } catch (error) {
+      // The round is stored; the next round job (or a refresh) sets the synced time.
+      logger.warn({ err: error, eventId: event.id }, 'Could not mark the event’s pairings synced');
+    }
     return 'fetched';
   }
 }

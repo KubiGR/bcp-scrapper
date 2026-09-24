@@ -109,14 +109,14 @@ export type EventSyncs = z.infer<typeof EventSyncsSchema>;
 
 /** What is stored and queued of an event's pairings. */
 export const EventPairingsSchema = z.object({
-  /** Set when every round's newest fetch succeeded (fetch queue); null otherwise. */
+  /** When every round last succeeded through the fetch queue; null until then. */
   syncedAt: z.iso.datetime().nullable(),
   roundCount: z.number().int().nonnegative(),
   /** Rounds with stored team matchups or games. */
   roundsDone: z.number().int().nonnegative(),
   /** Open event/pairings jobs for this event. */
   queued: z.number().int().nonnegative(),
-  /** Rounds whose newest pairings job failed. */
+  /** Rounds, or the event load, whose newest fetch failed. */
   failed: z.number().int().nonnegative(),
   /** False when team matchups are stored but BCP served no individual games. */
   gamesAvailable: z.boolean(),

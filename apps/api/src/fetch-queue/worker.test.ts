@@ -340,4 +340,40 @@ describe('pairings jobs', () => {
     const [row] = await db.select().from(fetchQueue);
     expect(row).toMatchObject({ status: 'queued', attempts: 1, error: 'BCP down' });
   });
+
+  it('keeps a round job done when marking the event synced fails', async () => {
+    await upsertEventDetail(db, await source.getEvent(BRACKET));
+    await enqueueEventPairings(db, BRACKET, { rounds: [1], priority: 0 });
+    const markSpy = vi
+      .spyOn(fetchQueueRepo, 'markPairingsSyncedIfComplete')
+      .mockRejectedValue(new Error('db hiccup'));
+    try {
+      expect(await worker().tick()).toBe('fetched');
+    } finally {
+      markSpy.mockRestore();
+    }
+    const [row] = await db.select().from(fetchQueue);
+    expect(row).toMatchObject({ status: 'done', attempts: 1 });
+  });
+
+  it('queues the rounds before an event job counts as done', async () => {
+    await catalogueOnly(BRACKET);
+    await enqueueEventPairings(db, BRACKET, { rounds: null, priority: 0 });
+    const statusWhenQueueing: string[] = [];
+    const enqueueSpy = vi
+      .spyOn(fetchQueueRepo, 'enqueueEventPairings')
+      .mockImplementation(async () => {
+        const [job] = await db.select().from(fetchQueue).where(eq(fetchQueue.kind, 'event'));
+        statusWhenQueueing.push(job?.status ?? 'missing');
+        throw new BcpUnavailableError('db hiccup');
+      });
+    try {
+      expect(await worker().tick()).toBe('retry');
+    } finally {
+      enqueueSpy.mockRestore();
+    }
+    expect(statusWhenQueueing).toEqual(['fetching']);
+    const [row] = await db.select().from(fetchQueue);
+    expect(row).toMatchObject({ kind: 'event', status: 'queued', attempts: 1, finishedAt: null });
+  });
 });
