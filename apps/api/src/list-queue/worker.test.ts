@@ -5,7 +5,14 @@ import { createTestDb, resetDb } from '../db/test-db';
 import { BcpAuthError, BcpRateLimitedError, BcpUnavailableError } from '../errors';
 import { upsertEventDetail } from '../repo/events';
 import * as listQueueRepo from '../repo/list-queue';
-import { claimNextList, enqueueLists, queueTotals, SINGLE_LIST_PRIORITY } from '../repo/list-queue';
+import {
+  claimNextList,
+  enqueueLists,
+  latestQueueRowsByPlayer,
+  NO_LIST_CODE,
+  queueTotals,
+  SINGLE_LIST_PRIORITY,
+} from '../repo/list-queue';
 import { findPlayerList } from '../repo/lists';
 import { upsertPlayers } from '../repo/participants';
 import { sampleSource, silentLogger } from '../test/helpers';
@@ -55,7 +62,12 @@ describe('ListQueueWorker', () => {
   it('marks a list BCP does not have as failed, without retrying', async () => {
     await enqueueLists(db, EVENT, [{ playerId: 'PL-HAL', listId: 'LS-NONE' }], 0);
     expect(await worker().tick()).toBe('failed');
-    expect(await queueTotals(db)).toEqual({ queued: 0, fetching: 0, failed: 1 });
+    // Final, so it isn't counted among the failures waiting for a retry.
+    expect(await queueTotals(db)).toEqual({ queued: 0, fetching: 0, failed: 0 });
+    expect((await latestQueueRowsByPlayer(db, EVENT)).get('PL-HAL')).toMatchObject({
+      status: 'failed',
+      errorCode: NO_LIST_CODE,
+    });
   });
 
   it('retries transient failures with backoff, then gives up after 3 attempts', async () => {
