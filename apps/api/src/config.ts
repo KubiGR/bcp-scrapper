@@ -17,6 +17,8 @@ const EnvSchema = z.object({
   BCP_MAX_CONCURRENCY: z.coerce.number().int().positive().default(2),
   BCP_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
   BCP_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(4),
+  /** One army-list request every N ms. Keep it gentle: BCP has no public API. */
+  LIST_QUEUE_INTERVAL_MS: z.coerce.number().int().min(100).default(5000),
 });
 
 export type Config = z.infer<typeof EnvSchema>;

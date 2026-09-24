@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { EventDetailSchema, EventListQuerySchema, SyncRequestSchema, SyncRunSchema } from './index';
+import {
+  EventDetailSchema,
+  EventListQuerySchema,
+  SyncRequestSchema,
+  SyncRunSchema,
+  QueueListsRequestSchema,
+  ListQueueStateSchema,
+} from './index';
 
 describe('SyncRequestSchema', () => {
   it('accepts a catalogue sync with a valid date range', () => {
@@ -17,8 +24,12 @@ describe('SyncRequestSchema', () => {
   });
 
   it('requires an eventId for event-scoped syncs', () => {
-    expect(SyncRequestSchema.safeParse({ kind: 'lists' }).success).toBe(false);
-    expect(SyncRequestSchema.safeParse({ kind: 'lists', eventId: 'EVT1' }).success).toBe(true);
+    expect(SyncRequestSchema.safeParse({ kind: 'pairings' }).success).toBe(false);
+    expect(SyncRequestSchema.safeParse({ kind: 'pairings', eventId: 'EVT1' }).success).toBe(true);
+  });
+
+  it('rejects the retired lists kind', () => {
+    expect(SyncRequestSchema.safeParse({ kind: 'lists', eventId: 'E1' }).success).toBe(false);
   });
 
   it('rejects unknown kinds', () => {
@@ -94,13 +105,53 @@ describe('EventDetailSchema', () => {
       hideLists: false,
       lastSyncedAt: null,
       stale: true,
-      counts: { players: 0, teams: 0, listsAvailable: 0, listsFetched: 0, listsMissing: 0 },
+      counts: {
+        players: 0,
+        teams: 0,
+        listsAvailable: 0,
+        listsFetched: 0,
+        listsMissing: 0,
+        listsQueued: 0,
+        listsFailed: 0,
+      },
       syncs: {
         event: { ...aRun, kind: 'event', eventId: 'E1', range: null },
         pairings: null,
-        lists: null,
       },
+      listQueueSeconds: null,
     };
     expect(EventDetailSchema.parse(detail).syncs.event?.kind).toBe('event');
+  });
+});
+
+describe('QueueListsRequestSchema', () => {
+  it('accepts nothing, a loss limit, or player ids, but not both', () => {
+    expect(QueueListsRequestSchema.parse({})).toEqual({});
+    expect(QueueListsRequestSchema.parse({ maxLosses: 1 })).toEqual({ maxLosses: 1 });
+    expect(QueueListsRequestSchema.parse({ playerIds: ['P1'] })).toEqual({ playerIds: ['P1'] });
+    expect(QueueListsRequestSchema.safeParse({ maxLosses: 1, playerIds: ['P1'] }).success).toBe(
+      false,
+    );
+  });
+
+  it('rejects loss limits outside 0–20 and empty id lists', () => {
+    expect(QueueListsRequestSchema.safeParse({ maxLosses: -1 }).success).toBe(false);
+    expect(QueueListsRequestSchema.safeParse({ maxLosses: 21 }).success).toBe(false);
+    expect(QueueListsRequestSchema.safeParse({ maxLosses: 1.5 }).success).toBe(false);
+    expect(QueueListsRequestSchema.safeParse({ playerIds: [] }).success).toBe(false);
+  });
+});
+
+describe('ListQueueStateSchema', () => {
+  it('parses a paused queue', () => {
+    const state = {
+      paused: true,
+      pausedReason: 'login-rejected',
+      pausedUntil: null,
+      intervalMs: 5000,
+      totals: { queued: 3, fetching: 0, failed: 1 },
+      estimatedSeconds: 15,
+    };
+    expect(ListQueueStateSchema.parse(state)).toEqual(state);
   });
 });

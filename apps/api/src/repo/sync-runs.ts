@@ -134,11 +134,11 @@ export async function latestEventSyncRuns(db: Db, eventId: string): Promise<Even
     .from(syncRuns)
     .where(eq(syncRuns.eventId, eventId))
     .orderBy(desc(syncRuns.id));
-  const latest = (kind: 'event' | 'pairings' | 'lists') => {
+  const latest = (kind: 'event' | 'pairings') => {
     const row = rows.find((candidate) => candidate.kind === kind);
     return row ? toSyncRun(row) : null;
   };
-  return { event: latest('event'), pairings: latest('pairings'), lists: latest('lists') };
+  return { event: latest('event'), pairings: latest('pairings') };
 }
 
 /** Runs are in-process; any still active at startup were cut off by a restart. */

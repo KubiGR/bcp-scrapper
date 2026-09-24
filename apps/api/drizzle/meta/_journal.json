@@ -15,6 +15,13 @@
       "when": 1790166616276,
       "tag": "0001_sync-run-error-code",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790204392246,
+      "tag": "0002_list-queue",
+      "breakpoints": true
     }
   ]
 }

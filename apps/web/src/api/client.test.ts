@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
 import { stubFetchJson } from '../test/render';
-import { ApiError, apiGet, apiPost } from './client';
+import { ApiError, apiDelete, apiGet, apiPost } from './client';
 
 describe('apiGet', () => {
   it('parses successful responses with the given schema', async () => {
@@ -47,5 +47,13 @@ describe('apiGet', () => {
       code: 'INTERNAL',
       message: expect.stringContaining('/api/x') as unknown,
     });
+  });
+
+  it('DELETEs with no body and parses the response', async () => {
+    const fetchMock = stubFetchJson({ removed: 2 });
+    await expect(apiDelete('/api/x', z.object({ removed: z.number() }))).resolves.toEqual({
+      removed: 2,
+    });
+    expect(fetchMock).toHaveBeenCalledWith('/api/x', expect.objectContaining({ method: 'DELETE' }));
   });
 });

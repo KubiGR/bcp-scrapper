@@ -5,3 +5,4 @@ fixtures/bcp/recorded
 coverage
 dist
 .superpowers
+.claude

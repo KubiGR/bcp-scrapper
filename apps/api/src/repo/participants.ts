@@ -1,9 +1,10 @@
-import type { EventCounts, EventPlayer, ListStatus, Player, Team } from '@bcp/shared';
+import type { EventCounts, EventPlayer, Player, Team } from '@bcp/shared';
 import { and, count, eq, isNotNull, notInArray, sql } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { armyLists, players, teams } from '../db/schema';
-import { isMissingList, storedCurrentList } from './lists';
+import { isRetryableFailure, latestQueueRowsByPlayer, type LatestQueueRow } from './list-queue';
+import { findPlayersMissingLists, isMissingList, storedCurrentList } from './lists';
 import { excludedColumns } from './upsert';
 
 export async function upsertTeams(db: Db, list: Fetched<Team>[]): Promise<void> {
@@ -80,20 +81,36 @@ export async function replaceEventPlayers(
   });
 }
 
-function listStatusOf(bcpListId: string | null, storedListId: string | null): ListStatus {
-  if (storedListId !== null) return 'fetched';
-  return bcpListId === null ? 'none' : 'available';
+/** A stored current list wins; otherwise the player's newest queue request; otherwise BCP's list id. */
+function listStateOf(
+  bcpListId: string | null,
+  storedListId: string | null,
+  queued: LatestQueueRow | undefined,
+): Pick<EventPlayer, 'listStatus' | 'listError' | 'listErrorCode'> {
+  const none = { listError: null, listErrorCode: null };
+  if (storedListId !== null) return { listStatus: 'fetched', ...none };
+  if (queued?.status === 'queued' || queued?.status === 'fetching') {
+    return { listStatus: queued.status, ...none };
+  }
+  if (queued?.status === 'failed') {
+    return { listStatus: 'failed', listError: queued.error, listErrorCode: queued.errorCode };
+  }
+  return { listStatus: bcpListId === null ? 'none' : 'available', ...none };
 }
 
-/** An event's players, best placing first (unplaced last, by name), with team and list status. */
+/** An event's players, best placing first (unplaced last, by name), with team and list state. */
 export async function listEventPlayers(db: Db, eventId: string): Promise<EventPlayer[]> {
-  const rows = await db
-    .select({ player: players, teamName: teams.name, storedListId: armyLists.listId })
-    .from(players)
-    .leftJoin(teams, eq(teams.id, players.teamId))
-    .leftJoin(armyLists, eq(armyLists.playerId, players.id))
-    .where(eq(players.eventId, eventId))
-    .orderBy(sql`${players.placing} asc nulls last`, players.name);
+  const [rows, queue] = await Promise.all([
+    db
+      .select({ player: players, teamName: teams.name, storedListId: armyLists.listId })
+      .from(players)
+      .leftJoin(teams, eq(teams.id, players.teamId))
+      // Only the player's current BCP list counts: one BCP replaced since is "available" again.
+      .leftJoin(armyLists, storedCurrentList)
+      .where(eq(players.eventId, eventId))
+      .orderBy(sql`${players.placing} asc nulls last`, players.name),
+    latestQueueRowsByPlayer(db, eventId),
+  ]);
   return rows.map(({ player, teamName, storedListId }) => ({
     bcpId: player.id,
     name: player.name,
@@ -105,13 +122,13 @@ export async function listEventPlayers(db: Db, eventId: string): Promise<EventPl
     losses: player.losses,
     draws: player.draws,
     dropped: player.dropped,
-    listStatus: listStatusOf(player.listId, storedListId),
+    ...listStateOf(player.listId, storedListId, queue.get(player.id)),
   }));
 }
 
 export async function countEventParticipants(db: Db, eventId: string): Promise<EventCounts> {
   const ofEvent = eq(players.eventId, eventId);
-  const [playerCount, teamCount, listsAvailable, lists] = await Promise.all([
+  const [playerCount, teamCount, listsAvailable, lists, queue, missing] = await Promise.all([
     db.$count(players, ofEvent),
     db.$count(teams, eq(teams.eventId, eventId)),
     db.$count(players, and(ofEvent, isNotNull(players.listId))),
@@ -123,6 +140,8 @@ export async function countEventParticipants(db: Db, eventId: string): Promise<E
       .from(players)
       .leftJoin(armyLists, storedCurrentList)
       .where(ofEvent),
+    latestQueueRowsByPlayer(db, eventId),
+    findPlayersMissingLists(db, eventId),
   ]);
   return {
     players: playerCount,
@@ -130,5 +149,12 @@ export async function countEventParticipants(db: Db, eventId: string): Promise<E
     listsAvailable,
     listsFetched: lists[0]?.fetched ?? 0,
     listsMissing: lists[0]?.missing ?? 0,
+    listsQueued: [...queue.values()].filter(
+      (row) => row.status === 'queued' || row.status === 'fetching',
+    ).length,
+    // "No list on BCP" is final, so it isn't counted: nothing can be retried about it.
+    listsFailed: [...queue.entries()].filter(
+      ([playerId, row]) => isRetryableFailure(row) && missing.some((m) => m.playerId === playerId),
+    ).length,
   };
 }

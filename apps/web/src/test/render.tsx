@@ -11,10 +11,10 @@ import type { ReactElement } from 'react';
 import { vi } from 'vitest';
 import { theme } from '../theme';
 
-/** Renders inside Mantine and a fresh query client; `rerender` keeps both. */
+/** Renders inside Mantine and a fresh query client (returned too); `rerender` keeps both. */
 export function renderWithProviders(ui: ReactElement) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(ui, {
+  const result = render(ui, {
     wrapper: ({ children }) => (
       // env="test" turns off transitions and portals, so drawers and menus render synchronously.
       <MantineProvider theme={theme} forceColorScheme="dark" env="test">
@@ -22,6 +22,7 @@ export function renderWithProviders(ui: ReactElement) {
       </MantineProvider>
     ),
   });
+  return { ...result, queryClient };
 }
 
 /**

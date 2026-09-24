@@ -11,7 +11,7 @@ import { createApp } from '../app';
 import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
 import { SyncRunner } from '../sync/runner';
-import { sampleSource, silentLogger } from '../test/helpers';
+import { sampleSource, silentLogger, testListQueue } from '../test/helpers';
 
 const status: BcpStatus = {
   source: 'fixtures',
@@ -33,6 +33,7 @@ beforeAll(async () => {
   app = createApp({
     db,
     runner,
+    listQueue: testListQueue(db),
     bcpStatus: () => Promise.resolve(status),
     logger: silentLogger,
     now: () => now,

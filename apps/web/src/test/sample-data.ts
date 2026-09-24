@@ -42,8 +42,17 @@ export function anEventDetail(overrides: Partial<EventDetail> = {}): EventDetail
   return {
     ...anEvent(),
     stale: false,
-    counts: { players: 8, teams: 4, listsAvailable: 7, listsFetched: 0, listsMissing: 7 },
-    syncs: { event: aSyncRun({ kind: 'event', total: 1, done: 1 }), pairings: null, lists: null },
+    counts: {
+      players: 8,
+      teams: 4,
+      listsAvailable: 7,
+      listsFetched: 0,
+      listsMissing: 7,
+      listsQueued: 0,
+      listsFailed: 0,
+    },
+    syncs: { event: aSyncRun({ kind: 'event', total: 1, done: 1 }), pairings: null },
+    listQueueSeconds: null,
     ...overrides,
   };
 }
@@ -61,6 +70,8 @@ export function aPlayer(overrides: Partial<EventPlayer> = {}): EventPlayer {
     draws: 0,
     dropped: false,
     listStatus: 'fetched',
+    listError: null,
+    listErrorCode: null,
     ...overrides,
   };
 }

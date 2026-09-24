@@ -4,9 +4,8 @@ import pino from 'pino';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { BcpSource, TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
-import { armyLists, events, games, players, teamMatchups, teams } from '../db/schema';
+import { events, games, players, teamMatchups, teams } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
-import { BcpAuthError, BcpRateLimitedError, BcpUnavailableError } from '../errors';
 import { findEvent } from '../repo/events';
 import { getSyncRun } from '../repo/sync-runs';
 import { sampleSource, silentLogger } from '../test/helpers';
@@ -103,39 +102,6 @@ describe('SyncRunner', () => {
     expect(await rowCount(teamMatchups)).toBe(4);
   });
 
-  it('lists: fetches every missing list and counts failures without failing the run', async () => {
-    const source = sampleSource();
-    const flaky = withOverrides(source, {
-      getList: (listId) =>
-        listId === 'LS-GIA'
-          ? Promise.reject(new BcpUnavailableError('BCP hiccup'))
-          : source.getList(listId),
-    });
-    const runner = new SyncRunner({ db, source: flaky, logger: silentLogger });
-
-    const run = await runToCompletion(runner, { kind: 'lists', eventId: EVENT });
-
-    expect(run).toMatchObject({ status: 'succeeded', total: 7, done: 6, failed: 1 });
-    expect(await rowCount(armyLists)).toBe(6);
-  });
-
-  it('lists: aborts the whole run when the BCP login is broken', async () => {
-    const source = sampleSource();
-    const loggedOut = withOverrides(source, {
-      getList: () => Promise.reject(new BcpAuthError('Session expired')),
-    });
-    const runner = new SyncRunner({ db, source: loggedOut, logger: silentLogger });
-
-    const run = await runToCompletion(runner, { kind: 'lists', eventId: EVENT });
-
-    expect(run).toMatchObject({
-      status: 'failed',
-      error: 'Session expired',
-      errorCode: 'BCP_AUTH',
-      done: 0,
-    });
-  });
-
   it('records INTERNAL as the code of an unexpected failure', async () => {
     const source = sampleSource();
     const broken = withOverrides(source, {
@@ -146,19 +112,6 @@ describe('SyncRunner', () => {
     const run = await runToCompletion(runner, { kind: 'event', eventId: EVENT });
 
     expect(run).toMatchObject({ status: 'failed', error: 'kaboom', errorCode: 'INTERNAL' });
-  });
-
-  it('lists: aborts the whole run when BCP rate limits us', async () => {
-    const source = sampleSource();
-    const limited = withOverrides(source, {
-      getList: () => Promise.reject(new BcpRateLimitedError(60)),
-    });
-    const runner = new SyncRunner({ db, source: limited, logger: silentLogger });
-
-    const run = await runToCompletion(runner, { kind: 'lists', eventId: EVENT });
-
-    expect(run).toMatchObject({ status: 'failed', done: 0, failed: 0 });
-    expect(run?.error).toMatch(/rate limiting/);
   });
 
   it('catalog: fails instead of looping when BCP repeats a page cursor', async () => {
