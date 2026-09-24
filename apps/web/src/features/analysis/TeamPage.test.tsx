@@ -1,6 +1,6 @@
 import type { PlayerRound, TeamDetailResponse } from '@bcp/shared';
-import { screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { anEventDetail } from '../../test/sample-data';
 import { TeamPage } from './TeamPage';
@@ -69,5 +69,44 @@ describe('TeamPage', () => {
     expect(
       screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === 'VP 80–60'),
     ).toBeInTheDocument();
+  });
+
+  it('invalidates the event’s queries once queued pairings settle to 0', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/teams/RED': detail,
+      'GET /api/events/EVT1': anEventDetail({
+        pairings: {
+          syncedAt: null,
+          roundCount: 2,
+          roundsDone: 1,
+          queued: 2,
+          failed: 0,
+          gamesAvailable: true,
+        },
+      }),
+    });
+    const { queryClient } = renderWithRouter(<TeamPage eventId="EVT1" teamId="RED" />);
+    expect(await screen.findByRole('heading', { name: 'Red Legion' })).toBeInTheDocument();
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    act(() => {
+      queryClient.setQueryData(
+        ['event', 'EVT1'],
+        anEventDetail({
+          pairings: {
+            syncedAt: null,
+            roundCount: 2,
+            roundsDone: 2,
+            queued: 0,
+            failed: 0,
+            gamesAvailable: true,
+          },
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(spy).toHaveBeenCalledWith({ queryKey: ['event', 'EVT1'] });
+    });
   });
 });

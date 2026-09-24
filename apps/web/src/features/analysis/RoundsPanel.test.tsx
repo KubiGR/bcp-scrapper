@@ -79,5 +79,14 @@ describe('RoundsPanel', () => {
     expect(await screen.findByText('Rhea Stone')).toBeInTheDocument();
     expect(screen.getAllByText('–').length).toBeGreaterThanOrEqual(2); // VP A and B
     expect(screen.getByRole('radio', { name: 'Round 2 · Bracket' })).toBeInTheDocument();
+    // Mantine's Accordion.Panel stays `display: none` until its collapse transition ends, which
+    // jsdom never fires, so the link is present but not yet part of the accessibility tree —
+    // find it by text (unaffected by visibility) and read the anchor itself.
+    expect(screen.getByText('Red Legion · team page').closest('a')?.getAttribute('href')).toBe(
+      '/events/EVT1/teams/RED',
+    );
+    expect(screen.getByText('Blue Wardens · team page').closest('a')?.getAttribute('href')).toBe(
+      '/events/EVT1/teams/BLUE',
+    );
   });
 });

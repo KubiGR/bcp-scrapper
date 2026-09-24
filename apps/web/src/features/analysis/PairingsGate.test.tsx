@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
 import { anEventDetail } from '../../test/sample-data';
 import { PairingsGate } from './PairingsGate';
@@ -77,5 +77,22 @@ describe('PairingsGate', () => {
       const body = fetchMock.mock.calls[0]?.[1]?.body;
       expect(JSON.parse(typeof body === 'string' ? body : '')).toEqual({ eventId: 'EVT1' });
     });
+  });
+
+  it('invalidates the event’s queries once queued pairings settle to 0', () => {
+    const { queryClient, rerender } = renderWithProviders(
+      <PairingsGate event={anEventDetail({ pairings: { ...pairings, roundsDone: 1, queued: 2 } })}>
+        <p>content</p>
+      </PairingsGate>,
+    );
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    rerender(
+      <PairingsGate event={anEventDetail({ pairings: { ...pairings, roundsDone: 3, queued: 0 } })}>
+        <p>content</p>
+      </PairingsGate>,
+    );
+
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['event', 'EVT1'] });
   });
 });

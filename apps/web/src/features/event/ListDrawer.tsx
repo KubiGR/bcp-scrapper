@@ -84,7 +84,7 @@ function QueuedStatus({ eventId, player }: { eventId: string; player: EventPlaye
   const paused = queue.data?.paused ?? false;
 
   let status: ReactNode;
-  if (paused) status = 'Queued · the list queue is paused.';
+  if (paused) status = 'Queued · the fetch queue is paused.';
   else if (player.listStatus === 'fetching') status = 'Fetching this list…';
   else if (seconds !== null) {
     status = (

@@ -118,7 +118,7 @@ describe('ListDrawer', () => {
 
     stubQueue(15, { ...running, paused: true, pausedReason: 'user' });
     renderQueued();
-    expect(await screen.findByText('Queued · the list queue is paused.')).toBeInTheDocument();
+    expect(await screen.findByText('Queued · the fetch queue is paused.')).toBeInTheDocument();
   });
 
   it('shows a list being fetched', async () => {

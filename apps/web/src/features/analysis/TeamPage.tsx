@@ -7,6 +7,7 @@ import { Panel } from '../../components/Panel';
 import { eventQuery } from '../event/event-queries';
 import { teamQuery } from './analysis-queries';
 import { formatPoints, formatTotals, outcomeLabel } from './format';
+import { useRefreshWhenPairingsSettle } from './useRefreshWhenPairingsSettle';
 
 function RoundCell({ cell }: { cell: PlayerRound | null }) {
   if (!cell) return <Text c="dimmed">—</Text>;
@@ -37,7 +38,9 @@ function RoundCell({ cell }: { cell: PlayerRound | null }) {
 
 export function TeamPage({ eventId, teamId }: { eventId: string; teamId: string }) {
   const event = useQuery(eventQuery(eventId));
-  const live = (event.data?.pairings.queued ?? 0) > 0;
+  const queued = event.data?.pairings.queued ?? 0;
+  useRefreshWhenPairingsSettle(eventId, queued);
+  const live = queued > 0;
   const team = useQuery(teamQuery(eventId, teamId, live));
 
   if (team.isPending) return <Skeleton height={240} />;

@@ -74,6 +74,52 @@ describe('PlayersPanel', () => {
     expect(charlie).toHaveAttribute('aria-expanded', 'false');
   });
 
+  it('shows a team’s placing before its name in the group header, or “—” without one', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [
+          aPlayer({
+            bcpId: 'P1',
+            name: 'Ada Archer',
+            teamId: 'TM-ALPHA',
+            teamName: 'Alpha Squad',
+            teamPlacing: 2,
+          }),
+          aPlayer({
+            bcpId: 'P2',
+            name: 'Cara Cole',
+            teamId: 'TM-CHARLIE',
+            teamName: 'Charlie Wing',
+            teamPlacing: null,
+          }),
+          aPlayer({
+            bcpId: 'P3',
+            name: 'Nyx None',
+            teamId: null,
+            teamName: null,
+            teamPlacing: null,
+          }),
+        ],
+      },
+    });
+    renderWithProviders(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
+
+    const alpha = await screen.findByRole('button', {
+      name: (_, el) => el.textContent.startsWith('#2') && el.textContent.includes('Alpha Squad'),
+    });
+    expect(alpha).toBeInTheDocument();
+
+    const charlie = screen.getByRole('button', {
+      name: (_, el) => el.textContent.startsWith('—') && el.textContent.includes('Charlie Wing'),
+    });
+    expect(charlie).toBeInTheDocument();
+
+    const noTeam = screen.getByRole('button', {
+      name: (_, el) => el.textContent.startsWith('No team'),
+    });
+    expect(noTeam).toBeInTheDocument();
+  });
+
   it('shows the no-players message for a team event with no players yet', async () => {
     stubFetchRoutes({ 'GET /api/events/EVT1/players': { items: [] } });
     renderWithProviders(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);

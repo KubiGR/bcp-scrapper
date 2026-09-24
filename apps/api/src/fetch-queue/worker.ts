@@ -77,7 +77,8 @@ export class FetchQueueWorker {
   /** Puts rows cut off by a previous process back in the queue, then ticks every interval. */
   async start(): Promise<void> {
     const requeued = await requeueInterrupted(this.#options.db);
-    if (requeued > 0) this.#options.logger.warn({ requeued }, 'Requeued interrupted list fetches');
+    if (requeued > 0)
+      this.#options.logger.warn({ requeued }, 'Requeued interrupted fetch-queue jobs');
     this.#timer = setInterval(() => {
       void this.tick().catch((error: unknown) => {
         // A rejection here would otherwise be unhandled and crash the process (Node >= 15).

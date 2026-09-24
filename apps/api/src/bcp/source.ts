@@ -198,7 +198,7 @@ export class BcpSource implements TournamentSource {
       path,
     );
     return parseItems(RawEventGame, body.active, path).flatMap(({ parsed, raw }) => {
-      const game = mapEventGame(parsed, eventId);
+      const game = mapEventGame(parsed, eventId, round);
       return game ? [{ ...game, raw }] : [];
     });
   }

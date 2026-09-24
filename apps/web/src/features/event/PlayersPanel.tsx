@@ -198,13 +198,14 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
                 >
                   <Group justify="space-between">
                     <Text fw={600}>
-                      {group.teamName}
-                      {group.teamPlacing !== null && (
+                      {group.teamId !== null && (
                         <>
-                          {' '}
-                          <span className="numeric">#{group.teamPlacing}</span>
+                          <span className="numeric">
+                            {group.teamPlacing !== null ? `#${group.teamPlacing}` : '—'}
+                          </span>{' '}
                         </>
                       )}
+                      {group.teamName}
                     </Text>
                     <span className="numeric">{group.players.length}</span>
                   </Group>

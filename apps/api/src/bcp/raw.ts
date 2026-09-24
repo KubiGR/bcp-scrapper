@@ -99,10 +99,11 @@ export const RawTeamPairing = z.object({
 });
 export type RawTeamPairing = z.output<typeof RawTeamPairing>;
 
-/** An individual game from `/v1/events/{id}/pairings?pairingType=Pairing`: results, no metaData. */
+/** An individual game from `/v1/events/{id}/pairings?pairingType=Pairing`: results, no metaData.
+ * `round` is occasionally absent; the sync falls back to the round being fetched. */
 export const RawEventGame = z.object({
   id: z.string(),
-  round: z.number(),
+  round: z.number().nullish(),
   table: z.number().nullish(),
   teamPairingId: z.string().nullish(),
   player1: z.object({ id: z.string() }).nullish(),

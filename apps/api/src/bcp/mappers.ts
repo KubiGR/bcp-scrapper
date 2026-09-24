@@ -162,9 +162,10 @@ export function mapPairing(raw: RawPairing, eventId: string): Game | null {
 /**
  * A game from the event-level endpoint (bracket/GW team events). It carries each side's result
  * and game points but no VP, primary, secondary or first turn. A game without player 2 is a
- * bye, which BCP scores as a win for player 1.
+ * bye, which BCP scores as a win for player 1. `round` is the round being synced, used when the
+ * raw game doesn't carry its own (which happens occasionally).
  */
-export function mapEventGame(raw: RawEventGame, eventId: string): Game | null {
+export function mapEventGame(raw: RawEventGame, eventId: string, round: number): Game | null {
   if (!raw.player1) return null;
   const pointsA = raw.player1Game?.points ?? null;
   const pointsB = raw.player2Game?.points ?? null;
@@ -174,7 +175,7 @@ export function mapEventGame(raw: RawEventGame, eventId: string): Game | null {
   return {
     bcpId: raw.id,
     eventBcpId: eventId,
-    round: raw.round,
+    round: raw.round ?? round,
     tableNo: raw.table ?? null,
     teamMatchupBcpId: raw.teamPairingId ?? null,
     playerABcpId: raw.player1.id,

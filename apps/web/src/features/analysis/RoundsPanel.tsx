@@ -2,6 +2,7 @@ import type { EventDetail, GameView, MatchupView } from '@bcp/shared';
 import { Accordion, Group, SegmentedControl, Skeleton, Stack, Table, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { roundsQuery } from './analysis-queries';
@@ -75,6 +76,27 @@ function GamesTable({ games }: { games: GameView[] }) {
   );
 }
 
+function MatchupTeamLinks({ eventId, matchup }: { eventId: string; matchup: MatchupView }) {
+  return (
+    <Group gap="sm" mb="sm">
+      <AnchorLink
+        to="/events/$eventId/teams/$teamId"
+        params={{ eventId, teamId: matchup.teamA.id }}
+      >
+        <Text size="sm">{matchup.teamA.name} · team page</Text>
+      </AnchorLink>
+      {matchup.teamB && (
+        <AnchorLink
+          to="/events/$eventId/teams/$teamId"
+          params={{ eventId, teamId: matchup.teamB.id }}
+        >
+          <Text size="sm">{matchup.teamB.name} · team page</Text>
+        </AnchorLink>
+      )}
+    </Group>
+  );
+}
+
 function MatchupControl({ matchup }: { matchup: MatchupView }) {
   return (
     <Group gap="sm" wrap="nowrap">
@@ -130,6 +152,7 @@ export function RoundsPanel({ event }: { event: EventDetail }) {
                   <MatchupControl matchup={matchup} />
                 </Accordion.Control>
                 <Accordion.Panel>
+                  <MatchupTeamLinks eventId={event.bcpId} matchup={matchup} />
                   <GamesTable games={matchup.games} />
                 </Accordion.Panel>
               </Accordion.Item>

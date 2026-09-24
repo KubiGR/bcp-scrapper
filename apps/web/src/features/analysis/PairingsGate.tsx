@@ -7,6 +7,7 @@ import { Panel } from '../../components/Panel';
 import { formatDuration } from '../../lib/format';
 import { fetchQueueQuery, retryFailed } from '../fetch-queue/fetch-queue-queries';
 import { queuePairings } from './analysis-queries';
+import { useRefreshWhenPairingsSettle } from './useRefreshWhenPairingsSettle';
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
@@ -31,6 +32,7 @@ export function PairingsGate({ event, children }: { event: EventDetail; children
   });
   const retry = useMutation({ mutationFn: () => retryFailed(event.bcpId), onSuccess: refresh });
   const { roundsDone, roundCount, queued, failed, gamesAvailable } = event.pairings;
+  useRefreshWhenPairingsSettle(event.bcpId, queued);
   const hasData = roundsDone > 0;
   const fetching = queued > 0;
 

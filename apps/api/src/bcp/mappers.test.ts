@@ -341,7 +341,7 @@ describe('mapEventGame', () => {
   };
 
   it('maps result and game points; the endpoint has no VP or first turn', () => {
-    expect(mapEventGame(base, 'E1')).toEqual({
+    expect(mapEventGame(base, 'E1', 1)).toEqual({
       bcpId: 'G1',
       eventBcpId: 'E1',
       round: 1,
@@ -367,14 +367,24 @@ describe('mapEventGame', () => {
       mapEventGame(
         { ...base, player1Game: { result: 1, points: 10 }, player2Game: { result: 1, points: 10 } },
         'E1',
+        1,
       )?.result,
     ).toBe('draw');
-    const bye = mapEventGame({ ...base, player2: null, player2Game: null }, 'E1');
+    const bye = mapEventGame({ ...base, player2: null, player2Game: null }, 'E1', 1);
     expect(bye).toMatchObject({ playerBBcpId: null, result: 'a_win', gamePointsB: null });
   });
 
   it('skips a game without player 1', () => {
-    expect(mapEventGame({ ...base, player1: null }, 'E1')).toBeNull();
+    expect(mapEventGame({ ...base, player1: null }, 'E1', 1)).toBeNull();
+  });
+
+  it('falls back to the round being synced when the raw game has no round', () => {
+    const withoutRound = { ...base, round: undefined };
+    expect(mapEventGame(withoutRound, 'E1', 4)?.round).toBe(4);
+  });
+
+  it('uses the raw game’s own round over the fallback when present', () => {
+    expect(mapEventGame(base, 'E1', 4)?.round).toBe(1);
   });
 });
 
