@@ -1,6 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderWithProviders, stubFetchRoutes } from '../../test/render';
+import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { anEventDetail, aPlayer } from '../../test/sample-data';
 import { PlayersPanel } from './PlayersPanel';
 
@@ -35,7 +35,7 @@ describe('PlayersPanel', () => {
         fetchedAt: '2026-09-23T10:00:00.000Z',
       },
     });
-    renderWithProviders(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
+    renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
 
     const nameButton = await screen.findByRole('button', { name: 'Ada Archer' });
     nameButton.focus();
@@ -65,7 +65,7 @@ describe('PlayersPanel', () => {
         ],
       },
     });
-    renderWithProviders(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
+    renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
     const charlie = await screen.findByRole('button', { name: /Charlie Wing/ });
     const alpha = screen.getByRole('button', { name: /Alpha Squad/ });
     expect(charlie.compareDocumentPosition(alpha) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -102,7 +102,7 @@ describe('PlayersPanel', () => {
         ],
       },
     });
-    renderWithProviders(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
+    renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
 
     const alpha = await screen.findByRole('button', {
       name: (_, el) => el.textContent.startsWith('#2') && el.textContent.includes('Alpha Squad'),
@@ -122,7 +122,7 @@ describe('PlayersPanel', () => {
 
   it('shows the no-players message for a team event with no players yet', async () => {
     stubFetchRoutes({ 'GET /api/events/EVT1/players': { items: [] } });
-    renderWithProviders(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
+    renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
     expect(
       await screen.findByText('No players loaded yet. Use "Refresh from BCP".'),
     ).toBeInTheDocument();
@@ -134,7 +134,7 @@ describe('PlayersPanel', () => {
         items: [aPlayer({ bcpId: 'P1', name: 'Ada Archer', teamId: 'TM-ALPHA' })],
       },
     });
-    renderWithProviders(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
+    renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
     await screen.findByRole('button', { name: /Alpha Squad/ });
     fireEvent.change(screen.getByLabelText('Search players'), {
       target: { value: 'nobody matches this' },
@@ -144,7 +144,34 @@ describe('PlayersPanel', () => {
 
   it('shows the loading message for a team event while loading from BCP', async () => {
     stubFetchRoutes({ 'GET /api/events/EVT1/players': { items: [] } });
-    renderWithProviders(<PlayersPanel event={anEventDetail()} loadingFromBcp />);
+    renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp />);
     expect(await screen.findByText('Loading players from BCP…')).toBeInTheDocument();
+  });
+
+  it('links each team group header to its team page, but not the "No team" group', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [
+          aPlayer({
+            bcpId: 'P1',
+            name: 'Ada Archer',
+            teamId: 'TM-ALPHA',
+            teamName: 'Alpha Squad',
+            teamPlacing: 2,
+          }),
+          aPlayer({
+            bcpId: 'P2',
+            name: 'Nyx None',
+            teamId: null,
+            teamName: null,
+            teamPlacing: null,
+          }),
+        ],
+      },
+    });
+    renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
+    const teamLink = await screen.findByRole('link', { name: 'Alpha Squad team page' });
+    expect(teamLink).toHaveAttribute('href', '/events/EVT1/teams/TM-ALPHA');
+    expect(screen.queryByRole('link', { name: /No team team page/ })).not.toBeInTheDocument();
   });
 });

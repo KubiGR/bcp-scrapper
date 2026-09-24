@@ -2,7 +2,7 @@ import type { RoundsResponse } from '@bcp/shared';
 import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
-import { anEventDetail } from '../../test/sample-data';
+import { anEventDetail, aPlayer } from '../../test/sample-data';
 import { RoundsPanel } from './RoundsPanel';
 
 const player = (id: string, name: string, faction: string) => ({ id, name, faction, teamId: null });
@@ -88,5 +88,46 @@ describe('RoundsPanel', () => {
     expect(screen.getByText('Blue Wardens · team page').closest('a')?.getAttribute('href')).toBe(
       '/events/EVT1/teams/BLUE',
     );
+  });
+
+  it('shows a List button for a known player and opens the drawer; hides it for an unknown one', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/rounds': rounds,
+      'GET /api/events/EVT1/players': {
+        items: [aPlayer({ bcpId: 'R1', name: 'Rhea Stone', listStatus: 'fetched' })],
+      },
+      'GET /api/players/R1/list': {
+        playerId: 'R1',
+        playerName: 'Rhea Stone',
+        teamName: 'Red Legion',
+        faction: 'Adepta Sororitas',
+        listId: 'LS-R1',
+        text: 'Adepta Sororitas – list text',
+        fetchedAt: '2026-09-23T10:00:00.000Z',
+      },
+    });
+    renderWithRouter(
+      <RoundsPanel
+        event={anEventDetail({
+          pairings: {
+            syncedAt: null,
+            roundCount: 2,
+            roundsDone: 2,
+            queued: 0,
+            failed: 0,
+            gamesAvailable: true,
+          },
+        })}
+      />,
+    );
+    const matchup = await screen.findByRole('button', {
+      name: /Red Legion\s*30\s*–\s*10\s*Blue Wardens/,
+    });
+    fireEvent.click(matchup);
+    const listButton = await screen.findByRole('button', { name: "Show Rhea Stone's list" });
+    expect(screen.queryByRole('button', { name: "Show Bea Moss's list" })).not.toBeInTheDocument();
+    fireEvent.click(listButton);
+    expect(await screen.findByRole('dialog', { name: 'Rhea Stone' })).toBeInTheDocument();
+    expect(await screen.findByText(/list text/)).toBeInTheDocument();
   });
 });

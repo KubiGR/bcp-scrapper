@@ -1,12 +1,16 @@
-import type { PlayerRound } from '@bcp/shared';
-import { Group, Skeleton, Stack, Table, Text, Title } from '@mantine/core';
+import type { PlayerRound, RoundView } from '@bcp/shared';
+import { Accordion, Group, Skeleton, Stack, Table, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
-import { eventQuery } from '../event/event-queries';
-import { teamQuery } from './analysis-queries';
+import { eventQuery, playersQuery } from '../event/event-queries';
+import { ListDrawer } from '../event/ListDrawer';
+import { roundsQuery, teamQuery } from './analysis-queries';
+import { GamesTable } from './GamesTable';
 import { formatPoints, formatTotals, outcomeLabel } from './format';
+import { matchupFor, type TeamMatchup } from './team-matches';
 import { useRefreshWhenPairingsSettle } from './useRefreshWhenPairingsSettle';
 
 function RoundCell({ cell }: { cell: PlayerRound | null }) {
@@ -32,6 +36,96 @@ function RoundCell({ cell }: { cell: PlayerRound | null }) {
           ? `${cell.opponent.name} (${cell.opponent.faction ?? 'unknown faction'})`
           : 'Bye'}
       </Text>
+    </Stack>
+  );
+}
+
+interface TeamRoundMatch {
+  round: RoundView;
+  view: TeamMatchup;
+}
+
+function TeamMatchRow({ round, view }: { round: RoundView; view: TeamMatchup }) {
+  const prefix = round.bracket ? `R${round.round} · Bracket` : `R${round.round}`;
+  return (
+    <Text size="sm">
+      {prefix} ·{' '}
+      {view.opponent ? (
+        <>
+          vs {view.opponent.name} · {outcomeLabel(view.outcome)}{' '}
+          <span className="numeric">
+            {formatPoints(view.points)}–{formatPoints(view.opponentPoints)}
+          </span>
+        </>
+      ) : (
+        <>
+          Bye · <span className="numeric">{formatPoints(view.points)}</span>
+        </>
+      )}
+    </Text>
+  );
+}
+
+function TeamMatches({
+  eventId,
+  teamId,
+  live,
+}: {
+  eventId: string;
+  teamId: string;
+  live: boolean;
+}) {
+  const rounds = useQuery(roundsQuery(eventId, live));
+  const players = useQuery(playersQuery(eventId));
+  const [openPlayerId, setOpenPlayerId] = useState<string | null>(null);
+
+  if (rounds.isPending) return <Skeleton height={120} />;
+  if (rounds.error)
+    return <ErrorState error={rounds.error} onRetry={() => void rounds.refetch()} />;
+
+  const teamRounds: TeamRoundMatch[] = rounds.data.rounds.flatMap((round) => {
+    for (const matchup of round.matchups) {
+      const view = matchupFor(matchup, teamId);
+      if (view) return [{ round, view }];
+    }
+    return [];
+  });
+
+  const knownPlayerIds = new Set((players.data?.items ?? []).map((p) => p.bcpId));
+  const openPlayer = players.data?.items.find((p) => p.bcpId === openPlayerId) ?? null;
+
+  return (
+    <Stack gap="sm">
+      <Title order={3}>Matches</Title>
+      {teamRounds.length === 0 ? (
+        <Text c="dimmed">No matches stored yet.</Text>
+      ) : (
+        <Panel p={0}>
+          <Accordion multiple chevronPosition="left">
+            {teamRounds.map(({ round, view }) => (
+              <Accordion.Item key={view.matchupId} value={view.matchupId}>
+                <Accordion.Control>
+                  <TeamMatchRow round={round} view={view} />
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <GamesTable
+                    games={view.games}
+                    onShowList={setOpenPlayerId}
+                    knownPlayerIds={knownPlayerIds}
+                  />
+                </Accordion.Panel>
+              </Accordion.Item>
+            ))}
+          </Accordion>
+        </Panel>
+      )}
+      <ListDrawer
+        eventId={eventId}
+        player={openPlayer}
+        onClose={() => {
+          setOpenPlayerId(null);
+        }}
+      />
     </Stack>
   );
 }
@@ -64,6 +158,7 @@ export function TeamPage({ eventId, teamId }: { eventId: string; teamId: string 
           </Text>
         </Group>
       </Stack>
+      <TeamMatches eventId={eventId} teamId={teamId} live={live} />
       <Panel p={0}>
         <Table.ScrollContainer minWidth={320 + rounds.length * 150}>
           <Table striped>

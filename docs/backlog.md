@@ -5,7 +5,6 @@ Ideas and follow-ups that aren't scheduled yet. Newest requests first within eac
 ## Next up
 
 - **Plan 5: faction matchups.** The matchup matrix per event (win rate / average game points toggle, min games, drill-down) and the cross-event `/analysis/matchups` page with bulk pairings sync. Designed in `docs/superpowers/specs/2026-09-24-team-analysis-design.md` (§5.5–5.6, §7.5).
-- **Only big events.** Catalogue keeps events with 4+ rounds and 20+ players only (settings `MIN_EVENT_ROUNDS`, `MIN_EVENT_PLAYERS`); stored small events are deleted; the finder drops the 16+ preset. Approved 2026-09-24, built right after plan 4.
 
 ## Feature ideas
 

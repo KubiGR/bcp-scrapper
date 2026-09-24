@@ -24,12 +24,17 @@ export function formatIsoDay(day: string): string {
   return eventDayFormat.format(new Date(`${day}T00:00:00Z`));
 }
 
-const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+export const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
 
 /** "432 players · 108 teams", or just the players when the team count isn't known. */
 export function formatEventSize(event: { playerCount: number; teamCount: number | null }): string {
   const players = plural(event.playerCount, 'player');
   return event.teamCount === null ? players : `${players} · ${plural(event.teamCount, 'team')}`;
+}
+
+/** "5 rounds"/"1 round"; null when the round count is unknown (0). */
+export function formatRoundCount(roundCount: number): string | null {
+  return roundCount > 0 ? plural(roundCount, 'round') : null;
 }
 
 /** "35 s", "8 min", "1 h 20 min": a rough wait, for estimates. */

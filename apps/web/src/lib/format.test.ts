@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatEventDates, formatEventSize } from './format';
+import { formatEventDates, formatEventSize, formatRoundCount } from './format';
 
 const utcDay = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'UTC' });
 
@@ -22,5 +22,13 @@ describe('formatEventSize', () => {
     expect(formatEventSize({ playerCount: 432, teamCount: 108 })).toBe('432 players · 108 teams');
     expect(formatEventSize({ playerCount: 64, teamCount: null })).toBe('64 players');
     expect(formatEventSize({ playerCount: 1, teamCount: null })).toBe('1 player');
+  });
+});
+
+describe('formatRoundCount', () => {
+  it('pluralises, singularises for one, and is null for an unknown round count', () => {
+    expect(formatRoundCount(5)).toBe('5 rounds');
+    expect(formatRoundCount(1)).toBe('1 round');
+    expect(formatRoundCount(0)).toBeNull();
   });
 });

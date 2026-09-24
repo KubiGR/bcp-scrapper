@@ -1,80 +1,15 @@
-import type { EventDetail, GameView, MatchupView } from '@bcp/shared';
-import { Accordion, Group, SegmentedControl, Skeleton, Stack, Table, Text } from '@mantine/core';
+import type { EventDetail, MatchupView } from '@bcp/shared';
+import { Accordion, Group, SegmentedControl, Skeleton, Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
+import { playersQuery } from '../event/event-queries';
+import { ListDrawer } from '../event/ListDrawer';
 import { roundsQuery } from './analysis-queries';
+import { GamesTable } from './GamesTable';
 import { formatPoints, outcomeLabel } from './format';
-
-function GamesTable({ games }: { games: GameView[] }) {
-  if (games.length === 0) {
-    return (
-      <Text size="sm" c="dimmed">
-        No individual games for this matchup.
-      </Text>
-    );
-  }
-  return (
-    <Table.ScrollContainer minWidth={560}>
-      <Table>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Table</Table.Th>
-            <Table.Th>Player</Table.Th>
-            <Table.Th ta="right">GP</Table.Th>
-            <Table.Th ta="right">VP</Table.Th>
-            <Table.Th ta="right">VP</Table.Th>
-            <Table.Th ta="right">GP</Table.Th>
-            <Table.Th>Opponent</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {games.map((game) => (
-            <Table.Tr key={game.id}>
-              <Table.Td className="numeric">{game.tableNo ?? '–'}</Table.Td>
-              <Table.Td>
-                <Text size="sm">{game.playerA.name}</Text>
-                <Text size="xs" c="dimmed">
-                  {game.playerA.faction ?? 'Unknown faction'}
-                  {game.firstTurn === 'a' && ' · went first'}
-                </Text>
-              </Table.Td>
-              <Table.Td ta="right" className="numeric">
-                {formatPoints(game.gamePointsA)}
-              </Table.Td>
-              <Table.Td ta="right" className="numeric">
-                {formatPoints(game.vpA)}
-              </Table.Td>
-              <Table.Td ta="right" className="numeric">
-                {formatPoints(game.vpB)}
-              </Table.Td>
-              <Table.Td ta="right" className="numeric">
-                {formatPoints(game.gamePointsB)}
-              </Table.Td>
-              <Table.Td>
-                {game.playerB ? (
-                  <>
-                    <Text size="sm">{game.playerB.name}</Text>
-                    <Text size="xs" c="dimmed">
-                      {game.playerB.faction ?? 'Unknown faction'}
-                      {game.firstTurn === 'b' && ' · went first'}
-                    </Text>
-                  </>
-                ) : (
-                  <Text size="sm" c="dimmed">
-                    Bye
-                  </Text>
-                )}
-              </Table.Td>
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
-    </Table.ScrollContainer>
-  );
-}
 
 function MatchupTeamLinks({ eventId, matchup }: { eventId: string; matchup: MatchupView }) {
   return (
@@ -122,7 +57,9 @@ function MatchupControl({ matchup }: { matchup: MatchupView }) {
 
 export function RoundsPanel({ event }: { event: EventDetail }) {
   const rounds = useQuery(roundsQuery(event.bcpId, event.pairings.queued > 0));
+  const players = useQuery(playersQuery(event.bcpId));
   const [selected, setSelected] = useState<string | null>(null);
+  const [openPlayerId, setOpenPlayerId] = useState<string | null>(null);
 
   if (rounds.isPending) return <Skeleton height={200} />;
   if (rounds.error)
@@ -131,6 +68,9 @@ export function RoundsPanel({ event }: { event: EventDetail }) {
   if (all.length === 0) return <Text c="dimmed">No rounds stored yet.</Text>;
   const current = all.find((round) => String(round.round) === selected) ?? all[0];
   if (!current) return null;
+
+  const knownPlayerIds = new Set((players.data?.items ?? []).map((p) => p.bcpId));
+  const openPlayer = players.data?.items.find((p) => p.bcpId === openPlayerId) ?? null;
 
   return (
     <Stack gap="md">
@@ -153,7 +93,11 @@ export function RoundsPanel({ event }: { event: EventDetail }) {
                 </Accordion.Control>
                 <Accordion.Panel>
                   <MatchupTeamLinks eventId={event.bcpId} matchup={matchup} />
-                  <GamesTable games={matchup.games} />
+                  <GamesTable
+                    games={matchup.games}
+                    onShowList={setOpenPlayerId}
+                    knownPlayerIds={knownPlayerIds}
+                  />
                 </Accordion.Panel>
               </Accordion.Item>
             ))}
@@ -162,9 +106,20 @@ export function RoundsPanel({ event }: { event: EventDetail }) {
       )}
       {current.games.length > 0 && (
         <Panel>
-          <GamesTable games={current.games} />
+          <GamesTable
+            games={current.games}
+            onShowList={setOpenPlayerId}
+            knownPlayerIds={knownPlayerIds}
+          />
         </Panel>
       )}
+      <ListDrawer
+        eventId={event.bcpId}
+        player={openPlayer}
+        onClose={() => {
+          setOpenPlayerId(null);
+        }}
+      />
     </Stack>
   );
 }

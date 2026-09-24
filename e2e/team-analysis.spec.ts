@@ -21,5 +21,6 @@ test('fetch a team event’s pairings, read the standings and open a team', asyn
 
   await alpha.click();
   await expect(page.getByRole('heading', { name: 'Alpha Squad' })).toBeVisible();
-  await expect(page.getByText('Ada Archer')).toBeVisible();
+  // The team's per-player table (Ada Archer also appears in the Matches section above it).
+  await expect(page.getByRole('table').getByText('Ada Archer')).toBeVisible();
 });

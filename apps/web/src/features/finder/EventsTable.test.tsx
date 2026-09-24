@@ -51,6 +51,27 @@ describe('EventsTable', () => {
     expect(onOpen).toHaveBeenCalledWith('EVT1');
   });
 
+  it('shows a Rounds column with each event’s round count, or "—" when unknown', () => {
+    renderWithProviders(
+      <EventsTable
+        {...props}
+        onOpen={vi.fn()}
+        response={{
+          items: [
+            anEvent({ bcpId: 'EVT1', name: 'Sample Team Open', roundCount: 5 }),
+            anEvent({ bcpId: 'EVT2', name: 'Other Open', roundCount: 0 }),
+          ],
+          total: 2,
+          page: 1,
+          pageSize: 25,
+        }}
+      />,
+    );
+    expect(screen.getByText('Rounds')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
+  });
+
   it('shows the empty text', () => {
     renderWithProviders(
       <EventsTable

@@ -12,6 +12,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { DataTable, type DataTableColumn } from 'mantine-datatable';
 import { useState } from 'react';
+import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { EventQueueLine } from './EventQueueLine';
@@ -188,28 +189,41 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
             const expanded = !collapsed.has(key);
             return (
               <Panel key={key} p={0}>
-                <UnstyledButton
-                  aria-expanded={expanded}
-                  onClick={() => {
-                    toggleGroup(key);
-                  }}
-                  p="sm"
-                  w="100%"
-                >
-                  <Group justify="space-between">
-                    <Text fw={600}>
-                      {group.teamId !== null && (
-                        <>
-                          <span className="numeric">
-                            {group.teamPlacing !== null ? `#${group.teamPlacing}` : '—'}
-                          </span>{' '}
-                        </>
-                      )}
-                      {group.teamName}
-                    </Text>
-                    <span className="numeric">{group.players.length}</span>
-                  </Group>
-                </UnstyledButton>
+                <Group wrap="nowrap" gap={0}>
+                  <UnstyledButton
+                    aria-expanded={expanded}
+                    onClick={() => {
+                      toggleGroup(key);
+                    }}
+                    p="sm"
+                    style={{ flex: 1 }}
+                  >
+                    <Group justify="space-between">
+                      <Text fw={600}>
+                        {group.teamId !== null && (
+                          <>
+                            <span className="numeric">
+                              {group.teamPlacing !== null ? `#${group.teamPlacing}` : '—'}
+                            </span>{' '}
+                          </>
+                        )}
+                        {group.teamName}
+                      </Text>
+                      <span className="numeric">{group.players.length}</span>
+                    </Group>
+                  </UnstyledButton>
+                  {group.teamId !== null && (
+                    <Group px="sm">
+                      <AnchorLink
+                        to="/events/$eventId/teams/$teamId"
+                        params={{ eventId: event.bcpId, teamId: group.teamId }}
+                        aria-label={`${group.teamName} team page`}
+                      >
+                        <Text size="sm">Team page</Text>
+                      </AnchorLink>
+                    </Group>
+                  )}
+                </Group>
                 <Collapse expanded={expanded}>
                   <DataTable<EventPlayer>
                     records={group.players}

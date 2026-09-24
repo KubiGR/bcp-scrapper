@@ -83,6 +83,14 @@ export function EventsTable({
             ),
           },
           {
+            accessor: 'roundCount',
+            title: 'Rounds',
+            textAlign: 'right',
+            render: (event) => (
+              <span className="numeric">{event.roundCount > 0 ? event.roundCount : '—'}</span>
+            ),
+          },
+          {
             accessor: 'lastSyncedAt',
             title: 'Status',
             render: (event) => <EventStatusBadges event={event} />,
