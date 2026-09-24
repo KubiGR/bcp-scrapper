@@ -82,6 +82,59 @@ describe('mapEventSearchItem', () => {
       hideLists: false,
     });
   });
+
+  it('takes the team count and city from search results, for a team event', () => {
+    const raw = parseBcp(
+      RawEventSearchItem,
+      {
+        id: 'E2',
+        name: 'Team Open',
+        eventDate: '2026-04-12T10:00:00.000Z',
+        teamEvent: true,
+        totalTeamPlayers: 4,
+        city: ' Springfield ',
+      },
+      'test',
+    );
+    expect(mapEventSearchItem(raw)).toMatchObject({ teamCount: 4, city: 'Springfield' });
+  });
+
+  it('leaves teamCount null for a singles event, even with a totalTeamPlayers count', () => {
+    const raw = parseBcp(
+      RawEventSearchItem,
+      {
+        id: 'E3',
+        name: 'Singles GT',
+        eventDate: '2026-04-12T10:00:00.000Z',
+        teamEvent: false,
+        totalTeamPlayers: 4,
+      },
+      'test',
+    );
+    expect(mapEventSearchItem(raw).teamCount).toBeNull();
+  });
+
+  it('leaves teamCount null when totalTeamPlayers is missing or zero', () => {
+    const missing = parseBcp(
+      RawEventSearchItem,
+      { id: 'E4', name: 'A', eventDate: '2026-04-12T10:00:00.000Z', teamEvent: true },
+      'test',
+    );
+    expect(mapEventSearchItem(missing).teamCount).toBeNull();
+
+    const zero = parseBcp(
+      RawEventSearchItem,
+      {
+        id: 'E5',
+        name: 'B',
+        eventDate: '2026-04-12T10:00:00.000Z',
+        teamEvent: true,
+        totalTeamPlayers: 0,
+      },
+      'test',
+    );
+    expect(mapEventSearchItem(zero).teamCount).toBeNull();
+  });
 });
 
 describe('mapEventDetail', () => {

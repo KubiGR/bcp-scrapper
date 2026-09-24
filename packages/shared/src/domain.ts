@@ -16,7 +16,7 @@ export const EventSummarySchema = z.object({
   country: z.string().nullable(),
   city: z.string().nullable(),
   playerCount: z.number().int().nonnegative(),
-  /** Teams in a team event. Only event detail knows it; null from search results and for singles. */
+  /** Teams in a team event. Search results carry it too now; null for singles. */
   teamCount: z.number().int().nonnegative().nullable(),
   isTeamEvent: z.boolean(),
   isOnline: z.boolean(),

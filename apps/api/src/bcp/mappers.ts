@@ -29,16 +29,18 @@ const BCP_LOSS = 0;
 const toIso = (value: string): string => new Date(value).toISOString();
 
 export function mapEventSearchItem(raw: RawEventSearchItem): EventSummary {
+  const isTeamEvent = raw.teamEvent ?? false;
+  const city = raw.city?.trim();
   return {
     bcpId: raw.id,
     name: raw.name.trim(),
     startDate: toIso(raw.eventDate),
     endDate: raw.eventEndDate ? toIso(raw.eventEndDate) : null,
     country: raw.country ?? null,
-    city: null, // search results carry no city or team count; event detail fills them in
+    city: city === undefined || city === '' ? null : city, // event detail may still know better
     playerCount: raw.totalPlayers ?? 0,
-    teamCount: null,
-    isTeamEvent: raw.teamEvent ?? false,
+    teamCount: isTeamEvent && raw.totalTeamPlayers ? raw.totalTeamPlayers : null,
+    isTeamEvent,
     isOnline: raw.isOnlineEvent ?? false,
     roundCount: raw.numberOfRounds ?? 0,
     ended: raw.ended ?? false,

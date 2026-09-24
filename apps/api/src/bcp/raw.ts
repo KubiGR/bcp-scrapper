@@ -30,7 +30,10 @@ export const RawEventSearchItem = z.object({
   eventDate: z.string(),
   eventEndDate: z.string().nullish(),
   country: z.string().nullish(),
+  city: z.string().nullish(),
   totalPlayers: z.number().nullish(),
+  /** The number of teams in a team event. */
+  totalTeamPlayers: z.number().nullish(),
   teamEvent: z.boolean().nullish(),
   isOnlineEvent: z.boolean().nullish(),
   numberOfRounds: z.number().nullish(),

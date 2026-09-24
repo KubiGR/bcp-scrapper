@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { BIG_EVENTS, EventListQuerySchema } from '@bcp/shared';
+import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
+import { events } from '../db/schema';
 import { ALL_EVENTS, sampleSource } from '../test/helpers';
 import {
   deleteSmallEvents,
@@ -45,6 +47,48 @@ describe('event upserts', () => {
     expect(row?.rawDetail).not.toBeNull();
     expect(row?.rawSummary).not.toBeNull();
     expect(row?.lastSyncedAt).toBeInstanceOf(Date);
+  });
+
+  it("fills city and team count from search results when detail hasn't set them", async () => {
+    // beforeEach already synced the catalogue once (without detail); city/teamCount come from
+    // the search fixture's totalTeamPlayers/city.
+    const row = await findEvent(db, 'EVTTEAM0001');
+    expect(row?.city).toBe('Springfield');
+    expect(row?.teamCount).toBe(4);
+  });
+
+  it('fills a pre-existing row (city/teamCount still null) on the next catalogue sync', async () => {
+    await db
+      .update(events)
+      .set({ city: null, teamCount: null })
+      .where(eq(events.id, 'EVTTEAM0001'));
+    expect((await findEvent(db, 'EVTTEAM0001'))?.city).toBeNull();
+
+    await upsertEventSummaries(
+      db,
+      (await source.listEvents({ from: '2026-01-01', to: '2026-12-31' }, null)).items,
+    );
+
+    const row = await findEvent(db, 'EVTTEAM0001');
+    expect(row?.city).toBe('Springfield');
+    expect(row?.teamCount).toBe(4);
+  });
+
+  it("doesn't overwrite a detail-set city or team count with a later search result", async () => {
+    await upsertEventDetail(db, await source.getEvent('EVTTEAM0001'));
+    await db
+      .update(events)
+      .set({ city: 'Custom City', teamCount: 99 })
+      .where(eq(events.id, 'EVTTEAM0001'));
+
+    await upsertEventSummaries(
+      db,
+      (await source.listEvents({ from: '2026-01-01', to: '2026-12-31' }, null)).items,
+    );
+
+    const row = await findEvent(db, 'EVTTEAM0001');
+    expect(row?.city).toBe('Custom City');
+    expect(row?.teamCount).toBe(99);
   });
 });
 

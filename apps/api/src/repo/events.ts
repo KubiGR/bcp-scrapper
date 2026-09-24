@@ -5,7 +5,7 @@ import type {
   EventSizeRule,
   EventSummary,
 } from '@bcp/shared';
-import { and, desc, eq, gte, ilike, lt, lte, or, type SQL } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, lt, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { events } from '../db/schema';
@@ -31,7 +31,10 @@ function toRow(event: EventSummary) {
   };
 }
 
-/** Catalogue results: never overwrite what only event detail knows (city, team count, raw detail). */
+/**
+ * Catalogue results: never overwrite what event detail knows better (raw detail), but fill
+ * `city`/`teamCount` from the search result when they're still unset (detail wins once it runs).
+ */
 export async function upsertEventSummaries(db: Db, list: Fetched<EventSummary>[]): Promise<void> {
   if (list.length === 0) return;
   await db
@@ -39,14 +42,18 @@ export async function upsertEventSummaries(db: Db, list: Fetched<EventSummary>[]
     .values(list.map((event) => ({ ...toRow(event), rawSummary: event.raw })))
     .onConflictDoUpdate({
       target: events.id,
-      set: excludedColumns(events, [
-        'id',
-        'createdAt',
-        'city',
-        'teamCount',
-        'rawDetail',
-        'lastSyncedAt',
-      ]),
+      set: {
+        ...excludedColumns(events, [
+          'id',
+          'createdAt',
+          'city',
+          'teamCount',
+          'rawDetail',
+          'lastSyncedAt',
+        ]),
+        city: sql`coalesce(${events.city}, excluded.city)`,
+        teamCount: sql`coalesce(${events.teamCount}, excluded.team_count)`,
+      },
     });
 }
 

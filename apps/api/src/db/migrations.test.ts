@@ -24,3 +24,20 @@ describe('0005_player-disposition migration', () => {
     );
   });
 });
+
+const eventBackfillSql = readFileSync(
+  new URL('../../drizzle/0006_backfill-event-team-count-city.sql', import.meta.url),
+  'utf8',
+);
+
+describe('0006_backfill-event-team-count-city migration', () => {
+  it('backfills team count and city from the stored search-result JSON, without touching existing values', () => {
+    expect(eventBackfillSql).toContain(
+      `UPDATE "events" SET "team_count" = ("raw_summary"->>'totalTeamPlayers')::int WHERE "is_team_event" AND "team_count" IS NULL AND ("raw_summary"->>'totalTeamPlayers') ~ '^[0-9]+$' AND ("raw_summary"->>'totalTeamPlayers')::int > 0;`,
+    );
+    expect(eventBackfillSql).toContain(
+      `UPDATE "events" SET "city" = trim("raw_summary"->>'city') WHERE "city" IS NULL AND trim("raw_summary"->>'city') <> '';`,
+    );
+    expect(eventBackfillSql).not.toMatch(/DROP TABLE|CREATE TABLE|ADD COLUMN/i);
+  });
+});
