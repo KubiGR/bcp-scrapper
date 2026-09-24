@@ -60,7 +60,7 @@ Required headers: `client-id: web-app`, `env: bcp`, `accept: application/json`. 
   - Raw responses are stored in the database, so data can be re-processed without re-fetching.
 - **Terms of service.** Scraping is not explicitly allowed. We keep the load low: rate limiting, fetching only when the user asks, caching, and requests made as the user's own subscribed account. We never republish the data.
 - **Pairing-process data** is not available from BCP (see Non-goals).
-- **Bracket/GW-format team events (open question for plan 3).** For events with `format.bracketPairings: true` / `gwoEvent: true` (e.g. The Summer I.T.T., `8G5SizDp632n`), `/v1/pairings?…&pairingType=Pairing` returns no individual games, although each player's `total_games` holds per-game results (swiss `games` plus bracket `pod_games`, with `pod: true`). Before building team analysis, a spike must find where BCP serves individual pairings for these events. Until then, analysis falls back to `team_matchups` and shows "individual games unavailable".
+- **Bracket/GW-format team events (resolved 2026-09-24).** `/v1/pairings` returns no individual games for these events, but `/v1/events/{id}/pairings?round=N&pairingType=Pairing` does (without VP). See `2026-09-24-team-analysis-design.md` §2–3.
 - **Node version.** The toolchain requires Node ≥ 20.19. The project pins the current LTS, **Node 24 LTS (Krypton)**, via `.nvmrc`.
 
 ## 4. Architecture
