@@ -1,0 +1,29 @@
+.indicator,
+.alert {
+  padding: 4px 10px;
+  font-size: var(--mantine-font-size-xs);
+  font-family: var(--mantine-font-family-monospace);
+  border: 1px solid var(--mantine-color-neon-8);
+  color: var(--mantine-color-neon-3);
+  white-space: nowrap;
+}
+
+.alert {
+  border-color: var(--mantine-color-red-7);
+  color: var(--mantine-color-red-4);
+}
+
+.indicator:focus-visible,
+.alert:focus-visible {
+  outline: 2px solid var(--mantine-color-neon-5);
+  outline-offset: 2px;
+}
+
+@media (max-width: 35.99375em) {
+  .indicator,
+  .alert {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

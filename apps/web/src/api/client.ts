@@ -70,3 +70,8 @@ export function apiPost<S extends z.ZodType>(
     schema,
   );
 }
+
+/** DELETEs a resource; no body, so it needs no content type and stays a simple CORS request. */
+export function apiDelete<S extends z.ZodType>(path: string, schema: S): Promise<z.output<S>> {
+  return request(path, { method: 'DELETE', headers: { accept: 'application/json' } }, schema);
+}

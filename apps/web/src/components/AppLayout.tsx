@@ -2,6 +2,7 @@ import { AppShell, Container, Group } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { Link, Outlet } from '@tanstack/react-router';
 import { FinderSearchSchema } from '../features/finder/finder-search';
+import { QueueIndicator } from '../features/list-queue/QueueIndicator';
 import classes from './AppLayout.module.css';
 
 const FINDER_DEFAULTS = FinderSearchSchema.parse({});
@@ -24,6 +25,7 @@ export function AppLayout() {
               BCP Analyzer
             </Link>
             <Group component="nav" gap="xl" wrap="nowrap" className={classes.nav}>
+              <QueueIndicator />
               {NAV_ITEMS.map((item) => (
                 <Link key={item.to} to={item.to} className={classes.navLink}>
                   {item.label}
