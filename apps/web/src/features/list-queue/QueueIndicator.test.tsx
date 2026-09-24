@@ -50,6 +50,37 @@ describe('QueueIndicator', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows failures even when nothing is queued', async () => {
+    stubFetchRoutes({
+      'GET /api/list-queue': state({
+        totals: { queued: 0, fetching: 0, failed: 3 },
+      }),
+    });
+    renderInRouter();
+    expect(await screen.findByRole('button', { name: 'Lists · 3 failed' })).toBeInTheDocument();
+  });
+
+  it('shows both queued and failed counts, with the estimate', async () => {
+    stubFetchRoutes({
+      'GET /api/list-queue': state({
+        totals: { queued: 2, fetching: 0, failed: 1 },
+        estimatedSeconds: 10,
+      }),
+    });
+    renderInRouter();
+    expect(
+      await screen.findByRole('button', { name: 'Lists · 2 queued · 1 failed · ~10 s' }),
+    ).toBeInTheDocument();
+  });
+
+  it('stays visible when paused with an empty queue, so Resume stays reachable', async () => {
+    stubFetchRoutes({
+      'GET /api/list-queue': state({ paused: true, pausedReason: 'user' }),
+    });
+    renderInRouter();
+    expect(await screen.findByRole('button', { name: 'Lists · paused' })).toBeInTheDocument();
+  });
+
   it('turns red with a Settings link when BCP rejected the login', async () => {
     stubFetchRoutes({
       'GET /api/list-queue': state({

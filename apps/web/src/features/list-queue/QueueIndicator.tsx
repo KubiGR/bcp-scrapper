@@ -5,7 +5,10 @@ import { listQueueQuery } from './list-queue-queries';
 import { QueueControls } from './QueueControls';
 import classes from './QueueIndicator.module.css';
 
-/** "Lists · 34 queued · ~3 min" in the header while there is anything to show. */
+/**
+ * "Lists · 34 queued · ~3 min" in the header while there is anything to show: queued/fetching
+ * lists, failed ones, or a pause (so Resume stays reachable even once the queue drains).
+ */
 export function QueueIndicator() {
   const { data: state } = useQuery(listQueueQuery);
   if (!state) return null;
@@ -17,7 +20,9 @@ export function QueueIndicator() {
   const label = loginExpired
     ? 'Lists paused: login expired'
     : [
-        `Lists · ${inProgress} queued`,
+        'Lists',
+        inProgress > 0 ? `${inProgress} queued` : null,
+        failed > 0 ? `${failed} failed` : null,
         state.paused
           ? 'paused'
           : state.estimatedSeconds !== null
