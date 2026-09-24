@@ -71,6 +71,7 @@ export function aPlayer(overrides: Partial<EventPlayer> = {}): EventPlayer {
     dropped: false,
     listStatus: 'fetched',
     listError: null,
+    listErrorCode: null,
     ...overrides,
   };
 }

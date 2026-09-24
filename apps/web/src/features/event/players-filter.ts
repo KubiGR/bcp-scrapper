@@ -40,11 +40,15 @@ export function lossOptions(roundCount: number): number[] {
   return Array.from({ length: Math.max(highest + 1, 0) }, (_, losses) => losses);
 }
 
-/** Lists a queue request would add: not fetched yet (or failed), passing the loss limit if any. */
+/**
+ * Lists a queue request would add: not fetched yet (or failed, except "no list on BCP", which the
+ * server doesn't queue in bulk), passing the loss limit if any.
+ */
 export function missingListCount(players: EventPlayer[], maxLosses: number | null): number {
   return players.filter(
     (player) =>
-      (player.listStatus === 'available' || player.listStatus === 'failed') &&
+      (player.listStatus === 'available' ||
+        (player.listStatus === 'failed' && player.listErrorCode !== 'NO_LIST')) &&
       (maxLosses === null || qualifiesForMaxLosses(player, maxLosses)),
   ).length;
 }

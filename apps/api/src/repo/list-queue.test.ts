@@ -90,7 +90,8 @@ describe('list queue repository', () => {
 
     expect(await cancelQueuedLists(db, EVENT)).toBe(1);
     expect(await retryFailedLists(db, EVENT)).toBe(1);
-    expect(await queueTotals(db)).toEqual({ queued: 1, fetching: 0, failed: 1 });
+    // "No list on BCP" is final: it isn't counted as a failure waiting for a retry.
+    expect(await queueTotals(db)).toEqual({ queued: 1, fetching: 0, failed: 0 });
   });
 
   it('reports queue order and each player’s newest row', async () => {
@@ -101,8 +102,13 @@ describe('list queue repository', () => {
     await markListFailed(db, claimed.id, 'BCP hiccup', 'BCP_UNAVAILABLE');
 
     const latest = await latestQueueRowsByPlayer(db, EVENT);
-    expect(latest.get('PL-ADA')).toEqual({ status: 'failed', error: 'BCP hiccup' });
-    expect(latest.get('PL-BEN')).toEqual({ status: 'queued', error: null });
+    expect(latest.get('PL-ADA')).toEqual({
+      status: 'failed',
+      error: 'BCP hiccup',
+      errorCode: 'BCP_UNAVAILABLE',
+    });
+    expect(latest.get('PL-BEN')).toEqual({ status: 'queued', error: null, errorCode: null });
+    expect(await queueTotals(db)).toMatchObject({ failed: 1 });
     const [row] = await db.select().from(listQueue).where(eq(listQueue.playerId, 'PL-ADA'));
     expect(row?.finishedAt).toBeInstanceOf(Date);
   });

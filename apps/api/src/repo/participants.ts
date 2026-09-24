@@ -3,7 +3,7 @@ import { and, count, eq, isNotNull, notInArray, sql } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { armyLists, players, teams } from '../db/schema';
-import { latestQueueRowsByPlayer, type ListQueueStatus } from './list-queue';
+import { isRetryableFailure, latestQueueRowsByPlayer, type LatestQueueRow } from './list-queue';
 import { findPlayersMissingLists, isMissingList, storedCurrentList } from './lists';
 import { excludedColumns } from './upsert';
 
@@ -81,23 +81,21 @@ export async function replaceEventPlayers(
   });
 }
 
-interface QueueRow {
-  status: ListQueueStatus;
-  error: string | null;
-}
-
 /** A stored current list wins; otherwise the player's newest queue request; otherwise BCP's list id. */
 function listStateOf(
   bcpListId: string | null,
   storedListId: string | null,
-  queued: QueueRow | undefined,
-): Pick<EventPlayer, 'listStatus' | 'listError'> {
-  if (storedListId !== null) return { listStatus: 'fetched', listError: null };
+  queued: LatestQueueRow | undefined,
+): Pick<EventPlayer, 'listStatus' | 'listError' | 'listErrorCode'> {
+  const none = { listError: null, listErrorCode: null };
+  if (storedListId !== null) return { listStatus: 'fetched', ...none };
   if (queued?.status === 'queued' || queued?.status === 'fetching') {
-    return { listStatus: queued.status, listError: null };
+    return { listStatus: queued.status, ...none };
   }
-  if (queued?.status === 'failed') return { listStatus: 'failed', listError: queued.error };
-  return { listStatus: bcpListId === null ? 'none' : 'available', listError: null };
+  if (queued?.status === 'failed') {
+    return { listStatus: 'failed', listError: queued.error, listErrorCode: queued.errorCode };
+  }
+  return { listStatus: bcpListId === null ? 'none' : 'available', ...none };
 }
 
 /** An event's players, best placing first (unplaced last, by name), with team and list state. */
@@ -154,8 +152,9 @@ export async function countEventParticipants(db: Db, eventId: string): Promise<E
     listsQueued: [...queue.values()].filter(
       (row) => row.status === 'queued' || row.status === 'fetching',
     ).length,
+    // "No list on BCP" is final, so it isn't counted: nothing can be retried about it.
     listsFailed: [...queue.entries()].filter(
-      ([playerId, row]) => row.status === 'failed' && missing.some((m) => m.playerId === playerId),
+      ([playerId, row]) => isRetryableFailure(row) && missing.some((m) => m.playerId === playerId),
     ).length,
   };
 }

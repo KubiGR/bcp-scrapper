@@ -1,7 +1,7 @@
 import { qualifiesForMaxLosses, type QueueListsRequest, type QueueListsResult } from '@bcp/shared';
 import type { Db } from '../db/client';
 import { ValidationError } from '../errors';
-import { enqueueLists, SINGLE_LIST_PRIORITY } from '../repo/list-queue';
+import { enqueueLists, NO_LIST_CODE, SINGLE_LIST_PRIORITY } from '../repo/list-queue';
 import { findPlayersMissingLists } from '../repo/lists';
 import { listEventPlayers } from '../repo/participants';
 import type { SyncRunner } from '../sync/runner';
@@ -61,6 +61,15 @@ export async function queueEventLists(
     if (listId === undefined) {
       if (player.listStatus === 'none') counts.noListOnBcp += 1;
       else if (!open) counts.alreadyFetched += 1;
+      continue;
+    }
+    // BCP said it has no such list: final for bulk requests; a chosen player is asked for again.
+    if (
+      !request.playerIds &&
+      player.listStatus === 'failed' &&
+      player.listErrorCode === NO_LIST_CODE
+    ) {
+      counts.noListOnBcp += 1;
       continue;
     }
     // A chosen player already in the queue is "queued" again at single priority: it jumps ahead.

@@ -124,7 +124,7 @@ describe('list queue routes', () => {
     expect(detail.counts.listsMissing).toBe(7);
   });
 
-  it('shows why a list failed, and retries failed lists on request', async () => {
+  it('treats "no list on BCP" as final: shown as failed, not counted, not requeued', async () => {
     const source = sampleSource();
     // Everything as the fixtures, except Eve's list is gone from BCP.
     const noEveList: TournamentSource = {
@@ -143,16 +143,22 @@ describe('list queue routes', () => {
     expect((await playersOf()).find((p) => p.bcpId === 'PL-EVE')).toMatchObject({
       listStatus: 'failed',
       listError: 'No list on BCP',
+      listErrorCode: 'NO_LIST',
     });
     expect(
       (await json<EventDetail>(await app.request(`/api/events/${EVENT}`))).counts.listsFailed,
-    ).toBe(1);
-    // "No list on BCP" is final: retry-failed leaves it alone.
+    ).toBe(0);
+    expect((await json<ListQueueState>(await app.request('/api/list-queue'))).totals.failed).toBe(
+      0,
+    );
+    // Retry-failed leaves it alone, and so does queueing the event's missing lists again...
     expect(
       await json(await send('POST', '/api/list-queue/retry-failed', { eventId: EVENT })),
-    ).toEqual({
-      requeued: 0,
-    });
+    ).toEqual({ requeued: 0 });
+    expect(await queue({})).toMatchObject({ queued: 6, noListOnBcp: 2 });
+    expect((await playersOf()).find((p) => p.bcpId === 'PL-EVE')?.listStatus).toBe('failed');
+    // ...but asking for that one list again does queue it.
+    expect(await queue({ playerIds: ['PL-EVE'] })).toMatchObject({ queued: 1 });
   });
 
   it('retries a retryable failure on request, and the worker then fetches it', async () => {
@@ -160,7 +166,16 @@ describe('list queue routes', () => {
     const claimed = await claimNextList(db, new Date(Date.now() + 60_000));
     if (!claimed) throw new Error('nothing claimed');
     await markListFailed(db, claimed.id, 'BCP is unavailable', 'BCP_UNAVAILABLE');
-    expect((await playersOf()).find((p) => p.bcpId === 'PL-ADA')?.listStatus).toBe('failed');
+    expect((await playersOf()).find((p) => p.bcpId === 'PL-ADA')).toMatchObject({
+      listStatus: 'failed',
+      listErrorCode: 'BCP_UNAVAILABLE',
+    });
+    expect(
+      (await json<EventDetail>(await app.request(`/api/events/${EVENT}`))).counts.listsFailed,
+    ).toBe(1);
+    expect((await json<ListQueueState>(await app.request('/api/list-queue'))).totals.failed).toBe(
+      1,
+    );
 
     expect(
       await json(await send('POST', '/api/list-queue/retry-failed', { eventId: EVENT })),

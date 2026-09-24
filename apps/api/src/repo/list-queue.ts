@@ -171,6 +171,7 @@ function newestRowPerPlayer(db: Db, eventId?: string) {
       eventId: listQueue.eventId,
       status: listQueue.status,
       error: listQueue.error,
+      errorCode: listQueue.errorCode,
     })
     .from(listQueue)
     .where(eventId === undefined ? undefined : eq(listQueue.eventId, eventId))
@@ -190,7 +191,7 @@ export async function queueTotals(
   return {
     queued: of('queued'),
     fetching: of('fetching'),
-    failed: newest.filter((row) => row.status === 'failed').length,
+    failed: newest.filter((row) => isRetryableFailure(row)).length,
   };
 }
 
@@ -205,10 +206,29 @@ export async function queuedInOrder(
     .orderBy(desc(listQueue.priority), listQueue.queuedAt, listQueue.id);
 }
 
+export interface LatestQueueRow {
+  status: ListQueueStatus;
+  error: string | null;
+  errorCode: string | null;
+}
+
+/**
+ * A failure that counts as "failed" (and that retry-failed requeues): any but "no list on BCP",
+ * which is final.
+ */
+export function isRetryableFailure(row: Pick<LatestQueueRow, 'status' | 'errorCode'>): boolean {
+  return row.status === 'failed' && row.errorCode !== NO_LIST_CODE;
+}
+
 export async function latestQueueRowsByPlayer(
   db: Db,
   eventId: string,
-): Promise<Map<string, { status: ListQueueStatus; error: string | null }>> {
+): Promise<Map<string, LatestQueueRow>> {
   const rows = await newestRowPerPlayer(db, eventId);
-  return new Map(rows.map((row) => [row.playerId, { status: row.status, error: row.error }]));
+  return new Map(
+    rows.map((row) => [
+      row.playerId,
+      { status: row.status, error: row.error, errorCode: row.errorCode },
+    ]),
+  );
 }

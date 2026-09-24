@@ -67,4 +67,23 @@ describe('record filter and missing counts', () => {
     expect(missingListCount(list, 0)).toBe(1);
     expect(missingListCount(list, 1)).toBe(2);
   });
+
+  it('does not count a list BCP says it does not have', () => {
+    const withNoList = [
+      ...list,
+      aPlayer({
+        bcpId: 'E',
+        listStatus: 'failed',
+        listError: 'No list on BCP',
+        listErrorCode: 'NO_LIST',
+      }),
+      aPlayer({
+        bcpId: 'F',
+        listStatus: 'failed',
+        listError: 'Down',
+        listErrorCode: 'BCP_UNAVAILABLE',
+      }),
+    ];
+    expect(missingListCount(withNoList, null)).toBe(4);
+  });
 });

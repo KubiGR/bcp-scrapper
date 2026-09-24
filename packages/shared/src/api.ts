@@ -142,6 +142,11 @@ export const EventPlayerSchema = z.object({
   listStatus: ListStatusSchema,
   /** Why the newest list request failed (only when `listStatus` is failed). */
   listError: z.string().nullable(),
+  /**
+   * The failure's code (only when `listStatus` is failed): an ApiErrorCode, or NO_LIST when BCP
+   * has no such list. NO_LIST is final: not counted as failed, not retried, not queued in bulk.
+   */
+  listErrorCode: z.string().nullable(),
 });
 export type EventPlayer = z.infer<typeof EventPlayerSchema>;
 
