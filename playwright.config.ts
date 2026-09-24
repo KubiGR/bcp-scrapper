@@ -8,6 +8,10 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
   reporter: 'list',
+  // The specs share one API/web server and one in-memory database (started once for the whole
+  // run below); running them in parallel workers races them against each other, so keep this
+  // to a single worker.
+  workers: 1,
   use: { baseURL: `http://127.0.0.1:${WEB_PORT}`, trace: 'retain-on-failure' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
