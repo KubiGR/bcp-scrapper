@@ -1,0 +1,12 @@
+{
+  "id": "EVTBRACKET01",
+  "name": "Sample Bracket Teams",
+  "dates": { "start": "2026-05-09T09:00:00.000Z", "end": "2026-05-10T18:00:00.000Z" },
+  "location": { "city": "Shelbyville", "country": "United States" },
+  "format": { "teamEvent": true, "pairingStyle": "swiss", "bracketPairings": true },
+  "status": { "started": true, "ended": true, "currentRound": 3, "numberOfRounds": 3 },
+  "playerCounts": { "total": 10 },
+  "teamPlayerCounts": { "total": 5 },
+  "flags": { "hideLists": false },
+  "isOnlineEvent": false
+}

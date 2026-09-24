@@ -1,0 +1,52 @@
+{
+  "active": [
+    {
+      "id": "TB-RED",
+      "name": "Red Legion",
+      "placing": 1,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 2, "gamePoints": 30 },
+        { "gameNum": 2, "gameResult": 2, "gamePoints": 25 },
+        { "gameNum": 1, "pod": true, "gameResult": 2, "gamePoints": 21 }
+      ]
+    },
+    {
+      "id": "TB-BLUE",
+      "name": "Blue Wardens",
+      "placing": 2,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 0, "gamePoints": 10 },
+        { "gameNum": 2, "gameResult": 2, "gamePoints": 22 },
+        { "gameNum": 1, "pod": true, "gameResult": 0, "gamePoints": 19 }
+      ]
+    },
+    {
+      "id": "TB-GREY",
+      "name": "Grey Watch",
+      "placing": 3,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 1, "gamePoints": 20 },
+        { "gameNum": 2, "gameResult": 2, "gamePoints": 40 }
+      ]
+    },
+    {
+      "id": "TB-JADE",
+      "name": "Jade Court",
+      "placing": 4,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 2, "gamePoints": 40 },
+        { "gameNum": 2, "gameResult": 0, "gamePoints": 15 }
+      ]
+    },
+    {
+      "id": "TB-GOLD",
+      "name": "Gold Hosts",
+      "placing": 5,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 1, "gamePoints": 20 },
+        { "gameNum": 2, "gameResult": 0, "gamePoints": 18 }
+      ]
+    }
+  ],
+  "deleted": []
+}

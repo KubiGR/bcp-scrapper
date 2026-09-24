@@ -60,6 +60,18 @@ describe('BcpSource over the sample fixtures', () => {
     });
     await expect(source.getList('LS-MISSING')).resolves.toBeNull();
   });
+
+  it('reads event-level games (bracket events)', async () => {
+    const games = await source.getEventGames('EVTBRACKET01', 1);
+    expect(games).toHaveLength(6);
+    expect(games.find((g) => g.bcpId === 'GB-R1-5')).toMatchObject({
+      playerABcpId: 'PB-J1',
+      playerBBcpId: null,
+      result: 'a_win',
+      vpA: null,
+    });
+    expect(await source.getGames('EVTBRACKET01', 1)).toEqual([]);
+  });
 });
 
 /** Answers every request with one game and the same nextKey, recording what was asked. */

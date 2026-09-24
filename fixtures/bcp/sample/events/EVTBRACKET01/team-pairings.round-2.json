@@ -1,0 +1,33 @@
+{
+  "active": [
+    {
+      "id": "TPB-R2-1",
+      "round": 2,
+      "table": 1,
+      "pairingType": "TeamPairing",
+      "teamPlayer1": { "id": "TB-RED", "name": "Red Legion" },
+      "teamPlayer2": { "id": "TB-JADE", "name": "Jade Court" },
+      "player1Game": { "result": 2, "points": 25 },
+      "player2Game": { "result": 0, "points": 15 }
+    },
+    {
+      "id": "TPB-R2-2",
+      "round": 2,
+      "table": 2,
+      "pairingType": "TeamPairing",
+      "teamPlayer1": { "id": "TB-BLUE", "name": "Blue Wardens" },
+      "teamPlayer2": { "id": "TB-GOLD", "name": "Gold Hosts" },
+      "player1Game": { "result": 2, "points": 22 },
+      "player2Game": { "result": 0, "points": 18 }
+    },
+    {
+      "id": "TPB-R2-3",
+      "round": 2,
+      "table": 3,
+      "pairingType": "TeamPairing",
+      "teamPlayer1": { "id": "TB-GREY", "name": "Grey Watch" },
+      "player1Game": { "result": 2, "points": 40 }
+    }
+  ],
+  "deleted": []
+}

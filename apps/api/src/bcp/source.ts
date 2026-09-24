@@ -4,6 +4,7 @@ import { BcpUnavailableError, NotFoundError } from '../errors';
 import {
   mapArmyList,
   mapEventDetail,
+  mapEventGame,
   mapEventSearchItem,
   mapPairing,
   mapPlayer,
@@ -15,6 +16,7 @@ import {
   parseItems,
   RawArmyList,
   RawEventDetail,
+  RawEventGame,
   RawEventSearchItem,
   RawListEnvelope,
   RawPageEnvelope,
@@ -51,6 +53,8 @@ export interface TournamentSource {
   getTeams(eventId: string): Promise<Fetched<Team>[]>;
   getTeamMatchups(eventId: string, round: number): Promise<Fetched<TeamMatchup>[]>;
   getGames(eventId: string, round: number): Promise<Fetched<Game>[]>;
+  /** A round's individual games from the event-level endpoint; BCP serves bracket events' games only here. */
+  getEventGames(eventId: string, round: number): Promise<Fetched<Game>[]>;
   /** Null when BCP has no such list. */
   getList(listId: string): Promise<Fetched<ArmyList> | null>;
 }
@@ -184,6 +188,19 @@ export class BcpSource implements TournamentSource {
       cursor = seen.next(body.data.length > 0 ? (body.nextKey ?? null) : null);
     } while (cursor !== null);
     return games;
+  }
+
+  async getEventGames(eventId: string, round: number): Promise<Fetched<Game>[]> {
+    const path = `/v1/events/${encodeURIComponent(eventId)}/pairings`;
+    const body = parseBcp(
+      RawListEnvelope,
+      await this.#transport.get({ path, query: { round, pairingType: 'Pairing' } }),
+      path,
+    );
+    return parseItems(RawEventGame, body.active, path).flatMap(({ parsed, raw }) => {
+      const game = mapEventGame(parsed, eventId);
+      return game ? [{ ...game, raw }] : [];
+    });
   }
 
   async getList(listId: string): Promise<Fetched<ArmyList> | null> {

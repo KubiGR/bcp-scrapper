@@ -1,0 +1,67 @@
+{
+  "active": [
+    {
+      "id": "GB-R1-1",
+      "round": 1,
+      "table": 1,
+      "pairingType": "Pairing",
+      "teamPairingId": "TPB-R1-1",
+      "player1": { "id": "PB-R1", "faction": "Adepta Sororitas" },
+      "player2": { "id": "PB-B1", "faction": "Necrons" },
+      "player1Game": { "id": "PG-1", "result": 2, "points": 20 },
+      "player2Game": { "id": "PG-2", "result": 0, "points": 0 }
+    },
+    {
+      "id": "GB-R1-2",
+      "round": 1,
+      "table": 2,
+      "pairingType": "Pairing",
+      "teamPairingId": "TPB-R1-1",
+      "player1": { "id": "PB-R2", "faction": "Space Marines" },
+      "player2": { "id": "PB-B2", "faction": "Aeldari" },
+      "player1Game": { "id": "PG-3", "result": 1, "points": 10 },
+      "player2Game": { "id": "PG-4", "result": 1, "points": 10 }
+    },
+    {
+      "id": "GB-R1-3",
+      "round": 1,
+      "table": 3,
+      "pairingType": "Pairing",
+      "teamPairingId": "TPB-R1-2",
+      "player1": { "id": "PB-G1", "faction": "Orks" },
+      "player2": { "id": "PB-Y1", "faction": "Death Guard" },
+      "player1Game": { "id": "PG-5", "result": 2, "points": 15 },
+      "player2Game": { "id": "PG-6", "result": 0, "points": 5 }
+    },
+    {
+      "id": "GB-R1-4",
+      "round": 1,
+      "table": 4,
+      "pairingType": "Pairing",
+      "teamPairingId": "TPB-R1-2",
+      "player1": { "id": "PB-G2", "faction": "Chaos Space Marines" },
+      "player2": { "id": "PB-Y2", "faction": "Tyranids" },
+      "player1Game": { "id": "PG-7", "result": 0, "points": 5 },
+      "player2Game": { "id": "PG-8", "result": 2, "points": 15 }
+    },
+    {
+      "id": "GB-R1-5",
+      "round": 1,
+      "table": 5,
+      "pairingType": "Pairing",
+      "teamPairingId": "TPB-R1-3",
+      "player1": { "id": "PB-J1", "faction": "T'au Empire" },
+      "player1Game": { "id": "PG-9", "result": 2, "points": 20 }
+    },
+    {
+      "id": "GB-R1-6",
+      "round": 1,
+      "table": 6,
+      "pairingType": "Pairing",
+      "teamPairingId": "TPB-R1-3",
+      "player1": { "id": "PB-J2", "faction": "Adepta Sororitas" },
+      "player1Game": { "id": "PG-10", "result": 2, "points": 20 }
+    }
+  ],
+  "deleted": []
+}

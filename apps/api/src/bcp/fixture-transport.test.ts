@@ -26,6 +26,21 @@ describe('fixtureFileFor', () => {
   it('rejects paths it has no mapping for', () => {
     expect(() => fixtureFileFor({ path: '/v1/unknown' })).toThrow(/No fixture mapping/);
   });
+
+  it('keeps event-level games apart from team matchups', () => {
+    expect(
+      fixtureFileFor({
+        path: '/v1/events/E1/pairings',
+        query: { round: 2, pairingType: 'Pairing' },
+      }),
+    ).toBe('events/E1/event-games.round-2.json');
+    expect(
+      fixtureFileFor({
+        path: '/v1/events/E1/pairings',
+        query: { round: 2, pairingType: 'TeamPairing' },
+      }),
+    ).toBe('events/E1/team-pairings.round-2.json');
+  });
 });
 
 describe('FixtureTransport', () => {

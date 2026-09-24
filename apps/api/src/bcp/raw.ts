@@ -99,6 +99,19 @@ export const RawTeamPairing = z.object({
 });
 export type RawTeamPairing = z.output<typeof RawTeamPairing>;
 
+/** An individual game from `/v1/events/{id}/pairings?pairingType=Pairing`: results, no metaData. */
+export const RawEventGame = z.object({
+  id: z.string(),
+  round: z.number(),
+  table: z.number().nullish(),
+  teamPairingId: z.string().nullish(),
+  player1: z.object({ id: z.string() }).nullish(),
+  player2: z.object({ id: z.string() }).nullish(),
+  player1Game: RawSideResult,
+  player2Game: RawSideResult,
+});
+export type RawEventGame = z.output<typeof RawEventGame>;
+
 export const RawPairing = z.object({
   id: z.string(),
   round: z.number(),

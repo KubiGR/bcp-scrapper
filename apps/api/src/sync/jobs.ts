@@ -9,8 +9,8 @@ import {
   upsertEventSummaries,
   type EventRow,
 } from '../repo/events';
-import { replaceRoundPairings } from '../repo/pairings';
 import { replaceEventPlayers, replaceEventTeams } from '../repo/participants';
+import { syncRoundPairings } from './round-pairings';
 
 export interface Progress {
   setTotal(total: number): Promise<void>;
@@ -51,7 +51,7 @@ async function syncCatalog(ctx: JobContext, { from, to }: RequestOf<'catalog'>):
 }
 
 /** Event detail, teams (team events only) and players. Drops teams and players BCP removed. */
-async function syncEvent(
+export async function syncEvent(
   deps: Pick<JobContext, 'db' | 'source'>,
   eventId: string,
 ): Promise<EventRow> {
@@ -88,16 +88,7 @@ async function syncPairings(ctx: JobContext, { eventId }: RequestOf<'pairings'>)
   const event = await ensureEventSynced(ctx, eventId);
   await ctx.progress.setTotal(event.roundCount);
   for (let round = 1; round <= event.roundCount; round += 1) {
-    const teamMatchups = event.isTeamEvent ? await ctx.source.getTeamMatchups(eventId, round) : [];
-    const games = await ctx.source.getGames(eventId, round);
-    if (teamMatchups.length > 0 && games.length === 0) {
-      // Seen live for bracket/GW team events; plan 3 decides where their games live.
-      ctx.logger.warn(
-        { eventId, round },
-        `BCP returned no individual games for round ${round}; team matchups stored only`,
-      );
-    }
-    await replaceRoundPairings(ctx.db, eventId, round, { teamMatchups, games });
+    await syncRoundPairings({ ...ctx }, { id: eventId, isTeamEvent: event.isTeamEvent }, round);
     await ctx.progress.succeeded();
   }
 }

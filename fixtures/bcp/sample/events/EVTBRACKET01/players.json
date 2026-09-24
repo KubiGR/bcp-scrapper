@@ -1,0 +1,139 @@
+{
+  "active": [
+    {
+      "id": "PB-R1",
+      "user": { "firstName": "Rhea", "lastName": "Stone" },
+      "teamPlayerId": "TB-RED",
+      "faction": { "name": "Adepta Sororitas", "parentFaction": { "name": "Imperium" } },
+      "placing": 1,
+      "dropped": false,
+      "listId": null,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 2, "gamePoints": 20 },
+        { "gameNum": 2, "gameResult": 2, "gamePoints": 15 },
+        { "gameNum": 1, "pod": true, "gameResult": 2, "gamePoints": 11 }
+      ]
+    },
+    {
+      "id": "PB-R2",
+      "user": { "firstName": "Rolf", "lastName": "Hart" },
+      "teamPlayerId": "TB-RED",
+      "faction": { "name": "Space Marines", "parentFaction": { "name": "Imperium" } },
+      "placing": 6,
+      "dropped": false,
+      "listId": null,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 1, "gamePoints": 10 },
+        { "gameNum": 2, "gameResult": 1, "gamePoints": 10 },
+        { "gameNum": 1, "pod": true, "gameResult": 1, "gamePoints": 10 }
+      ]
+    },
+    {
+      "id": "PB-B1",
+      "user": { "firstName": "Bea", "lastName": "Moss" },
+      "teamPlayerId": "TB-BLUE",
+      "faction": { "name": "Necrons", "parentFaction": { "name": "Xenos" } },
+      "placing": 5,
+      "dropped": false,
+      "listId": null,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 0, "gamePoints": 0 },
+        { "gameNum": 2, "gameResult": 2, "gamePoints": 12 },
+        { "gameNum": 1, "pod": true, "gameResult": 1, "gamePoints": 10 }
+      ]
+    },
+    {
+      "id": "PB-B2",
+      "user": { "firstName": "Bram", "lastName": "Holt" },
+      "teamPlayerId": "TB-BLUE",
+      "faction": { "name": "Aeldari", "parentFaction": { "name": "Xenos" } },
+      "placing": 8,
+      "dropped": false,
+      "listId": null,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 1, "gamePoints": 10 },
+        { "gameNum": 2, "gameResult": 1, "gamePoints": 10 },
+        { "gameNum": 1, "pod": true, "gameResult": 0, "gamePoints": 9 }
+      ]
+    },
+    {
+      "id": "PB-G1",
+      "user": { "firstName": "Gus", "lastName": "Vane" },
+      "teamPlayerId": "TB-GOLD",
+      "faction": { "name": "Orks", "parentFaction": { "name": "Xenos" } },
+      "placing": 7,
+      "dropped": false,
+      "listId": null,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 2, "gamePoints": 15 },
+        { "gameNum": 2, "gameResult": 0, "gamePoints": 8 }
+      ]
+    },
+    {
+      "id": "PB-G2",
+      "user": { "firstName": "Greta", "lastName": "Lind" },
+      "teamPlayerId": "TB-GOLD",
+      "faction": { "name": "Chaos Space Marines", "parentFaction": { "name": "Chaos" } },
+      "placing": 10,
+      "dropped": false,
+      "listId": null,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 0, "gamePoints": 5 },
+        { "gameNum": 2, "gameResult": 1, "gamePoints": 10 }
+      ]
+    },
+    {
+      "id": "PB-Y1",
+      "user": { "firstName": "Yara", "lastName": "Pike" },
+      "teamPlayerId": "TB-GREY",
+      "faction": { "name": "Death Guard", "parentFaction": { "name": "Chaos" } },
+      "placing": 9,
+      "dropped": false,
+      "listId": null,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 0, "gamePoints": 5 },
+        { "gameNum": 2, "gameResult": 2, "gamePoints": 20 }
+      ]
+    },
+    {
+      "id": "PB-Y2",
+      "user": { "firstName": "Yves", "lastName": "Dorn" },
+      "teamPlayerId": "TB-GREY",
+      "faction": { "name": "Tyranids", "parentFaction": { "name": "Xenos" } },
+      "placing": 2,
+      "dropped": false,
+      "listId": null,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 2, "gamePoints": 15 },
+        { "gameNum": 2, "gameResult": 2, "gamePoints": 20 }
+      ]
+    },
+    {
+      "id": "PB-J1",
+      "user": { "firstName": "Jon", "lastName": "Reed" },
+      "teamPlayerId": "TB-JADE",
+      "faction": { "name": "T'au Empire", "parentFaction": { "name": "Xenos" } },
+      "placing": 4,
+      "dropped": false,
+      "listId": null,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 2, "gamePoints": 20 },
+        { "gameNum": 2, "gameResult": 0, "gamePoints": 5 }
+      ]
+    },
+    {
+      "id": "PB-J2",
+      "user": { "firstName": "Juno", "lastName": "Frey" },
+      "teamPlayerId": "TB-JADE",
+      "faction": { "name": "Adepta Sororitas", "parentFaction": { "name": "Imperium" } },
+      "placing": 3,
+      "dropped": false,
+      "listId": null,
+      "total_games": [
+        { "gameNum": 1, "gameResult": 2, "gamePoints": 20 },
+        { "gameNum": 2, "gameResult": 1, "gamePoints": 10 }
+      ]
+    }
+  ],
+  "deleted": []
+}

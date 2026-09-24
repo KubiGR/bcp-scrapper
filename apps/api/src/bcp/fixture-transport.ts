@@ -24,7 +24,11 @@ export function fixtureFileFor({ path: urlPath, query = {} }: BcpRequest): strin
   if (version === 'v1' && resource === 'events' && id) {
     if (sub === 'players') return `events/${safeSegment(id)}/players.json`;
     if (sub === 'teamplayers') return `events/${safeSegment(id)}/teams.json`;
-    if (sub === 'pairings') return `events/${safeSegment(id)}/team-pairings.round-${round}.json`;
+    if (sub === 'pairings') {
+      // The same URL serves team matchups and (for bracket events) individual games.
+      const kind = query.pairingType === 'Pairing' ? 'event-games' : 'team-pairings';
+      return `events/${safeSegment(id)}/${kind}.round-${round}.json`;
+    }
   }
   if (version === 'v1' && resource === 'pairings' && query.eventId !== undefined) {
     return `events/${safeSegment(query.eventId)}/pairings.round-${round}.${cursor}.json`;

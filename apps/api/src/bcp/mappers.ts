@@ -12,6 +12,7 @@ import {
   toNumberOrNull,
   type RawArmyList,
   type RawEventDetail,
+  type RawEventGame,
   type RawEventSearchItem,
   type RawGameSummary,
   type RawPairing,
@@ -155,6 +156,39 @@ export function mapPairing(raw: RawPairing, eventId: string): Game | null {
     gamePointsB: stat(2, 'gamePoints'),
     firstTurn: firstTurn(meta),
     result: toGameResult(stat(1, 'gameResult'), stat(2, 'gameResult')),
+  };
+}
+
+/**
+ * A game from the event-level endpoint (bracket/GW team events). It carries each side's result
+ * and game points but no VP, primary, secondary or first turn. A game without player 2 is a
+ * bye, which BCP scores as a win for player 1.
+ */
+export function mapEventGame(raw: RawEventGame, eventId: string): Game | null {
+  if (!raw.player1) return null;
+  const pointsA = raw.player1Game?.points ?? null;
+  const pointsB = raw.player2Game?.points ?? null;
+  const result = raw.player2
+    ? toGameResult(raw.player1Game?.result ?? null, raw.player2Game?.result ?? null)
+    : 'a_win';
+  return {
+    bcpId: raw.id,
+    eventBcpId: eventId,
+    round: raw.round,
+    tableNo: raw.table ?? null,
+    teamMatchupBcpId: raw.teamPairingId ?? null,
+    playerABcpId: raw.player1.id,
+    playerBBcpId: raw.player2?.id ?? null,
+    vpA: null,
+    vpB: null,
+    primaryA: null,
+    primaryB: null,
+    secondaryA: null,
+    secondaryB: null,
+    gamePointsA: pointsA,
+    gamePointsB: pointsB,
+    firstTurn: null,
+    result,
   };
 }
 

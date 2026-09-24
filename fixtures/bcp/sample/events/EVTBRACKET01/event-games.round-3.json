@@ -1,0 +1,27 @@
+{
+  "active": [
+    {
+      "id": "GB-R3-1",
+      "round": 3,
+      "table": 1,
+      "pairingType": "Pairing",
+      "teamPairingId": "TPB-R3-1",
+      "player1": { "id": "PB-R1" },
+      "player2": { "id": "PB-B2" },
+      "player1Game": { "id": "PG-21", "result": 2, "points": 11 },
+      "player2Game": { "id": "PG-22", "result": 0, "points": 9 }
+    },
+    {
+      "id": "GB-R3-2",
+      "round": 3,
+      "table": 2,
+      "pairingType": "Pairing",
+      "teamPairingId": "TPB-R3-1",
+      "player1": { "id": "PB-R2" },
+      "player2": { "id": "PB-B1" },
+      "player1Game": { "id": "PG-23", "result": 1, "points": 10 },
+      "player2Game": { "id": "PG-24", "result": 1, "points": 10 }
+    }
+  ],
+  "deleted": []
+}

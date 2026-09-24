@@ -3,6 +3,7 @@ import { BcpSchemaError } from '../errors';
 import {
   mapArmyList,
   mapEventDetail,
+  mapEventGame,
   mapEventSearchItem,
   mapPairing,
   mapPlayer,
@@ -324,6 +325,56 @@ describe('mapPairing', () => {
       playerBBcpId: null,
       result: 'a_win',
     });
+  });
+});
+
+describe('mapEventGame', () => {
+  const base = {
+    id: 'G1',
+    round: 1,
+    table: 3,
+    teamPairingId: 'TP1',
+    player1: { id: 'P1' },
+    player2: { id: 'P2' },
+    player1Game: { result: 2, points: 15 },
+    player2Game: { result: 0, points: 5 },
+  };
+
+  it('maps result and game points; the endpoint has no VP or first turn', () => {
+    expect(mapEventGame(base, 'E1')).toEqual({
+      bcpId: 'G1',
+      eventBcpId: 'E1',
+      round: 1,
+      tableNo: 3,
+      teamMatchupBcpId: 'TP1',
+      playerABcpId: 'P1',
+      playerBBcpId: 'P2',
+      vpA: null,
+      vpB: null,
+      primaryA: null,
+      primaryB: null,
+      secondaryA: null,
+      secondaryB: null,
+      gamePointsA: 15,
+      gamePointsB: 5,
+      firstTurn: null,
+      result: 'a_win',
+    });
+  });
+
+  it('maps a draw, and a bye (no player 2) as a win for player 1', () => {
+    expect(
+      mapEventGame(
+        { ...base, player1Game: { result: 1, points: 10 }, player2Game: { result: 1, points: 10 } },
+        'E1',
+      )?.result,
+    ).toBe('draw');
+    const bye = mapEventGame({ ...base, player2: null, player2Game: null }, 'E1');
+    expect(bye).toMatchObject({ playerBBcpId: null, result: 'a_win', gamePointsB: null });
+  });
+
+  it('skips a game without player 1', () => {
+    expect(mapEventGame({ ...base, player1: null }, 'E1')).toBeNull();
   });
 });
 

@@ -1,0 +1,67 @@
+{
+  "active": [
+    {
+      "id": "GB-R2-1",
+      "round": 2,
+      "table": 1,
+      "pairingType": "Pairing",
+      "teamPairingId": "TPB-R2-1",
+      "player1": { "id": "PB-R1" },
+      "player2": { "id": "PB-J1" },
+      "player1Game": { "id": "PG-11", "result": 2, "points": 15 },
+      "player2Game": { "id": "PG-12", "result": 0, "points": 5 }
+    },
+    {
+      "id": "GB-R2-2",
+      "round": 2,
+      "table": 2,
+      "pairingType": "Pairing",
+      "teamPairingId": "TPB-R2-1",
+      "player1": { "id": "PB-R2" },
+      "player2": { "id": "PB-J2" },
+      "player1Game": { "id": "PG-13", "result": 1, "points": 10 },
+      "player2Game": { "id": "PG-14", "result": 1, "points": 10 }
+    },
+    {
+      "id": "GB-R2-3",
+      "round": 2,
+      "table": 3,
+      "pairingType": "Pairing",
+      "teamPairingId": "TPB-R2-2",
+      "player1": { "id": "PB-B1" },
+      "player2": { "id": "PB-G1" },
+      "player1Game": { "id": "PG-15", "result": 2, "points": 12 },
+      "player2Game": { "id": "PG-16", "result": 0, "points": 8 }
+    },
+    {
+      "id": "GB-R2-4",
+      "round": 2,
+      "table": 4,
+      "pairingType": "Pairing",
+      "teamPairingId": "TPB-R2-2",
+      "player1": { "id": "PB-B2" },
+      "player2": { "id": "PB-G2" },
+      "player1Game": { "id": "PG-17", "result": 1, "points": 10 },
+      "player2Game": { "id": "PG-18", "result": 1, "points": 10 }
+    },
+    {
+      "id": "GB-R2-5",
+      "round": 2,
+      "table": 5,
+      "pairingType": "Pairing",
+      "teamPairingId": "TPB-R2-3",
+      "player1": { "id": "PB-Y1" },
+      "player1Game": { "id": "PG-19", "result": 2, "points": 20 }
+    },
+    {
+      "id": "GB-R2-6",
+      "round": 2,
+      "table": 6,
+      "pairingType": "Pairing",
+      "teamPairingId": "TPB-R2-3",
+      "player1": { "id": "PB-Y2" },
+      "player1Game": { "id": "PG-20", "result": 2, "points": 20 }
+    }
+  ],
+  "deleted": []
+}

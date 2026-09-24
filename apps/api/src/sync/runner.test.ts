@@ -43,6 +43,7 @@ function withOverrides(source: BcpSource, overrides: Partial<TournamentSource>):
     getTeams: (eventId) => source.getTeams(eventId),
     getTeamMatchups: (eventId, round) => source.getTeamMatchups(eventId, round),
     getGames: (eventId, round) => source.getGames(eventId, round),
+    getEventGames: (eventId, round) => source.getEventGames(eventId, round),
     getList: (listId) => source.getList(listId),
     ...overrides,
   };
@@ -142,6 +143,7 @@ describe('SyncRunner', () => {
     const noGames = withOverrides(source, {
       getGames: (eventId, round) =>
         round === 2 ? Promise.resolve([]) : source.getGames(eventId, round),
+      getEventGames: () => Promise.resolve([]),
     });
     const messages: string[] = [];
     const logger = pino(

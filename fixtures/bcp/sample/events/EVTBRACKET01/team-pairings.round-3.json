@@ -1,0 +1,15 @@
+{
+  "active": [
+    {
+      "id": "TPB-R3-1",
+      "round": 3,
+      "table": 1,
+      "pairingType": "TeamPairing",
+      "teamPlayer1": { "id": "TB-RED", "name": "Red Legion" },
+      "teamPlayer2": { "id": "TB-BLUE", "name": "Blue Wardens" },
+      "player1Game": { "result": 2, "points": 21 },
+      "player2Game": { "result": 0, "points": 19 }
+    }
+  ],
+  "deleted": []
+}

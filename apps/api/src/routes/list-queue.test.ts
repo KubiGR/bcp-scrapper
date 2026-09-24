@@ -134,6 +134,7 @@ describe('list queue routes', () => {
       getTeams: (id) => source.getTeams(id),
       getTeamMatchups: (id, round) => source.getTeamMatchups(id, round),
       getGames: (id, round) => source.getGames(id, round),
+      getEventGames: (id, round) => source.getEventGames(id, round),
       getList: (listId) => (listId === 'LS-EVE' ? Promise.resolve(null) : source.getList(listId)),
     };
     build(noEveList);
