@@ -53,7 +53,8 @@ export class ListQueueWorker {
   readonly #options: ListQueueWorkerOptions;
   readonly #now: () => Date;
   #timer: ReturnType<typeof setInterval> | null = null;
-  #ticking = false;
+  /** The tick in flight, if any; stop() waits for it. */
+  #inFlight: Promise<TickOutcome> | null = null;
   #pause: Pause | null = null;
 
   constructor(options: ListQueueWorkerOptions) {
@@ -79,9 +80,11 @@ export class ListQueueWorker {
     }, this.intervalMs);
   }
 
-  stop(): void {
+  /** Stops ticking; resolves once a tick in flight has finished (so the database can close). */
+  async stop(): Promise<void> {
     if (this.#timer) clearInterval(this.#timer);
     this.#timer = null;
+    await this.#inFlight?.catch(() => undefined);
   }
 
   pause(reason: ListQueuePauseReason = 'user', until: Date | null = null): void {
@@ -94,13 +97,14 @@ export class ListQueueWorker {
 
   /** Claims and fetches at most one list. */
   async tick(): Promise<TickOutcome> {
-    if (this.#ticking) return 'busy';
+    if (this.#inFlight) return 'busy';
     if (this.#isPaused()) return 'paused';
-    this.#ticking = true;
+    const current = this.#fetchNext();
+    this.#inFlight = current;
     try {
-      return await this.#fetchNext();
+      return await current;
     } finally {
-      this.#ticking = false;
+      this.#inFlight = null;
     }
   }
 

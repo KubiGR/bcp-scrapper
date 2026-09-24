@@ -193,6 +193,37 @@ describe('ListQueueWorker', () => {
     expect(await first).toBe('fetched');
   });
 
+  it('stops only once the tick in flight has finished', async () => {
+    let release: (() => void) | undefined = undefined;
+    const slow = withGetList((listId) =>
+      new Promise((resolve) => {
+        release = () => {
+          resolve(source.getList(listId));
+        };
+      }).then((list) => list as Awaited<ReturnType<BcpSource['getList']>>),
+    );
+    const w = worker(slow);
+    await enqueueLists(db, EVENT, [ada], 0);
+
+    const tick = w.tick();
+    await vi.waitFor(() => {
+      expect(release).not.toBe(undefined);
+    });
+    let stopped = false;
+    const stopping = w.stop().then(() => {
+      stopped = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(stopped).toBe(false);
+
+    (release as (() => void) | undefined)?.();
+    await stopping;
+    expect(await tick).toBe('fetched');
+    expect(await findPlayerList(db, 'PL-ADA')).not.toBeNull();
+    // Nothing in flight: stopping resolves right away.
+    await w.stop();
+  });
+
   it('puts rows interrupted by a restart back in the queue on start', async () => {
     await enqueueLists(db, EVENT, [ada], 0);
     // A previous process claimed the row, then stopped before finishing it.
@@ -201,7 +232,7 @@ describe('ListQueueWorker', () => {
 
     const restarted = worker();
     await restarted.start();
-    restarted.stop();
+    await restarted.stop();
     expect(await queueTotals(db)).toMatchObject({ queued: 1, fetching: 0 });
   });
 
@@ -226,13 +257,13 @@ describe('ListQueueWorker', () => {
       await vi.waitFor(() => {
         expect(claimSpy).toHaveBeenCalled();
       });
-      // #ticking was reset despite the failure, so the next tick (using the real claimNextList)
+      // The in-flight tick was cleared despite the failure, so the next tick (using the real claimNextList)
       // goes on to fetch the row normally.
       await vi.waitFor(async () => {
         expect(await findPlayerList(db, 'PL-ADA')).not.toBeNull();
       });
     } finally {
-      w.stop();
+      await w.stop();
       claimSpy.mockRestore();
     }
   });

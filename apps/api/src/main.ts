@@ -50,8 +50,9 @@ const server = serve({ fetch: app.fetch, port: config.PORT, hostname: config.HOS
 
 async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'Shutting down');
-  listQueue.stop();
   server.close();
+  // Let a list fetch in flight finish writing before the database closes.
+  await listQueue.stop();
   await database.close();
   process.exit(0);
 }
