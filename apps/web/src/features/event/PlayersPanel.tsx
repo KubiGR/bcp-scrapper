@@ -5,13 +5,14 @@ import { DataTable } from 'mantine-datatable';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
+import { EventQueueLine } from './EventQueueLine';
 import { playersQuery } from './event-queries';
 import { ExportMenu } from './ExportMenu';
-import { FetchListsButton } from './FetchListsButton';
+import { FetchListsMenu } from './FetchListsMenu';
 import { ListDrawer } from './ListDrawer';
 import { ListStatusBadge } from './ListStatusBadge';
 import classes from './PlayersPanel.module.css';
-import { factionsOf, filterPlayers, formatRecord } from './players-filter';
+import { factionsOf, filterPlayers, formatRecord, lossLabel, lossOptions } from './players-filter';
 
 function emptyText(loadingFromBcp: boolean, playerCount: number): string {
   if (loadingFromBcp) return 'Loading players from BCP…';
@@ -29,8 +30,10 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
   const players = useQuery(playersQuery(event.bcpId));
   const [query, setQuery] = useState('');
   const [faction, setFaction] = useState<string | null>(null);
-  const [openPlayer, setOpenPlayer] = useState<EventPlayer | null>(null);
+  const [maxLosses, setMaxLosses] = useState<number | null>(null);
+  const [openPlayerId, setOpenPlayerId] = useState<string | null>(null);
   const all = players.data?.items ?? [];
+  const openPlayer = all.find((p) => p.bcpId === openPlayerId) ?? null;
 
   return (
     <Stack gap="md">
@@ -55,26 +58,42 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
             searchable
             w={220}
           />
+          <Select
+            aria-label="Record"
+            placeholder="All results"
+            data={lossOptions(event.roundCount).map((n) => ({
+              value: String(n),
+              label: lossLabel(n),
+            }))}
+            value={maxLosses === null ? null : String(maxLosses)}
+            onChange={(value) => {
+              setMaxLosses(value === null ? null : Number(value));
+            }}
+            clearable
+            w={180}
+          />
         </Group>
         <Group gap="sm" align="flex-start">
-          <FetchListsButton event={event} />
+          <FetchListsMenu event={event} players={all} />
           <ExportMenu event={event} />
         </Group>
       </Group>
+
+      <EventQueueLine event={event} />
 
       {players.error ? (
         <ErrorState error={players.error} onRetry={() => void players.refetch()} />
       ) : (
         <Panel p={0}>
           <DataTable<EventPlayer>
-            records={filterPlayers(all, { query, faction })}
+            records={filterPlayers(all, { query, faction, maxLosses })}
             idAccessor="bcpId"
             fetching={players.isFetching || loadingFromBcp}
             minHeight={220}
             highlightOnHover
             noRecordsText={emptyText(loadingFromBcp, all.length)}
             onRowClick={({ record }) => {
-              setOpenPlayer(record);
+              setOpenPlayerId(record.bcpId);
             }}
             columns={[
               {
@@ -93,7 +112,7 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
                       className={classes.playerName}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setOpenPlayer(p);
+                        setOpenPlayerId(p.bcpId);
                       }}
                     >
                       {p.name}
@@ -122,7 +141,7 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
               {
                 accessor: 'listStatus',
                 title: 'List',
-                render: (p) => <ListStatusBadge status={p.listStatus} />,
+                render: (p) => <ListStatusBadge status={p.listStatus} error={p.listError} />,
               },
             ]}
           />
@@ -130,9 +149,10 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
       )}
 
       <ListDrawer
+        eventId={event.bcpId}
         player={openPlayer}
         onClose={() => {
-          setOpenPlayer(null);
+          setOpenPlayerId(null);
         }}
       />
     </Stack>

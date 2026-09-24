@@ -1,7 +1,7 @@
 import type { ListStatus } from '@bcp/shared';
-import { Badge, Text } from '@mantine/core';
+import { Badge, Text, Tooltip } from '@mantine/core';
 
-export function ListStatusBadge({ status }: { status: ListStatus }) {
+export function ListStatusBadge({ status, error }: { status: ListStatus; error?: string | null }) {
   switch (status) {
     case 'fetched':
       return (
@@ -23,9 +23,11 @@ export function ListStatusBadge({ status }: { status: ListStatus }) {
       );
     case 'failed':
       return (
-        <Badge size="sm" variant="outline" color="red">
-          Failed
-        </Badge>
+        <Tooltip label={error ?? 'Failed'} withArrow>
+          <Badge size="sm" variant="outline" color="red" tabIndex={0}>
+            Failed
+          </Badge>
+        </Tooltip>
       );
     case 'available':
       return (

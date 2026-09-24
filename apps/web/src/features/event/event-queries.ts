@@ -9,7 +9,7 @@ import { apiGet } from '../../api/client';
 
 const enc = encodeURIComponent;
 
-/** Everything under ['event', id] is refreshed together after an event or lists sync. */
+/** Everything under ['event', id] is refreshed together after an event sync or a list fetch. */
 export const eventQuery = (eventId: string) =>
   queryOptions({
     queryKey: ['event', eventId],
