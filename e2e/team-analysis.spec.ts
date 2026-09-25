@@ -23,4 +23,15 @@ test('fetch a team event’s pairings, read the standings and open a team', asyn
   await expect(page.getByRole('heading', { name: 'Alpha Squad' })).toBeVisible();
   // The team's per-player table (Ada Archer also appears in the Matches section above it).
   await expect(page.getByRole('table').getByText('Ada Archer')).toBeVisible();
+
+  // Back to the event's Matchups tab: the sample event's rounds only give each faction pair a
+  // couple of games, below the default `minGames` of 3, so it's lowered to 1 first.
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Sample Team Open' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Matchups' }).click();
+  await page.getByLabel('Min games').fill('1');
+  const cell = page.getByRole('button', { name: /Space Marines vs Orks/ });
+  await expect(cell).toBeVisible();
+  await cell.click();
+  await expect(page.getByRole('dialog').getByText('Ada Archer')).toBeVisible();
 });

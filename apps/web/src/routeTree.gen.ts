@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as AnalysisMatchupsRouteImport } from './routes/analysis.matchups'
 import { Route as EventsEventIdRouteImport } from './routes/events.$eventId'
 import { Route as EventsEventIdTeamsTeamIdRouteImport } from './routes/events.$eventId_.teams.$teamId'
 
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalysisMatchupsRoute = AnalysisMatchupsRouteImport.update({
+  id: '/analysis/matchups',
+  path: '/analysis/matchups',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EventsEventIdRoute = EventsEventIdRouteImport.update({
@@ -39,12 +45,14 @@ const EventsEventIdTeamsTeamIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/analysis/matchups': typeof AnalysisMatchupsRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/events/$eventId/teams/$teamId': typeof EventsEventIdTeamsTeamIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/analysis/matchups': typeof AnalysisMatchupsRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/events/$eventId/teams/$teamId': typeof EventsEventIdTeamsTeamIdRoute
 }
@@ -52,19 +60,30 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/analysis/matchups': typeof AnalysisMatchupsRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/events/$eventId_/teams/$teamId': typeof EventsEventIdTeamsTeamIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/settings' | '/events/$eventId' | '/events/$eventId/teams/$teamId'
+    | '/'
+    | '/settings'
+    | '/analysis/matchups'
+    | '/events/$eventId'
+    | '/events/$eventId/teams/$teamId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/settings' | '/events/$eventId' | '/events/$eventId/teams/$teamId'
+  to:
+    | '/'
+    | '/settings'
+    | '/analysis/matchups'
+    | '/events/$eventId'
+    | '/events/$eventId/teams/$teamId'
   id:
     | '__root__'
     | '/'
     | '/settings'
+    | '/analysis/matchups'
     | '/events/$eventId'
     | '/events/$eventId_/teams/$teamId'
   fileRoutesById: FileRoutesById
@@ -72,6 +91,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SettingsRoute: typeof SettingsRoute
+  AnalysisMatchupsRoute: typeof AnalysisMatchupsRoute
   EventsEventIdRoute: typeof EventsEventIdRoute
   EventsEventIdTeamsTeamIdRoute: typeof EventsEventIdTeamsTeamIdRoute
 }
@@ -90,6 +110,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analysis/matchups': {
+      id: '/analysis/matchups'
+      path: '/analysis/matchups'
+      fullPath: '/analysis/matchups'
+      preLoaderRoute: typeof AnalysisMatchupsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/events/$eventId': {
@@ -112,6 +139,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SettingsRoute: SettingsRoute,
+  AnalysisMatchupsRoute: AnalysisMatchupsRoute,
   EventsEventIdRoute: EventsEventIdRoute,
   EventsEventIdTeamsTeamIdRoute: EventsEventIdTeamsTeamIdRoute,
 }

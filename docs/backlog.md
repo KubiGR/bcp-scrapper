@@ -4,7 +4,7 @@ Ideas and follow-ups that aren't scheduled yet. Newest requests first within eac
 
 ## Next up
 
-- **Plan 5: faction matchups.** The matchup matrix per event (win rate / average game points toggle, min games, drill-down) and the cross-event `/analysis/matchups` page with bulk pairings sync. Designed in `docs/superpowers/specs/2026-09-24-team-analysis-design.md` (§5.5–5.6, §7.5).
+- **Detachments from lists.** Parse each fetched list's detachment(s) (GW app `… (N Detachment Points)`, `DETACHMENT:` headers, `Detachment(s):` templates; split two joined detachments only when both halves are known on their own), show them with factions and dispositions, and add a detachment filter to the matchups.
 
 ## Feature ideas
 
