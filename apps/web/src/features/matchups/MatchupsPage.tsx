@@ -116,37 +116,41 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
               });
             }}
           />
-          <MatrixControls
-            settings={settings}
-            onChange={(next) => {
-              onSearchChange({
-                ...search,
-                metric: next.metric,
-                minGames: next.minGames,
-                disposition: next.disposition ?? undefined,
-                side: next.side,
-              });
-            }}
-            scoring={matchups.data.scoring}
-            dispositions={[]}
-          />
-          {!matchups.data.events.some((event) => event.included) ||
-          matchups.data.matrix.games === 0 ? (
-            <Text size="sm" c="dimmed">
-              Tick at least one event with pairings to see matchups.
-            </Text>
-          ) : (
+          {matchups.data.events.length > 0 && (
             <>
-              <Text size="sm" c="dimmed">
-                <span className="numeric">{matchups.data.matrix.games}</span> games ·{' '}
-                <span className="numeric">{matchups.data.matrix.factions.length}</span> factions
-              </Text>
-              <FactionMatrix
-                matrix={matchups.data.matrix}
-                scoring={matchups.data.scoring}
+              <MatrixControls
                 settings={settings}
-                onCell={setCell}
+                onChange={(next) => {
+                  onSearchChange({
+                    ...search,
+                    metric: next.metric,
+                    minGames: next.minGames,
+                    disposition: next.disposition ?? undefined,
+                    side: next.side,
+                  });
+                }}
+                scoring={matchups.data.scoring}
+                dispositions={[]}
               />
+              {!matchups.data.events.some((event) => event.included) ||
+              matchups.data.matrix.games === 0 ? (
+                <Text size="sm" c="dimmed">
+                  Tick at least one event with pairings to see matchups.
+                </Text>
+              ) : (
+                <>
+                  <Text size="sm" c="dimmed">
+                    <span className="numeric">{matchups.data.matrix.games}</span> games ·{' '}
+                    <span className="numeric">{matchups.data.matrix.factions.length}</span> factions
+                  </Text>
+                  <FactionMatrix
+                    matrix={matchups.data.matrix}
+                    scoring={matchups.data.scoring}
+                    settings={settings}
+                    onCell={setCell}
+                  />
+                </>
+              )}
             </>
           )}
         </>

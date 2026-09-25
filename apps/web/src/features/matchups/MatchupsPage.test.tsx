@@ -72,6 +72,21 @@ describe('MatchupsPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows only the no-events message when the range has no events at all', async () => {
+    stubFetchRoutes({
+      'GET /api/matchups': response({
+        events: [],
+        matrix: { factions: [], games: 0, cells: [] },
+      }),
+    });
+    renderWithRouter(<MatchupsPage search={{}} onSearchChange={vi.fn()} />);
+
+    expect(await screen.findByText('No team events in this range.')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Tick at least one event with pairings to see matchups.'),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows a live progress line while an event is fetching, and refetches', async () => {
     const fetchMock = stubFetchRoutes({
       'GET /api/matchups': response({ events: [anEvent({ pairings: 'fetching' })] }),
