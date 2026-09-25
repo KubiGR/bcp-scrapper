@@ -23,22 +23,34 @@ describe('isLatestFresh', () => {
   });
 });
 
+const running = { startDate: now, endDate: null, ended: false };
+const finished = { startDate: hoursAgo(24 * 3), endDate: hoursAgo(24 * 2), ended: false };
+const upcoming = { startDate: new Date(now.getTime() + 86_400_000), endDate: null, ended: false };
+
 describe('isEventStale', () => {
   it('is stale when never synced', () => {
-    expect(isEventStale({ ended: true, lastSyncedAt: null }, now)).toBe(true);
-    expect(isEventStale({ ended: false, lastSyncedAt: null }, now)).toBe(true);
+    expect(isEventStale({ ...finished, ended: true, lastSyncedAt: null }, now)).toBe(true);
+    expect(isEventStale({ ...running, lastSyncedAt: null }, now)).toBe(true);
   });
 
-  it('never goes stale once an ended event is synced (only an explicit Refresh reloads it)', () => {
-    expect(isEventStale({ ended: true, lastSyncedAt: hoursAgo(24 * 30) }, now)).toBe(false);
+  it('never goes stale once a finished event is synced (only an explicit Refresh reloads it)', () => {
+    expect(isEventStale({ ...finished, ended: true, lastSyncedAt: hoursAgo(24 * 30) }, now)).toBe(
+      false,
+    );
+    // Not closed in BCP, but its last day is well past the grace period: still not auto-reloaded.
+    expect(isEventStale({ ...finished, lastSyncedAt: hoursAgo(24 * 30) }, now)).toBe(false);
+  });
+
+  it('never goes stale for an upcoming event, however old the sync', () => {
+    expect(isEventStale({ ...upcoming, lastSyncedAt: hoursAgo(24 * 30) }, now)).toBe(false);
   });
 
   it('goes stale 10 minutes after a running event was synced', () => {
     expect(
-      isEventStale({ ended: false, lastSyncedAt: new Date(now.getTime() - 9 * 60_000) }, now),
+      isEventStale({ ...running, lastSyncedAt: new Date(now.getTime() - 9 * 60_000) }, now),
     ).toBe(false);
     expect(
-      isEventStale({ ended: false, lastSyncedAt: new Date(now.getTime() - 10 * 60_000) }, now),
+      isEventStale({ ...running, lastSyncedAt: new Date(now.getTime() - 10 * 60_000) }, now),
     ).toBe(true);
   });
 });

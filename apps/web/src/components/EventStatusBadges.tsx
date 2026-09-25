@@ -1,10 +1,11 @@
 import type { EventListItem } from '@bcp/shared';
+import { eventPhase } from '@bcp/shared';
 import { Badge, Group } from '@mantine/core';
 import classes from './EventStatusBadges.module.css';
 
 type BadgeFields = Pick<
   EventListItem,
-  'isTeamEvent' | 'isOnline' | 'ended' | 'hideLists' | 'lastSyncedAt'
+  'isTeamEvent' | 'isOnline' | 'startDate' | 'endDate' | 'ended' | 'hideLists' | 'lastSyncedAt'
 >;
 
 /**
@@ -12,6 +13,7 @@ type BadgeFields = Pick<
  * They wrap onto a new line rather than shrink: a squeezed Mantine badge clips its label.
  */
 export function EventStatusBadges({ event }: { event: BadgeFields }) {
+  const phase = eventPhase(event, new Date());
   return (
     <Group gap={4} wrap="wrap" className={classes.badges}>
       {event.isTeamEvent && (
@@ -24,9 +26,14 @@ export function EventStatusBadges({ event }: { event: BadgeFields }) {
           Online
         </Badge>
       )}
-      {!event.ended && (
+      {phase === 'running' && (
         <Badge size="xs" variant="light">
           Running
+        </Badge>
+      )}
+      {phase === 'upcoming' && (
+        <Badge size="xs" variant="outline" color="gray">
+          Upcoming
         </Badge>
       )}
       {event.hideLists && (
