@@ -1,4 +1,4 @@
-import { KNOWN_DISPOSITIONS, type TopListPlayer } from '@bcp/shared';
+import { DETACHMENT_SEPARATOR, KNOWN_DISPOSITIONS } from '@bcp/shared';
 import {
   Alert,
   Box,
@@ -28,8 +28,10 @@ import { topListsQuery, topListsWindow, type TopListsSearch } from './top-lists-
 
 const LOSS_CHOICES = [0, 1, 2, 3, 4, 5];
 
-const split = (value: string | undefined) => value?.split(',').filter(Boolean) ?? [];
-const join = (values: string[]) => (values.length === 0 ? undefined : values.join(','));
+const split = (value: string | undefined, separator = ',') =>
+  value?.split(separator).filter(Boolean) ?? [];
+const join = (values: string[], separator = ',') =>
+  values.length === 0 ? undefined : values.join(separator);
 const uniqueSorted = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b));
 
 interface TopListsPageProps {
@@ -40,15 +42,20 @@ interface TopListsPageProps {
 /** Players of big events who went X-n or better, across events, with their lists. */
 export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
   const results = useQuery(topListsQuery(search));
-  const [open, setOpen] = useState<TopListPlayer | null>(null);
+  // The open row, by key: the drawer follows the refreshed results (e.g. after "Fetch this list").
+  const [openKey, setOpenKey] = useState<{ eventId: string; bcpId: string } | null>(null);
   const dates = useDraftRange(topListsWindow(search, new Date()), (range) => {
     onSearchChange({ ...search, from: range.from, to: range.to });
   });
 
   const factions = split(search.factions);
   const dispositions = split(search.dispositions);
-  const detachments = split(search.detachments);
+  const detachments = split(search.detachments, DETACHMENT_SEPARATOR);
   const found = results.data?.players ?? [];
+  const open =
+    openKey === null
+      ? null
+      : (found.find((p) => p.eventId === openKey.eventId && p.bcpId === openKey.bcpId) ?? null);
   const maxLosses = search.maxLosses ?? 1;
   const notLoaded = results.data ? results.data.eventsInRange - results.data.eventsLoaded : 0;
 
@@ -59,10 +66,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
         <MultiSelect
           label="Factions"
           placeholder={factions.length === 0 ? 'All factions' : undefined}
-          data={uniqueSorted([
-            ...found.flatMap((p) => (p.faction ? [p.faction] : [])),
-            ...factions,
-          ])}
+          data={uniqueSorted([...(results.data?.factionOptions ?? []), ...factions])}
           value={factions}
           onChange={(value) => {
             onSearchChange({ ...search, factions: join(value) });
@@ -105,10 +109,10 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
         <MultiSelect
           label="Detachment"
           placeholder={detachments.length === 0 ? 'All detachments' : undefined}
-          data={uniqueSorted([...found.flatMap((p) => p.detachments), ...detachments])}
+          data={uniqueSorted([...(results.data?.detachmentOptions ?? []), ...detachments])}
           value={detachments}
           onChange={(value) => {
-            onSearchChange({ ...search, detachments: join(value) });
+            onSearchChange({ ...search, detachments: join(value, DETACHMENT_SEPARATOR) });
           }}
           searchable
           clearable
@@ -188,7 +192,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                               size="compact-xs"
                               variant="subtle"
                               onClick={() => {
-                                setOpen(player);
+                                setOpenKey({ eventId: player.eventId, bcpId: player.bcpId });
                               }}
                             >
                               List
@@ -208,7 +212,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
         eventId={open?.eventId ?? ''}
         player={open}
         onClose={() => {
-          setOpen(null);
+          setOpenKey(null);
         }}
       />
     </Stack>

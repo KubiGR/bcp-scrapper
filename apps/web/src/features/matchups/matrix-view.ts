@@ -1,4 +1,4 @@
-import type { MatrixCell } from '@bcp/shared';
+import { DETACHMENT_SEPARATOR, type MatrixCell } from '@bcp/shared';
 
 export interface MatrixSettings {
   metric: 'winRate' | 'points';
@@ -27,7 +27,9 @@ export function matrixParams(settings: MatrixSettings): Record<string, string> {
   if (!hasSideFilter(settings)) return {};
   const params: Record<string, string> = { side: settings.side };
   if (settings.dispositions.length > 0) params.dispositions = settings.dispositions.join(',');
-  if (settings.detachments.length > 0) params.detachments = settings.detachments.join(',');
+  if (settings.detachments.length > 0) {
+    params.detachments = settings.detachments.join(DETACHMENT_SEPARATOR);
+  }
   return params;
 }
 

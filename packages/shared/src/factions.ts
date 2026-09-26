@@ -24,6 +24,8 @@ export function resolveFaction(
   parsedArmy: string | null,
 ): { faction: string | null; factionGuessed: boolean } {
   const vague = bcpFaction === null || isAllegiance(bcpFaction);
-  if (vague && parsedArmy !== null) return { faction: parsedArmy, factionGuessed: true };
+  // A list that only names an allegiance says no more than BCP does.
+  if (vague && parsedArmy !== null && !isAllegiance(parsedArmy))
+    return { faction: parsedArmy, factionGuessed: true };
   return { faction: bcpFaction, factionGuessed: false };
 }

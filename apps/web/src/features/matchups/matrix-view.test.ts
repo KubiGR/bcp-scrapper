@@ -207,6 +207,6 @@ describe('matrixParams', () => {
   it('sends detachments too, with the side, when any is chosen', () => {
     expect(
       matrixParams({ ...DEFAULT_MATRIX_SETTINGS, detachments: ['War Horde', 'Wreckas'] }),
-    ).toEqual({ detachments: 'War Horde,Wreckas', side: 'row' });
+    ).toEqual({ detachments: 'War Horde|Wreckas', side: 'row' });
   });
 });

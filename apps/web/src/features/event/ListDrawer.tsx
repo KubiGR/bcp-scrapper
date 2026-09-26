@@ -53,6 +53,8 @@ function FetchThisList({
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: ['event', eventId] }),
+        // Top lists shows the same players' list states.
+        queryClient.invalidateQueries({ queryKey: ['top-lists'] }),
         queryClient.invalidateQueries({ queryKey: fetchQueueQuery.queryKey }),
       ]),
   });

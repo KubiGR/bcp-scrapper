@@ -2,6 +2,7 @@ import {
   BulkPairingsRequestSchema,
   cellGames,
   computeFactionMatrix,
+  DETACHMENT_SEPARATOR,
   detachmentsPlayed,
   scalesAgree,
   type MatchupFilter,
@@ -22,7 +23,7 @@ const FilterSchema = z.object({
   dispositions: z.string().optional(),
   /** The pre-multi-select single value; still accepted so saved links keep working. */
   disposition: z.string().optional(),
-  /** Comma-separated; any listed detachment matches (only players with a fetched list). */
+  /** `|`-separated (names may contain commas); any listed detachment matches (only fetched lists). */
   detachments: z.string().optional(),
   side: z.enum(['row', 'both']).default('row'),
 });
@@ -50,15 +51,15 @@ const RangeSchema = z
     path: ['from'],
   });
 
-const listOf = (values: (string | undefined)[]) =>
+const listOf = (values: (string | undefined)[], separator = ',') =>
   values
-    .flatMap((value) => value?.split(',') ?? [])
+    .flatMap((value) => value?.split(separator) ?? [])
     .map((value) => value.trim())
     .filter(Boolean);
 
 const toFilter = (q: z.infer<typeof FilterSchema>): MatchupFilter => ({
   dispositions: listOf([q.dispositions, q.disposition]),
-  detachments: listOf([q.detachments]),
+  detachments: listOf([q.detachments], DETACHMENT_SEPARATOR),
   side: q.side,
 });
 

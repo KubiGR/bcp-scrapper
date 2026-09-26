@@ -78,6 +78,21 @@ describe('searchTopLists', () => {
     });
   });
 
+  it('offers faction and detachment choices from every qualifying player, not just the filtered ones', async () => {
+    await record('PL-ADA', 3, 0, 0);
+    await storeList(db, 'PL-ADA', gwList('Orks', 'War Horde'));
+    const result = await searchTopLists(
+      db,
+      query({ factions: ['Necrons'], detachments: ['Hypercrypt Legion'] }),
+      ALL_EVENTS,
+      TODAY,
+    );
+    expect(result.players).toEqual([]);
+    expect(result.factionOptions).toContain('Orks');
+    expect(result.factionOptions.length).toBeGreaterThan(1);
+    expect(result.detachmentOptions).toEqual(['War Horde']);
+  });
+
   it('filters by detachment, matching only players whose list was read', async () => {
     await record('PL-ADA', 3, 0, 0);
     await record('PL-BEN', 3, 0, 0);
@@ -105,7 +120,14 @@ describe('searchTopLists', () => {
       ALL_EVENTS,
       TODAY,
     );
-    expect(result).toEqual({ players: [], truncated: false, eventsInRange: 0, eventsLoaded: 0 });
+    expect(result).toEqual({
+      players: [],
+      truncated: false,
+      factionOptions: [],
+      detachmentOptions: [],
+      eventsInRange: 0,
+      eventsLoaded: 0,
+    });
     const big = await searchTopLists(db, query(), { minRounds: 99, minPlayers: 0 }, TODAY);
     expect(big.eventsInRange).toBe(0);
   });

@@ -1,3 +1,4 @@
+import { DETACHMENT_SEPARATOR } from '@bcp/shared';
 import { Box, Button, Group, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
@@ -50,7 +51,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
     metric: search.metric ?? DEFAULT_MATRIX_SETTINGS.metric,
     minGames: search.minGames ?? DEFAULT_MATRIX_SETTINGS.minGames,
     dispositions: search.dispositions?.split(',').filter(Boolean) ?? [],
-    detachments: search.detachments?.split(',').filter(Boolean) ?? [],
+    detachments: search.detachments?.split(DETACHMENT_SEPARATOR).filter(Boolean) ?? [],
     side: search.side ?? DEFAULT_MATRIX_SETTINGS.side,
   };
   // Points may have become unavailable (e.g. after ticking in an event with a different scale):
@@ -121,7 +122,9 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
                     dispositions:
                       next.dispositions.length > 0 ? next.dispositions.join(',') : undefined,
                     detachments:
-                      next.detachments.length > 0 ? next.detachments.join(',') : undefined,
+                      next.detachments.length > 0
+                        ? next.detachments.join(DETACHMENT_SEPARATOR)
+                        : undefined,
                     side: next.side,
                   });
                 }}

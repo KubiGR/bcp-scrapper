@@ -61,7 +61,7 @@ export interface CrossSearch {
   minGames?: number;
   /** Comma-separated dispositions (any matches). */
   dispositions?: string;
-  /** Comma-separated detachments (any matches). */
+  /** `|`-separated detachments (any matches; names may contain commas). */
   detachments?: string;
   side?: 'row' | 'both';
 }

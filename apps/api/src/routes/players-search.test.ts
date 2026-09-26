@@ -51,6 +51,18 @@ describe('GET /api/players/search', () => {
     expect(body.eventsLoaded).toBe(1);
   });
 
+  it('takes detachments separated by |, since names can contain commas', async () => {
+    const response = await app.request(
+      `/api/players/search?from=2026-01-01&to=2026-12-31&maxLosses=5&detachments=${encodeURIComponent('Flyboyz, Kult of Speed and Wreckas|War Horde')}`,
+    );
+    expect(response.status).toBe(200);
+    const { PlayerSearchQuerySchema } = await import('@bcp/shared');
+    expect(
+      PlayerSearchQuerySchema.parse({ detachments: 'Flyboyz, Kult of Speed and Wreckas|War Horde' })
+        .detachments,
+    ).toEqual(['Flyboyz, Kult of Speed and Wreckas', 'War Horde']);
+  });
+
   it('validates its input', async () => {
     expect((await app.request('/api/players/search?maxLosses=6')).status).toBe(400);
     expect((await app.request('/api/players/search?from=2026-05-01&to=2026-01-01')).status).toBe(

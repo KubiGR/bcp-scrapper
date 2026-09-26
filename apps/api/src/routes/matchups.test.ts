@@ -119,7 +119,7 @@ describe('matchups routes', () => {
     expect(row.body.matrix.games).toBeLessThan(all.body.matrix.games);
 
     const both = await get<MatchupsResponse>(
-      `/api/events/EVTBRACKET01/matchups?detachments=${encodeURIComponent('Hallowed Martyrs,Hypercrypt Legion')}&side=both`,
+      `/api/events/EVTBRACKET01/matchups?detachments=${encodeURIComponent('Hallowed Martyrs|Hypercrypt Legion')}&side=both`,
     );
     expect(both.body.matrix.games).toBe(1);
 
@@ -131,6 +131,14 @@ describe('matchups routes', () => {
       factionGuessed: true,
       detachments: ['Hypercrypt Legion'],
     });
+  });
+
+  it('takes detachments separated by |, keeping names with commas whole', async () => {
+    await storeList(db, 'PB-R1', gwList('Adepta Sororitas', 'Martyrs, Saints and Relics'));
+    const row = await get<MatchupsResponse>(
+      `/api/events/EVTBRACKET01/matchups?detachments=${encodeURIComponent('Martyrs, Saints and Relics|Other')}&side=row`,
+    );
+    expect(row.body.matrix.games).toBeGreaterThan(0);
   });
 
   it('filters by disposition', async () => {

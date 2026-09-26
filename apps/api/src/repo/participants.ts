@@ -90,7 +90,7 @@ export async function replaceEventPlayers(
 }
 
 /** A stored current list wins; otherwise the player's newest queue request; otherwise BCP's list id. */
-function listStateOf(
+export function listStateOf(
   bcpListId: string | null,
   storedListId: string | null,
   queued: LatestQueueRow | undefined,

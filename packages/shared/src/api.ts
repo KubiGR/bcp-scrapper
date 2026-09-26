@@ -265,12 +265,28 @@ const commaSeparated = z
       .filter(Boolean),
   );
 
+/**
+ * Detachment lists in URLs are separated by `|`: a GW-app line naming several detachments that
+ * couldn't be split ("A, B and C") is one name with commas in it.
+ */
+export const DETACHMENT_SEPARATOR = '|';
+
+const pipeSeparated = z
+  .string()
+  .optional()
+  .transform((value) =>
+    (value ?? '')
+      .split(DETACHMENT_SEPARATOR)
+      .map((part) => part.trim())
+      .filter(Boolean),
+  );
+
 /** GET /api/players/search: players of big events who went X-n or better. */
 export const PlayerSearchQuerySchema = z
   .object({
     factions: commaSeparated,
     dispositions: commaSeparated,
-    detachments: commaSeparated,
+    detachments: pipeSeparated,
     from: z.iso.date().optional(),
     to: z.iso.date().optional(),
     maxLosses: z.coerce.number().int().min(0).max(5).default(1),
@@ -294,6 +310,10 @@ export const TOP_LISTS_LIMIT = 500;
 export const PlayerSearchResponseSchema = z.object({
   players: z.array(TopListPlayerSchema),
   truncated: z.boolean(),
+  /** Factions of every qualifying player, before the faction/detachment filters (A→Z). */
+  factionOptions: z.array(z.string()),
+  /** Detachments of every qualifying player, before the faction/detachment filters (A→Z). */
+  detachmentOptions: z.array(z.string()),
   /** Big events starting in the range. */
   eventsInRange: z.number().int().nonnegative(),
   /** Of those, events whose players are stored (the others aren't searched). */

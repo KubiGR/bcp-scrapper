@@ -29,6 +29,14 @@ describe('resolveFaction', () => {
       factionGuessed: true,
     });
   });
+  it('never guesses an allegiance read from a list', () => {
+    expect(resolveFaction(null, 'Chaos')).toEqual({ faction: null, factionGuessed: false });
+    expect(resolveFaction('Xenos', 'Imperium')).toEqual({
+      faction: 'Xenos',
+      factionGuessed: false,
+    });
+  });
+
   it('keeps what BCP has when there is no parsed army', () => {
     expect(resolveFaction('Chaos', null)).toEqual({ faction: 'Chaos', factionGuessed: false });
     expect(resolveFaction(null, null)).toEqual({ faction: null, factionGuessed: false });

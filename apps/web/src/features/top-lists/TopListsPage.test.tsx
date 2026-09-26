@@ -26,6 +26,8 @@ const response = (overrides: Partial<PlayerSearchResponse> = {}): PlayerSearchRe
     },
   ],
   truncated: false,
+  factionOptions: ['Necrons', 'Orks'],
+  detachmentOptions: ['War Horde'],
   eventsInRange: 3,
   eventsLoaded: 1,
   ...overrides,
@@ -37,6 +39,7 @@ describe('topListsParams', () => {
       'factions=Orks%2CNecrons&maxLosses=0',
     );
     expect(topListsParams({})).toBe('');
+    expect(topListsParams({ detachments: 'A, B|C' })).toBe('detachments=A%2C+B%7CC');
   });
 });
 
@@ -72,6 +75,37 @@ describe('TopListsPage', () => {
     expect(await screen.findByText('Orks list text')).toBeInTheDocument();
   });
 
+  it('shows the queued state after "Fetch this list", from the refreshed results', async () => {
+    let status: 'available' | 'queued' = 'available';
+    const base = response();
+    stubFetchRoutes({
+      'GET /api/players/search': () =>
+        Response.json({
+          ...base,
+          players: base.players.map((p) => ({ ...p, listStatus: status })),
+        }),
+      'POST /api/events/EVT1/lists/queue': () => {
+        status = 'queued';
+        return Response.json({
+          queued: 1,
+          alreadyQueued: 0,
+          alreadyFetched: 0,
+          noListOnBcp: 0,
+          notQualifying: 0,
+          estimatedSeconds: 5,
+        });
+      },
+      'GET /api/events/EVT1': {},
+      'GET /api/fetch-queue': {},
+    });
+    renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
+    const row = (await screen.findByText('Ada Archer')).closest('tr');
+    if (row === null) throw new Error('no row');
+    fireEvent.click(within(row).getByRole('button', { name: 'List' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Fetch this list' }));
+    expect(await screen.findByText(/Queued/)).toBeInTheDocument();
+  });
+
   it('says when results were cut off, and when nothing matches', async () => {
     stubFetchRoutes({ 'GET /api/players/search': response({ truncated: true }) });
     const { unmount } = renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
@@ -87,6 +121,14 @@ describe('TopListsPage', () => {
         'No players match. Try more losses, other factions or a wider range.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('offers every faction the API found, even while one is chosen', async () => {
+    stubFetchRoutes({ 'GET /api/players/search': response() });
+    renderWithRouter(<TopListsPage search={{ factions: 'Orks' }} onSearchChange={vi.fn()} />);
+    await screen.findByText('Ada Archer');
+    fireEvent.click(screen.getByRole('combobox', { name: 'Factions' }));
+    expect(await screen.findByRole('option', { name: 'Necrons' })).toBeInTheDocument();
   });
 
   it('writes the chosen record limit into the search', async () => {

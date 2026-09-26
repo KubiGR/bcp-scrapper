@@ -2,7 +2,7 @@ import { addDays, PlayerSearchResponseSchema, toIsoDate, type DateRange } from '
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { apiGet } from '../../api/client';
 
-/** The Top lists page's URL search; lists are comma-separated. */
+/** The Top lists page's URL search; lists are comma-separated, detachments `|`-separated. */
 export interface TopListsSearch {
   factions?: string;
   dispositions?: string;
@@ -35,4 +35,11 @@ export const topListsQuery = (search: TopListsSearch) =>
       return apiGet(`/api/players/search${params ? `?${params}` : ''}`, PlayerSearchResponseSchema);
     },
     placeholderData: keepPreviousData,
+    // While any shown list is being fetched, follow it.
+    refetchInterval: (query) =>
+      query.state.data?.players.some(
+        (player) => player.listStatus === 'queued' || player.listStatus === 'fetching',
+      )
+        ? 3000
+        : false,
   });
