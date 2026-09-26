@@ -184,4 +184,46 @@ describe('EventSelection', () => {
 
     expect(await screen.findByText('No team events in this range.')).toBeInTheDocument();
   });
+
+  it('Select all ticks every listed event, keeping choices for events outside the list', async () => {
+    stubFetchRoutes({});
+    const onChange = vi.fn();
+    renderWithRouter(
+      <EventSelection
+        events={[
+          anEvent({ id: 'A', name: 'Synced Off', included: false }),
+          anEvent({ id: 'B', name: 'Synced On', included: true }),
+          anEvent({ id: 'C', name: 'Missing Off', pairings: 'missing', included: false }),
+        ]}
+        exclude={['A', 'OTHER']}
+        include={['ELSEWHERE']}
+        onChange={onChange}
+      />,
+    );
+    const all = await screen.findByRole('checkbox', { name: 'Select all events' });
+    expect(all).not.toBeChecked();
+    expect(all).toHaveAttribute('data-indeterminate', 'true');
+    fireEvent.click(all);
+    expect(onChange).toHaveBeenCalledWith({ exclude: ['OTHER'], include: ['ELSEWHERE', 'C'] });
+  });
+
+  it('when everything is ticked, the header box clears them all', async () => {
+    stubFetchRoutes({});
+    const onChange = vi.fn();
+    renderWithRouter(
+      <EventSelection
+        events={[
+          anEvent({ id: 'A', name: 'Synced On', included: true }),
+          anEvent({ id: 'C', name: 'Missing On', pairings: 'missing', included: true }),
+        ]}
+        exclude={[]}
+        include={['C']}
+        onChange={onChange}
+      />,
+    );
+    const all = await screen.findByRole('checkbox', { name: 'Select all events' });
+    expect(all).toBeChecked();
+    fireEvent.click(all);
+    expect(onChange).toHaveBeenCalledWith({ exclude: ['A'], include: [] });
+  });
 });

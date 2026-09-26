@@ -63,6 +63,26 @@ export function EventSelection({ events, exclude, include, onChange }: EventSele
     }
   };
 
+  const tickedCount = events.filter((event) => event.included).length;
+  const allTicked = events.length > 0 && tickedCount === events.length;
+
+  /** Ticks (or clears) every listed event; choices about events outside the range stay. */
+  const setAll = (included: boolean) => {
+    const syncedIds = new Set(events.filter((e) => e.pairings === 'synced').map((e) => e.id));
+    const otherIds = new Set(events.filter((e) => e.pairings !== 'synced').map((e) => e.id));
+    if (included) {
+      onChange({
+        exclude: exclude.filter((id) => !syncedIds.has(id)),
+        include: [...include.filter((id) => !otherIds.has(id)), ...otherIds],
+      });
+    } else {
+      onChange({
+        exclude: [...exclude.filter((id) => !syncedIds.has(id)), ...syncedIds],
+        include: include.filter((id) => !otherIds.has(id)),
+      });
+    }
+  };
+
   const toSync = events.filter((e) => e.pairings === 'missing' || e.pairings === 'partial');
 
   if (events.length === 0) {
@@ -94,7 +114,16 @@ export function EventSelection({ events, exclude, include, onChange }: EventSele
             <Table verticalSpacing="xs">
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th />
+                  <Table.Th>
+                    <Checkbox
+                      aria-label="Select all events"
+                      checked={allTicked}
+                      indeterminate={tickedCount > 0 && !allTicked}
+                      onChange={() => {
+                        setAll(!allTicked);
+                      }}
+                    />
+                  </Table.Th>
                   <Table.Th>Event</Table.Th>
                   <Table.Th>Date</Table.Th>
                   <Table.Th>Size</Table.Th>
