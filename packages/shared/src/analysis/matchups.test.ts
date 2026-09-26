@@ -111,6 +111,36 @@ describe('computeFactionMatrix', () => {
   });
 });
 
+describe('allegiance-only factions', () => {
+  it('leaves out games where a side only picked an allegiance, not a faction', () => {
+    const generic = [
+      'Chaos',
+      'Xenos',
+      'Imperium',
+      'Forces of the Imperium',
+      'Forces of the Hive Mind',
+      ' chaos ',
+    ];
+    const games = [
+      game(side('1', 'Orks'), side('2', 'Necrons'), 15, 5, 'a_win'),
+      ...generic.map((faction, i) =>
+        game(side(`g${i}`, faction), side(`o${i}`, 'Orks'), 15, 5, 'a_win'),
+      ),
+    ];
+    const matrix = computeFactionMatrix(games, noFilter);
+    expect(matrix.factions).toEqual(['Necrons', 'Orks']);
+    expect(cell(matrix, 'Orks', 'Necrons')?.games).toBe(1);
+  });
+
+  it('keeps real factions whose names contain an allegiance', () => {
+    const games = [game(side('1', 'Chaos Daemons'), side('2', 'Imperial Knights'), 15, 5, 'a_win')];
+    expect(computeFactionMatrix(games, noFilter).factions).toEqual([
+      'Chaos Daemons',
+      'Imperial Knights',
+    ]);
+  });
+});
+
 describe('scalesAgree', () => {
   it("uses each event's most common game total", () => {
     const twenty = [

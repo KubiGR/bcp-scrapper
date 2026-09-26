@@ -50,12 +50,37 @@ const normalise = (value: string) => value.trim().toLowerCase();
 const inList = (value: string | null, list: string[]) =>
   value !== null && list.some((listed) => normalise(listed) === normalise(value));
 
+/**
+ * Allegiances a player can pick on BCP instead of an army. They aren't factions, so the matrix
+ * treats them as unknown (until the army is read from the list).
+ */
+const ALLEGIANCES = new Set(
+  [
+    'Imperium',
+    'Chaos',
+    'Xenos',
+    'Forces of the Imperium',
+    'Forces of Chaos',
+    'Forces of Xenos',
+    'Forces of the Hive Mind',
+  ].map(normalise),
+);
+
+/** A side with a real faction (not unknown, not just an allegiance), or null. */
+function withFaction(side: MatchupSide): (MatchupSide & { faction: string }) | null {
+  const { faction } = side;
+  if (faction === null || ALLEGIANCES.has(normalise(faction))) return null;
+  return { ...side, faction };
+}
+
 /** Both sides of every countable game: not a bye, a known result, both factions known. */
 function sidesOf(games: MatchupGame[], filter: DispositionFilter): SidedGame[] {
   const sided: SidedGame[] = [];
   for (const game of games) {
-    const { a, b, result } = game;
-    if (!b || result === null || a.faction === null || b.faction === null) continue;
+    const { result } = game;
+    const a = withFaction(game.a);
+    const b = game.b === null ? null : withFaction(game.b);
+    if (!a || !b || result === null) continue;
     const filtered = filter.dispositions.length > 0;
     if (filtered && filter.side === 'both') {
       if (
@@ -69,16 +94,16 @@ function sidesOf(games: MatchupGame[], filter: DispositionFilter): SidedGame[] {
     const pairs: SidedGame[] = [
       {
         game,
-        row: { ...a, faction: a.faction },
-        col: { ...b, faction: b.faction },
+        row: a,
+        col: b,
         outcome: aOutcome,
         rowPoints: game.pointsA,
         colPoints: game.pointsB,
       },
       {
         game,
-        row: { ...b, faction: b.faction },
-        col: { ...a, faction: a.faction },
+        row: b,
+        col: a,
         outcome: bOutcome,
         rowPoints: game.pointsB,
         colPoints: game.pointsA,
