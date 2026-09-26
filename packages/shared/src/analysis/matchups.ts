@@ -1,4 +1,5 @@
 import type { GameResult } from '../domain';
+import { isAllegiance } from '../factions';
 import type { CellGame, FactionMatrix, MatrixCell } from './matchup-schemas';
 
 export interface MatchupSide {
@@ -50,26 +51,10 @@ const normalise = (value: string) => value.trim().toLowerCase();
 const inList = (value: string | null, list: string[]) =>
   value !== null && list.some((listed) => normalise(listed) === normalise(value));
 
-/**
- * Allegiances a player can pick on BCP instead of an army. They aren't factions, so the matrix
- * treats them as unknown (until the army is read from the list).
- */
-const ALLEGIANCES = new Set(
-  [
-    'Imperium',
-    'Chaos',
-    'Xenos',
-    'Forces of the Imperium',
-    'Forces of Chaos',
-    'Forces of Xenos',
-    'Forces of the Hive Mind',
-  ].map(normalise),
-);
-
 /** A side with a real faction (not unknown, not just an allegiance), or null. */
 function withFaction(side: MatchupSide): (MatchupSide & { faction: string }) | null {
   const { faction } = side;
-  if (faction === null || ALLEGIANCES.has(normalise(faction))) return null;
+  if (faction === null || isAllegiance(faction)) return null;
   return { ...side, faction };
 }
 

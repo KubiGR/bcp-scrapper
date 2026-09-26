@@ -1,0 +1,202 @@
+import { describe, expect, it } from 'vitest';
+import { parseArmyList, splitDetachments, type ParsedList } from './army-list-parser';
+
+const GW_EN = `Night Shift (1995 points)
+
+Thousand Sons
+Grand Coven (3 Detachment Points)
+Priority Assets
+Strike Force (2000 points)
+
+Attached Units
+Exalted Sorcerer (110 points)`;
+
+const GW_SUBARMY = `Blue Boys (2,000 Points)
+
+Space Marines
+Ultramarines
+Blade of Ultramar (3 Detachment Points)
+Take and Hold
+Strike Force (2,000 Points)`;
+
+const GW_NO_TITLE_POINTS = `Anna Example
+
+Adeptus Custodes
+Lions of the Emperor (3 Detachment Points)
+Take and Hold
+Strike Force (2000 points)`;
+
+const GW_PREAMBLE = `NOTE: trike attached to bikes
+
+Speedy Bois (1995 points)
+
+Orks
+Flyboyz, Kult of Speed and Wreckas (3 Detachment Points)
+Reconnaissance
+Strike Force (2000 points)`;
+
+const GW_ES = `La probada 2.0  (2000 puntos)
+
+Legiones Daemónicas
+Blood Legion y Cabalgata del Caos (3 puntos de destacamento)
+Purgar al enemigo
+Fuerza de Choque (2000 Points)`;
+
+const HEADER = `+++++++++++++++++++++++++++
++ PLAYER NAME: Some Body
++ FACTION KEYWORD: Imperium - Grey Knights
++ DETACHMENT: Warpbane Task Force, Brotherhood Strike (Hallowed Ground)
++ FORCE DISPOSITION: Take and Hold
++ TOTAL ARMY POINTS: 2000pts
++++++++++++++++++++++++++++`;
+
+const TEMPLATE = `Name: Some Body
+Team: Example Team
+
+Factions used:
+Chaos Space Marines
+
+Detachments used: Renegade Raiders
+
+Disposition: Reconnaissance`;
+
+const TEMPLATE_THEN_GW = `Name: Some Body
+
+Factions used:
+Chaos Space Marines,
+Chaos Daemons
+
+Detachments used: Renegade Raiders
+
+Loud Noises (2.000 Points)
+
+Emperor's Children
+Carnival of Excess (3 Detachment Points)
+Purge the Foe
+Strike Force (2.000 Points)`;
+
+const FREE = `Space Marines – Gladius Task Force
+
+Captain (80 pts)
+Intercessor Squad x10 (160 pts)`;
+
+const unknown: ParsedList = { army: null, detachments: [], disposition: null, format: 'unknown' };
+
+describe('parseArmyList', () => {
+  const cases: [string, string | null, ParsedList][] = [
+    [
+      'GW app (English)',
+      GW_EN,
+      {
+        army: 'Thousand Sons',
+        detachments: ['Grand Coven'],
+        disposition: 'Priority Assets',
+        format: 'gw-app',
+      },
+    ],
+    [
+      'GW app with a sub-army line',
+      GW_SUBARMY,
+      {
+        army: 'Space Marines',
+        detachments: ['Blade of Ultramar'],
+        disposition: 'Take and Hold',
+        format: 'gw-app',
+      },
+    ],
+    [
+      'GW app whose title has no points',
+      GW_NO_TITLE_POINTS,
+      {
+        army: 'Adeptus Custodes',
+        detachments: ['Lions of the Emperor'],
+        disposition: 'Take and Hold',
+        format: 'gw-app',
+      },
+    ],
+    [
+      'GW app after a note, several detachments',
+      GW_PREAMBLE,
+      {
+        army: 'Orks',
+        detachments: ['Flyboyz, Kult of Speed and Wreckas'],
+        disposition: 'Reconnaissance',
+        format: 'gw-app',
+      },
+    ],
+    [
+      'GW app in Spanish',
+      GW_ES,
+      {
+        army: 'Legiones Daemónicas',
+        detachments: ['Blood Legion y Cabalgata del Caos'],
+        disposition: null,
+        format: 'gw-app',
+      },
+    ],
+    [
+      'header format',
+      HEADER,
+      {
+        army: 'Grey Knights',
+        detachments: ['Warpbane Task Force', 'Brotherhood Strike'],
+        disposition: 'Take and Hold',
+        format: 'header',
+      },
+    ],
+    [
+      'template format',
+      TEMPLATE,
+      {
+        army: 'Chaos Space Marines',
+        detachments: ['Renegade Raiders'],
+        disposition: 'Reconnaissance',
+        format: 'template',
+      },
+    ],
+    [
+      'template followed by a GW app block',
+      TEMPLATE_THEN_GW,
+      {
+        army: "Emperor's Children",
+        detachments: ['Carnival of Excess'],
+        disposition: 'Purge the Foe',
+        format: 'gw-app',
+      },
+    ],
+    ['free text (a unit line is not a detachment line)', FREE, unknown],
+    ['empty text', '', unknown],
+    ['no text', null, unknown],
+  ];
+  it.each(cases)('%s', (_name, text, expected) => {
+    expect(parseArmyList(text)).toEqual(expected);
+  });
+
+  it('reads Windows line endings', () => {
+    expect(parseArmyList(GW_EN.replace(/\n/g, '\r\n')).army).toBe('Thousand Sons');
+  });
+});
+
+describe('splitDetachments', () => {
+  it('splits a joined name when every part is a known detachment', () => {
+    const known = new Set(['Flyboyz', 'Kult of Speed', 'Wreckas']);
+    expect(splitDetachments(['Flyboyz, Kult of Speed and Wreckas'], known)).toEqual([
+      'Flyboyz',
+      'Kult of Speed',
+      'Wreckas',
+    ]);
+    expect(splitDetachments(['A y B'], new Set(['A', 'B']))).toEqual(['A', 'B']);
+  });
+
+  it('keeps the name when any part is unknown (names may contain "and")', () => {
+    expect(
+      splitDetachments(['Houndpack Lance and Hunting Warpack'], new Set(['Houndpack Lance'])),
+    ).toEqual(['Houndpack Lance and Hunting Warpack']);
+    expect(splitDetachments(['Blood and Iron'], new Set(['Iron']))).toEqual(['Blood and Iron']);
+  });
+
+  it('leaves lists that are already split, or empty', () => {
+    expect(splitDetachments(['A', 'B'], new Set(['A', 'B']))).toEqual(['A', 'B']);
+    expect(splitDetachments([], new Set())).toEqual([]);
+  });
+});
