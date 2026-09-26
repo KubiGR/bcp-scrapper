@@ -254,3 +254,49 @@ export const FetchQueueStateSchema = z.object({
   estimatedSeconds: count.nullable(),
 });
 export type FetchQueueState = z.infer<typeof FetchQueueStateSchema>;
+
+const commaSeparated = z
+  .string()
+  .optional()
+  .transform((value) =>
+    (value ?? '')
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean),
+  );
+
+/** GET /api/players/search: players of big events who went X-n or better. */
+export const PlayerSearchQuerySchema = z
+  .object({
+    factions: commaSeparated,
+    dispositions: commaSeparated,
+    detachments: commaSeparated,
+    from: z.iso.date().optional(),
+    to: z.iso.date().optional(),
+    maxLosses: z.coerce.number().int().min(0).max(5).default(1),
+  })
+  .refine((q) => !q.from || !q.to || q.from <= q.to, {
+    message: '`from` must be on or before `to`',
+    path: ['from'],
+  });
+export type PlayerSearchQuery = z.infer<typeof PlayerSearchQuerySchema>;
+
+export const TopListPlayerSchema = EventPlayerSchema.extend({
+  eventId: z.string(),
+  eventName: z.string(),
+  eventStartDate: z.iso.datetime(),
+});
+export type TopListPlayer = z.infer<typeof TopListPlayerSchema>;
+
+/** At most this many players are returned; `truncated` says there were more. */
+export const TOP_LISTS_LIMIT = 500;
+
+export const PlayerSearchResponseSchema = z.object({
+  players: z.array(TopListPlayerSchema),
+  truncated: z.boolean(),
+  /** Big events starting in the range. */
+  eventsInRange: z.number().int().nonnegative(),
+  /** Of those, events whose players are stored (the others aren't searched). */
+  eventsLoaded: z.number().int().nonnegative(),
+});
+export type PlayerSearchResponse = z.infer<typeof PlayerSearchResponseSchema>;

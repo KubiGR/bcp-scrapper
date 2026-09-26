@@ -1,10 +1,10 @@
-import type { DateRange } from '@bcp/shared';
 import { Box, Button, Group, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
 import { plural } from '../../lib/format';
+import { useDraftRange } from '../../lib/use-draft-range';
 import { CellDrawer } from './CellDrawer';
 import { EventSelection } from './EventSelection';
 import { FactionMatrix } from './FactionMatrix';
@@ -16,26 +16,6 @@ import {
   type CrossSearch,
 } from './matchups-queries';
 import { DEFAULT_MATRIX_SETTINGS, hasSideFilter, type MatrixSettings } from './matrix-view';
-
-type DraftRange = [string | null, string | null];
-
-/**
- * The date picker's value, mirroring `AdvancedSearch`'s draft-range pattern: a range is picked in
- * two clicks, and the half-picked range has to live here since the URL only takes complete ranges.
- */
-function useDraftRange(window: DateRange, write: (range: DateRange) => void) {
-  const [draft, setDraft] = useState<DraftRange>([window.from, window.to]);
-  const [seen, setSeen] = useState(window);
-  if (window.from !== seen.from || window.to !== seen.to) {
-    setSeen(window);
-    setDraft([window.from, window.to]);
-  }
-  const onRangeChange = ([from, to]: DraftRange) => {
-    setDraft([from, to]);
-    if (from && to) write({ from, to });
-  };
-  return { draft, onRangeChange };
-}
 
 const splitIds = (value: string | undefined): string[] =>
   value === undefined ? [] : value.split(',').filter(Boolean);

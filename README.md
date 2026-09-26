@@ -73,6 +73,13 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
   minimum-games filter and a disposition filter; click a cell for the games behind it. The
   cross-event page lists the team events in a date range; tick which count, and **Sync pairings
   for N events** fetches the missing ones in the background.
+- Fetched lists are read for the **army, detachments and disposition** (GW app exports, the
+  `+ FACTION KEYWORD` header format and the "Factions used" template; anything else is left
+  alone). When BCP has no army for a player, or only an allegiance like "Chaos", the army from the
+  list is shown with a ⚠ ("From the list"). Players & lists has a Detachment column and filter;
+  games show "Army · Detachment · Disposition"; matchups filter by detachment too.
+- **Top lists** (header) searches every loaded big event in a date range for players of chosen
+  factions who went X-n or better (default X-1, last 90 days), with their lists one click away.
 - No Docker? `DATABASE_URL=pglite://memory pnpm dev` runs everything in memory (lost on restart).
 
 ## Commands

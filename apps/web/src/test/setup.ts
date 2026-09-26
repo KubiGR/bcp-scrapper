@@ -28,3 +28,6 @@ class ResizeObserverStub {
   disconnect() {}
 }
 window.ResizeObserver = ResizeObserverStub;
+
+// Mantine's Select scrolls the selected option into view; jsdom lacks the method.
+Element.prototype.scrollIntoView = () => undefined;

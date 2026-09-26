@@ -13,6 +13,7 @@ import { catalogRoutes } from './routes/catalog';
 import { eventRoutes } from './routes/events';
 import { fetchQueueRoutes } from './routes/fetch-queue';
 import { matchupsRoutes } from './routes/matchups';
+import { playersSearchRoutes } from './routes/players-search';
 import { syncRoutes } from './routes/sync';
 import { userRoutes } from './routes/users';
 import type { SyncRunner } from './sync/runner';
@@ -103,6 +104,7 @@ export function createApp(deps: AppDeps) {
   app.route('/api', fetchQueueRoutes(deps));
   app.route('/api', analysisRoutes(deps));
   app.route('/api', matchupsRoutes({ ...deps, now }));
+  app.route('/api', playersSearchRoutes({ ...deps, now }));
 
   return app;
 }
