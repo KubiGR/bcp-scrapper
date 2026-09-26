@@ -1,5 +1,6 @@
 import type { FactionMatrix as FactionMatrixData, MatrixCell } from '@bcp/shared';
 import { Stack, Table, Text, UnstyledButton } from '@mantine/core';
+import type { CSSProperties } from 'react';
 import classes from './FactionMatrix.module.css';
 import { cellView, type CellTone, type MatrixSettings } from './matrix-view';
 
@@ -20,8 +21,10 @@ const toneClass: Record<CellTone, string> = {
 
 const key = (row: string, col: string) => `${row}\u0000${col}`;
 
-/** A faction-vs-faction heatmap: rows and columns are factions, cells show a value plus its game
- * count so colour is never the only signal. Scrolls horizontally on phones. */
+/** A faction-vs-faction heatmap: rows and columns are factions, cells show a compact value coloured
+ * by how far it sits from even, with the game count in the aria-label and a dimmed second line.
+ * The header row, first column, and corner cell stay sticky in a scrolling `div` (not a Mantine
+ * ScrollArea viewport, which can break `position: sticky`). */
 export function FactionMatrix({ matrix, scoring, settings, onCell }: FactionMatrixProps) {
   const scale = scoring.consistent ? scoring.scale : null;
   const cells = new Map<string, MatrixCell>();
@@ -34,14 +37,14 @@ export function FactionMatrix({ matrix, scoring, settings, onCell }: FactionMatr
       <Text size="xs" c="dimmed">
         Rows: faction · Columns: opponent · Cell: row faction&apos;s result
       </Text>
-      <Table.ScrollContainer minWidth={140 + matrix.factions.length * 90}>
+      <div className={classes.scrollArea}>
         <Table className={classes.table}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th />
+              <Table.Th className={classes.corner} data-testid="matrix-corner" />
               {matrix.factions.map((faction) => (
-                <Table.Th key={faction} className={classes.header} title={faction}>
-                  <span className={classes.truncate}>{faction}</span>
+                <Table.Th key={faction} className={classes.stickyHeader} title={faction}>
+                  <span className={classes.headerLabel}>{faction}</span>
                 </Table.Th>
               ))}
             </Table.Tr>
@@ -49,18 +52,18 @@ export function FactionMatrix({ matrix, scoring, settings, onCell }: FactionMatr
           <Table.Tbody>
             {matrix.factions.map((row) => (
               <Table.Tr key={row}>
-                <Table.Th scope="row" className={classes.header} title={row}>
+                <Table.Th scope="row" className={classes.stickyRowHeader} title={row}>
                   <span className={classes.truncate}>{row}</span>
                 </Table.Th>
                 {matrix.factions.map((col) => {
                   const cell = cells.get(key(row, col));
-                  if (!cell) return <Table.Td key={col} />;
+                  if (!cell) return <Table.Td key={col} className={classes.cell} />;
                   const view = cellView(cell, settings, scale);
                   if (view.tone === 'hidden') {
                     return (
                       <Table.Td
                         key={col}
-                        className={toneClass.hidden}
+                        className={`${classes.cell} ${toneClass.hidden}`}
                         title={`${view.games} games`}
                       >
                         <Text size="sm" c="dimmed" className="numeric">
@@ -73,8 +76,17 @@ export function FactionMatrix({ matrix, scoring, settings, onCell }: FactionMatr
                     view.tone === 'mirror'
                       ? `${row} vs ${col}: ${view.text} games`
                       : `${row} vs ${col}: ${view.value} ${metricLabel} over ${view.games} games`;
+                  const style =
+                    view.tone === 'good' || view.tone === 'bad'
+                      ? ({ '--strength': view.strength } as CSSProperties)
+                      : undefined;
                   return (
-                    <Table.Td key={col} className={toneClass[view.tone]} p={0}>
+                    <Table.Td
+                      key={col}
+                      className={`${classes.cell} ${toneClass[view.tone]}`}
+                      style={style}
+                      p={0}
+                    >
                       <UnstyledButton
                         aria-label={label}
                         className={classes.cellButton}
@@ -83,6 +95,9 @@ export function FactionMatrix({ matrix, scoring, settings, onCell }: FactionMatr
                         }}
                       >
                         <span className="numeric">{view.text}</span>
+                        {view.tone !== 'mirror' && (
+                          <span className={`${classes.count} numeric`}>{view.games}</span>
+                        )}
                       </UnstyledButton>
                     </Table.Td>
                   );
@@ -91,7 +106,7 @@ export function FactionMatrix({ matrix, scoring, settings, onCell }: FactionMatr
             ))}
           </Table.Tbody>
         </Table>
-      </Table.ScrollContainer>
+      </div>
     </Stack>
   );
 }
