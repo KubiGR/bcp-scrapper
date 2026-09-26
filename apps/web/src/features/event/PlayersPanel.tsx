@@ -3,6 +3,7 @@ import {
   Badge,
   Collapse,
   Group,
+  MultiSelect,
   Select,
   Stack,
   Text,
@@ -110,14 +111,14 @@ interface PlayersPanelProps {
 export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
   const players = useQuery(playersQuery(event.bcpId));
   const [query, setQuery] = useState('');
-  const [faction, setFaction] = useState<string | null>(null);
-  const [disposition, setDisposition] = useState<string | null>(null);
+  const [factions, setFactions] = useState<string[]>([]);
+  const [dispositions, setDispositions] = useState<string[]>([]);
   const [maxLosses, setMaxLosses] = useState<number | null>(null);
   const [openPlayerId, setOpenPlayerId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const all = players.data?.items ?? [];
   const openPlayer = all.find((p) => p.bcpId === openPlayerId) ?? null;
-  const filtered = filterPlayers(all, { query, faction, maxLosses, disposition });
+  const filtered = filterPlayers(all, { query, factions, dispositions, maxLosses });
 
   const toggleGroup = (key: string) => {
     setCollapsed((prev) => {
@@ -144,25 +145,25 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
             }}
             w={240}
           />
-          <Select
+          <MultiSelect
             aria-label="Faction"
-            placeholder="All factions"
+            placeholder={factions.length === 0 ? 'All factions' : undefined}
             data={factionsOf(all)}
-            value={faction}
-            onChange={setFaction}
+            value={factions}
+            onChange={setFactions}
             clearable
             searchable
-            w={220}
+            w={240}
           />
-          <Select
+          <MultiSelect
             aria-label="Disposition"
-            placeholder="All dispositions"
+            placeholder={dispositions.length === 0 ? 'All dispositions' : undefined}
             data={dispositionsOf(all)}
-            value={disposition}
-            onChange={setDisposition}
+            value={dispositions}
+            onChange={setDispositions}
+            renderOption={({ option }) => <DispositionText disposition={option.value} />}
             clearable
-            searchable
-            w={220}
+            w={240}
           />
           <Select
             aria-label="Record"

@@ -1,16 +1,23 @@
 import { qualifiesForMaxLosses, type EventPlayer } from '@bcp/shared';
 
+/** An empty `factions`/`dispositions` list means no filter; otherwise any listed value matches. */
 export interface PlayerFilter {
   query: string;
-  faction: string | null;
+  factions: string[];
+  dispositions: string[];
   maxLosses: number | null;
-  disposition: string | null;
 }
 
-/** Players whose name or team contains the query (case-insensitive), in the chosen faction. */
+const anyOf = (chosen: string[], value: string | null) =>
+  chosen.length === 0 || (value !== null && chosen.includes(value));
+
+/**
+ * Players whose name or team contains the query (case-insensitive), in any chosen faction and any
+ * chosen disposition, within the loss limit. Filters combine with AND.
+ */
 export function filterPlayers(
   players: EventPlayer[],
-  { query, faction, maxLosses, disposition }: PlayerFilter,
+  { query, factions, dispositions, maxLosses }: PlayerFilter,
 ): EventPlayer[] {
   const needle = query.trim().toLocaleLowerCase();
   const matchesText = (player: EventPlayer) =>
@@ -19,8 +26,8 @@ export function filterPlayers(
     (player.teamName?.toLocaleLowerCase().includes(needle) ?? false);
   return players.filter(
     (player) =>
-      (faction === null || player.faction === faction) &&
-      (disposition === null || player.disposition === disposition) &&
+      anyOf(factions, player.faction) &&
+      anyOf(dispositions, player.disposition) &&
       matchesText(player) &&
       (maxLosses === null || qualifiesForMaxLosses(player, maxLosses)),
   );

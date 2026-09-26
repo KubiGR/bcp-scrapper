@@ -1,5 +1,5 @@
 import type { EventDetail } from '@bcp/shared';
-import { Button, Group, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Button, Group, Stack, Text, Title } from '@mantine/core';
 import { EventStatusBadges } from '../../components/EventStatusBadges';
 import {
   formatDateTime,
@@ -20,9 +20,19 @@ export function EventHeader({ event, syncing, onRefresh }: EventHeaderProps) {
     <Stack gap="xs">
       <Group justify="space-between" align="flex-start" wrap="wrap">
         <Title order={1}>{event.name}</Title>
-        <Button variant="outline" size="sm" loading={syncing} onClick={onRefresh}>
-          Refresh from BCP
-        </Button>
+        <Group gap="sm">
+          <Anchor
+            href={`https://www.bestcoastpairings.com/event/${encodeURIComponent(event.bcpId)}`}
+            target="_blank"
+            rel="noreferrer"
+            size="sm"
+          >
+            Open on BCP ↗
+          </Anchor>
+          <Button variant="outline" size="sm" loading={syncing} onClick={onRefresh}>
+            Refresh from BCP
+          </Button>
+        </Group>
       </Group>
       <Group gap="md" wrap="wrap">
         <Text size="sm" c="dimmed" className="numeric">

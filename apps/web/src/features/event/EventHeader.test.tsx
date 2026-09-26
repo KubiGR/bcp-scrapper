@@ -5,6 +5,16 @@ import { anEventDetail } from '../../test/sample-data';
 import { EventHeader } from './EventHeader';
 
 describe('EventHeader', () => {
+  it('links to the event on BCP in a new tab', () => {
+    renderWithProviders(
+      <EventHeader event={anEventDetail()} syncing={false} onRefresh={vi.fn()} />,
+    );
+    const link = screen.getByRole('link', { name: /Open on BCP/ });
+    expect(link).toHaveAttribute('href', 'https://www.bestcoastpairings.com/event/EVT1');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link.getAttribute('rel')).toContain('noreferrer');
+  });
+
   it('shows the round count after the size line', () => {
     renderWithProviders(
       <EventHeader

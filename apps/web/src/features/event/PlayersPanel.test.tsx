@@ -148,6 +148,12 @@ describe('PlayersPanel', () => {
 
     expect(await screen.findByText('Cara Cole')).toBeInTheDocument();
     expect(screen.queryByText('Ada Archer')).not.toBeInTheDocument();
+
+    // A multi-select: a second disposition (the dropdown stays open) widens the filter again.
+    fireEvent.click(await screen.findByRole('option', { name: 'Take and Hold' }));
+    expect(await screen.findByText('Ada Archer')).toBeInTheDocument();
+    expect(screen.getByText('Cara Cole')).toBeInTheDocument();
+    expect(screen.queryByText('Nyx None')).not.toBeInTheDocument();
   });
 
   it('shows the no-players message for a team event with no players yet', async () => {
