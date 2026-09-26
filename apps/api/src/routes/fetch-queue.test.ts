@@ -187,6 +187,12 @@ describe('fetch queue routes', () => {
     ).toEqual({ requeued: 0 });
     expect(await queue({})).toMatchObject({ queued: 6, noListOnBcp: 2 });
     expect((await playersOf()).find((p) => p.bcpId === 'PL-EVE')?.listStatus).toBe('failed');
+    // Picking her whole team skips her too (Finn is already queued by the request above)...
+    expect(await queue({ teamIds: ['TM-CHARLIE'] })).toMatchObject({
+      queued: 0,
+      noListOnBcp: 1,
+    });
+    expect((await playersOf()).find((p) => p.bcpId === 'PL-EVE')?.listStatus).toBe('failed');
     // ...but asking for that one list again does queue it.
     expect(await queue({ playerIds: ['PL-EVE'] })).toMatchObject({ queued: 1 });
   });

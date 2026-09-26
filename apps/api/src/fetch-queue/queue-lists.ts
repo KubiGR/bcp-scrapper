@@ -77,8 +77,12 @@ export async function queueEventLists(
       else if (!open) counts.alreadyFetched += 1;
       continue;
     }
-    // BCP said it has no such list: final for bulk requests; chosen players or teams ask again.
-    if (!chosen && player.listStatus === 'failed' && player.listErrorCode === NO_LIST_CODE) {
+    // BCP said it has no such list: final for bulk and team requests; a chosen player asks again.
+    if (
+      request.playerIds === undefined &&
+      player.listStatus === 'failed' &&
+      player.listErrorCode === NO_LIST_CODE
+    ) {
       counts.noListOnBcp += 1;
       continue;
     }
