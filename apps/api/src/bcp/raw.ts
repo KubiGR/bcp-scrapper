@@ -19,7 +19,12 @@ const bcpNumber = z.unknown().transform(toNumberOrNull);
 
 export const RawPageEnvelope = z.object({
   data: z.array(z.unknown()),
-  nextKey: z.string().nullish(),
+  // A string cursor means more pages. BCP sometimes sends an object instead (seen on the page
+  // after the last one); anything but a string ends the paging.
+  nextKey: z
+    .unknown()
+    .optional()
+    .transform((value) => (typeof value === 'string' ? value : null)),
 });
 
 export const RawListEnvelope = z.object({ active: z.array(z.unknown()) });

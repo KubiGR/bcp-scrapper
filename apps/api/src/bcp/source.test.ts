@@ -94,6 +94,22 @@ describe('BcpSource.getGames paging', () => {
     expect(transport.requests[0]?.query).toMatchObject({ limit: 500, round: 1 });
   });
 
+  it('treats a cursor that is not a string as the last page', async () => {
+    // Seen live (The Challengers Cup, round 6): the page after a string cursor carries an object.
+    const requests: BcpRequest[] = [];
+    const transport: BcpTransport = {
+      get(request) {
+        requests.push(request);
+        const game = { id: `G${requests.length}`, round: 1, player1: { id: 'P1' }, player2: null };
+        const nextKey = requests.length === 1 ? 'page-2' : { offset: 500, type: 'query' };
+        return Promise.resolve({ data: [game], nextKey });
+      },
+    };
+    const games = await new BcpSource(transport).getGames(EVENT, 1);
+    expect(games.map((game) => game.bcpId)).toEqual(['G1', 'G2']);
+    expect(requests).toHaveLength(2);
+  });
+
   it('stops with BcpUnavailableError when BCP repeats a page cursor', async () => {
     const transport = repeatingCursorTransport();
     await expect(new BcpSource(transport).getGames(EVENT, 1)).rejects.toThrow(
