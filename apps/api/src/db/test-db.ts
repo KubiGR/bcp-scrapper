@@ -10,6 +10,6 @@ export async function createTestDb(): Promise<{ db: Db; close: () => Promise<voi
 
 export async function resetDb(db: Db): Promise<void> {
   await db.execute(
-    sql`truncate events, teams, players, army_lists, team_matchups, games, sync_runs, bcp_session, fetch_queue restart identity cascade`,
+    sql`truncate events, teams, players, army_lists, team_matchups, games, sync_runs, bcp_session, fetch_queue, sessions, users restart identity cascade`,
   );
 }

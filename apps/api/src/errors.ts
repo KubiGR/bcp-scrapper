@@ -64,6 +64,28 @@ export class BcpAuthError extends AppError {
   }
 }
 
+export class UnauthorizedError extends AppError {
+  constructor(message = 'Log in first') {
+    super('UNAUTHORIZED', 401, message);
+  }
+}
+
+export class ForbiddenError extends AppError {
+  constructor(message: string) {
+    super('FORBIDDEN', 403, message);
+  }
+}
+
+/** Too many failed logins; the client may try again after `retryAfterSeconds`. */
+export class LoginRateLimitedError extends AppError {
+  readonly retryAfterSeconds: number;
+
+  constructor(retryAfterSeconds: number) {
+    super('RATE_LIMITED', 429, 'Too many failed logins; try again later');
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
 export function toErrorBody(error: AppError): ApiErrorBody {
   return {
     error: {

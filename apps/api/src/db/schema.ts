@@ -266,3 +266,36 @@ export const bcpSession = pgTable(
   },
   (t) => [check('bcp_session_singleton', sql`${t.id} = 1`)],
 );
+
+export const userRole = pgEnum('user_role', ['admin', 'member']);
+
+/** People who can log in when AUTH_REQUIRED is on. */
+export const users = pgTable(
+  'users',
+  {
+    id: serial('id').primaryKey(),
+    username: text('username').notNull(),
+    /** scrypt$N$r$p$salt$hash (base64); never returned or logged. */
+    passwordHash: text('password_hash').notNull(),
+    role: userRole('role').notNull().default('member'),
+    mustChangePassword: boolean('must_change_password').notNull().default(false),
+    disabled: boolean('disabled').notNull().default(false),
+    ...auditColumns,
+  },
+  (t) => [uniqueIndex('users_username_lower_unique').on(sql`lower(${t.username})`)],
+);
+
+/** Logged-in sessions; only the keyed SHA-256 of the cookie value is stored. */
+export const sessions = pgTable(
+  'sessions',
+  {
+    idHash: text('id_hash').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamptz('created_at').notNull(),
+    lastSeenAt: timestamptz('last_seen_at').notNull(),
+    expiresAt: timestamptz('expires_at').notNull(),
+  },
+  (t) => [index('sessions_user_id_idx').on(t.userId)],
+);

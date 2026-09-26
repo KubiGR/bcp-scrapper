@@ -1,5 +1,6 @@
 import { serve } from '@hono/node-server';
 import { createApp } from './app';
+import { ensureAdmin } from './auth/bootstrap';
 import { createSource } from './bcp/create-source';
 import { allowedHostsOf, loadConfig } from './config';
 import { createDb } from './db/client';
@@ -16,6 +17,7 @@ const eventRule = { minRounds: config.MIN_EVENT_ROUNDS, minPlayers: config.MIN_E
 
 const database = createDb(config.DATABASE_URL);
 await database.migrate();
+await ensureAdmin(database.db, config, logger);
 const deleted = await deleteSmallEvents(database.db, eventRule);
 if (deleted > 0) logger.info({ deleted }, 'Deleted small events (RTTs and events under N players)');
 const interrupted = await failInterruptedSyncRuns(database.db);
@@ -46,12 +48,13 @@ const app = createApp({
   logger,
   eventRule,
   allowedHosts: allowedHostsOf(config),
+  auth: { required: config.AUTH_REQUIRED, secret: config.SESSION_SECRET ?? '' },
 });
 if (config.WEB_DIST_DIR !== undefined) serveWebApp(app, config.WEB_DIST_DIR);
 
 const server = serve({ fetch: app.fetch, port: config.PORT, hostname: config.HOST }, (info) => {
   logger.info(
-    `API listening on http://${config.HOST}:${info.port} (source: ${config.TOURNAMENT_SOURCE})`,
+    `API listening on http://${config.HOST}:${info.port} (source: ${config.TOURNAMENT_SOURCE}, logins ${config.AUTH_REQUIRED ? 'on' : 'off'})`,
   );
 });
 

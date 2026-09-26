@@ -8,5 +8,8 @@ export const ApiErrorCodeSchema = z.enum([
   'NOT_FOUND',
   'VALIDATION_ERROR',
   'INTERNAL',
+  'UNAUTHORIZED',
+  'FORBIDDEN',
+  'RATE_LIMITED',
 ]);
 export type ApiErrorCode = z.infer<typeof ApiErrorCodeSchema>;
