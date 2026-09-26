@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
 import { stubFetchJson } from '../test/render';
-import { ApiError, apiDelete, apiGet, apiPost } from './client';
+import { ApiError, apiDelete, apiGet, apiPatch, apiPost, setUnauthorizedHandler } from './client';
 
 describe('apiGet', () => {
   it('parses successful responses with the given schema', async () => {
@@ -55,5 +55,29 @@ describe('apiGet', () => {
       removed: 2,
     });
     expect(fetchMock).toHaveBeenCalledWith('/api/x', expect.objectContaining({ method: 'DELETE' }));
+  });
+});
+
+describe('onUnauthorized', () => {
+  it('is told about a 401 from the API, but not from the login routes', async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    stubFetchJson({ error: { code: 'UNAUTHORIZED', message: 'Log in first' } }, 401);
+    await apiGet('/api/events', z.unknown()).catch(() => undefined);
+    expect(handler).toHaveBeenCalledTimes(1);
+    await apiPost('/api/auth/login', {}, z.unknown()).catch(() => undefined);
+    expect(handler).toHaveBeenCalledTimes(1);
+    setUnauthorizedHandler(null);
+  });
+});
+
+describe('apiPatch', () => {
+  it('sends a JSON body with PATCH', async () => {
+    const fetchMock = stubFetchJson({ ok: true });
+    await apiPatch('/api/users/2', { disabled: true }, z.unknown());
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: 'PATCH',
+      body: JSON.stringify({ disabled: true }),
+    });
   });
 });

@@ -2,6 +2,7 @@ import { AppShell, Container, Group } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { Link, Outlet } from '@tanstack/react-router';
 import { FinderSearchSchema } from '../features/finder/finder-search';
+import { AccountMenu } from '../features/auth/AccountMenu';
 import { QueueIndicator } from '../features/fetch-queue/QueueIndicator';
 import classes from './AppLayout.module.css';
 
@@ -32,6 +33,7 @@ export function AppLayout() {
                   {item.label}
                 </Link>
               ))}
+              <AccountMenu />
             </Group>
           </Group>
         </Container>

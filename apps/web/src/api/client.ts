@@ -15,6 +15,16 @@ export class ApiError extends Error {
   }
 }
 
+let onUnauthorized: (() => void) | null = null;
+
+/**
+ * Called when an API call answers 401 (the session ended), so the app can go back to the login
+ * page. The login routes' own 401s are answers, not ended sessions.
+ */
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  onUnauthorized = handler;
+}
+
 async function request<S extends z.ZodType>(
   path: string,
   init: RequestInit,
@@ -29,6 +39,7 @@ async function request<S extends z.ZodType>(
 
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
+    if (response.status === 401 && !path.startsWith('/api/auth/')) onUnauthorized?.();
     const parsed = ApiErrorBodySchema.safeParse(body);
     if (parsed.success) {
       const { code, message, details } = parsed.data.error;
@@ -74,4 +85,21 @@ export function apiPost<S extends z.ZodType>(
 /** DELETEs a resource; no body, so it needs no content type and stays a simple CORS request. */
 export function apiDelete<S extends z.ZodType>(path: string, schema: S): Promise<z.output<S>> {
   return request(path, { method: 'DELETE', headers: { accept: 'application/json' } }, schema);
+}
+
+/** PATCHes a JSON body. */
+export function apiPatch<S extends z.ZodType>(
+  path: string,
+  body: unknown,
+  schema: S,
+): Promise<z.output<S>> {
+  return request(
+    path,
+    {
+      method: 'PATCH',
+      headers: { accept: 'application/json', 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+    schema,
+  );
 }
