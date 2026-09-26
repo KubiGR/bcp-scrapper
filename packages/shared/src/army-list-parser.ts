@@ -1,5 +1,5 @@
 /** Bump when the parser changes: stored lists with an older version are re-read on startup. */
-export const PARSER_VERSION = 1;
+export const PARSER_VERSION = 2;
 
 /** What a list says about the army; only these three things are ever read from list text. */
 export interface ParsedList {
@@ -29,17 +29,36 @@ export function knownDisposition(value: string | null): string | null {
 const UNKNOWN: ParsedList = { army: null, detachments: [], disposition: null, format: 'unknown' };
 
 /** `Name (3 Detachment Points)` / `(3 puntos de destacamento)`: a small number, then words. */
-const DETACHMENT_LINE = /^(.+?)\s*\((\d{1,2})\s+[^\d()]+\)\s*$/;
-/** A title or battle-size line: `(2000 points)`, `(2,000 Points)`, `(2.000 puntos)`. */
-const POINTS_LINE = /\(\s*\d[\d.,]{2,}\s*[^\d()]*\)\s*$/;
+const DETACHMENT_LINE = /^(.+?)\s*\((\d{1,2})\s+([^\d()]+)\)\s*$/;
+/** A unit's cost, `(45 pts)`: never a detachment line. */
+const UNIT_POINTS = /^(?:pts|points?|punkte|puntos|pkt)\.?$/i;
+/** A title or battle-size line: `(2000 points)`, `(2,000 Points)`, `(2.000 puntos)` (1000+). */
+const POINTS_LINE = /\(\s*\d[.,]?\d{3}\s*[^\d()]*\)\s*$/;
+
+/** Chapters the GW app writes under "Space Marines" that BCP lists as factions of their own. */
+const OWN_FACTION_CHAPTERS = new Set([
+  'Dark Angels',
+  'Blood Angels',
+  'Space Wolves',
+  'Black Templars',
+  'Deathwatch',
+]);
+
+/** Army names as BCP writes them: straight apostrophes. */
+const cleanArmy = (name: string) => name.replace(/[\u2018\u2019]/g, "'").trim();
 
 /**
  * The detachment line is followed, within two lines, by the battle size ("Strike Force (2000
  * points)"), which keeps a unit line like "Captain (80 pts)" in free text from matching.
  */
-const isDetachmentAt = (lines: string[], i: number) =>
-  DETACHMENT_LINE.test(lines[i] ?? '') &&
-  [lines[i + 1], lines[i + 2]].some((line) => line !== undefined && POINTS_LINE.test(line));
+const isDetachmentAt = (lines: string[], i: number) => {
+  const match = DETACHMENT_LINE.exec(lines[i] ?? '');
+  return (
+    match !== null &&
+    !UNIT_POINTS.test(match[3]?.trim() ?? '') &&
+    [lines[i + 1], lines[i + 2]].some((line) => line !== undefined && POINTS_LINE.test(line))
+  );
+};
 
 /** The GW app export: [title] / blank / army / [sub-army] / detachment / disposition / size. */
 function gwApp(lines: string[]): ParsedList | null {
@@ -51,10 +70,18 @@ function gwApp(lines: string[]): ParsedList | null {
   const block = lines.slice(start, at).map((line) => line.trim());
   if (block[0] !== undefined && POINTS_LINE.test(block[0])) block.shift();
   if (block.length === 0 || block.length > 2) return null;
+  // Army lines are plain names: a unit "(45 pts)" or a heading "Attached Units:" means this
+  // isn't the GW-app header.
+  if (block.some((line) => line.includes('(') || line.endsWith(':'))) return null;
+  const [first = '', second] = block;
+  const army =
+    first === 'Space Marines' && second !== undefined && OWN_FACTION_CHAPTERS.has(second)
+      ? second
+      : first;
   const detachment = DETACHMENT_LINE.exec(lines[at] ?? '')?.[1]?.trim() ?? '';
   const next = lines[at + 1]?.trim() ?? '';
   return {
-    army: block[0] ?? null,
+    army: cleanArmy(army),
     detachments: detachment === '' ? [] : [detachment],
     disposition: next.includes('(') ? null : knownDisposition(next),
     format: 'gw-app',
@@ -77,13 +104,32 @@ const commaList = (value: string | null) =>
     .map((part) => part.trim())
     .filter(Boolean);
 
+/** One line: `Name - Army - Disposition - Detachment, Detachment (2000 Points)`; name optional. */
+function oneLine(lines: string[]): ParsedList | null {
+  for (const line of lines) {
+    if (!POINTS_LINE.test(line)) continue;
+    const parts = line.replace(POINTS_LINE, '').split(/\s+-\s+|^\s*-\s+/);
+    if (parts.length < 4) continue;
+    const [army, disposition, detachments] = parts.slice(-3);
+    const known = knownDisposition(disposition ?? null);
+    if (known === null || army === undefined || army.trim() === '') continue;
+    return {
+      army: cleanArmy(army),
+      detachments: commaList(detachments ?? null),
+      disposition: known,
+      format: 'header',
+    };
+  }
+  return null;
+}
+
 /** `+ FACTION KEYWORD: Imperium - Grey Knights` / `+ DETACHMENT: …` / `+ FORCE DISPOSITION: …`. */
 function header(lines: string[]): ParsedList | null {
   const keyword = field(lines, /^\+\s*FACTION KEYWORD:\s*(.+)$/i);
   if (keyword === null) return null;
   const army = keyword.split(' - ').at(-1)?.trim() ?? '';
   return {
-    army: army === '' ? null : army,
+    army: army === '' ? null : cleanArmy(army),
     detachments: commaList(field(lines, /^\+\s*DETACHMENT:\s*(.+)$/i)),
     disposition: knownDisposition(field(lines, /^\+\s*FORCE DISPOSITION:\s*(.+)$/i)),
     format: 'header',
@@ -112,7 +158,7 @@ function template(lines: string[]): ParsedList | null {
 export function parseArmyList(text: string | null): ParsedList {
   if (text === null || text.trim() === '') return UNKNOWN;
   const lines = text.replace(/\r\n?/g, '\n').split('\n');
-  return gwApp(lines) ?? header(lines) ?? template(lines) ?? UNKNOWN;
+  return gwApp(lines) ?? oneLine(lines) ?? header(lines) ?? template(lines) ?? UNKNOWN;
 }
 
 const JOINERS = /\s*,\s*|\s+(?:and|y|und|et|e)\s+/;

@@ -80,6 +80,38 @@ const FREE = `Space Marines – Gladius Task Force
 Captain (80 pts)
 Intercessor Squad x10 (160 pts)`;
 
+const UNITS_ONLY = `Mek + 6x Tankbustas (190 pts)
+  Mek (45 pts)
+  6x Tankbustas (145 pts) - 2x Rokkit Pistol
+
+Attached Units:
+Lord (80 pts)
+  10x Gretchin (45 pts)
+  Big Mek (1000 pts)`;
+
+const ONE_LINE = `Cursed Crons - Necrons - Purge the Foe - Cursed Legion, Skyshroud Spearhead (1995 Points)
+
+
+Attached Units:
+Lokhust Lord (80 pts)`;
+
+const ONE_LINE_NO_NAME = ` - Chaos Space Marines - Take and Hold - Fellhammer Siege-host (2000 Points)`;
+
+const GW_CHAPTER = `Angels (1995 points)
+
+Space Marines
+Dark Angels
+Wrath of the Rock (3 Detachment Points)
+Priority Assets
+Strike Force (2000 points)`;
+
+const GW_CURLY = `EC (2000 points)
+
+Emperor’s Children
+Carnival of Excess (3 Detachment Points)
+Purge the Foe
+Strike Force (2000 points)`;
+
 const unknown: ParsedList = { army: null, detachments: [], disposition: null, format: 'unknown' };
 
 describe('parseArmyList', () => {
@@ -165,6 +197,47 @@ describe('parseArmyList', () => {
       },
     ],
     ['free text (a unit line is not a detachment line)', FREE, unknown],
+    ['units only (small points values are not a battle size)', UNITS_ONLY, unknown],
+    [
+      'one-line header: name - army - disposition - detachments',
+      ONE_LINE,
+      {
+        army: 'Necrons',
+        detachments: ['Cursed Legion', 'Skyshroud Spearhead'],
+        disposition: 'Purge the Foe',
+        format: 'header',
+      },
+    ],
+    [
+      'one-line header without a name',
+      ONE_LINE_NO_NAME,
+      {
+        army: 'Chaos Space Marines',
+        detachments: ['Fellhammer Siege-host'],
+        disposition: 'Take and Hold',
+        format: 'header',
+      },
+    ],
+    [
+      'GW app with a chapter BCP lists as its own faction',
+      GW_CHAPTER,
+      {
+        army: 'Dark Angels',
+        detachments: ['Wrath of the Rock'],
+        disposition: 'Priority Assets',
+        format: 'gw-app',
+      },
+    ],
+    [
+      'curly apostrophes become straight ones',
+      GW_CURLY,
+      {
+        army: "Emperor's Children",
+        detachments: ['Carnival of Excess'],
+        disposition: 'Purge the Foe',
+        format: 'gw-app',
+      },
+    ],
     ['empty text', '', unknown],
     ['no text', null, unknown],
   ];
