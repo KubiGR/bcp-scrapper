@@ -24,7 +24,7 @@ Plus the backlog item: detachments read from lists, shown and filterable.
 ### Non-goals
 
 - Parsing units, points or wargear from lists (only army, detachments and disposition).
-- Auto-fetching running events, singles-only filters beyond big events, or events outside the window.
+- Auto-fetching running events, small events (below the big-event rule), or events outside the window.
 - Changing the queue's pace (one job every 5 s stays).
 
 ## 2. Plan 6 — quick wins
@@ -91,7 +91,7 @@ Formats (seen in stored lists):
 ## 4. Plan 7 — Top lists search (#3)
 
 - New page **Top lists** (`/analysis/top-lists`, header nav) with URL state.
-- **Inputs:** Factions (multi, required to search — or "all factions"), date range (default last 90 days), **max losses** (default 1 = X-1 or better; 0–5), optional Dispositions and Detachments (multi).
+- **Inputs:** Factions (multi; empty = all factions), date range (default last 90 days), **max losses** (default 1 = X-1 or better; 0–5), optional Dispositions and Detachments (multi).
 - **Results:** one row per player at a big event in the range with `losses ≤ max` and at least one game played (the `qualifiesForMaxLosses` rule): player, team, event (link to the event page, players tab) and date, record, army (⚠ when guessed) · detachments · disposition, and a **List** button (opens the list drawer; "Fetch this list" when not fetched). Sorted by event date (newest first), then fewest losses, then most wins.
 - **API:** `GET /api/players/search?factions&from&to&maxLosses&dispositions&detachments` → `{ players: [...], eventsInRange, eventsLoaded }`. Only events whose players are stored count; `eventsInRange − eventsLoaded` is shown as "N big events in this range aren't loaded yet" (plan 8 fills them).
 - Detachment filtering only matches players whose list is fetched and parsed.
