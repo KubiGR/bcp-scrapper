@@ -42,17 +42,22 @@ services:
       MIN_EVENT_PLAYERS: ${MIN_EVENT_PLAYERS:-20}
       FETCH_QUEUE_INTERVAL_MS: ${FETCH_QUEUE_INTERVAL_MS:-5000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-    # No published ports: the tunnel reaches the app on the private network, and login only works
-    # over HTTPS (the session cookie is Secure). Publishing 3000 would also let LAN clients fake the
-    # visitor address the login rate limit uses.
+    # Published on the server's loopback only, for a cloudflared running directly on the server
+    # (tunnel service URL http://localhost:3080). Not reachable from the LAN: login needs HTTPS,
+    # and the rate limit trusts the visitor address Cloudflare adds.
+    ports:
+      - '127.0.0.1:${APP_PORT:-3080}:3000'
     networks: [bcp]
 
+  # Optional: a cloudflared container for this stack. Only started with the "tunnel" profile
+  # (COMPOSE_PROFILES=tunnel); skip it when cloudflared already runs on the server.
   tunnel:
+    profiles: [tunnel]
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
     command: tunnel --no-autoupdate run
     environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN}
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
     depends_on: [app]
     networks: [bcp]
 

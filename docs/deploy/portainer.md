@@ -28,20 +28,21 @@ you trust.
    settings → Fine-grained tokens): only this repository, permission **Contents: Read-only**.
    Keep it for step 3.
 
-## 2. Create the Cloudflare Tunnel
+## 2. Point a Cloudflare Tunnel at the app
 
-You need a domain on Cloudflare.
+You need a domain on Cloudflare. The app listens on the server's loopback at port **3080**
+(`APP_PORT` changes it); it is not reachable from the LAN.
 
-1. Cloudflare dashboard → **Zero Trust → Networks → Tunnels → Create a tunnel** →
-   **Cloudflared**. Name it (e.g. `bcp`).
-2. On the install page, copy the **token** (the long string after `--token`). Don't run the
-   install command: the stack runs `cloudflared` for you.
-3. **Public hostname:** subdomain `bcp`, your domain, service **HTTP** → `app:3000`.
-   Your address is now e.g. `bcp.example.com`.
+**cloudflared already runs on the server** (the usual case): Cloudflare dashboard → **Zero Trust
+→ Networks → Tunnels** → your tunnel → **Public hostname → Add**: subdomain `bcp`, your domain,
+service **HTTP**, URL **`localhost:3080`**. Leave "HTTP Host Header" empty.
 
-Already running a tunnel on this server? Skip creating one: add the public hostname
-`bcp.example.com` → `http://app:3000` to your tunnel, connect that tunnel's container to the
-stack's `bcp` network, and delete the `tunnel` service from `deploy/portainer-stack.yml`.
+**No tunnel yet:** create one there (**Create a tunnel → Cloudflared**), copy the **token** (the
+long string after `--token`) without running the install command, add the public hostname with
+service **HTTP** → **`app:3000`**, and in step 3 also set `TUNNEL_TOKEN` and
+`COMPOSE_PROFILES=tunnel` so the stack starts its own `cloudflared`.
+
+Your address is now e.g. `bcp.example.com`.
 
 ## 3. Add the stack in Portainer
 
@@ -54,17 +55,18 @@ stack's `bcp` network, and delete the `tunnel` service from `deploy/portainer-st
    | Variable            | Value                                                                |
    | ------------------- | -------------------------------------------------------------------- |
    | `BCP_REFRESH_TOKEN` | Your BCP refresh token (see "Connecting to BCP" in the README)       |
-   | `TUNNEL_TOKEN`      | The tunnel token from 2.2                                            |
    | `PUBLIC_HOSTNAME`   | e.g. `bcp.example.com`                                               |
    | `POSTGRES_PASSWORD` | A long random password (`openssl rand -base64 32`)                   |
    | `SESSION_SECRET`    | Another long random value (`openssl rand -base64 48`)                |
    | `ADMIN_USERNAME`    | Your login name                                                      |
    | `ADMIN_PASSWORD`    | A password of 12+ characters, used once to create your admin account |
 
-   Optional: `MIN_EVENT_ROUNDS`, `MIN_EVENT_PLAYERS`, `FETCH_QUEUE_INTERVAL_MS`, `LOG_LEVEL`.
+   Optional: `APP_PORT` (default 3080), `MIN_EVENT_ROUNDS`, `MIN_EVENT_PLAYERS`,
+   `FETCH_QUEUE_INTERVAL_MS`, `LOG_LEVEL`; `TUNNEL_TOKEN` and `COMPOSE_PROFILES=tunnel` only for
+   the stack's own tunnel (step 2).
 
-   The app publishes no ports: open it through `https://<PUBLIC_HOSTNAME>` only. Logging in needs
-   HTTPS, and the login rate limit trusts the visitor address Cloudflare adds.
+   Open the app through `https://<PUBLIC_HOSTNAME>` only: logging in needs HTTPS, and the login
+   rate limit trusts the visitor address Cloudflare adds.
 
 5. **Deploy the stack.** The first build takes a few minutes (Portainer builds the image from
    the repository's `Dockerfile`).
