@@ -72,7 +72,7 @@ describe('MatrixControls', () => {
 
     renderWithProviders(
       <MatrixControls
-        settings={{ ...DEFAULT_MATRIX_SETTINGS, disposition: 'Take and Hold' }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, dispositions: ['Take and Hold'] }}
         onChange={vi.fn()}
         scoring={{ consistent: true, scale: 20 }}
         dispositions={[]}

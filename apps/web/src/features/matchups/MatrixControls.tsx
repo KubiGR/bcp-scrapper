@@ -1,4 +1,12 @@
-import { Group, NumberInput, SegmentedControl, Select, Stack, Text, Tooltip } from '@mantine/core';
+import {
+  Group,
+  MultiSelect,
+  NumberInput,
+  SegmentedControl,
+  Stack,
+  Text,
+  Tooltip,
+} from '@mantine/core';
 import { DispositionText } from '../../components/DispositionText';
 import type { MatrixSettings } from './matrix-view';
 
@@ -52,19 +60,19 @@ export function MatrixControls({ settings, onChange, scoring, dispositions }: Ma
             if (typeof value === 'number') onChange({ ...settings, minGames: value });
           }}
         />
-        <Select
+        <MultiSelect
           label="Disposition"
-          placeholder="All dispositions"
+          placeholder={settings.dispositions.length === 0 ? 'All dispositions' : undefined}
           clearable
-          w={220}
+          w={260}
           data={dispositionOptions}
-          value={settings.disposition}
+          value={settings.dispositions}
           onChange={(value) => {
-            onChange({ ...settings, disposition: value });
+            onChange({ ...settings, dispositions: value });
           }}
           renderOption={({ option }) => <DispositionText disposition={option.value} />}
         />
-        {settings.disposition !== null && (
+        {settings.dispositions.length > 0 && (
           <SegmentedControl
             aria-label="Side"
             value={settings.side}

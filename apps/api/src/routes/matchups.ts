@@ -17,7 +17,10 @@ import { requireEvent } from './require-event';
 import { requireJson } from './require-json';
 
 const FilterSchema = z.object({
-  disposition: z.string().trim().min(1).optional(),
+  /** Comma-separated; any listed disposition matches. */
+  dispositions: z.string().optional(),
+  /** The pre-multi-select single value; still accepted so saved links keep working. */
+  disposition: z.string().optional(),
   side: z.enum(['row', 'both']).default('row'),
 });
 const CellSchema = z.object({ row: z.string().min(1), col: z.string().min(1) });
@@ -45,7 +48,9 @@ const RangeSchema = z
   });
 
 const toFilter = (q: z.infer<typeof FilterSchema>): DispositionFilter => ({
-  disposition: q.disposition ?? null,
+  dispositions: [...(q.dispositions?.split(',') ?? []), q.disposition ?? '']
+    .map((value) => value.trim())
+    .filter(Boolean),
   side: q.side,
 });
 

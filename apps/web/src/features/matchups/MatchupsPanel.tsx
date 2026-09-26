@@ -54,7 +54,7 @@ export function MatchupsPanel({ event }: { event: EventDetail }) {
       />
       <Box style={{ opacity: dimmed ? 0.6 : 1 }} aria-busy={dimmed}>
         {matrix.games === 0 ? (
-          settings.disposition !== null ? (
+          settings.dispositions.length > 0 ? (
             <Group gap="sm">
               <Text size="sm" c="dimmed">
                 No games match this disposition filter.
@@ -63,7 +63,7 @@ export function MatchupsPanel({ event }: { event: EventDetail }) {
                 size="xs"
                 variant="light"
                 onClick={() => {
-                  setSettings({ ...settings, disposition: null });
+                  setSettings({ ...settings, dispositions: [] });
                 }}
               >
                 Clear filter

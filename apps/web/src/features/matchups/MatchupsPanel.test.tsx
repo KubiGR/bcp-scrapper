@@ -83,7 +83,7 @@ describe('MatchupsPanel', () => {
           ([url]) =>
             typeof url === 'string' &&
             url.includes('/api/events/EVT1/matchups?') &&
-            url.includes('disposition=Disruption') &&
+            decodeURIComponent(url).includes('dispositions=Disruption') &&
             url.includes('side=row'),
         ),
       ).toBe(true);
@@ -120,7 +120,7 @@ describe('MatchupsPanel', () => {
     });
     stubFetchRoutes({
       'GET /api/events/EVT1/matchups': (url: string) => {
-        if (url.includes('disposition=')) {
+        if (url.includes('dispositions=')) {
           return second.then(() => Response.json(matrix()));
         }
         return Promise.resolve(Response.json(matrix()));

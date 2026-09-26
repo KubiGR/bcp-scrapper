@@ -115,7 +115,7 @@ describe('MatchupsPage', () => {
       'GET /api/matchups': response({ matrix: { factions: [], games: 0, cells: [] } }),
     });
     renderWithRouter(
-      <MatchupsPage search={{ disposition: 'Disruption' }} onSearchChange={onSearchChange} />,
+      <MatchupsPage search={{ dispositions: 'Disruption' }} onSearchChange={onSearchChange} />,
     );
 
     expect(await screen.findByText('No games match this disposition filter.')).toBeInTheDocument();
@@ -125,7 +125,7 @@ describe('MatchupsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear filter' }));
     expect(onSearchChange).toHaveBeenCalledWith(
-      expect.objectContaining({ disposition: undefined }),
+      expect.objectContaining({ dispositions: undefined }),
     );
   });
 

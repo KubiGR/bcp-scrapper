@@ -3,21 +3,22 @@ import type { MatrixCell } from '@bcp/shared';
 export interface MatrixSettings {
   metric: 'winRate' | 'points';
   minGames: number;
-  disposition: string | null;
+  /** Any listed disposition matches; empty = no filter. */
+  dispositions: string[];
   side: 'row' | 'both';
 }
 
 export const DEFAULT_MATRIX_SETTINGS: MatrixSettings = {
   metric: 'winRate',
   minGames: 3,
-  disposition: null,
+  dispositions: [],
   side: 'row',
 };
 
-/** Only `disposition`/`side` are server filters; `metric`/`minGames` are display-only. */
+/** Only `dispositions`/`side` are server filters; `metric`/`minGames` are display-only. */
 export function matrixParams(settings: MatrixSettings): Record<string, string> {
-  if (settings.disposition === null) return {};
-  return { disposition: settings.disposition, side: settings.side };
+  if (settings.dispositions.length === 0) return {};
+  return { dispositions: settings.dispositions.join(','), side: settings.side };
 }
 
 export type CellTone = 'good' | 'bad' | 'even' | 'mirror' | 'hidden';

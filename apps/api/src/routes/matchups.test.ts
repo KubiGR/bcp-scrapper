@@ -83,6 +83,26 @@ describe('matchups routes', () => {
     });
   });
 
+  it('filters by several dispositions, and still accepts the old single `disposition`', async () => {
+    const all = await get<MatchupsResponse>('/api/events/EVTBRACKET01/matchups');
+    const one = await get<MatchupsResponse>(
+      '/api/events/EVTBRACKET01/matchups?dispositions=Take%20and%20Hold&side=row',
+    );
+    const old = await get<MatchupsResponse>(
+      '/api/events/EVTBRACKET01/matchups?disposition=Take%20and%20Hold&side=row',
+    );
+    const every = await get<MatchupsResponse>(
+      `/api/events/EVTBRACKET01/matchups?dispositions=${encodeURIComponent(
+        'Take and Hold,Priority Assets,Purge the Foe,Reconnaissance,Disruption',
+      )}&side=row`,
+    );
+    expect(one.body.matrix.games).toBeGreaterThan(0);
+    expect(one.body.matrix.games).toBeLessThan(all.body.matrix.games);
+    expect(old.body).toEqual(one.body);
+    // All five: every counted game has a side with a disposition, so nothing is lost.
+    expect(every.body.matrix.games).toBe(all.body.matrix.games);
+  });
+
   it('filters by disposition', async () => {
     const { body } = await get<MatchupsResponse>(
       '/api/events/EVTBRACKET01/matchups?disposition=Take%20and%20Hold&side=row',

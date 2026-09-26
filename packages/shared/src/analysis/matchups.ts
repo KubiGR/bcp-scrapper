@@ -23,9 +23,12 @@ export interface MatchupGame {
   result: GameResult | null;
 }
 
-/** `disposition: null` means no filter. `side: 'row'`: the row side played it; `'both'`: both sides did. */
+/**
+ * An empty `dispositions` list means no filter. `side: 'row'`: the row side played any listed
+ * disposition; `'both'`: both sides did (each may play a different listed one).
+ */
 export interface DispositionFilter {
-  disposition: string | null;
+  dispositions: string[];
   side: 'row' | 'both';
 }
 
@@ -41,8 +44,11 @@ interface SidedGame {
   colPoints: number | null;
 }
 
-const same = (a: string | null, b: string | null) =>
-  a !== null && b !== null && a.trim().toLowerCase() === b.trim().toLowerCase();
+const normalise = (value: string) => value.trim().toLowerCase();
+
+/** Whether a side's disposition is one of the listed ones (case- and whitespace-insensitive). */
+const inList = (value: string | null, list: string[]) =>
+  value !== null && list.some((listed) => normalise(listed) === normalise(value));
 
 /** Both sides of every countable game: not a bye, a known result, both factions known. */
 function sidesOf(games: MatchupGame[], filter: DispositionFilter): SidedGame[] {
@@ -50,8 +56,12 @@ function sidesOf(games: MatchupGame[], filter: DispositionFilter): SidedGame[] {
   for (const game of games) {
     const { a, b, result } = game;
     if (!b || result === null || a.faction === null || b.faction === null) continue;
-    if (filter.disposition !== null && filter.side === 'both') {
-      if (!same(a.disposition, filter.disposition) || !same(b.disposition, filter.disposition))
+    const filtered = filter.dispositions.length > 0;
+    if (filtered && filter.side === 'both') {
+      if (
+        !inList(a.disposition, filter.dispositions) ||
+        !inList(b.disposition, filter.dispositions)
+      )
         continue;
     }
     const aOutcome: Outcome = result === 'draw' ? 'draw' : result === 'a_win' ? 'win' : 'loss';
@@ -75,11 +85,7 @@ function sidesOf(games: MatchupGame[], filter: DispositionFilter): SidedGame[] {
       },
     ];
     for (const pair of pairs) {
-      if (
-        filter.disposition !== null &&
-        filter.side === 'row' &&
-        !same(pair.row.disposition, filter.disposition)
-      )
+      if (filtered && filter.side === 'row' && !inList(pair.row.disposition, filter.dispositions))
         continue;
       sided.push(pair);
     }
@@ -123,9 +129,7 @@ export function computeFactionMatrix(
     cells.set(key, cell);
     playedBy.set(s.row.faction, (playedBy.get(s.row.faction) ?? 0) + 1);
   }
-  const factions = [...playedBy.entries()]
-    .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))
-    .map(([faction]) => faction);
+  const factions = [...playedBy.keys()].sort((x, y) => x.localeCompare(y));
   return {
     factions,
     cells: [...cells.values()].map(({ pointsSum, pointsGames, ...cell }) => ({

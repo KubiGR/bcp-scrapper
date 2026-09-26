@@ -50,7 +50,7 @@ export const eventCellGamesQuery = (
 };
 
 /** The cross-event page's URL search: a date range, event ticks, and the matrix's display
- * settings. `metric`/`minGames` are display-only (never sent to the API); `disposition`/`side`
+ * settings. `metric`/`minGames` are display-only (never sent to the API); `dispositions`/`side`
  * are server filters. */
 export interface CrossSearch {
   from?: string;
@@ -59,8 +59,16 @@ export interface CrossSearch {
   include?: string;
   metric?: 'winRate' | 'points';
   minGames?: number;
-  disposition?: string;
+  /** Comma-separated dispositions (any matches). */
+  dispositions?: string;
   side?: 'row' | 'both';
+}
+
+/** Links from before the multi-select used a single `disposition`; read it as `dispositions`. */
+export function fromLegacySearch(search: CrossSearch & { disposition?: string }): CrossSearch {
+  const { disposition, ...rest } = search;
+  if (disposition === undefined || rest.dispositions !== undefined) return rest;
+  return { ...rest, dispositions: disposition };
 }
 
 const crossParams = (search: CrossSearch) =>
@@ -70,8 +78,8 @@ const crossParams = (search: CrossSearch) =>
       to: search.to,
       exclude: search.exclude,
       include: search.include,
-      disposition: search.disposition,
-      side: search.disposition ? (search.side ?? 'row') : undefined,
+      dispositions: search.dispositions,
+      side: search.dispositions ? (search.side ?? 'row') : undefined,
     }).filter(
       (entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1] !== '',
     ),

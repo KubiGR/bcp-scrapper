@@ -3,6 +3,7 @@ import {
   cellGames,
   computeFactionMatrix,
   scalesAgree,
+  type DispositionFilter,
   type MatchupGame,
   type MatchupSide,
 } from './matchups';
@@ -39,7 +40,7 @@ const game = (
   result,
 });
 
-const noFilter = { disposition: null, side: 'row' } as const;
+const noFilter: DispositionFilter = { dispositions: [], side: 'row' };
 const cell = (m: ReturnType<typeof computeFactionMatrix>, row: string, col: string) =>
   m.cells.find((c) => c.row === row && c.col === col);
 
@@ -87,17 +88,26 @@ describe('computeFactionMatrix', () => {
 
   it('leaves out byes, unknown results and players without a faction', () => {
     expect(matrix.games).toBe(4);
-    expect(matrix.factions).toEqual(['Orks', 'Necrons']); // Orks: 5 sides played, Necrons: 3
+    expect(matrix.factions).toEqual(['Necrons', 'Orks']); // alphabetical
     expect(matrix.cells.some((c) => c.row === 'null' || c.col === 'null')).toBe(false);
   });
 
   it('filters by disposition: the row side, or both sides', () => {
-    const rowSide = computeFactionMatrix(games, { disposition: 'Disruption', side: 'row' });
+    const rowSide = computeFactionMatrix(games, { dispositions: ['Disruption'], side: 'row' });
     expect(cell(rowSide, 'Orks', 'Necrons')).toMatchObject({ games: 1, draws: 1 }); // player 3
     expect(cell(rowSide, 'Necrons', 'Orks')).toMatchObject({ games: 2, losses: 1, draws: 1 }); // players 2 and 4
-    const both = computeFactionMatrix(games, { disposition: 'Disruption', side: 'both' });
+    const both = computeFactionMatrix(games, { dispositions: ['Disruption'], side: 'both' });
     expect(both.games).toBe(1); // only players 3 vs 4
     expect(cell(both, 'Orks', 'Necrons')).toMatchObject({ games: 1, draws: 1 });
+  });
+
+  it('matches any of several dispositions, per side or on both sides', () => {
+    const two = ['disruption ', 'Take and Hold']; // case and spaces don't matter
+    const rowSide = computeFactionMatrix(games, { dispositions: two, side: 'row' });
+    expect(cell(rowSide, 'Orks', 'Necrons')).toMatchObject({ games: 2 }); // players 1 and 3
+    // Both sides: player 1 (Take and Hold) vs 2 (Disruption) now counts too.
+    const both = computeFactionMatrix(games, { dispositions: two, side: 'both' });
+    expect(both.games).toBe(2);
   });
 });
 

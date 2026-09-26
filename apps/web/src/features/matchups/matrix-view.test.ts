@@ -29,7 +29,7 @@ describe('DEFAULT_MATRIX_SETTINGS', () => {
     expect(DEFAULT_MATRIX_SETTINGS).toEqual({
       metric: 'winRate',
       minGames: 3,
-      disposition: null,
+      dispositions: [],
       side: 'row',
     });
   });
@@ -41,8 +41,8 @@ describe('matrixParams', () => {
   });
 
   it('sends disposition and side once a disposition is chosen', () => {
-    expect(matrixParams(settings({ disposition: 'Take and Hold', side: 'both' }))).toEqual({
-      disposition: 'Take and Hold',
+    expect(matrixParams(settings({ dispositions: ['Take and Hold'], side: 'both' }))).toEqual({
+      dispositions: 'Take and Hold',
       side: 'both',
     });
   });
@@ -188,5 +188,18 @@ describe('cellView strength (graded colour by win rate/points)', () => {
     expect(hidden.strength).toBe(0);
     const mirror = cellView(cell({ row: 'Orks', col: 'Orks', games: 6 }), settings(), null);
     expect(mirror.strength).toBe(0);
+  });
+});
+
+describe('matrixParams', () => {
+  it('sends several dispositions as one comma-separated list, and nothing when none', () => {
+    expect(matrixParams(DEFAULT_MATRIX_SETTINGS)).toEqual({});
+    expect(
+      matrixParams({
+        ...DEFAULT_MATRIX_SETTINGS,
+        dispositions: ['Take and Hold', 'Disruption'],
+        side: 'both',
+      }),
+    ).toEqual({ dispositions: 'Take and Hold,Disruption', side: 'both' });
   });
 });

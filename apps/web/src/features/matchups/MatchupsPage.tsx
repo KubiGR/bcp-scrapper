@@ -69,7 +69,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
   const settings: MatrixSettings = {
     metric: search.metric ?? DEFAULT_MATRIX_SETTINGS.metric,
     minGames: search.minGames ?? DEFAULT_MATRIX_SETTINGS.minGames,
-    disposition: search.disposition ?? null,
+    dispositions: search.dispositions?.split(',').filter(Boolean) ?? [],
     side: search.side ?? DEFAULT_MATRIX_SETTINGS.side,
   };
   // Points may have become unavailable (e.g. after ticking in an event with a different scale):
@@ -137,7 +137,8 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
                     ...search,
                     metric: next.metric,
                     minGames: next.minGames,
-                    disposition: next.disposition ?? undefined,
+                    dispositions:
+                      next.dispositions.length > 0 ? next.dispositions.join(',') : undefined,
                     side: next.side,
                   });
                 }}
@@ -148,7 +149,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
                 {(() => {
                   const noneIncluded = !matchups.data.events.some((event) => event.included);
                   const noGames = matchups.data.matrix.games === 0;
-                  const dispositionActive = settings.disposition !== null;
+                  const dispositionActive = settings.dispositions.length > 0;
                   if (!noneIncluded && noGames && dispositionActive) {
                     return (
                       <Group gap="sm">
@@ -159,7 +160,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
                           size="xs"
                           variant="light"
                           onClick={() => {
-                            onSearchChange({ ...search, disposition: undefined });
+                            onSearchChange({ ...search, dispositions: undefined });
                           }}
                         >
                           Clear filter
