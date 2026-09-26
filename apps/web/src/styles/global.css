@@ -8,8 +8,12 @@ body {
   color: var(--mantine-color-white);
 }
 
-/* Figures line up in columns: use on every number shown in tables and stats. */
+/*
+ * Figures line up in columns: use on every number shown in tables and stats. A figure never
+ * breaks across lines (a record like 3-2-0 or a score like 20–0); narrow tables scroll instead.
+ */
 .numeric {
   font-family: var(--mantine-font-family-monospace);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
