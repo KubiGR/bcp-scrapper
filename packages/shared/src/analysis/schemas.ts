@@ -15,9 +15,13 @@ export const PlayerRefSchema = z.object({
   id: z.string(),
   name: z.string(),
   faction: z.string().nullable(),
+  /** True when `faction` was read from the player's list because BCP has none. */
+  factionGuessed: z.boolean(),
   teamId: z.string().nullable(),
   /** The army's disposition (BCP's subFaction), e.g. "Take and Hold". */
   disposition: z.string().nullable(),
+  /** From the player's fetched list; empty when not fetched or not readable. */
+  detachments: z.array(z.string()),
 });
 export type PlayerRef = z.infer<typeof PlayerRefSchema>;
 

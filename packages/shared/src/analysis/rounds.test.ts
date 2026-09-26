@@ -41,7 +41,7 @@ const input: EventAnalysisInput = {
     },
     { id: 'B1', name: 'Bea Moss', faction: 'Necrons', teamId: 'BLUE', disposition: null },
     { id: 'J1', name: 'Jon Reed', faction: "T'au Empire", teamId: 'JADE', disposition: null },
-  ],
+  ].map((player) => ({ ...player, factionGuessed: false, detachments: [] })),
   matchups: [
     { id: 'M2', round: 1, tableNo: 2, teamAId: 'JADE', teamBId: null, pointsA: 20, pointsB: null },
     { id: 'M1', round: 1, tableNo: 1, teamAId: 'RED', teamBId: 'BLUE', pointsA: 20, pointsB: 0 },
@@ -81,8 +81,10 @@ describe('buildRounds', () => {
       id: 'X9',
       name: 'Unknown player',
       faction: null,
+      factionGuessed: false,
       teamId: null,
       disposition: null,
+      detachments: [],
     });
   });
 

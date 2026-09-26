@@ -2,12 +2,13 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
-import { events, fetchQueue } from '../db/schema';
+import { events, fetchQueue, players } from '../db/schema';
 import { enqueueEventPairings } from './fetch-queue';
 import { loadMatchupGames, pairingsStates } from './matchups';
 import { syncEvent } from '../sync/jobs';
 import { syncRoundPairings } from '../sync/round-pairings';
 import { sampleSource, silentLogger } from '../test/helpers';
+import { gwList, storeList } from '../test/lists';
 
 let db: Db;
 let close: () => Promise<void>;
@@ -29,6 +30,24 @@ async function loadBracketEvent() {
 }
 
 describe('loadMatchupGames', () => {
+  it('uses the army read from the list when BCP has none, and adds detachments', async () => {
+    await loadBracketEvent();
+    await db.update(players).set({ faction: 'Xenos' }).where(eq(players.id, 'PB-B1'));
+    await storeList(db, 'PB-B1', gwList('Orks', 'War Horde'));
+    await storeList(db, 'PB-R1', gwList('Adepta Sororitas', 'Hallowed Martyrs'));
+    const first = (await loadMatchupGames(db, ['EVTBRACKET01'])).find((g) => g.id === 'GB-R1-1');
+    expect(first?.a).toMatchObject({
+      faction: 'Adepta Sororitas',
+      factionGuessed: false,
+      detachments: ['Hallowed Martyrs'],
+    });
+    expect(first?.b).toMatchObject({
+      faction: 'Orks',
+      factionGuessed: true,
+      detachments: ['War Horde'],
+    });
+  });
+
   it('loads each game with both sides’ faction, disposition and team', async () => {
     await loadBracketEvent();
     const games = await loadMatchupGames(db, ['EVTBRACKET01']);

@@ -1,4 +1,11 @@
-import type { EventCounts, EventPlayer, Player, Team } from '@bcp/shared';
+import {
+  knownDisposition,
+  resolveFaction,
+  type EventCounts,
+  type EventPlayer,
+  type Player,
+  type Team,
+} from '@bcp/shared';
 import { and, count, eq, isNotNull, notInArray, sql } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
@@ -108,6 +115,9 @@ export async function listEventPlayers(db: Db, eventId: string): Promise<EventPl
         teamName: teams.name,
         teamPlacing: teams.placing,
         storedListId: armyLists.listId,
+        parsedArmy: armyLists.parsedArmy,
+        detachments: armyLists.detachments,
+        parsedDisposition: armyLists.parsedDisposition,
       })
       .from(players)
       .leftJoin(teams, eq(teams.id, players.teamId))
@@ -117,22 +127,26 @@ export async function listEventPlayers(db: Db, eventId: string): Promise<EventPl
       .orderBy(sql`${players.placing} asc nulls last`, players.name),
     latestQueueRowsByPlayer(db, eventId),
   ]);
-  return rows.map(({ player, teamName, teamPlacing, storedListId }) => ({
-    bcpId: player.id,
-    name: player.name,
-    teamName,
-    teamId: player.teamId,
-    teamPlacing,
-    faction: player.faction,
-    parentFaction: player.parentFaction,
-    placing: player.placing,
-    wins: player.wins,
-    losses: player.losses,
-    draws: player.draws,
-    dropped: player.dropped,
-    disposition: player.disposition,
-    ...listStateOf(player.listId, storedListId, queue.get(player.id)),
-  }));
+  return rows.map((row) => {
+    const { player, teamName, teamPlacing, storedListId } = row;
+    return {
+      bcpId: player.id,
+      name: player.name,
+      teamName,
+      teamId: player.teamId,
+      teamPlacing,
+      ...resolveFaction(player.faction, row.parsedArmy),
+      parentFaction: player.parentFaction,
+      placing: player.placing,
+      wins: player.wins,
+      losses: player.losses,
+      draws: player.draws,
+      dropped: player.dropped,
+      disposition: player.disposition ?? knownDisposition(row.parsedDisposition),
+      detachments: row.detachments ?? [],
+      ...listStateOf(player.listId, storedListId, queue.get(player.id)),
+    };
+  });
 }
 
 export async function countEventParticipants(db: Db, eventId: string): Promise<EventCounts> {

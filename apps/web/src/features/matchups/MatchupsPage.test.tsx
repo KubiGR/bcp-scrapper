@@ -43,6 +43,7 @@ const response = (overrides: Record<string, unknown> = {}) => ({
     ],
   },
   scoring: { consistent: true, scale: 20 },
+  detachments: [],
   ...overrides,
 });
 

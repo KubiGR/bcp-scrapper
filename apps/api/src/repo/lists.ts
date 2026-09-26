@@ -1,7 +1,14 @@
-import type { ArmyList, PlayerList } from '@bcp/shared';
-import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import {
+  parseArmyList,
+  PARSER_VERSION,
+  splitDetachments,
+  type ArmyList,
+  type PlayerList,
+} from '@bcp/shared';
+import { and, eq, isNotNull, isNull, lt, sql } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
+import type { Logger } from '../logger';
 import { armyLists, players, teams } from '../db/schema';
 
 /** Joins a player's stored list only while it is their current BCP list. */
@@ -29,12 +36,48 @@ export async function findPlayersMissingLists(
   return rows.flatMap(({ playerId, listId }) => (listId === null ? [] : [{ playerId, listId }]));
 }
 
+/**
+ * Detachments seen on their own: every name of a list naming several, and a list's single name
+ * when it has no joiner (a joined "A and B" is what splitting decides about).
+ */
+export async function knownDetachments(db: Db): Promise<Set<string>> {
+  const rows = await db
+    .select({ detachments: armyLists.detachments })
+    .from(armyLists)
+    .where(sql`cardinality(${armyLists.detachments}) > 0`);
+  const known = new Set<string>();
+  for (const { detachments } of rows) {
+    if (detachments.length > 1) detachments.forEach((name) => known.add(name));
+    else if (detachments[0] !== undefined && !/,|\s(?:and|y|und|et|e)\s/.test(detachments[0])) {
+      known.add(detachments[0]);
+    }
+  }
+  return known;
+}
+
+/** The parsed columns for a list's text, splitting joined detachments against `known`. */
+function parsedColumns(text: string | null, known: ReadonlySet<string>) {
+  const parsed = parseArmyList(text);
+  return {
+    parsedArmy: parsed.army,
+    detachments: splitDetachments(parsed.detachments, known),
+    parsedDisposition: parsed.disposition,
+    parserVersion: PARSER_VERSION,
+  };
+}
+
 export async function saveArmyList(
   db: Db,
   playerId: string,
   list: Fetched<ArmyList>,
 ): Promise<void> {
-  const values = { listId: list.bcpId, text: list.text, raw: list.raw, fetchedAt: new Date() };
+  const values = {
+    listId: list.bcpId,
+    text: list.text,
+    raw: list.raw,
+    fetchedAt: new Date(),
+    ...parsedColumns(list.text, await knownDetachments(db)),
+  };
   await db
     .insert(armyLists)
     .values({ playerId, ...values })
@@ -108,4 +151,46 @@ export async function findPlayerList(db: Db, playerId: string): Promise<PlayerLi
     .leftJoin(teams, eq(teams.id, players.teamId))
     .where(eq(armyLists.playerId, playerId));
   return row ? { ...row, fetchedAt: row.fetchedAt.toISOString() } : null;
+}
+
+const REPARSE_BATCH = 200;
+
+/**
+ * Re-reads lists parsed by an older parser (no BCP requests), then splits joined detachments now
+ * that every list's single detachments are known. Returns how many lists were re-read.
+ */
+export async function reparseLists(db: Db, logger: Logger): Promise<number> {
+  let reparsed = 0;
+  for (;;) {
+    const batch = await db
+      .select({ playerId: armyLists.playerId, text: armyLists.text })
+      .from(armyLists)
+      .where(lt(armyLists.parserVersion, PARSER_VERSION))
+      .limit(REPARSE_BATCH);
+    if (batch.length === 0) break;
+    for (const { playerId, text } of batch) {
+      await db
+        .update(armyLists)
+        .set(parsedColumns(text, new Set()))
+        .where(eq(armyLists.playerId, playerId));
+    }
+    reparsed += batch.length;
+    logger.debug({ reparsed }, 'Re-reading stored army lists');
+  }
+
+  const known = await knownDetachments(db);
+  const single = await db
+    .select({ playerId: armyLists.playerId, detachments: armyLists.detachments })
+    .from(armyLists)
+    .where(sql`cardinality(${armyLists.detachments}) = 1`);
+  for (const { playerId, detachments } of single) {
+    const split = splitDetachments(detachments, known);
+    if (split.length > 1) {
+      await db
+        .update(armyLists)
+        .set({ detachments: split })
+        .where(eq(armyLists.playerId, playerId));
+    }
+  }
+  return reparsed;
 }

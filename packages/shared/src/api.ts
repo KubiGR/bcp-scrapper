@@ -152,6 +152,8 @@ export const EventPlayerSchema = z.object({
   /** The team's BCP placing, for ordering teams. */
   teamPlacing: z.number().int().nullable(),
   faction: z.string().nullable(),
+  /** True when `faction` was read from the player's list because BCP has none (or only an allegiance). */
+  factionGuessed: z.boolean(),
   parentFaction: z.string().nullable(),
   placing: z.number().int().nullable(),
   wins: z.number().int().nonnegative(),
@@ -160,6 +162,8 @@ export const EventPlayerSchema = z.object({
   dropped: z.boolean(),
   /** The army's disposition (BCP's subFaction), e.g. "Take and Hold". */
   disposition: z.string().nullable(),
+  /** From the player's fetched list; empty when not fetched or not readable. */
+  detachments: z.array(z.string()),
   listStatus: ListStatusSchema,
   /** Why the newest list request failed (only when `listStatus` is failed). */
   listError: z.string().nullable(),

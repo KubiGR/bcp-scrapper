@@ -4,6 +4,7 @@ import type { Db } from '../db/client';
 import { armyLists, players, teams } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { sampleSource } from '../test/helpers';
+import { gwList, storeList } from '../test/lists';
 import { upsertEventDetail, upsertEventSummaries } from './events';
 import { findPlayersMissingLists, saveArmyList } from './lists';
 import {
@@ -92,6 +93,50 @@ describe('listEventPlayers', () => {
   it('lists each player’s team id and placing', async () => {
     const ada = (await listEventPlayers(db, EVENT)).find((p) => p.bcpId === 'PL-ADA');
     expect(ada).toMatchObject({ teamId: 'TM-ALPHA', teamName: 'Alpha Squad', teamPlacing: 2 });
+  });
+});
+
+describe('listEventPlayers with parsed lists', () => {
+  const find = async (id: string) =>
+    (await listEventPlayers(db, EVENT)).find((p) => p.bcpId === id);
+
+  it('guesses the army from the list when BCP has no faction, or only an allegiance', async () => {
+    await db.update(players).set({ faction: null }).where(eq(players.id, 'PL-ADA'));
+    await db.update(players).set({ faction: 'Chaos' }).where(eq(players.id, 'PL-BEN'));
+    await storeList(db, 'PL-ADA', gwList('Necrons', 'Awakened Dynasty', 'Disruption'));
+    await storeList(db, 'PL-BEN', gwList('Chaos Space Marines', 'Renegade Raiders'));
+    expect(await find('PL-ADA')).toMatchObject({
+      faction: 'Necrons',
+      factionGuessed: true,
+      detachments: ['Awakened Dynasty'],
+    });
+    expect(await find('PL-BEN')).toMatchObject({
+      faction: 'Chaos Space Marines',
+      factionGuessed: true,
+    });
+  });
+
+  it('keeps BCP’s faction, and fills a missing disposition only with a known one', async () => {
+    await db.update(players).set({ disposition: null }).where(eq(players.id, 'PL-ADA'));
+    await storeList(db, 'PL-ADA', gwList('Necrons', 'Awakened Dynasty', 'Purge the Foe'));
+    const ada = await find('PL-ADA');
+    expect(ada).toMatchObject({ factionGuessed: false, disposition: 'Purge the Foe' });
+    expect(ada?.faction).not.toBe('Necrons');
+  });
+
+  it('ignores a stored list the player has since replaced on BCP', async () => {
+    await db.update(players).set({ faction: null }).where(eq(players.id, 'PL-ADA'));
+    await storeList(db, 'PL-ADA', gwList('Necrons', 'Awakened Dynasty'));
+    await db.update(players).set({ listId: 'LS-NEWER' }).where(eq(players.id, 'PL-ADA'));
+    expect(await find('PL-ADA')).toMatchObject({
+      faction: null,
+      factionGuessed: false,
+      detachments: [],
+    });
+  });
+
+  it('has no detachments and no guess without a list', async () => {
+    expect(await find('PL-ADA')).toMatchObject({ factionGuessed: false, detachments: [] });
   });
 });
 

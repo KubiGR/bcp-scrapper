@@ -1,9 +1,9 @@
 import type { MatchupGame, PairingsState } from '@bcp/shared';
-import { isBigEvent, type EventSizeRule } from '@bcp/shared';
+import { isBigEvent, knownDisposition, resolveFaction, type EventSizeRule } from '@bcp/shared';
 import { and, desc, eq, gte, inArray, lt } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from '../db/client';
-import { events, fetchQueue, games, players, teams } from '../db/schema';
+import { armyLists, events, fetchQueue, games, players, teams } from '../db/schema';
 import { eventPairingsJobs } from './fetch-queue';
 import type { EventRow } from './events';
 import { storedPairingsSummary } from './pairings';
@@ -15,6 +15,8 @@ export async function loadMatchupGames(db: Db, eventIds: string[]): Promise<Matc
   const pb = alias(players, 'pb');
   const ta = alias(teams, 'ta');
   const tb = alias(teams, 'tb');
+  const la = alias(armyLists, 'la');
+  const lb = alias(armyLists, 'lb');
   const rows = await db
     .select({
       id: games.id,
@@ -29,11 +31,17 @@ export async function loadMatchupGames(db: Db, eventIds: string[]): Promise<Matc
       aName: pa.name,
       aFaction: pa.faction,
       aDisposition: pa.disposition,
+      aArmy: la.parsedArmy,
+      aDetachments: la.detachments,
+      aParsedDisposition: la.parsedDisposition,
       aTeam: ta.name,
       bId: games.playerBId,
       bName: pb.name,
       bFaction: pb.faction,
       bDisposition: pb.disposition,
+      bArmy: lb.parsedArmy,
+      bDetachments: lb.detachments,
+      bParsedDisposition: lb.parsedDisposition,
       bTeam: tb.name,
     })
     .from(games)
@@ -42,6 +50,9 @@ export async function loadMatchupGames(db: Db, eventIds: string[]): Promise<Matc
     .leftJoin(pb, eq(pb.id, games.playerBId))
     .leftJoin(ta, eq(ta.id, pa.teamId))
     .leftJoin(tb, eq(tb.id, pb.teamId))
+    // Only a player's current list (see storedCurrentList).
+    .leftJoin(la, and(eq(la.playerId, pa.id), eq(la.listId, pa.listId)))
+    .leftJoin(lb, and(eq(lb.playerId, pb.id), eq(lb.listId, pb.listId)))
     .where(inArray(games.eventId, eventIds));
   return rows.map((row) => ({
     id: row.id,
@@ -55,8 +66,9 @@ export async function loadMatchupGames(db: Db, eventIds: string[]): Promise<Matc
     a: {
       playerId: row.aId,
       name: row.aName ?? 'Unknown player',
-      faction: row.aFaction ?? null,
-      disposition: row.aDisposition ?? null,
+      ...resolveFaction(row.aFaction ?? null, row.aArmy ?? null),
+      disposition: row.aDisposition ?? knownDisposition(row.aParsedDisposition ?? null),
+      detachments: row.aDetachments ?? [],
       teamName: row.aTeam ?? null,
     },
     b:
@@ -65,8 +77,9 @@ export async function loadMatchupGames(db: Db, eventIds: string[]): Promise<Matc
         : {
             playerId: row.bId,
             name: row.bName ?? 'Unknown player',
-            faction: row.bFaction ?? null,
-            disposition: row.bDisposition ?? null,
+            ...resolveFaction(row.bFaction ?? null, row.bArmy ?? null),
+            disposition: row.bDisposition ?? knownDisposition(row.bParsedDisposition ?? null),
+            detachments: row.bDetachments ?? [],
             teamName: row.bTeam ?? null,
           },
   }));

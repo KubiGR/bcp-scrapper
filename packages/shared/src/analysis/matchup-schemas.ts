@@ -36,6 +36,8 @@ export const ScaleSchema = z.object({
 export const MatchupsResponseSchema = z.object({
   matrix: FactionMatrixSchema,
   scoring: ScaleSchema,
+  /** Every detachment played in the loaded games (before filtering), A→Z. */
+  detachments: z.array(z.string()),
 });
 export type MatchupsResponse = z.infer<typeof MatchupsResponseSchema>;
 
@@ -48,13 +50,17 @@ export const CellGameSchema = z.object({
   row: z.object({
     name: z.string(),
     faction: z.string(),
+    factionGuessed: z.boolean(),
     disposition: z.string().nullable(),
+    detachments: z.array(z.string()),
     teamName: z.string().nullable(),
   }),
   col: z.object({
     name: z.string(),
     faction: z.string(),
+    factionGuessed: z.boolean(),
     disposition: z.string().nullable(),
+    detachments: z.array(z.string()),
     teamName: z.string().nullable(),
   }),
   outcome: z.enum(['win', 'loss', 'draw']),

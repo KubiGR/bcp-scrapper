@@ -7,6 +7,8 @@ const player = (id: string, name: string) => ({
   name,
   faction: null,
   teamId: null,
+  factionGuessed: false,
+  detachments: [],
   disposition: null,
 });
 

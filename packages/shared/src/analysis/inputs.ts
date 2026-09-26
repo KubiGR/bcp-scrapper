@@ -11,9 +11,13 @@ export interface PlayerRow {
   id: string;
   name: string;
   faction: string | null;
+  /** True when `faction` was read from the player's list because BCP has none. */
+  factionGuessed: boolean;
   teamId: string | null;
   /** The army's disposition (BCP's subFaction), e.g. "Take and Hold". */
   disposition: string | null;
+  /** From the player's fetched list; empty when not fetched or not readable. */
+  detachments: string[];
 }
 
 /** `teamBId` is null for a bye. */

@@ -65,10 +65,20 @@ export function playerRefOf(players: Map<string, PlayerRow>, id: string): Player
         id,
         name: player.name,
         faction: player.faction,
+        factionGuessed: player.factionGuessed,
         teamId: player.teamId,
         disposition: player.disposition,
+        detachments: player.detachments,
       }
-    : { id, name: 'Unknown player', faction: null, teamId: null, disposition: null };
+    : {
+        id,
+        name: 'Unknown player',
+        faction: null,
+        factionGuessed: false,
+        teamId: null,
+        disposition: null,
+        detachments: [],
+      };
 }
 
 export const byId = <T extends { id: string }>(rows: T[]) =>

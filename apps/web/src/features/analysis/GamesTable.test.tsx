@@ -9,6 +9,8 @@ const player = (overrides: Partial<GameView['playerA']> = {}): GameView['playerA
   name: 'Rhea Stone',
   faction: 'Adepta Sororitas',
   teamId: null,
+  factionGuessed: false,
+  detachments: [],
   disposition: null,
   ...overrides,
 });

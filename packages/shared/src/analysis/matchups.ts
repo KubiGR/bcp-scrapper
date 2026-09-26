@@ -6,7 +6,10 @@ export interface MatchupSide {
   playerId: string;
   name: string;
   faction: string | null;
+  factionGuessed: boolean;
   disposition: string | null;
+  /** From the player's fetched list; empty when not fetched. */
+  detachments: string[];
   teamName: string | null;
 }
 
@@ -25,13 +28,16 @@ export interface MatchupGame {
 }
 
 /**
- * An empty `dispositions` list means no filter. `side: 'row'`: the row side played any listed
- * disposition; `'both'`: both sides did (each may play a different listed one).
+ * Empty lists mean no filter. A side matches when it played any listed disposition AND any
+ * listed detachment. `side: 'row'`: the row side must match; `'both'`: both sides must.
  */
-export interface DispositionFilter {
+export interface MatchupFilter {
   dispositions: string[];
+  detachments?: string[];
   side: 'row' | 'both';
 }
+/** The name before detachments joined the filter. */
+export type DispositionFilter = MatchupFilter;
 
 type Outcome = 'win' | 'loss' | 'draw';
 
@@ -51,6 +57,16 @@ const normalise = (value: string) => value.trim().toLowerCase();
 const inList = (value: string | null, list: string[]) =>
   value !== null && list.some((listed) => normalise(listed) === normalise(value));
 
+/** Whether a side passes the filter's disposition and detachment lists. */
+function sideMatches(side: MatchupSide, filter: MatchupFilter): boolean {
+  const detachments = filter.detachments ?? [];
+  const byDisposition =
+    filter.dispositions.length === 0 || inList(side.disposition, filter.dispositions);
+  const byDetachment =
+    detachments.length === 0 || side.detachments.some((name) => inList(name, detachments));
+  return byDisposition && byDetachment;
+}
+
 /** A side with a real faction (not unknown, not just an allegiance), or null. */
 function withFaction(side: MatchupSide): (MatchupSide & { faction: string }) | null {
   const { faction } = side;
@@ -59,21 +75,14 @@ function withFaction(side: MatchupSide): (MatchupSide & { faction: string }) | n
 }
 
 /** Both sides of every countable game: not a bye, a known result, both factions known. */
-function sidesOf(games: MatchupGame[], filter: DispositionFilter): SidedGame[] {
+function sidesOf(games: MatchupGame[], filter: MatchupFilter): SidedGame[] {
   const sided: SidedGame[] = [];
   for (const game of games) {
     const { result } = game;
     const a = withFaction(game.a);
     const b = game.b === null ? null : withFaction(game.b);
     if (!a || !b || result === null) continue;
-    const filtered = filter.dispositions.length > 0;
-    if (filtered && filter.side === 'both') {
-      if (
-        !inList(a.disposition, filter.dispositions) ||
-        !inList(b.disposition, filter.dispositions)
-      )
-        continue;
-    }
+    if (filter.side === 'both' && (!sideMatches(a, filter) || !sideMatches(b, filter))) continue;
     const aOutcome: Outcome = result === 'draw' ? 'draw' : result === 'a_win' ? 'win' : 'loss';
     const bOutcome: Outcome = aOutcome === 'draw' ? 'draw' : aOutcome === 'win' ? 'loss' : 'win';
     const pairs: SidedGame[] = [
@@ -95,8 +104,7 @@ function sidesOf(games: MatchupGame[], filter: DispositionFilter): SidedGame[] {
       },
     ];
     for (const pair of pairs) {
-      if (filtered && filter.side === 'row' && !inList(pair.row.disposition, filter.dispositions))
-        continue;
+      if (filter.side === 'row' && !sideMatches(pair.row, filter)) continue;
       sided.push(pair);
     }
   }
@@ -107,10 +115,7 @@ function sidesOf(games: MatchupGame[], filter: DispositionFilter): SidedGame[] {
  * Faction-vs-faction results. Each countable game adds one entry per side (row = that side's
  * faction); mirrors land on the diagonal twice and get no win rate.
  */
-export function computeFactionMatrix(
-  games: MatchupGame[],
-  filter: DispositionFilter,
-): FactionMatrix {
+export function computeFactionMatrix(games: MatchupGame[], filter: MatchupFilter): FactionMatrix {
   const sided = sidesOf(games, filter);
   const cells = new Map<string, MatrixCell & { pointsSum: number; pointsGames: number }>();
   const playedBy = new Map<string, number>();
@@ -186,7 +191,7 @@ export function cellGames(
   games: MatchupGame[],
   row: string,
   col: string,
-  filter: DispositionFilter,
+  filter: MatchupFilter,
 ): CellGame[] {
   let sided = sidesOf(games, filter).filter((s) => s.row.faction === row && s.col.faction === col);
   if (row === col) {
@@ -214,17 +219,30 @@ export function cellGames(
       row: {
         name: s.row.name,
         faction: s.row.faction,
+        factionGuessed: s.row.factionGuessed,
         disposition: s.row.disposition,
+        detachments: s.row.detachments,
         teamName: s.row.teamName,
       },
       col: {
         name: s.col.name,
         faction: s.col.faction,
+        factionGuessed: s.col.factionGuessed,
         disposition: s.col.disposition,
+        detachments: s.col.detachments,
         teamName: s.col.teamName,
       },
       outcome: s.outcome,
       rowPoints: s.rowPoints,
       colPoints: s.colPoints,
     }));
+}
+
+/** Every detachment played in these games, A→Z (for the detachment filter's options). */
+export function detachmentsPlayed(games: MatchupGame[]): string[] {
+  const names = new Set<string>();
+  for (const game of games) {
+    for (const side of [game.a, game.b]) side?.detachments.forEach((name) => names.add(name));
+  }
+  return [...names].sort((x, y) => x.localeCompare(y));
 }

@@ -12,11 +12,14 @@ const side = (
   id: string,
   faction: string | null,
   disposition: string | null = null,
+  detachments: string[] = [],
 ): MatchupSide => ({
   playerId: id,
   name: `Player ${id}`,
   faction,
+  factionGuessed: false,
   disposition,
+  detachments,
   teamName: null,
 });
 let n = 0;
@@ -108,6 +111,63 @@ describe('computeFactionMatrix', () => {
     // Both sides: player 1 (Take and Hold) vs 2 (Disruption) now counts too.
     const both = computeFactionMatrix(games, { dispositions: two, side: 'both' });
     expect(both.games).toBe(2);
+  });
+});
+
+describe('detachment filter', () => {
+  const games = [
+    game(
+      side('1', 'Orks', 'Disruption', ['War Horde']),
+      side('2', 'Necrons', 'Disruption', ['Hypercrypt']),
+      15,
+      5,
+      'a_win',
+    ),
+    game(
+      side('3', 'Orks', 'Take and Hold', ['Kult of Speed']),
+      side('4', 'Necrons', null, ['War Horde']),
+      10,
+      10,
+      'draw',
+    ),
+    game(side('5', 'Orks'), side('6', 'Necrons'), 20, 0, 'a_win'), // no lists
+  ];
+
+  it('row side: the row player played any listed detachment', () => {
+    const m = computeFactionMatrix(games, {
+      dispositions: [],
+      detachments: ['War Horde'],
+      side: 'row',
+    });
+    expect(cell(m, 'Orks', 'Necrons')?.games).toBe(1);
+    expect(cell(m, 'Necrons', 'Orks')?.games).toBe(1);
+  });
+
+  it('both sides: each played one of the listed detachments', () => {
+    const m = computeFactionMatrix(games, {
+      dispositions: [],
+      detachments: ['War Horde', 'Hypercrypt'],
+      side: 'both',
+    });
+    expect(m.games).toBe(1);
+  });
+
+  it('combines with dispositions (both must match)', () => {
+    const m = computeFactionMatrix(games, {
+      dispositions: ['Disruption'],
+      detachments: ['War Horde'],
+      side: 'row',
+    });
+    expect(cell(m, 'Orks', 'Necrons')?.games).toBe(1);
+    expect(cell(m, 'Necrons', 'Orks')).toBeUndefined();
+  });
+
+  it('never matches a player without a list', () => {
+    const m = computeFactionMatrix(
+      [games[2]].filter((g) => g !== undefined),
+      { dispositions: [], detachments: ['War Horde'], side: 'row' },
+    );
+    expect(m.games).toBe(0);
   });
 });
 

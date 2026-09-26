@@ -22,6 +22,7 @@ const matrix = (overrides: Record<string, unknown> = {}) => ({
     ],
   },
   scoring: { consistent: true, scale: 20 },
+  detachments: [],
   ...overrides,
 });
 
@@ -160,8 +161,22 @@ describe('MatchupsPanel', () => {
             eventName: 'Sample Team Open',
             round: 1,
             tableNo: 2,
-            row: { name: 'Ada Archer', faction: 'Orks', disposition: null, teamName: null },
-            col: { name: 'Bea Moss', faction: 'Necrons', disposition: null, teamName: null },
+            row: {
+              name: 'Ada Archer',
+              faction: 'Orks',
+              factionGuessed: false,
+              disposition: null,
+              detachments: [],
+              teamName: null,
+            },
+            col: {
+              name: 'Bea Moss',
+              faction: 'Necrons',
+              factionGuessed: false,
+              disposition: null,
+              detachments: [],
+              teamName: null,
+            },
             outcome: 'win',
             rowPoints: 12,
             colPoints: 8,

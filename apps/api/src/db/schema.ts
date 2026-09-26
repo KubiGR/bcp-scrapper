@@ -115,6 +115,15 @@ export const armyLists = pgTable('army_lists', {
   text: text('text'),
   raw: jsonb('raw').notNull(),
   fetchedAt: timestamptz('fetched_at').notNull().defaultNow(),
+  /** Read from `text` by parseArmyList (see parser_version). */
+  parsedArmy: text('parsed_army'),
+  detachments: text('detachments')
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
+  parsedDisposition: text('parsed_disposition'),
+  /** The PARSER_VERSION that produced the parsed columns; older rows are re-read on startup. */
+  parserVersion: integer('parser_version').notNull().default(0),
 });
 
 export const teamMatchups = pgTable(

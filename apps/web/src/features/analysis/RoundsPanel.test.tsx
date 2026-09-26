@@ -10,6 +10,8 @@ const player = (id: string, name: string, faction: string) => ({
   name,
   faction,
   teamId: null,
+  factionGuessed: false,
+  detachments: [],
   disposition: null,
 });
 const rounds: RoundsResponse = {

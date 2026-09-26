@@ -2,8 +2,9 @@ import {
   BulkPairingsRequestSchema,
   cellGames,
   computeFactionMatrix,
+  detachmentsPlayed,
   scalesAgree,
-  type DispositionFilter,
+  type MatchupFilter,
   type EventSizeRule,
 } from '@bcp/shared';
 import { Hono } from 'hono';
@@ -21,6 +22,8 @@ const FilterSchema = z.object({
   dispositions: z.string().optional(),
   /** The pre-multi-select single value; still accepted so saved links keep working. */
   disposition: z.string().optional(),
+  /** Comma-separated; any listed detachment matches (only players with a fetched list). */
+  detachments: z.string().optional(),
   side: z.enum(['row', 'both']).default('row'),
 });
 const CellSchema = z.object({ row: z.string().min(1), col: z.string().min(1) });
@@ -47,10 +50,15 @@ const RangeSchema = z
     path: ['from'],
   });
 
-const toFilter = (q: z.infer<typeof FilterSchema>): DispositionFilter => ({
-  dispositions: [...(q.dispositions?.split(',') ?? []), q.disposition ?? '']
+const listOf = (values: (string | undefined)[]) =>
+  values
+    .flatMap((value) => value?.split(',') ?? [])
     .map((value) => value.trim())
-    .filter(Boolean),
+    .filter(Boolean);
+
+const toFilter = (q: z.infer<typeof FilterSchema>): MatchupFilter => ({
+  dispositions: listOf([q.dispositions, q.disposition]),
+  detachments: listOf([q.detachments]),
   side: q.side,
 });
 
@@ -104,7 +112,11 @@ export function matchupsRoutes(deps: {
       await requireEvent(db, id);
       const filter = toFilter(parseInput(FilterSchema, c.req.query()));
       const games = await loadMatchupGames(db, [id]);
-      return c.json({ matrix: computeFactionMatrix(games, filter), scoring: scalesAgree(games) });
+      return c.json({
+        matrix: computeFactionMatrix(games, filter),
+        scoring: scalesAgree(games),
+        detachments: detachmentsPlayed(games),
+      });
     })
     .get('/events/:id/matchups/games', async (c) => {
       const id = c.req.param('id');
@@ -123,6 +135,7 @@ export function matchupsRoutes(deps: {
         events,
         matrix: computeFactionMatrix(games, filter),
         scoring: scalesAgree(games),
+        detachments: detachmentsPlayed(games),
       });
     })
     .get('/matchups/games', async (c) => {

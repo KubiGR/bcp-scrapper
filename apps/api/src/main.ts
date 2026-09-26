@@ -7,6 +7,7 @@ import { createDb } from './db/client';
 import { FetchQueueWorker } from './fetch-queue/worker';
 import { createLogger } from './logger';
 import { deleteSmallEvents } from './repo/events';
+import { reparseLists } from './repo/lists';
 import { failInterruptedSyncRuns } from './repo/sync-runs';
 import { serveWebApp } from './static';
 import { SyncRunner } from './sync/runner';
@@ -18,6 +19,8 @@ const eventRule = { minRounds: config.MIN_EVENT_ROUNDS, minPlayers: config.MIN_E
 const database = createDb(config.DATABASE_URL);
 await database.migrate();
 await ensureAdmin(database.db, config, logger);
+const reparsed = await reparseLists(database.db, logger);
+if (reparsed > 0) logger.info({ reparsed }, 'Re-read stored army lists');
 const deleted = await deleteSmallEvents(database.db, eventRule);
 if (deleted > 0) logger.info({ deleted }, 'Deleted small events (RTTs and events under N players)');
 const interrupted = await failInterruptedSyncRuns(database.db);

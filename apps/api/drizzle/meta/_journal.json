@@ -57,6 +57,13 @@
       "when": 1790453752313,
       "tag": "0007_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790456780182,
+      "tag": "0008_parsed-lists",
+      "breakpoints": true
     }
   ]
 }

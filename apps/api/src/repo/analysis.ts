@@ -1,7 +1,8 @@
-import type { EventAnalysisInput } from '@bcp/shared';
+import { knownDisposition, resolveFaction, type EventAnalysisInput } from '@bcp/shared';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
-import { games, players, teamMatchups, teams } from '../db/schema';
+import { armyLists, games, players, teamMatchups, teams } from '../db/schema';
+import { storedCurrentList } from './lists';
 
 /** Everything the analysis functions need about one event, as plain rows. */
 export async function loadEventAnalysis(db: Db, eventId: string): Promise<EventAnalysisInput> {
@@ -17,8 +18,12 @@ export async function loadEventAnalysis(db: Db, eventId: string): Promise<EventA
         faction: players.faction,
         teamId: players.teamId,
         disposition: players.disposition,
+        parsedArmy: armyLists.parsedArmy,
+        detachments: armyLists.detachments,
+        parsedDisposition: armyLists.parsedDisposition,
       })
       .from(players)
+      .leftJoin(armyLists, storedCurrentList)
       .where(eq(players.eventId, eventId)),
     db
       .select({
@@ -50,5 +55,13 @@ export async function loadEventAnalysis(db: Db, eventId: string): Promise<EventA
       .from(games)
       .where(eq(games.eventId, eventId)),
   ]);
-  return { teams: teamRows, players: playerRows, matchups: matchupRows, games: gameRows };
+  const playerInputs = playerRows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    ...resolveFaction(row.faction, row.parsedArmy),
+    teamId: row.teamId,
+    disposition: row.disposition ?? knownDisposition(row.parsedDisposition),
+    detachments: row.detachments ?? [],
+  }));
+  return { teams: teamRows, players: playerInputs, matchups: matchupRows, games: gameRows };
 }

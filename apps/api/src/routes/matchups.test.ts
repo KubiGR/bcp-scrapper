@@ -7,7 +7,7 @@ import type {
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
-import { events } from '../db/schema';
+import { events, players } from '../db/schema';
 import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
 import { enqueueEventPairings } from '../repo/fetch-queue';
@@ -15,6 +15,7 @@ import { syncEvent } from '../sync/jobs';
 import { syncRoundPairings } from '../sync/round-pairings';
 import { SyncRunner } from '../sync/runner';
 import { ALL_EVENTS, sampleSource, silentLogger, testFetchQueue } from '../test/helpers';
+import { gwList, storeList } from '../test/lists';
 
 let db: Db;
 let close: () => Promise<void>;
@@ -101,6 +102,35 @@ describe('matchups routes', () => {
     expect(old.body).toEqual(one.body);
     // All five: every counted game has a side with a disposition, so nothing is lost.
     expect(every.body.matrix.games).toBe(all.body.matrix.games);
+  });
+
+  it('filters by detachment, lists the event’s detachments, and shows guessed armies', async () => {
+    await db.update(players).set({ faction: null }).where(eq(players.id, 'PB-B1'));
+    await storeList(db, 'PB-B1', gwList('Necrons', 'Hypercrypt Legion'));
+    await storeList(db, 'PB-R1', gwList('Adepta Sororitas', 'Hallowed Martyrs'));
+    const all = await get<MatchupsResponse>('/api/events/EVTBRACKET01/matchups');
+    expect(all.body.detachments).toEqual(['Hallowed Martyrs', 'Hypercrypt Legion']);
+
+    const row = await get<MatchupsResponse>(
+      '/api/events/EVTBRACKET01/matchups?detachments=Hallowed%20Martyrs&side=row',
+    );
+    expect(row.body.matrix.factions).toEqual(['Adepta Sororitas']); // rows: only the filtered side
+    expect(row.body.matrix.games).toBeGreaterThan(0);
+    expect(row.body.matrix.games).toBeLessThan(all.body.matrix.games);
+
+    const both = await get<MatchupsResponse>(
+      `/api/events/EVTBRACKET01/matchups?detachments=${encodeURIComponent('Hallowed Martyrs,Hypercrypt Legion')}&side=both`,
+    );
+    expect(both.body.matrix.games).toBe(1);
+
+    const games = await get<CellGamesResponse>(
+      '/api/events/EVTBRACKET01/matchups/games?row=Adepta%20Sororitas&col=Necrons&detachments=Hallowed%20Martyrs',
+    );
+    expect(games.body.games[0]?.col).toMatchObject({
+      faction: 'Necrons',
+      factionGuessed: true,
+      detachments: ['Hypercrypt Legion'],
+    });
   });
 
   it('filters by disposition', async () => {
