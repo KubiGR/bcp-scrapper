@@ -10,6 +10,7 @@ import { createApp } from '../app';
 import { events } from '../db/schema';
 import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
+import { enqueueEventPairings } from '../repo/fetch-queue';
 import { syncEvent } from '../sync/jobs';
 import { syncRoundPairings } from '../sync/round-pairings';
 import { SyncRunner } from '../sync/runner';
@@ -103,6 +104,23 @@ describe('matchups routes', () => {
       `/api/matchups?${range}&include=EVTBRACKET01`,
     );
     expect(included.body.matrix.games).toBe(10);
+  });
+
+  it('keeps a synced event included while its refresh is fetching', async () => {
+    // EVTBRACKET01 marked synced, then a refresh queues a round job -> displayed state flips to
+    // 'fetching' but it must stay included (not require ?include= again).
+    await db
+      .update(events)
+      .set({ pairingsSyncedAt: new Date() })
+      .where(eq(events.id, 'EVTBRACKET01'));
+    await enqueueEventPairings(db, 'EVTBRACKET01', { rounds: [1], priority: 0 });
+
+    const range = 'from=2026-01-01&to=2026-12-31';
+    const { body } = await get<CrossEventMatchupsResponse>(`/api/matchups?${range}`);
+    expect(body.events.find((e) => e.id === 'EVTBRACKET01')).toMatchObject({
+      pairings: 'fetching',
+      included: true,
+    });
   });
 
   it('queues missing pairings for many events once, never re-queueing synced ones', async () => {

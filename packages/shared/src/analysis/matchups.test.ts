@@ -129,9 +129,13 @@ describe('cellGames', () => {
       ['Player 6', 'Player 5', 'loss', 0, 20],
     ]);
     const mirror = cellGames(games, 'Orks', 'Orks', noFilter);
-    expect(mirror.map((g) => [g.row.name, g.outcome])).toEqual([
-      ['Player 7', 'win'],
-      ['Player 8', 'loss'],
-    ]);
+    expect(mirror.map((g) => [g.row.name, g.outcome])).toEqual([['Player 7', 'win']]);
+  });
+
+  it('lists a mirror game once, from player A’s side', () => {
+    const games = [game(side('7', 'Orks'), side('8', 'Orks'), 12, 8, 'a_win')];
+    const mirror = cellGames(games, 'Orks', 'Orks', noFilter);
+    expect(mirror).toHaveLength(1);
+    expect(mirror[0]).toMatchObject({ row: { name: 'Player 7' }, col: { name: 'Player 8' } });
   });
 });

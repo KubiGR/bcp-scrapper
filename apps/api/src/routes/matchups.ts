@@ -71,9 +71,11 @@ export function matchupsRoutes(deps: {
       rows.map((row) => row.id),
     );
     const events = rows.map((row) => {
-      const pairings = states.get(row.id) ?? 'missing';
+      const info = states.get(row.id) ?? { state: 'missing' as const, syncedAt: null };
+      // Base inclusion on having been synced before, not the displayed state: a refresh of a
+      // synced event shows `pairings: 'fetching'` but must stay included until excluded.
       const included =
-        pairings === 'synced' ? !range.exclude.includes(row.id) : range.include.includes(row.id);
+        info.syncedAt !== null ? !range.exclude.includes(row.id) : range.include.includes(row.id);
       return {
         id: row.id,
         name: row.name,
@@ -81,7 +83,7 @@ export function matchupsRoutes(deps: {
         playerCount: row.playerCount,
         teamCount: row.teamCount,
         roundCount: row.roundCount,
-        pairings,
+        pairings: info.state,
         included,
       };
     });

@@ -90,6 +90,66 @@ describe('MatchupsPanel', () => {
     });
   });
 
+  it('shows a Clear filter empty state when a disposition filter matches no games', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/matchups': matrix({
+        matrix: { factions: [], games: 0, cells: [] },
+      }),
+      'GET /api/events/EVT1/players': {
+        items: [aPlayer({ disposition: 'Disruption' })],
+      },
+    });
+    renderWithProviders(<MatchupsPanel event={anEventDetail()} />);
+
+    const dispositionFilter = await screen.findByRole('combobox', { name: 'Disposition' });
+    fireEvent.click(dispositionFilter);
+    const option = await screen.findByRole('option', { name: 'Disruption' });
+    fireEvent.click(option);
+
+    expect(await screen.findByText('No games match this disposition filter.')).toBeInTheDocument();
+    expect(screen.queryByText('No games with known factions yet.')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filter' }));
+    expect(await screen.findByText('No games with known factions yet.')).toBeInTheDocument();
+  });
+
+  it('keeps showing the matrix, dimmed, while a filter change refetches instead of blanking it', async () => {
+    let resolveSecond: (() => void) | undefined;
+    const second = new Promise<void>((resolve) => {
+      resolveSecond = resolve;
+    });
+    stubFetchRoutes({
+      'GET /api/events/EVT1/matchups': (url: string) => {
+        if (url.includes('disposition=')) {
+          return second.then(() => Response.json(matrix()));
+        }
+        return Promise.resolve(Response.json(matrix()));
+      },
+      'GET /api/events/EVT1/players': {
+        items: [aPlayer({ disposition: 'Disruption' })],
+      },
+    });
+    renderWithProviders(<MatchupsPanel event={anEventDetail()} />);
+
+    expect(await screen.findByRole('columnheader', { name: 'Orks' })).toBeInTheDocument();
+
+    const dispositionFilter = await screen.findByRole('combobox', { name: 'Disposition' });
+    fireEvent.click(dispositionFilter);
+    const option = await screen.findByRole('option', { name: 'Disruption' });
+    fireEvent.click(option);
+
+    // While the new (disposition-filtered) query is pending, the old matrix stays mounted and dimmed.
+    const columnHeader = await screen.findByRole('columnheader', { name: 'Orks' });
+    expect(columnHeader).toBeInTheDocument();
+    const dimmedBox = document.querySelector('[aria-busy="true"]');
+    expect(dimmedBox).not.toBeNull();
+
+    resolveSecond?.();
+    await waitFor(() => {
+      expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+    });
+  });
+
   it('opens a drawer with a cell’s games on click', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/matchups/games': {

@@ -1,5 +1,5 @@
 import type { EventDetail } from '@bcp/shared';
-import { Skeleton, Stack, Text } from '@mantine/core';
+import { Box, Button, Group, Skeleton, Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
@@ -40,6 +40,9 @@ export function MatchupsPanel({ event }: { event: EventDetail }) {
     settings.metric === 'points' && pointsUnavailable
       ? { ...settings, metric: 'winRate' }
       : settings;
+  // A server-side filter/tick change refetches; keep showing the previous matrix (dimmed) instead
+  // of blanking the view, so controls stay usable while the new data loads.
+  const dimmed = matchups.isPlaceholderData || matchups.isFetching;
 
   return (
     <Stack gap="md">
@@ -49,24 +52,43 @@ export function MatchupsPanel({ event }: { event: EventDetail }) {
         scoring={matrixScoring}
         dispositions={dispositions}
       />
-      {matrix.games === 0 ? (
-        <Text size="sm" c="dimmed">
-          No games with known factions yet.
-        </Text>
-      ) : (
-        <>
-          <Text size="sm" c="dimmed">
-            <span className="numeric">{matrix.games}</span> games ·{' '}
-            <span className="numeric">{matrix.factions.length}</span> factions
-          </Text>
-          <FactionMatrix
-            matrix={matrix}
-            scoring={matrixScoring}
-            settings={effectiveSettings}
-            onCell={setCell}
-          />
-        </>
-      )}
+      <Box style={{ opacity: dimmed ? 0.6 : 1 }} aria-busy={dimmed}>
+        {matrix.games === 0 ? (
+          settings.disposition !== null ? (
+            <Group gap="sm">
+              <Text size="sm" c="dimmed">
+                No games match this disposition filter.
+              </Text>
+              <Button
+                size="xs"
+                variant="light"
+                onClick={() => {
+                  setSettings({ ...settings, disposition: null });
+                }}
+              >
+                Clear filter
+              </Button>
+            </Group>
+          ) : (
+            <Text size="sm" c="dimmed">
+              No games with known factions yet.
+            </Text>
+          )
+        ) : (
+          <>
+            <Text size="sm" c="dimmed">
+              <span className="numeric">{matrix.games}</span> games ·{' '}
+              <span className="numeric">{matrix.factions.length}</span> factions
+            </Text>
+            <FactionMatrix
+              matrix={matrix}
+              scoring={matrixScoring}
+              settings={effectiveSettings}
+              onCell={setCell}
+            />
+          </>
+        )}
+      </Box>
       <CellDrawer
         cell={cell}
         games={games.data?.games}

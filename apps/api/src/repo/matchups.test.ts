@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
-import { events } from '../db/schema';
+import { events, fetchQueue } from '../db/schema';
 import { enqueueEventPairings } from './fetch-queue';
 import { loadMatchupGames, pairingsStates } from './matchups';
 import { syncEvent } from '../sync/jobs';
@@ -49,26 +49,58 @@ describe('loadMatchupGames', () => {
 });
 
 describe('pairingsStates', () => {
-  it('reports each event’s pairings state', async () => {
+  it('reports each event’s pairings state and synced-at', async () => {
     await loadBracketEvent();
     const source = sampleSource();
     await syncEvent({ db, source }, 'EVTTEAM0001');
 
     let states = await pairingsStates(db, ['EVTBRACKET01', 'EVTTEAM0001']);
     // EVTBRACKET01 has all rounds stored but pairings_synced_at is only set by the queue.
-    expect(states.get('EVTBRACKET01')).toBe('partial');
+    expect(states.get('EVTBRACKET01')).toMatchObject({ state: 'partial', syncedAt: null });
     // EVTTEAM0001 has an event row but no pairings stored yet.
-    expect(states.get('EVTTEAM0001')).toBe('missing');
+    expect(states.get('EVTTEAM0001')).toMatchObject({ state: 'missing', syncedAt: null });
 
     await db
       .update(events)
       .set({ pairingsSyncedAt: new Date() })
       .where(eq(events.id, 'EVTBRACKET01'));
     states = await pairingsStates(db, ['EVTBRACKET01', 'EVTTEAM0001']);
-    expect(states.get('EVTBRACKET01')).toBe('synced');
+    expect(states.get('EVTBRACKET01')?.state).toBe('synced');
+    expect(states.get('EVTBRACKET01')?.syncedAt).not.toBeNull();
 
     await enqueueEventPairings(db, 'EVTTEAM0001', { rounds: [1], priority: 0 });
     states = await pairingsStates(db, ['EVTBRACKET01', 'EVTTEAM0001']);
-    expect(states.get('EVTTEAM0001')).toBe('fetching');
+    expect(states.get('EVTTEAM0001')).toMatchObject({ state: 'fetching', syncedAt: null });
+  });
+
+  it('marks synced-at even while a resync is in flight, so a refresh keeps it included', async () => {
+    await loadBracketEvent();
+    await db
+      .update(events)
+      .set({ pairingsSyncedAt: new Date() })
+      .where(eq(events.id, 'EVTBRACKET01'));
+    await enqueueEventPairings(db, 'EVTBRACKET01', { rounds: [1], priority: 0 });
+
+    const states = await pairingsStates(db, ['EVTBRACKET01']);
+    expect(states.get('EVTBRACKET01')).toMatchObject({ state: 'fetching' });
+    expect(states.get('EVTBRACKET01')?.syncedAt).not.toBeNull();
+  });
+
+  it('reports partial when no rounds are stored but a pairings job has failed', async () => {
+    const source = sampleSource();
+    await syncEvent({ db, source }, 'EVTTEAM0001');
+    await db.insert(fetchQueue).values({
+      kind: 'pairings-round',
+      eventId: 'EVTTEAM0001',
+      round: 1,
+      priority: 0,
+      status: 'failed',
+      error: 'boom',
+      errorCode: 'unknown',
+      finishedAt: new Date(),
+    });
+
+    const states = await pairingsStates(db, ['EVTTEAM0001']);
+    expect(states.get('EVTTEAM0001')).toMatchObject({ state: 'partial', syncedAt: null });
   });
 });

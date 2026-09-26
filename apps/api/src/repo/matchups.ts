@@ -4,6 +4,7 @@ import { and, desc, eq, gte, inArray, lt } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from '../db/client';
 import { events, fetchQueue, games, players, teams } from '../db/schema';
+import { eventPairingsJobs } from './fetch-queue';
 import type { EventRow } from './events';
 import { storedPairingsSummary } from './pairings';
 
@@ -71,15 +72,22 @@ export async function loadMatchupGames(db: Db, eventIds: string[]): Promise<Matc
   }));
 }
 
+export interface EventPairingsState {
+  state: PairingsState;
+  /** When pairings were last fully synced through the queue; set even while a resync (a refresh)
+   * is in flight, so callers can tell "was synced" apart from the currently displayed state. */
+  syncedAt: Date | null;
+}
+
 /**
  * Each event's pairings state: fetching (open event/pairings jobs), synced (every round fetched
- * through the queue), partial (some rounds stored, or a failed fetch), or missing.
+ * through the queue), partial (some rounds stored, or a failed pairings job), or missing.
  */
 export async function pairingsStates(
   db: Db,
   eventIds: string[],
-): Promise<Map<string, PairingsState>> {
-  const states = new Map<string, PairingsState>();
+): Promise<Map<string, EventPairingsState>> {
+  const states = new Map<string, EventPairingsState>();
   if (eventIds.length === 0) return states;
   const [rows, open] = await Promise.all([
     db
@@ -99,14 +107,20 @@ export async function pairingsStates(
   ]);
   const fetching = new Set(open.map((row) => row.eventId));
   const notFetching = rows.filter((row) => !fetching.has(row.id) && !row.syncedAt);
-  const summaries = await Promise.all(notFetching.map((row) => storedPairingsSummary(db, row.id)));
+  const [summaries, jobs] = await Promise.all([
+    Promise.all(notFetching.map((row) => storedPairingsSummary(db, row.id))),
+    Promise.all(notFetching.map((row) => eventPairingsJobs(db, row.id))),
+  ]);
   const storedByEvent = new Map(notFetching.map((row, index) => [row.id, summaries[index]]));
+  const jobsByEvent = new Map(notFetching.map((row, index) => [row.id, jobs[index]]));
   for (const row of rows) {
-    if (fetching.has(row.id)) states.set(row.id, 'fetching');
-    else if (row.syncedAt) states.set(row.id, 'synced');
+    if (fetching.has(row.id)) states.set(row.id, { state: 'fetching', syncedAt: row.syncedAt });
+    else if (row.syncedAt) states.set(row.id, { state: 'synced', syncedAt: row.syncedAt });
     else {
       const stored = storedByEvent.get(row.id);
-      states.set(row.id, (stored?.rounds ?? 0) > 0 ? 'partial' : 'missing');
+      const failed = jobsByEvent.get(row.id)?.failed ?? 0;
+      const state: PairingsState = (stored?.rounds ?? 0) > 0 || failed > 0 ? 'partial' : 'missing';
+      states.set(row.id, { state, syncedAt: null });
     }
   }
   return states;

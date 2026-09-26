@@ -6,7 +6,7 @@ import { AnchorLink } from '../../components/AnchorLink';
 import { Panel } from '../../components/Panel';
 import { formatDuration, formatEventSize, formatIsoDay, plural } from '../../lib/format';
 import { fetchQueueQuery } from '../fetch-queue/fetch-queue-queries';
-import { queueManyPairings } from './matchups-queries';
+import { queueManyPairingsChunked } from './matchups-queries';
 
 const STATE_LABEL: Record<PairingsState, string> = {
   synced: 'Synced',
@@ -30,7 +30,7 @@ interface EventSelectionProps {
 export function EventSelection({ events, exclude, include, onChange }: EventSelectionProps) {
   const queryClient = useQueryClient();
   const sync = useMutation({
-    mutationFn: (eventIds: string[]) => queueManyPairings(eventIds),
+    mutationFn: (eventIds: string[]) => queueManyPairingsChunked(eventIds),
     onSuccess: async (result) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['matchups'] }),
@@ -85,7 +85,7 @@ export function EventSelection({ events, exclude, include, onChange }: EventSele
                 sync.mutate(toSync.map((event) => event.id));
               }}
             >
-              Sync pairings for {toSync.length} events
+              Sync pairings for {plural(toSync.length, 'event')}
             </Button>
           </Group>
         )}

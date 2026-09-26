@@ -174,8 +174,17 @@ export function cellGames(
   col: string,
   filter: DispositionFilter,
 ): CellGame[] {
-  return sidesOf(games, filter)
-    .filter((s) => s.row.faction === row && s.col.faction === col)
+  let sided = sidesOf(games, filter).filter((s) => s.row.faction === row && s.col.faction === col);
+  if (row === col) {
+    // A mirror match adds one entry per side; keep just the one where the game's player A is the row.
+    const byGame = new Map<string, SidedGame>();
+    for (const s of sided) {
+      const existing = byGame.get(s.game.id);
+      if (!existing || s.row.playerId === s.game.a.playerId) byGame.set(s.game.id, s);
+    }
+    sided = [...byGame.values()];
+  }
+  return sided
     .sort(
       (x, y) =>
         x.game.eventName.localeCompare(y.game.eventName) ||

@@ -31,3 +31,5 @@ From the reviews of plans 2–4; none blocks anything.
 - Pairings: Retry on the event page re-queues the event's failed list jobs too; add a kinds filter to retry-failed (fits plan 5).
 - Pairings: during a refresh the progress shows "6/6 rounds" at once, and a never-synced event's first estimate covers only the event job.
 - Pairings: Fetch pairings silently does nothing for a synced event with 0 rounds.
+- Matchups: the cross-event page refetches all games every 5 s while any event syncs (fine locally; raise the interval or poll events only).
+- Matchups: cross-event drill-down lists games by event name; order by event date instead.

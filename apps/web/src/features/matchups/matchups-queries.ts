@@ -5,9 +5,10 @@ import {
   CrossEventMatchupsResponseSchema,
   MatchupsResponseSchema,
   toIsoDate,
+  type BulkPairingsResult,
   type DateRange,
 } from '@bcp/shared';
-import { queryOptions } from '@tanstack/react-query';
+import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { apiGet, apiPost } from '../../api/client';
 import { matrixParams, type MatrixSettings } from './matrix-view';
 
@@ -27,6 +28,7 @@ export const eventMatchupsQuery = (eventId: string, settings: MatrixSettings, li
     queryFn: () =>
       apiGet(`/api/events/${enc(eventId)}/matchups${toQuery(params)}`, MatchupsResponseSchema),
     refetchInterval: every(live),
+    placeholderData: keepPreviousData,
   });
 };
 
@@ -43,6 +45,7 @@ export const eventCellGamesQuery = (
         `/api/events/${enc(eventId)}/matchups/games${toQuery(params)}`,
         CellGamesResponseSchema,
       ),
+    placeholderData: keepPreviousData,
   });
 };
 
@@ -87,6 +90,7 @@ export const crossMatchupsQuery = (search: CrossSearch) =>
     queryFn: () => apiGet(`/api/matchups?${crossParams(search)}`, CrossEventMatchupsResponseSchema),
     refetchInterval: (query) =>
       query.state.data?.events.some((e) => e.pairings === 'fetching') ? 5000 : false,
+    placeholderData: keepPreviousData,
   });
 
 export const crossCellGamesQuery = (search: CrossSearch, cell: { row: string; col: string }) =>
@@ -97,7 +101,36 @@ export const crossCellGamesQuery = (search: CrossSearch, cell: { row: string; co
         `/api/matchups/games?${crossParams(search)}&${new URLSearchParams(cell).toString()}`,
         CellGamesResponseSchema,
       ),
+    placeholderData: keepPreviousData,
   });
 
 export const queueManyPairings = (eventIds: string[]) =>
   apiPost('/api/pairings-queue', { eventIds }, BulkPairingsResultSchema);
+
+/** BCP's bulk-sync endpoint caps a request at 200 event ids; send more in sequential chunks and
+ * sum the results so the caller sees one combined notification. */
+const BULK_SYNC_CHUNK = 200;
+
+const chunk = <T>(items: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+};
+
+export async function queueManyPairingsChunked(eventIds: string[]): Promise<BulkPairingsResult> {
+  let events = 0;
+  let queuedRounds = 0;
+  const estimates: number[] = [];
+  for (const ids of chunk(eventIds, BULK_SYNC_CHUNK)) {
+    // Sequential, not Promise.all: BCP bulk sync must not burst multiple chunk requests at once.
+    const result = await queueManyPairings(ids);
+    events += result.events;
+    queuedRounds += result.queuedRounds;
+    if (result.estimatedSeconds !== null) estimates.push(result.estimatedSeconds);
+  }
+  return {
+    events,
+    queuedRounds,
+    estimatedSeconds: estimates.length > 0 ? estimates.reduce((a, b) => a + b, 0) : null,
+  };
+}

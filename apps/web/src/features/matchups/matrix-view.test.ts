@@ -57,21 +57,30 @@ describe('matrixParams', () => {
 describe('cellView', () => {
   it('hides a cell under minGames, keeping the count for its title', () => {
     const view = cellView(cell({ games: 2 }), settings({ minGames: 3 }), null);
-    expect(view).toEqual({ text: '·', tone: 'hidden' });
+    expect(view).toEqual({ text: '·', value: '·', tone: 'hidden', games: 2 });
   });
 
-  it('shows only the count on the mirror diagonal', () => {
+  it('shows only the count on the mirror diagonal, halved since each mirror game adds two sides', () => {
     const view = cellView(
-      cell({ row: 'Orks', col: 'Orks', games: 5, winRate: null }),
+      cell({ row: 'Orks', col: 'Orks', games: 6, winRate: null }),
       settings(),
       null,
     );
-    expect(view).toEqual({ text: '5', tone: 'mirror' });
+    expect(view).toEqual({ text: '3', value: '3', tone: 'mirror', games: 3 });
+  });
+
+  it('hides a mirror cell under minGames using the halved count', () => {
+    const view = cellView(
+      cell({ row: 'Orks', col: 'Orks', games: 4, winRate: null }),
+      settings({ minGames: 3 }),
+      null,
+    );
+    expect(view).toEqual({ text: '·', value: '·', tone: 'hidden', games: 2 });
   });
 
   it('renders a win rate above the good threshold as good', () => {
     const view = cellView(cell({ games: 13, winRate: 0.62 }), settings(), null);
-    expect(view).toEqual({ text: '62% · 13', tone: 'good' });
+    expect(view).toEqual({ text: '62% · 13', value: '62%', tone: 'good', games: 13 });
   });
 
   it('treats exactly 55% as good (inclusive boundary)', () => {
@@ -86,17 +95,17 @@ describe('cellView', () => {
 
   it('renders a win rate below the bad threshold as bad', () => {
     const view = cellView(cell({ games: 13, winRate: 0.3 }), settings(), null);
-    expect(view).toEqual({ text: '30% · 13', tone: 'bad' });
+    expect(view).toEqual({ text: '30% · 13', value: '30%', tone: 'bad', games: 13 });
   });
 
   it('renders a win rate in the middle as even', () => {
     const view = cellView(cell({ games: 13, winRate: 0.5 }), settings(), null);
-    expect(view).toEqual({ text: '50% · 13', tone: 'even' });
+    expect(view).toEqual({ text: '50% · 13', value: '50%', tone: 'even', games: 13 });
   });
 
   it('renders game points when the metric is points and a scale is known', () => {
     const view = cellView(cell({ games: 13, avgPoints: 12.4 }), settings({ metric: 'points' }), 20);
-    expect(view).toEqual({ text: '12.4 · 13', tone: 'good' });
+    expect(view).toEqual({ text: '12.4 · 13', value: '12.4', tone: 'good', games: 13 });
   });
 
   it('uses the scale midpoint for points tones (good at 1.1x, bad at 0.9x)', () => {
@@ -110,6 +119,6 @@ describe('cellView', () => {
 
   it('shows a dash for a null avgPoints under the points metric', () => {
     const view = cellView(cell({ games: 13, avgPoints: null }), settings({ metric: 'points' }), 20);
-    expect(view).toEqual({ text: '– · 13', tone: 'even' });
+    expect(view).toEqual({ text: '– · 13', value: '–', tone: 'even', games: 13 });
   });
 });

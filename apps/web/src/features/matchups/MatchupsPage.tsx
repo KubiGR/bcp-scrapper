@@ -1,5 +1,5 @@
 import type { DateRange } from '@bcp/shared';
-import { Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Box, Button, Group, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -72,6 +72,18 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
     disposition: search.disposition ?? null,
     side: search.side ?? DEFAULT_MATRIX_SETTINGS.side,
   };
+  // Points may have become unavailable (e.g. after ticking in an event with a different scale):
+  // fall back to win rate rather than showing a disabled metric as selected.
+  const pointsUnavailable = matchups.data
+    ? !matchups.data.scoring.consistent || matchups.data.scoring.scale === null
+    : false;
+  const effectiveSettings: MatrixSettings =
+    settings.metric === 'points' && pointsUnavailable
+      ? { ...settings, metric: 'winRate' }
+      : settings;
+  // A server-side filter/tick change refetches; keep showing the previous matrix (dimmed) instead
+  // of blanking the view, so the event list and controls stay usable while the new data loads.
+  const dimmed = matchups.isPlaceholderData || matchups.isFetching;
 
   return (
     <Stack gap="lg">
@@ -119,7 +131,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
           {matchups.data.events.length > 0 && (
             <>
               <MatrixControls
-                settings={settings}
+                settings={effectiveSettings}
                 onChange={(next) => {
                   onSearchChange({
                     ...search,
@@ -132,25 +144,53 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
                 scoring={matchups.data.scoring}
                 dispositions={[]}
               />
-              {!matchups.data.events.some((event) => event.included) ||
-              matchups.data.matrix.games === 0 ? (
-                <Text size="sm" c="dimmed">
-                  Tick at least one event with pairings to see matchups.
-                </Text>
-              ) : (
-                <>
-                  <Text size="sm" c="dimmed">
-                    <span className="numeric">{matchups.data.matrix.games}</span> games ·{' '}
-                    <span className="numeric">{matchups.data.matrix.factions.length}</span> factions
-                  </Text>
-                  <FactionMatrix
-                    matrix={matchups.data.matrix}
-                    scoring={matchups.data.scoring}
-                    settings={settings}
-                    onCell={setCell}
-                  />
-                </>
-              )}
+              <Box style={{ opacity: dimmed ? 0.6 : 1 }} aria-busy={dimmed}>
+                {(() => {
+                  const noneIncluded = !matchups.data.events.some((event) => event.included);
+                  const noGames = matchups.data.matrix.games === 0;
+                  const dispositionActive = settings.disposition !== null;
+                  if (!noneIncluded && noGames && dispositionActive) {
+                    return (
+                      <Group gap="sm">
+                        <Text size="sm" c="dimmed">
+                          No games match this disposition filter.
+                        </Text>
+                        <Button
+                          size="xs"
+                          variant="light"
+                          onClick={() => {
+                            onSearchChange({ ...search, disposition: undefined });
+                          }}
+                        >
+                          Clear filter
+                        </Button>
+                      </Group>
+                    );
+                  }
+                  if (noneIncluded || noGames) {
+                    return (
+                      <Text size="sm" c="dimmed">
+                        Tick at least one event with pairings to see matchups.
+                      </Text>
+                    );
+                  }
+                  return (
+                    <>
+                      <Text size="sm" c="dimmed">
+                        <span className="numeric">{matchups.data.matrix.games}</span> games ·{' '}
+                        <span className="numeric">{matchups.data.matrix.factions.length}</span>{' '}
+                        factions
+                      </Text>
+                      <FactionMatrix
+                        matrix={matchups.data.matrix}
+                        scoring={matchups.data.scoring}
+                        settings={effectiveSettings}
+                        onCell={setCell}
+                      />
+                    </>
+                  );
+                })()}
+              </Box>
             </>
           )}
         </>

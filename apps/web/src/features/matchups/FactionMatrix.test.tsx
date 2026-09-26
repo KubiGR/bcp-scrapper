@@ -81,7 +81,7 @@ describe('FactionMatrix', () => {
     expect(screen.getAllByText('·').length).toBeGreaterThan(0);
   });
 
-  it('shows only the count on a mirror cell', () => {
+  it('shows only the halved count on a mirror cell (each mirror game adds two sides)', () => {
     renderWithProviders(
       <FactionMatrix
         matrix={matrix()}
@@ -91,7 +91,35 @@ describe('FactionMatrix', () => {
       />,
     );
     const mirror = screen.getByRole('button', { name: /Orks vs Orks/ });
-    expect(mirror.textContent).toBe('4');
+    expect(mirror.textContent).toBe('2');
+  });
+
+  it('shows a caption explaining the axes', () => {
+    renderWithProviders(
+      <FactionMatrix
+        matrix={matrix()}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 1 }}
+        onCell={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("Rows: faction · Columns: opponent · Cell: row faction's result"),
+    ).toBeInTheDocument();
+  });
+
+  it('gives a cell an aria-label without duplicating the value and game count', () => {
+    renderWithProviders(
+      <FactionMatrix
+        matrix={matrix()}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 1 }}
+        onCell={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Orks vs Necrons: 50% win rate over 3 games' }),
+    ).toBeInTheDocument();
   });
 
   it('calls onCell when a cell is clicked', () => {

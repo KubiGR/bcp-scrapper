@@ -1,7 +1,16 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { MatchupsPage } from './MatchupsPage';
+import type { CrossSearch } from './matchups-queries';
+
+/** MatchupsPage owns no state itself; a small stateful wrapper stands in for the URL-backed
+ * parent, so a tick or filter change round-trips like it does in the app. */
+function StatefulMatchupsPage({ initial = {} }: { initial?: CrossSearch }) {
+  const [search, setSearch] = useState<CrossSearch>(initial);
+  return <MatchupsPage search={search} onSearchChange={setSearch} />;
+}
 
 const anEvent = (overrides: Record<string, unknown> = {}) => ({
   id: 'EVT1',
@@ -85,6 +94,69 @@ describe('MatchupsPage', () => {
     expect(
       screen.queryByText('Tick at least one event with pairings to see matchups.'),
     ).not.toBeInTheDocument();
+  });
+
+  it('never selects the disabled Game points metric when scoring is inconsistent', async () => {
+    stubFetchRoutes({
+      'GET /api/matchups': response({ scoring: { consistent: false, scale: null } }),
+    });
+    renderWithRouter(<MatchupsPage search={{ metric: 'points' }} onSearchChange={vi.fn()} />);
+
+    const winRate = await screen.findByRole('radio', { name: 'Win rate' });
+    await waitFor(() => {
+      expect(winRate).toBeChecked();
+    });
+    expect(screen.getByRole('radio', { name: 'Game points' })).toBeDisabled();
+  });
+
+  it('shows a Clear filter empty state when a disposition filter matches no games', async () => {
+    const onSearchChange = vi.fn();
+    stubFetchRoutes({
+      'GET /api/matchups': response({ matrix: { factions: [], games: 0, cells: [] } }),
+    });
+    renderWithRouter(
+      <MatchupsPage search={{ disposition: 'Disruption' }} onSearchChange={onSearchChange} />,
+    );
+
+    expect(await screen.findByText('No games match this disposition filter.')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Tick at least one event with pairings to see matchups.'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filter' }));
+    expect(onSearchChange).toHaveBeenCalledWith(
+      expect.objectContaining({ disposition: undefined }),
+    );
+  });
+
+  it('keeps the event list and its checkbox mounted while a tick change is pending, instead of blanking the page', async () => {
+    let resolveSecond: (() => void) | undefined;
+    const second = new Promise<void>((resolve) => {
+      resolveSecond = resolve;
+    });
+    let calls = 0;
+    stubFetchRoutes({
+      'GET /api/matchups': () => {
+        calls += 1;
+        if (calls === 1) return Promise.resolve(Response.json(response()));
+        return second.then(() => Response.json(response()));
+      },
+    });
+    renderWithRouter(<StatefulMatchupsPage initial={{ include: 'EVT1' }} />);
+
+    const checkbox = await screen.findByRole('checkbox', { name: 'Include Sample Team Open' });
+    expect(checkbox).toBeChecked();
+    fireEvent.click(checkbox);
+
+    // While the second (pending) fetch is in flight, the event list and its checkbox stay mounted
+    // (not replaced by a full-page skeleton).
+    expect(await screen.findByRole('link', { name: 'Sample Team Open' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Include Sample Team Open' })).toBeInTheDocument();
+
+    resolveSecond?.();
+    await waitFor(() => {
+      expect(calls).toBe(2);
+    });
   });
 
   it('shows a live progress line while an event is fetching, and refetches', async () => {
