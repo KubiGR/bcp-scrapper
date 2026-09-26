@@ -18,6 +18,7 @@ import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
 import { DispositionText } from '../../components/DispositionText';
 import { ErrorState } from '../../components/ErrorState';
+import { FactionText } from '../../components/FactionText';
 import { Panel } from '../../components/Panel';
 import { EventQueueLine } from './EventQueueLine';
 import { playersQuery } from './event-queries';
@@ -27,6 +28,7 @@ import { ListDrawer } from './ListDrawer';
 import { ListStatusBadge } from './ListStatusBadge';
 import classes from './PlayersPanel.module.css';
 import {
+  detachmentsOf,
   dispositionsOf,
   factionsOf,
   filterPlayers,
@@ -86,7 +88,17 @@ function playerColumns({ showTeam, onOpen }: PlayerColumnsOptions): DataTableCol
       hidden: !showTeam,
       render: (p) => p.teamName ?? '—',
     },
-    { accessor: 'faction', title: 'Faction', render: (p) => p.faction ?? '—' },
+    {
+      accessor: 'faction',
+      title: 'Faction',
+      render: (p) =>
+        p.faction === null ? '—' : <FactionText faction={p.faction} guessed={p.factionGuessed} />,
+    },
+    {
+      accessor: 'detachments',
+      title: 'Detachment',
+      render: (p) => (p.detachments.length > 0 ? p.detachments.join(' + ') : '—'),
+    },
     {
       accessor: 'disposition',
       title: 'Disposition',
@@ -117,6 +129,7 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
   const [query, setQuery] = useState('');
   const [factions, setFactions] = useState<string[]>([]);
   const [dispositions, setDispositions] = useState<string[]>([]);
+  const [detachments, setDetachments] = useState<string[]>([]);
   const [maxLosses, setMaxLosses] = useState<number | null>(null);
   const [openPlayerId, setOpenPlayerId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -125,7 +138,7 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
   const queueTeam = useQueueLists(event);
   const all = players.data?.items ?? [];
   const openPlayer = all.find((p) => p.bcpId === openPlayerId) ?? null;
-  const filtered = filterPlayers(all, { query, factions, dispositions, maxLosses });
+  const filtered = filterPlayers(all, { query, factions, dispositions, detachments, maxLosses });
 
   const toggleTeam = (teamId: string) => {
     setSelectedTeams((prev) => {
@@ -179,6 +192,16 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
             onChange={setDispositions}
             renderOption={({ option }) => <DispositionText disposition={option.value} />}
             clearable
+            w={240}
+          />
+          <MultiSelect
+            aria-label="Detachment"
+            placeholder={detachments.length === 0 ? 'All detachments' : undefined}
+            data={detachmentsOf(all)}
+            value={detachments}
+            onChange={setDetachments}
+            clearable
+            searchable
             w={240}
           />
           <Select

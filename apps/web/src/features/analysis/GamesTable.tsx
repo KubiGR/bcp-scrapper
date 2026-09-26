@@ -1,6 +1,6 @@
 import type { GameView } from '@bcp/shared';
 import { Button, Group, Table, Text } from '@mantine/core';
-import { DispositionText } from '../../components/DispositionText';
+import { PlayerLine } from '../../components/PlayerLine';
 import { formatPoints } from './format';
 
 interface GamesTableProps {
@@ -46,14 +46,10 @@ export function GamesTable({ games, onShowList, knownPlayerIds }: GamesTableProp
                   <div>
                     <Text size="sm">{game.playerA.name}</Text>
                     <Text size="xs" c="dimmed">
-                      {game.playerA.faction ?? 'Unknown faction'}
-                      {game.playerA.disposition && (
-                        <>
-                          {' · '}
-                          <DispositionText disposition={game.playerA.disposition} />
-                        </>
-                      )}
-                      {game.firstTurn === 'a' && ' · went first'}
+                      <PlayerLine
+                        {...game.playerA}
+                        extra={game.firstTurn === 'a' ? 'went first' : null}
+                      />
                     </Text>
                   </div>
                   {showListButton(game.playerA.id) && (
@@ -89,14 +85,10 @@ export function GamesTable({ games, onShowList, knownPlayerIds }: GamesTableProp
                         <div>
                           <Text size="sm">{playerB.name}</Text>
                           <Text size="xs" c="dimmed">
-                            {playerB.faction ?? 'Unknown faction'}
-                            {playerB.disposition && (
-                              <>
-                                {' · '}
-                                <DispositionText disposition={playerB.disposition} />
-                              </>
-                            )}
-                            {game.firstTurn === 'b' && ' · went first'}
+                            <PlayerLine
+                              {...playerB}
+                              extra={game.firstTurn === 'b' ? 'went first' : null}
+                            />
                           </Text>
                         </div>
                         {showListButton(playerB.id) && (

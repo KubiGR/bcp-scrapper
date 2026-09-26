@@ -1,6 +1,6 @@
 import type { CellGame } from '@bcp/shared';
 import { Drawer, Skeleton, Table, Text } from '@mantine/core';
-import { DispositionText } from '../../components/DispositionText';
+import { PlayerLine } from '../../components/PlayerLine';
 import { ErrorState } from '../../components/ErrorState';
 import { formatPoints } from '../analysis/format';
 
@@ -20,14 +20,7 @@ function PlayerCell({ side }: { side: CellGame['row'] }) {
     <div>
       <Text size="sm">{side.name}</Text>
       <Text size="xs" c="dimmed">
-        {side.faction}
-        {side.disposition && (
-          <>
-            {' · '}
-            <DispositionText disposition={side.disposition} />
-          </>
-        )}
-        {side.teamName && ` · ${side.teamName}`}
+        <PlayerLine {...side} extra={side.teamName} />
       </Text>
     </div>
   );

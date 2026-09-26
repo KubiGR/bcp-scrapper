@@ -162,6 +162,38 @@ describe('PlayersPanel', () => {
     expect(screen.queryByText('Nyx None')).not.toBeInTheDocument();
   });
 
+  it('shows a Detachment column, a detachment filter, and ⚠ on a guessed army', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [
+          aPlayer({ bcpId: 'P1', name: 'Ada Archer', detachments: ['Kult of Speed', 'Wreckas'] }),
+          aPlayer({
+            bcpId: 'P2',
+            name: 'Cara Cole',
+            faction: 'Necrons',
+            factionGuessed: true,
+            detachments: ['Hypercrypt Legion'],
+          }),
+          aPlayer({ bcpId: 'P3', name: 'Nyx None', detachments: [] }),
+        ],
+      },
+    });
+    renderWithRouter(
+      <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
+    );
+
+    const adaRow = (await screen.findByText('Ada Archer')).closest('tr');
+    expect(adaRow && within(adaRow).getByText('Kult of Speed + Wreckas')).toBeInTheDocument();
+    const caraRow = screen.getByText('Cara Cole').closest('tr');
+    expect(caraRow && within(caraRow).getByLabelText('Guessed from the list')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Detachment' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Hypercrypt Legion' }));
+    expect(await screen.findByText('Cara Cole')).toBeInTheDocument();
+    expect(screen.queryByText('Ada Archer')).not.toBeInTheDocument();
+    expect(screen.queryByText('Nyx None')).not.toBeInTheDocument();
+  });
+
   it('shows the no-players message for a team event with no players yet', async () => {
     stubFetchRoutes({ 'GET /api/events/EVT1/players': { items: [] } });
     renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);

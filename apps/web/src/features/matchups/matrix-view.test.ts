@@ -30,6 +30,7 @@ describe('DEFAULT_MATRIX_SETTINGS', () => {
       metric: 'winRate',
       minGames: 3,
       dispositions: [],
+      detachments: [],
       side: 'row',
     });
   });
@@ -201,5 +202,11 @@ describe('matrixParams', () => {
         side: 'both',
       }),
     ).toEqual({ dispositions: 'Take and Hold,Disruption', side: 'both' });
+  });
+
+  it('sends detachments too, with the side, when any is chosen', () => {
+    expect(
+      matrixParams({ ...DEFAULT_MATRIX_SETTINGS, detachments: ['War Horde', 'Wreckas'] }),
+    ).toEqual({ detachments: 'War Horde,Wreckas', side: 'row' });
   });
 });

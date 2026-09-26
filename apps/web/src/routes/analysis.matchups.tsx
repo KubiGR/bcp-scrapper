@@ -14,6 +14,7 @@ const MatchupsSearchSchema = z.object({
   metric: z.enum(['winRate', 'points']).optional().catch(undefined),
   minGames: z.coerce.number().int().positive().optional().catch(undefined),
   dispositions: optionalText,
+  detachments: optionalText,
   /** Pre-multi-select links; read into `dispositions`. */
   disposition: optionalText,
   side: z.enum(['row', 'both']).optional().catch(undefined),

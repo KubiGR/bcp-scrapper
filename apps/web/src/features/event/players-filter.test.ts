@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { aPlayer } from '../../test/sample-data';
 import {
+  detachmentsOf,
   dispositionsOf,
   factionsOf,
   filterPlayers,
@@ -18,8 +19,41 @@ const players = [
   aPlayer({ bcpId: 'PL-SOLO', name: 'Solo', teamName: null, faction: null, disposition: null }),
 ];
 
+describe('detachment filter', () => {
+  const lists = [
+    aPlayer({ bcpId: 'A', faction: 'Orks', detachments: ['War Horde'] }),
+    aPlayer({ bcpId: 'B', faction: 'Orks', detachments: ['Kult of Speed', 'Wreckas'] }),
+    aPlayer({ bcpId: 'C', faction: 'Necrons', detachments: ['Wreckas'] }),
+    aPlayer({ bcpId: 'D', faction: 'Orks', detachments: [] }),
+  ];
+  const base: PlayerFilter = {
+    query: '',
+    factions: [],
+    dispositions: [],
+    detachments: [],
+    maxLosses: null,
+  };
+  const ids = (filter: Partial<PlayerFilter>) =>
+    filterPlayers(lists, { ...base, ...filter }).map((p) => p.bcpId);
+
+  it('matches any chosen detachment, and combines with the faction filter', () => {
+    expect(ids({ detachments: ['Wreckas', 'War Horde'] })).toEqual(['A', 'B', 'C']);
+    expect(ids({ detachments: ['Wreckas'], factions: ['Orks'] })).toEqual(['B']);
+  });
+
+  it('lists the detachments present, A to Z', () => {
+    expect(detachmentsOf(lists)).toEqual(['Kult of Speed', 'War Horde', 'Wreckas']);
+  });
+});
+
 describe('filterPlayers', () => {
-  const none: PlayerFilter = { query: '', factions: [], dispositions: [], maxLosses: null };
+  const none: PlayerFilter = {
+    query: '',
+    factions: [],
+    dispositions: [],
+    detachments: [],
+    maxLosses: null,
+  };
 
   it('matches player or team names, ignoring case and surrounding spaces', () => {
     const names = (query: string) => filterPlayers(players, { ...none, query }).map((p) => p.name);
@@ -93,9 +127,13 @@ describe('record filter and missing counts', () => {
 
   it('filters by loss limit (draws are not losses; no games never qualifies)', () => {
     expect(
-      filterPlayers(list, { query: '', factions: [], dispositions: [], maxLosses: 0 }).map(
-        (p) => p.bcpId,
-      ),
+      filterPlayers(list, {
+        query: '',
+        factions: [],
+        dispositions: [],
+        detachments: [],
+        maxLosses: 0,
+      }).map((p) => p.bcpId),
     ).toEqual(['A', 'C']);
   });
 

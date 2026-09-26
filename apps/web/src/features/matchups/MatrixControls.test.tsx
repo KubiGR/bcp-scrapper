@@ -95,4 +95,32 @@ describe('MatrixControls', () => {
     fireEvent.change(screen.getByLabelText('Min games'), { target: { value: '5' } });
     expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_MATRIX_SETTINGS, minGames: 5 });
   });
+
+  it('offers the loaded detachments, and shows the side switch once one is chosen', async () => {
+    const onChange = vi.fn();
+    const { rerender } = renderWithProviders(
+      <MatrixControls
+        settings={DEFAULT_MATRIX_SETTINGS}
+        onChange={onChange}
+        scoring={{ consistent: true, scale: 20 }}
+        dispositions={[]}
+        detachments={['War Horde', 'Wreckas']}
+      />,
+    );
+    expect(screen.queryByRole('radio', { name: 'Both sides' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('combobox', { name: 'Detachment' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Wreckas' }));
+    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_MATRIX_SETTINGS, detachments: ['Wreckas'] });
+
+    rerender(
+      <MatrixControls
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, detachments: ['Wreckas'] }}
+        onChange={onChange}
+        scoring={{ consistent: true, scale: 20 }}
+        dispositions={[]}
+        detachments={['War Horde', 'Wreckas']}
+      />,
+    );
+    expect(screen.getByRole('radio', { name: 'Both sides' })).toBeInTheDocument();
+  });
 });

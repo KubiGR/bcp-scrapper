@@ -44,6 +44,21 @@ describe('GamesTable', () => {
     expect(screen.getByText('Take and Hold')).toBeInTheDocument();
   });
 
+  it('shows army · detachments · disposition under a player, with ⚠ on a guessed army', () => {
+    renderTable([
+      game({
+        playerA: player({
+          faction: 'Orks',
+          factionGuessed: true,
+          detachments: ['Kult of Speed'],
+          disposition: 'Reconnaissance',
+        }),
+      }),
+    ]);
+    expect(screen.getByText(/Kult of Speed/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Guessed from the list')).toBeInTheDocument();
+  });
+
   it('shows just the faction, with no disposition text, when disposition is null', () => {
     renderTable([game({ playerA: player({ faction: 'Adepta Sororitas', disposition: null }) })]);
     expect(screen.getByText('Adepta Sororitas')).toBeInTheDocument();

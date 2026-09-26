@@ -5,6 +5,8 @@ export interface MatrixSettings {
   minGames: number;
   /** Any listed disposition matches; empty = no filter. */
   dispositions: string[];
+  /** Any listed detachment matches; empty = no filter. */
+  detachments: string[];
   side: 'row' | 'both';
 }
 
@@ -12,13 +14,21 @@ export const DEFAULT_MATRIX_SETTINGS: MatrixSettings = {
   metric: 'winRate',
   minGames: 3,
   dispositions: [],
+  detachments: [],
   side: 'row',
 };
 
-/** Only `dispositions`/`side` are server filters; `metric`/`minGames` are display-only. */
+/** Whether a server-side filter (disposition or detachment) is chosen. */
+export const hasSideFilter = (settings: Pick<MatrixSettings, 'dispositions' | 'detachments'>) =>
+  settings.dispositions.length > 0 || settings.detachments.length > 0;
+
+/** Only `dispositions`/`detachments`/`side` are server filters; `metric`/`minGames` are display-only. */
 export function matrixParams(settings: MatrixSettings): Record<string, string> {
-  if (settings.dispositions.length === 0) return {};
-  return { dispositions: settings.dispositions.join(','), side: settings.side };
+  if (!hasSideFilter(settings)) return {};
+  const params: Record<string, string> = { side: settings.side };
+  if (settings.dispositions.length > 0) params.dispositions = settings.dispositions.join(',');
+  if (settings.detachments.length > 0) params.detachments = settings.detachments.join(',');
+  return params;
 }
 
 export type CellTone = 'good' | 'bad' | 'even' | 'mirror' | 'hidden';

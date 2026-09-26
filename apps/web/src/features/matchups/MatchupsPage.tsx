@@ -15,7 +15,7 @@ import {
   crossWindow,
   type CrossSearch,
 } from './matchups-queries';
-import { DEFAULT_MATRIX_SETTINGS, type MatrixSettings } from './matrix-view';
+import { DEFAULT_MATRIX_SETTINGS, hasSideFilter, type MatrixSettings } from './matrix-view';
 
 type DraftRange = [string | null, string | null];
 
@@ -70,6 +70,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
     metric: search.metric ?? DEFAULT_MATRIX_SETTINGS.metric,
     minGames: search.minGames ?? DEFAULT_MATRIX_SETTINGS.minGames,
     dispositions: search.dispositions?.split(',').filter(Boolean) ?? [],
+    detachments: search.detachments?.split(',').filter(Boolean) ?? [],
     side: search.side ?? DEFAULT_MATRIX_SETTINGS.side,
   };
   // Points may have become unavailable (e.g. after ticking in an event with a different scale):
@@ -139,28 +140,35 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
                     minGames: next.minGames,
                     dispositions:
                       next.dispositions.length > 0 ? next.dispositions.join(',') : undefined,
+                    detachments:
+                      next.detachments.length > 0 ? next.detachments.join(',') : undefined,
                     side: next.side,
                   });
                 }}
                 scoring={matchups.data.scoring}
                 dispositions={[]}
+                detachments={matchups.data.detachments}
               />
               <Box style={{ opacity: dimmed ? 0.6 : 1 }} aria-busy={dimmed}>
                 {(() => {
                   const noneIncluded = !matchups.data.events.some((event) => event.included);
                   const noGames = matchups.data.matrix.games === 0;
-                  const dispositionActive = settings.dispositions.length > 0;
+                  const dispositionActive = hasSideFilter(settings);
                   if (!noneIncluded && noGames && dispositionActive) {
                     return (
                       <Group gap="sm">
                         <Text size="sm" c="dimmed">
-                          No games match this disposition filter.
+                          No games match this filter.
                         </Text>
                         <Button
                           size="xs"
                           variant="light"
                           onClick={() => {
-                            onSearchChange({ ...search, dispositions: undefined });
+                            onSearchChange({
+                              ...search,
+                              dispositions: undefined,
+                              detachments: undefined,
+                            });
                           }}
                         >
                           Clear filter

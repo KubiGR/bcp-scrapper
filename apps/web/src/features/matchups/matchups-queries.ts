@@ -61,6 +61,8 @@ export interface CrossSearch {
   minGames?: number;
   /** Comma-separated dispositions (any matches). */
   dispositions?: string;
+  /** Comma-separated detachments (any matches). */
+  detachments?: string;
   side?: 'row' | 'both';
 }
 
@@ -79,7 +81,8 @@ const crossParams = (search: CrossSearch) =>
       exclude: search.exclude,
       include: search.include,
       dispositions: search.dispositions,
-      side: search.dispositions ? (search.side ?? 'row') : undefined,
+      detachments: search.detachments,
+      side: search.dispositions || search.detachments ? (search.side ?? 'row') : undefined,
     }).filter(
       (entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1] !== '',
     ),

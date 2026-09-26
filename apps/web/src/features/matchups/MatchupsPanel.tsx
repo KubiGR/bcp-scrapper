@@ -9,7 +9,7 @@ import { CellDrawer } from './CellDrawer';
 import { FactionMatrix } from './FactionMatrix';
 import { MatrixControls } from './MatrixControls';
 import { eventCellGamesQuery, eventMatchupsQuery } from './matchups-queries';
-import { DEFAULT_MATRIX_SETTINGS, type MatrixSettings } from './matrix-view';
+import { DEFAULT_MATRIX_SETTINGS, hasSideFilter, type MatrixSettings } from './matrix-view';
 
 /** The event's Matchups tab: controls, a one-line summary, the heatmap, and a drill-down drawer
  * on each cell. Falls back to win rate if the chosen metric is points but scoring turns out
@@ -51,19 +51,20 @@ export function MatchupsPanel({ event }: { event: EventDetail }) {
         onChange={setSettings}
         scoring={matrixScoring}
         dispositions={dispositions}
+        detachments={matchups.data.detachments}
       />
       <Box style={{ opacity: dimmed ? 0.6 : 1 }} aria-busy={dimmed}>
         {matrix.games === 0 ? (
-          settings.dispositions.length > 0 ? (
+          hasSideFilter(settings) ? (
             <Group gap="sm">
               <Text size="sm" c="dimmed">
-                No games match this disposition filter.
+                No games match this filter.
               </Text>
               <Button
                 size="xs"
                 variant="light"
                 onClick={() => {
-                  setSettings({ ...settings, dispositions: [] });
+                  setSettings({ ...settings, dispositions: [], detachments: [] });
                 }}
               >
                 Clear filter

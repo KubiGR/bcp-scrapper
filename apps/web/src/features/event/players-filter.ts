@@ -1,10 +1,12 @@
 import { qualifiesForMaxLosses, type EventPlayer } from '@bcp/shared';
 
-/** An empty `factions`/`dispositions` list means no filter; otherwise any listed value matches. */
+/** An empty list means no filter; otherwise any listed value matches. */
 export interface PlayerFilter {
   query: string;
   factions: string[];
   dispositions: string[];
+  /** Only players with a fetched, readable list have detachments. */
+  detachments: string[];
   maxLosses: number | null;
 }
 
@@ -17,7 +19,7 @@ const anyOf = (chosen: string[], value: string | null) =>
  */
 export function filterPlayers(
   players: EventPlayer[],
-  { query, factions, dispositions, maxLosses }: PlayerFilter,
+  { query, factions, dispositions, detachments, maxLosses }: PlayerFilter,
 ): EventPlayer[] {
   const needle = query.trim().toLocaleLowerCase();
   const matchesText = (player: EventPlayer) =>
@@ -28,6 +30,7 @@ export function filterPlayers(
     (player) =>
       anyOf(factions, player.faction) &&
       anyOf(dispositions, player.disposition) &&
+      (detachments.length === 0 || player.detachments.some((name) => detachments.includes(name))) &&
       matchesText(player) &&
       (maxLosses === null || qualifiesForMaxLosses(player, maxLosses)),
   );
@@ -45,6 +48,13 @@ export function dispositionsOf(players: EventPlayer[]): string[] {
     players.flatMap((player) => (player.disposition ? [player.disposition] : [])),
   );
   return [...dispositions].sort((a, b) => a.localeCompare(b));
+}
+
+/** The detachments present, alphabetically, for the detachment filter. */
+export function detachmentsOf(players: EventPlayer[]): string[] {
+  return [...new Set(players.flatMap((player) => player.detachments))].sort((a, b) =>
+    a.localeCompare(b),
+  );
 }
 
 export function formatRecord(player: Pick<EventPlayer, 'wins' | 'losses' | 'draws'>): string {

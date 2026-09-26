@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { fromLegacySearch } from './matchups-queries';
+import { describe, expect, it, vi } from 'vitest';
+import { crossMatchupsQuery, fromLegacySearch } from './matchups-queries';
 
 describe('fromLegacySearch', () => {
   it('reads an old single `disposition` link into `dispositions`', () => {
@@ -14,5 +14,22 @@ describe('fromLegacySearch', () => {
       dispositions: 'A,B',
     });
     expect(fromLegacySearch({ from: '2026-01-01' })).toEqual({ from: '2026-01-01' });
+  });
+});
+
+describe('crossMatchupsQuery', () => {
+  it('sends detachments and the side from the URL search', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        calls.push(url);
+        return Promise.resolve(Response.json({}));
+      }),
+    );
+    const { queryFn } = crossMatchupsQuery({ detachments: 'War Horde', side: 'both' });
+    await Promise.resolve(queryFn?.({} as never)).catch(() => undefined);
+    expect(calls[0]).toContain('detachments=War+Horde');
+    expect(calls[0]).toContain('side=both');
   });
 });

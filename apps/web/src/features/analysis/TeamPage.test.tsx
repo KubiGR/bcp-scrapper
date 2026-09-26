@@ -68,6 +68,26 @@ describe('TeamPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('shows each player’s detachments and a guessed army’s ⚠', async () => {
+    const [first] = detail.players;
+    if (first === undefined) throw new Error('fixture');
+    stubFetchRoutes({
+      'GET /api/events/EVT1/teams/RED': {
+        ...detail,
+        players: [
+          {
+            ...first,
+            player: { ...first.player, factionGuessed: true, detachments: ['Hallowed Martyrs'] },
+          },
+        ],
+      },
+      'GET /api/events/EVT1': anEventDetail(),
+    });
+    renderWithRouter(<TeamPage eventId="EVT1" teamId="RED" />);
+    expect(await screen.findByText(/Hallowed Martyrs/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Guessed from the list')).toBeInTheDocument();
+  });
+
   it('shows VP for a round when known', async () => {
     const withVp: TeamDetailResponse = {
       ...detail,

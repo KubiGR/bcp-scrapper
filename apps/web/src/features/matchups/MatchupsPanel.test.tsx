@@ -107,7 +107,7 @@ describe('MatchupsPanel', () => {
     const option = await screen.findByRole('option', { name: 'Disruption' });
     fireEvent.click(option);
 
-    expect(await screen.findByText('No games match this disposition filter.')).toBeInTheDocument();
+    expect(await screen.findByText('No games match this filter.')).toBeInTheDocument();
     expect(screen.queryByText('No games with known factions yet.')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear filter' }));
@@ -172,9 +172,9 @@ describe('MatchupsPanel', () => {
             col: {
               name: 'Bea Moss',
               faction: 'Necrons',
-              factionGuessed: false,
+              factionGuessed: true,
               disposition: null,
-              detachments: [],
+              detachments: ['Hypercrypt Legion'],
               teamName: null,
             },
             outcome: 'win',
@@ -194,5 +194,7 @@ describe('MatchupsPanel', () => {
     expect(await screen.findByText('Ada Archer')).toBeInTheDocument();
     const drawer = screen.getByRole('dialog');
     expect(within(drawer).getByText('Bea Moss')).toBeInTheDocument();
+    expect(within(drawer).getByLabelText('Guessed from the list')).toBeInTheDocument();
+    expect(within(drawer).getByText(/Hypercrypt Legion/)).toBeInTheDocument();
   });
 });

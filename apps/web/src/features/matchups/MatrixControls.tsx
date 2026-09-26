@@ -8,7 +8,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { DispositionText } from '../../components/DispositionText';
-import type { MatrixSettings } from './matrix-view';
+import { hasSideFilter, type MatrixSettings } from './matrix-view';
 
 /** BCP's five known dispositions (subFactions), shown even when the loaded event has no games in
  * them yet. Anything else the data brings is appended. */
@@ -25,9 +25,20 @@ interface MatrixControlsProps {
   onChange: (settings: MatrixSettings) => void;
   scoring: { consistent: boolean; scale: number | null };
   dispositions: string[];
+  /** Detachments played in the loaded games (from the API). */
+  detachments?: string[];
 }
 
-export function MatrixControls({ settings, onChange, scoring, dispositions }: MatrixControlsProps) {
+export function MatrixControls({
+  settings,
+  onChange,
+  scoring,
+  dispositions,
+  detachments = [],
+}: MatrixControlsProps) {
+  const detachmentOptions = [...new Set([...detachments, ...settings.detachments])].sort((a, b) =>
+    a.localeCompare(b),
+  );
   const dispositionOptions = [...new Set([...KNOWN_DISPOSITIONS, ...dispositions])];
   const pointsDisabled = !scoring.consistent || scoring.scale === null;
   const pointsReason = !scoring.consistent
@@ -72,7 +83,19 @@ export function MatrixControls({ settings, onChange, scoring, dispositions }: Ma
           }}
           renderOption={({ option }) => <DispositionText disposition={option.value} />}
         />
-        {settings.dispositions.length > 0 && (
+        <MultiSelect
+          label="Detachment"
+          placeholder={settings.detachments.length === 0 ? 'All detachments' : undefined}
+          clearable
+          searchable
+          w={260}
+          data={detachmentOptions}
+          value={settings.detachments}
+          onChange={(value) => {
+            onChange({ ...settings, detachments: value });
+          }}
+        />
+        {hasSideFilter(settings) && (
           <SegmentedControl
             aria-label="Side"
             value={settings.side}

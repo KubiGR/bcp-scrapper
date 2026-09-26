@@ -119,7 +119,7 @@ describe('MatchupsPage', () => {
       <MatchupsPage search={{ dispositions: 'Disruption' }} onSearchChange={onSearchChange} />,
     );
 
-    expect(await screen.findByText('No games match this disposition filter.')).toBeInTheDocument();
+    expect(await screen.findByText('No games match this filter.')).toBeInTheDocument();
     expect(
       screen.queryByText('Tick at least one event with pairings to see matchups.'),
     ).not.toBeInTheDocument();
