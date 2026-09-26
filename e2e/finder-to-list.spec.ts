@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('find a tournament, queue the good results’ lists and read one', async ({ page }) => {
+test('find a tournament, queue a team’s lists and read one', async ({ page }) => {
   // A deep search over 2026: it hasn't been fetched from BCP yet, so the finder offers to.
   await page.goto('/?size=all&from=2026-01-01&to=2026-12-31');
 
@@ -16,17 +16,18 @@ test('find a tournament, queue the good results’ lists and read one', async ({
   // Opening a never-synced event loads its players automatically.
   await expect(page.getByRole('button', { name: 'Ada Archer' })).toBeVisible();
 
-  // Queue only the good results; the background worker (200 ms per list in e2e) fetches them.
+  // A team event: pick a whole team; the background worker (200 ms per list in e2e) fetches it.
+  await page.getByRole('checkbox', { name: 'Select Alpha Squad' }).check();
   await page.getByRole('button', { name: 'Fetch lists' }).click();
-  await page.getByRole('menuitem', { name: 'X-1 or better (6)' }).click();
+  await page.getByRole('menuitem', { name: 'Selected teams (1 team · 2 lists)' }).click();
 
   const adaRow = page.getByRole('row', { name: /Ada Archer/ });
   // exact: 'Fetched' would otherwise substring-match the "Not fetched" badge she starts with.
   await expect(adaRow.getByText('Fetched', { exact: true })).toBeVisible({ timeout: 20_000 });
 
-  // Eve (0-2) didn't qualify: her list is still one click away.
+  // The other teams' lists are still one click away.
   await page.getByRole('button', { name: 'Fetch lists' }).click();
-  await expect(page.getByRole('menuitem', { name: 'All missing lists (1)' })).toBeEnabled();
+  await expect(page.getByRole('menuitem', { name: 'All missing lists (5)' })).toBeEnabled();
   await page.keyboard.press('Escape');
 
   await page.getByRole('button', { name: 'Ada Archer' }).click();

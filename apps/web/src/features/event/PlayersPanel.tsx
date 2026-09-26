@@ -1,6 +1,8 @@
 import type { EventDetail, EventPlayer } from '@bcp/shared';
 import {
   Badge,
+  Button,
+  Checkbox,
   Collapse,
   Group,
   MultiSelect,
@@ -32,7 +34,9 @@ import {
   groupPlayersByTeam,
   lossLabel,
   lossOptions,
+  missingListCountFor,
 } from './players-filter';
+import { useQueueLists } from './use-queue-lists';
 
 function emptyText(loadingFromBcp: boolean, playerCount: number): string {
   if (loadingFromBcp) return 'Loading players from BCP…';
@@ -116,9 +120,21 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
   const [maxLosses, setMaxLosses] = useState<number | null>(null);
   const [openPlayerId, setOpenPlayerId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Ticked teams, by id, so they survive the players refetching while lists arrive.
+  const [selectedTeams, setSelectedTeams] = useState<Set<string>>(new Set());
+  const queueTeam = useQueueLists(event);
   const all = players.data?.items ?? [];
   const openPlayer = all.find((p) => p.bcpId === openPlayerId) ?? null;
   const filtered = filterPlayers(all, { query, factions, dispositions, maxLosses });
+
+  const toggleTeam = (teamId: string) => {
+    setSelectedTeams((prev) => {
+      const next = new Set(prev);
+      if (next.has(teamId)) next.delete(teamId);
+      else next.add(teamId);
+      return next;
+    });
+  };
 
   const toggleGroup = (key: string) => {
     setCollapsed((prev) => {
@@ -181,7 +197,7 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
           />
         </Group>
         <Group gap="sm" align="flex-start">
-          <FetchListsMenu event={event} players={all} />
+          <FetchListsMenu event={event} players={all} selectedTeamIds={[...selectedTeams]} />
           <ExportMenu event={event} />
         </Group>
       </Group>
@@ -209,6 +225,16 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
             return (
               <Panel key={key} p={0}>
                 <Group wrap="nowrap" gap={0}>
+                  {group.teamId !== null && (
+                    <Checkbox
+                      pl="sm"
+                      aria-label={`Select ${group.teamName}`}
+                      checked={selectedTeams.has(group.teamId)}
+                      onChange={() => {
+                        if (group.teamId !== null) toggleTeam(group.teamId);
+                      }}
+                    />
+                  )}
                   <UnstyledButton
                     aria-expanded={expanded}
                     onClick={() => {
@@ -232,7 +258,21 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
                     </Group>
                   </UnstyledButton>
                   {group.teamId !== null && (
-                    <Group px="sm">
+                    <Group px="sm" gap="sm" wrap="nowrap">
+                      <Button
+                        size="compact-xs"
+                        variant="subtle"
+                        aria-label={`Fetch ${group.teamName} lists`}
+                        disabled={missingListCountFor(all, new Set([group.teamId])) === 0}
+                        loading={
+                          queueTeam.isPending && queueTeam.variables.teamIds?.[0] === group.teamId
+                        }
+                        onClick={() => {
+                          if (group.teamId !== null) queueTeam.mutate({ teamIds: [group.teamId] });
+                        }}
+                      >
+                        Fetch team lists
+                      </Button>
                       <AnchorLink
                         to="/events/$eventId/teams/$teamId"
                         params={{ eventId: event.bcpId, teamId: group.teamId }}

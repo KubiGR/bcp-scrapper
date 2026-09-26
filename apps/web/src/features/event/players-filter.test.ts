@@ -8,6 +8,7 @@ import {
   groupPlayersByTeam,
   lossOptions,
   missingListCount,
+  missingListCountFor,
   type PlayerFilter,
 } from './players-filter';
 
@@ -139,5 +140,18 @@ describe('groupPlayersByTeam', () => {
       ['Charlie', ['E']],
       ['No team', ['B']],
     ]);
+  });
+});
+
+describe('missingListCountFor', () => {
+  it('counts the missing lists of the chosen teams only', () => {
+    const list = [
+      aPlayer({ bcpId: 'A', teamId: 'T1', listStatus: 'available' }),
+      aPlayer({ bcpId: 'B', teamId: 'T1', listStatus: 'fetched' }),
+      aPlayer({ bcpId: 'C', teamId: 'T2', listStatus: 'available' }),
+      aPlayer({ bcpId: 'D', teamId: 'T3', listStatus: 'available' }),
+    ];
+    expect(missingListCountFor(list, new Set(['T1', 'T2']))).toBe(2);
+    expect(missingListCountFor(list, new Set())).toBe(0);
   });
 });

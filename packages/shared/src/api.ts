@@ -193,10 +193,15 @@ export const QueueListsRequestSchema = z
   .object({
     maxLosses: z.number().int().min(0).max(MAX_LOSSES_LIMIT).optional(),
     playerIds: z.array(z.string().min(1)).min(1).max(1000).optional(),
+    /** Whole teams (team events): every player of these teams. */
+    teamIds: z.array(z.string().min(1)).min(1).max(200).optional(),
   })
-  .refine((request) => request.maxLosses === undefined || request.playerIds === undefined, {
-    message: 'Send `maxLosses` or `playerIds`, not both',
-  });
+  .refine(
+    (request) =>
+      [request.maxLosses, request.playerIds, request.teamIds].filter((value) => value !== undefined)
+        .length <= 1,
+    { message: 'Send at most one of `maxLosses`, `playerIds` or `teamIds`' },
+  );
 export type QueueListsRequest = z.infer<typeof QueueListsRequestSchema>;
 
 const count = z.number().int().nonnegative();

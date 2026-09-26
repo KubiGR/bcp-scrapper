@@ -42,6 +42,18 @@ export async function queueEventLists(
     selected = everyone.filter((player) => wanted.has(player.bcpId));
   }
 
+  if (request.teamIds) {
+    const known = new Set(everyone.flatMap((player) => (player.teamId ? [player.teamId] : [])));
+    const unknown = request.teamIds.filter((id) => !known.has(id));
+    if (unknown.length > 0) {
+      throw new ValidationError([
+        { path: 'teamIds', message: `Not teams of this event: ${unknown.join(', ')}` },
+      ]);
+    }
+    const wanted = new Set(request.teamIds);
+    selected = everyone.filter((player) => player.teamId !== null && wanted.has(player.teamId));
+  }
+
   let notQualifying = 0;
   const { maxLosses } = request;
   if (maxLosses !== undefined) {
@@ -51,7 +63,9 @@ export async function queueEventLists(
     selected = selected.filter((player) => qualifiesForMaxLosses(player, maxLosses));
   }
 
-  const priority = request.playerIds ? SINGLE_LIST_PRIORITY : 0;
+  // Chosen players or teams are someone waiting: they go ahead of bulk requests.
+  const chosen = request.playerIds !== undefined || request.teamIds !== undefined;
+  const priority = chosen ? SINGLE_LIST_PRIORITY : 0;
   const counts = { alreadyQueued: 0, alreadyFetched: 0, noListOnBcp: 0 };
   const toQueue: { playerId: string; listId: string }[] = [];
   for (const player of selected) {
@@ -63,12 +77,8 @@ export async function queueEventLists(
       else if (!open) counts.alreadyFetched += 1;
       continue;
     }
-    // BCP said it has no such list: final for bulk requests; a chosen player is asked for again.
-    if (
-      !request.playerIds &&
-      player.listStatus === 'failed' &&
-      player.listErrorCode === NO_LIST_CODE
-    ) {
+    // BCP said it has no such list: final for bulk requests; chosen players or teams ask again.
+    if (!chosen && player.listStatus === 'failed' && player.listErrorCode === NO_LIST_CODE) {
       counts.noListOnBcp += 1;
       continue;
     }

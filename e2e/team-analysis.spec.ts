@@ -10,8 +10,14 @@ test('fetch a team event’s pairings, read the standings and open a team', asyn
   await event.click();
   await expect(page.getByRole('heading', { name: 'Sample Team Open' })).toBeVisible();
 
-  // Players are grouped by team on team events.
-  await expect(page.getByRole('button', { name: /Alpha Squad/ })).toBeVisible();
+  // Players are grouped by team on team events, and whole teams can be picked for lists.
+  await expect(page.getByRole('checkbox', { name: 'Select Alpha Squad' })).toBeVisible();
+  // Charlie Wing: Eve (0-2) isn't among the lists the finder spec fetches by result.
+  await page.getByRole('checkbox', { name: 'Select Charlie Wing' }).check();
+  await page.getByRole('button', { name: 'Fetch lists' }).click();
+  await page.getByRole('menuitem', { name: /^Selected teams \(1 team ·/ }).click();
+  const eveRow = page.getByRole('row', { name: /Eve Evans/ });
+  await expect(eveRow.getByText('Fetched', { exact: true })).toBeVisible({ timeout: 20_000 });
 
   await page.getByRole('tab', { name: 'Standings' }).click();
   await page.getByRole('button', { name: 'Fetch pairings' }).click();

@@ -13,7 +13,10 @@ const players = [
 describe('FetchListsMenu', () => {
   it('offers every missing list and each possible result filter, with counts', () => {
     renderWithProviders(
-      <FetchListsMenu event={anEventDetail({ roundCount: 2 })} players={players} />,
+      <FetchListsMenu
+        event={anEventDetail({ roundCount: 2, isTeamEvent: false })}
+        players={players}
+      />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Fetch lists' }));
     expect(screen.getByRole('menuitem', { name: 'All missing lists (3)' })).toBeEnabled();
@@ -34,7 +37,10 @@ describe('FetchListsMenu', () => {
       },
     });
     renderWithProviders(
-      <FetchListsMenu event={anEventDetail({ roundCount: 2 })} players={players} />,
+      <FetchListsMenu
+        event={anEventDetail({ roundCount: 2, isTeamEvent: false })}
+        players={players}
+      />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Fetch lists' }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'X-1 or better (2)' }));
@@ -48,11 +54,72 @@ describe('FetchListsMenu', () => {
   it('disables filters with nothing to fetch', () => {
     renderWithProviders(
       <FetchListsMenu
-        event={anEventDetail({ roundCount: 2 })}
+        event={anEventDetail({ roundCount: 2, isTeamEvent: false })}
         players={[aPlayer({ wins: 0, losses: 2, draws: 0, listStatus: 'available' })]}
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Fetch lists' }));
     expect(screen.getByRole('menuitem', { name: 'X-0 only (0)' })).toBeDisabled();
+  });
+
+  describe('on team events', () => {
+    const teamPlayers = [
+      aPlayer({ bcpId: 'A', teamId: 'T1', listStatus: 'available' }),
+      aPlayer({ bcpId: 'B', teamId: 'T1', listStatus: 'available' }),
+      aPlayer({ bcpId: 'C', teamId: 'T2', listStatus: 'available' }),
+      aPlayer({ bcpId: 'D', teamId: 'T3', listStatus: 'fetched' }),
+    ];
+
+    it('offers all missing lists and the selected teams instead of result filters', () => {
+      renderWithProviders(
+        <FetchListsMenu
+          event={anEventDetail({ roundCount: 5 })}
+          players={teamPlayers}
+          selectedTeamIds={['T1', 'T2']}
+        />,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Fetch lists' }));
+      expect(screen.getByRole('menuitem', { name: 'All missing lists (3)' })).toBeEnabled();
+      expect(
+        screen.getByRole('menuitem', { name: 'Selected teams (2 teams · 3 lists)' }),
+      ).toBeEnabled();
+      expect(screen.queryByRole('menuitem', { name: /X-/ })).toBeNull();
+    });
+
+    it('disables Selected teams when none is ticked, and queues the ticked teams', async () => {
+      const { unmount } = renderWithProviders(
+        <FetchListsMenu event={anEventDetail({ roundCount: 5 })} players={teamPlayers} />,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Fetch lists' }));
+      expect(
+        screen.getByRole('menuitem', { name: 'Selected teams (0 teams · 0 lists)' }),
+      ).toBeDisabled();
+      unmount();
+
+      const fetchMock = stubFetchRoutes({
+        'POST /api/events/EVT1/lists/queue': {
+          queued: 2,
+          alreadyQueued: 0,
+          alreadyFetched: 0,
+          noListOnBcp: 0,
+          notQualifying: 0,
+          estimatedSeconds: 10,
+        },
+      });
+      renderWithProviders(
+        <FetchListsMenu
+          event={anEventDetail({ roundCount: 5 })}
+          players={teamPlayers}
+          selectedTeamIds={['T1']}
+        />,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Fetch lists' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Selected teams (1 team · 2 lists)' }));
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalled();
+      });
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string -- the body is a JSON string here
+      expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ teamIds: ['T1'] });
+    });
   });
 });

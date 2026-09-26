@@ -70,6 +70,14 @@ export function missingListCount(players: EventPlayer[], maxLosses: number | nul
   ).length;
 }
 
+/** Missing lists among the players of the chosen teams (same rule as `missingListCount`). */
+export function missingListCountFor(players: EventPlayer[], teamIds: Set<string>): number {
+  return missingListCount(
+    players.filter((player) => player.teamId !== null && teamIds.has(player.teamId)),
+    null,
+  );
+}
+
 export const lossLabel = (losses: number) => (losses === 0 ? 'X-0 only' : `X-${losses} or better`);
 
 export interface PlayerGroup {

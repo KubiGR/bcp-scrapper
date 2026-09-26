@@ -21,6 +21,12 @@ beforeEach(() => {
   }));
 });
 
+/** A team group's collapse toggle (not its "Fetch … lists" button). */
+const teamToggle = (team: string) => ({
+  name: (_: string, el: Element) =>
+    el.getAttribute('aria-expanded') !== null && el.textContent.includes(team),
+});
+
 describe('PlayersPanel', () => {
   it('opens a player list from the keyboard via a focusable player-name button', async () => {
     stubFetchRoutes({
@@ -66,8 +72,8 @@ describe('PlayersPanel', () => {
       },
     });
     renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
-    const charlie = await screen.findByRole('button', { name: /Charlie Wing/ });
-    const alpha = screen.getByRole('button', { name: /Alpha Squad/ });
+    const charlie = await screen.findByRole('button', teamToggle('Charlie Wing'));
+    const alpha = screen.getByRole('button', teamToggle('Alpha Squad'));
     expect(charlie.compareDocumentPosition(alpha) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(charlie).toHaveAttribute('aria-expanded', 'true');
     fireEvent.click(charlie);
@@ -171,7 +177,7 @@ describe('PlayersPanel', () => {
       },
     });
     renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
-    await screen.findByRole('button', { name: /Alpha Squad/ });
+    await screen.findByRole('button', teamToggle('Alpha Squad'));
     fireEvent.change(screen.getByLabelText('Search players'), {
       target: { value: 'nobody matches this' },
     });
@@ -209,5 +215,52 @@ describe('PlayersPanel', () => {
     const teamLink = await screen.findByRole('link', { name: 'Alpha Squad team page' });
     expect(teamLink).toHaveAttribute('href', '/events/EVT1/teams/TM-ALPHA');
     expect(screen.queryByRole('link', { name: /No team team page/ })).not.toBeInTheDocument();
+  });
+
+  it('lets you tick teams and fetch one team’s lists; ticks survive a refetch', async () => {
+    const alpha = (overrides: Parameters<typeof aPlayer>[0] = {}) =>
+      aPlayer({ teamId: 'TM-ALPHA', teamName: 'Alpha Squad', teamPlacing: 2, ...overrides });
+    const players = {
+      items: [
+        alpha({ bcpId: 'P1', name: 'Ada Archer', listStatus: 'available' }),
+        alpha({ bcpId: 'P2', name: 'Ben Baker', listStatus: 'available' }),
+        aPlayer({ bcpId: 'P3', name: 'Nyx None', teamId: null, teamName: null, teamPlacing: null }),
+      ],
+    };
+    const fetchMock = stubFetchRoutes({
+      'GET /api/events/EVT1/players': players,
+      'POST /api/events/EVT1/lists/queue': {
+        queued: 2,
+        alreadyQueued: 0,
+        alreadyFetched: 0,
+        noListOnBcp: 0,
+        notQualifying: 0,
+        estimatedSeconds: 10,
+      },
+    });
+    const { queryClient } = renderWithRouter(
+      <PlayersPanel event={anEventDetail()} loadingFromBcp={false} />,
+    );
+
+    const tick = await screen.findByRole('checkbox', { name: 'Select Alpha Squad' });
+    expect(screen.queryByRole('checkbox', { name: /Select No team/ })).not.toBeInTheDocument();
+    // The tick box and the button sit beside the header toggle, not inside it.
+    const toggle = screen.getByRole('button', teamToggle('Alpha Squad'));
+    expect(toggle.contains(tick)).toBe(false);
+
+    fireEvent.click(tick);
+    expect(tick).toBeChecked();
+    await queryClient.refetchQueries({ queryKey: ['event', 'EVT1', 'players'] });
+    expect(screen.getByRole('checkbox', { name: 'Select Alpha Squad' })).toBeChecked();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fetch Alpha Squad lists' }));
+    await vi.waitFor(() => {
+      expect(fetchMock.mock.calls.some(([url]) => url === '/api/events/EVT1/lists/queue')).toBe(
+        true,
+      );
+    });
+    const post = fetchMock.mock.calls.find(([url]) => url === '/api/events/EVT1/lists/queue');
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string -- the body is a JSON string here
+    expect(JSON.parse(String(post?.[1]?.body))).toEqual({ teamIds: ['TM-ALPHA'] });
   });
 });

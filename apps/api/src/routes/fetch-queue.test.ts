@@ -11,7 +11,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
-import { players } from '../db/schema';
+import { fetchQueue as fetchQueueTable, players } from '../db/schema';
 import { upsertEventSummaries } from '../repo/events';
 import { claimNextJob, markJobFailed } from '../repo/fetch-queue';
 import { createTestDb, resetDb } from '../db/test-db';
@@ -105,6 +105,26 @@ describe('fetch queue routes', () => {
     expect(await queue({ playerIds: ['PL-EVE'] })).toMatchObject({ queued: 0, alreadyQueued: 1 });
     await fetchQueue.tick();
     expect((await playersOf()).find((p) => p.bcpId === 'PL-EVE')?.listStatus).toBe('fetched');
+  });
+
+  it('queues the missing lists of chosen teams, ahead of the rest', async () => {
+    expect(await queue({ teamIds: ['TM-ALPHA'] })).toMatchObject({ queued: 2 });
+    const rows = await db
+      .select({ playerId: fetchQueueTable.playerId, priority: fetchQueueTable.priority })
+      .from(fetchQueueTable)
+      .orderBy(fetchQueueTable.playerId);
+    expect(rows).toEqual([
+      { playerId: 'PL-ADA', priority: 10 },
+      { playerId: 'PL-BEN', priority: 10 },
+    ]);
+    // Delta: Gia has a list; Hal has none on BCP, so only one is queued.
+    expect(await queue({ teamIds: ['TM-DELTA'] })).toMatchObject({ queued: 1, noListOnBcp: 1 });
+  });
+
+  it('rejects teams of another event, and teams combined with another selection', async () => {
+    const path = `/api/events/${EVENT}/lists/queue`;
+    expect((await send('POST', path, { teamIds: ['TB-RED'] })).status).toBe(400);
+    expect((await send('POST', path, { teamIds: ['TM-ALPHA'], maxLosses: 1 })).status).toBe(400);
   });
 
   it('validates the request', async () => {
