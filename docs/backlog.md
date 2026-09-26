@@ -4,7 +4,7 @@ Ideas and follow-ups that aren't scheduled yet. Newest requests first within eac
 
 ## Next up
 
-- **Plan 5: faction matchups.** The matchup matrix per event (win rate / average game points toggle, min games, drill-down) and the cross-event `/analysis/matchups` page with bulk pairings sync. Designed in `docs/superpowers/specs/2026-09-24-team-analysis-design.md` (§5.5–5.6, §7.5).
+- **Detachments from lists.** Parse each fetched list's detachment(s) (GW app `… (N Detachment Points)`, `DETACHMENT:` headers, `Detachment(s):` templates; split two joined detachments only when both halves are known on their own), show them with factions and dispositions, and add a detachment filter to the matchups.
 
 ## Feature ideas
 
@@ -31,3 +31,5 @@ From the reviews of plans 2–4; none blocks anything.
 - Pairings: Retry on the event page re-queues the event's failed list jobs too; add a kinds filter to retry-failed (fits plan 5).
 - Pairings: during a refresh the progress shows "6/6 rounds" at once, and a never-synced event's first estimate covers only the event job.
 - Pairings: Fetch pairings silently does nothing for a synced event with 0 rounds.
+- Matchups: the cross-event page refetches all games every 5 s while any event syncs (fine locally; raise the interval or poll events only).
+- Matchups: cross-event drill-down lists games by event name; order by event date instead.

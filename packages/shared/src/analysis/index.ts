@@ -1,5 +1,7 @@
 export * from './contribution';
 export * from './inputs';
+export * from './matchup-schemas';
+export * from './matchups';
 export * from './rounds';
 export * from './schemas';
 export * from './standings';

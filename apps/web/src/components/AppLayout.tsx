@@ -9,6 +9,7 @@ const FINDER_DEFAULTS = FinderSearchSchema.parse({});
 
 const NAV_ITEMS = [
   { to: '/', label: 'Tournaments' },
+  { to: '/analysis/matchups', label: 'Matchups' },
   { to: '/settings', label: 'Settings' },
 ] as const;
 

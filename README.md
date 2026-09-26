@@ -68,6 +68,11 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
   one request per round in the same background queue as army lists. For bracket-style events
   (e.g. GW team events) BCP has no victory points, so VP shows as "–".
 - The **Players & lists** tab groups a team event's players by team, collapsibly.
+- **Matchups** (on each event, and across events under **Matchups** in the header) shows how
+  factions fare against each other: win rate (draws count half) or average game points, with a
+  minimum-games filter and a disposition filter; click a cell for the games behind it. The
+  cross-event page lists the team events in a date range; tick which count, and **Sync pairings
+  for N events** fetches the missing ones in the background.
 - No Docker? `DATABASE_URL=pglite://memory pnpm dev` runs everything in memory (lost on restart).
 
 ## Commands

@@ -7,6 +7,7 @@ import { Panel } from '../../components/Panel';
 import { PairingsGate } from '../analysis/PairingsGate';
 import { RoundsPanel } from '../analysis/RoundsPanel';
 import { StandingsPanel } from '../analysis/StandingsPanel';
+import { MatchupsPanel } from '../matchups/MatchupsPanel';
 import { isActiveRun } from '../sync/follow-sync';
 import { SyncRunError, useSync } from '../sync/use-sync';
 import { EventHeader } from './EventHeader';
@@ -18,6 +19,7 @@ export const EVENT_TABS = [
   { value: 'players', label: 'Players & lists' },
   { value: 'rounds', label: 'Rounds' },
   { value: 'standings', label: 'Standings' },
+  { value: 'matchups', label: 'Matchups' },
 ] as const;
 export type EventTab = (typeof EVENT_TABS)[number]['value'];
 
@@ -127,6 +129,11 @@ export function EventPage({ eventId, tab, onTabChange }: EventPageProps) {
             </PairingsGate>
           </Tabs.Panel>
         )}
+        <Tabs.Panel value="matchups" pt="md">
+          <PairingsGate event={detail}>
+            <MatchupsPanel event={detail} />
+          </PairingsGate>
+        </Tabs.Panel>
       </Tabs>
     </Stack>
   );

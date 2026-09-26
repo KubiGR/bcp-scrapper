@@ -71,14 +71,16 @@ describe('EventPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows Rounds and Standings tabs on team events, only Rounds on singles', async () => {
+  it('shows Players & lists, Rounds, Standings, Matchups on team events; no Standings on singles', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': { items: [] },
       'GET /api/events/EVT1': anEventDetail(),
     });
     const { unmount } = renderWithProviders(<EventPage eventId="EVT1" {...tabProps} />);
-    expect(await screen.findByRole('tab', { name: 'Standings' })).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: 'Players & lists' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Rounds' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Standings' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Matchups' })).toBeInTheDocument();
     unmount();
 
     stubFetchRoutes({
@@ -86,7 +88,9 @@ describe('EventPage', () => {
       'GET /api/events/EVT1': anEventDetail({ isTeamEvent: false }),
     });
     renderWithProviders(<EventPage eventId="EVT1" {...tabProps} />);
-    expect(await screen.findByRole('tab', { name: 'Rounds' })).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: 'Players & lists' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Rounds' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Matchups' })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Standings' })).toBeNull();
   });
 
