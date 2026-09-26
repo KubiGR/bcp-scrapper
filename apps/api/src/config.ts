@@ -23,6 +23,22 @@ const EnvSchema = z.object({
   MIN_EVENT_ROUNDS: z.coerce.number().int().min(0).default(4),
   /** Events smaller than this are not stored or shown (RTTs and small events). */
   MIN_EVENT_PLAYERS: z.coerce.number().int().min(0).default(20),
+  /** The name the app is reached by from outside (e.g. through a Cloudflare Tunnel). */
+  PUBLIC_HOSTNAME: z.string().min(1).optional(),
+  /** Extra hostnames the Host check admits, comma-separated (e.g. a LAN name). */
+  ALLOWED_HOSTS: z.string().optional(),
+  /** When set, the API also serves the built web app from this directory. */
+  WEB_DIST_DIR: z.string().min(1).optional(),
+  /** Logins for everyone; off for local development and tests. */
+  AUTH_REQUIRED: z
+    .enum(['true', 'false', '1', '0'])
+    .default('false')
+    .transform((value) => value === 'true' || value === '1'),
+  /** Keys the session id hashes; at least 32 characters. Required when AUTH_REQUIRED is on. */
+  SESSION_SECRET: z.string().min(32).optional(),
+  /** The first admin, created on start while there are no users yet. */
+  ADMIN_USERNAME: z.string().min(1).optional(),
+  ADMIN_PASSWORD: z.string().min(1).optional(),
 });
 
 export type Config = z.infer<typeof EnvSchema>;
@@ -36,5 +52,31 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (!result.success) {
     throw new Error(`Invalid environment:\n${z.prettifyError(result.error)}`);
   }
+  if (result.data.AUTH_REQUIRED && result.data.SESSION_SECRET === undefined) {
+    throw new Error('Invalid environment:\nSESSION_SECRET is required when AUTH_REQUIRED is true');
+  }
   return result.data;
+}
+
+const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]', '::1'];
+
+/** A hostname as the Host check compares it: lower-cased, without a port. */
+function bareHostname(entry: string): string | null {
+  const trimmed = entry.trim().toLowerCase();
+  if (trimmed === '') return null;
+  try {
+    return new URL(`http://${trimmed}`).hostname;
+  } catch {
+    return null;
+  }
+}
+
+/** Hostnames the API answers to: loopback, the public hostname and ALLOWED_HOSTS. */
+export function allowedHostsOf(config: Config): Set<string> {
+  const hosts = new Set(LOOPBACK_HOSTS);
+  for (const entry of [config.PUBLIC_HOSTNAME ?? '', ...(config.ALLOWED_HOSTS ?? '').split(',')]) {
+    const hostname = bareHostname(entry);
+    if (hostname !== null) hosts.add(hostname);
+  }
+  return hosts;
 }

@@ -1,0 +1,64 @@
+# Portainer stack for the BCP analyzer: Postgres, the app and a Cloudflare Tunnel.
+# Deploy it in Portainer as a stack from this Git repository (see docs/deploy/portainer.md).
+# Every ${VARIABLE} comes from the stack's environment variables in Portainer; never commit them.
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bcp
+      POSTGRES_DB: bcp
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - bcp-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bcp']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [bcp]
+
+  app:
+    build:
+      # Relative to this file: the repository root.
+      context: ..
+      dockerfile: Dockerfile
+    image: bcp-analyzer:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://bcp:${POSTGRES_PASSWORD}@db:5432/bcp
+      AUTH_REQUIRED: 'true'
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+      PUBLIC_HOSTNAME: ${PUBLIC_HOSTNAME:?set PUBLIC_HOSTNAME}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      TOURNAMENT_SOURCE: bcp
+      BCP_REFRESH_TOKEN: ${BCP_REFRESH_TOKEN:?set BCP_REFRESH_TOKEN}
+      MIN_EVENT_ROUNDS: ${MIN_EVENT_ROUNDS:-4}
+      MIN_EVENT_PLAYERS: ${MIN_EVENT_PLAYERS:-20}
+      FETCH_QUEUE_INTERVAL_MS: ${FETCH_QUEUE_INTERVAL_MS:-5000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    # No published ports: the tunnel reaches the app on the private network. For LAN debugging,
+    # uncomment and add the LAN name or IP to ALLOWED_HOSTS.
+    # ports:
+    #   - '3000:3000'
+    networks: [bcp]
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN}
+    depends_on: [app]
+    networks: [bcp]
+
+volumes:
+  bcp-pgdata:
+
+networks:
+  bcp:

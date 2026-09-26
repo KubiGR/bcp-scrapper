@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadConfig } from './config';
+import { allowedHostsOf, loadConfig } from './config';
 
 describe('loadConfig', () => {
   it('applies defaults when the environment is empty', () => {
@@ -38,5 +38,52 @@ describe('loadConfig', () => {
     const config = loadConfig({ MIN_EVENT_ROUNDS: '0', MIN_EVENT_PLAYERS: '0' });
     expect(config.MIN_EVENT_ROUNDS).toBe(0);
     expect(config.MIN_EVENT_PLAYERS).toBe(0);
+  });
+
+  it('allows loopback names plus the public hostname and extra hosts, lower-cased without ports', () => {
+    const hosts = allowedHostsOf(
+      loadConfig({
+        PUBLIC_HOSTNAME: 'BCP.Example.com',
+        ALLOWED_HOSTS: 'nas.lan:3000, 192.168.1.20 ,',
+      }),
+    );
+    expect([...hosts].sort()).toEqual(
+      [
+        '127.0.0.1',
+        '192.168.1.20',
+        '::1',
+        '[::1]',
+        'bcp.example.com',
+        'localhost',
+        'nas.lan',
+      ].sort(),
+    );
+  });
+
+  it('only allows loopback names by default', () => {
+    expect([...allowedHostsOf(loadConfig({}))].sort()).toEqual(
+      ['127.0.0.1', '::1', '[::1]', 'localhost'].sort(),
+    );
+  });
+
+  it('turns auth on only for true or 1, and then requires a session secret', () => {
+    expect(loadConfig({}).AUTH_REQUIRED).toBe(false);
+    expect(loadConfig({ AUTH_REQUIRED: 'false' }).AUTH_REQUIRED).toBe(false);
+    const secret = 'x'.repeat(32);
+    expect(loadConfig({ AUTH_REQUIRED: 'true', SESSION_SECRET: secret }).AUTH_REQUIRED).toBe(true);
+    expect(loadConfig({ AUTH_REQUIRED: '1', SESSION_SECRET: secret }).AUTH_REQUIRED).toBe(true);
+    expect(() => loadConfig({ AUTH_REQUIRED: 'true' })).toThrow(
+      'SESSION_SECRET is required when AUTH_REQUIRED is true',
+    );
+  });
+
+  it('reads the web build directory and the first admin', () => {
+    const config = loadConfig({
+      WEB_DIST_DIR: '/app/web',
+      ADMIN_USERNAME: 'kubi',
+      ADMIN_PASSWORD: 'p',
+    });
+    expect(config.WEB_DIST_DIR).toBe('/app/web');
+    expect(config.ADMIN_USERNAME).toBe('kubi');
   });
 });

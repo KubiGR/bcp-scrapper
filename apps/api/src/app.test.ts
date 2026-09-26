@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from './app';
+import { allowedHostsOf, loadConfig } from './config';
 import type { Db } from './db/client';
 import { createTestDb } from './db/test-db';
 import { BcpRateLimitedError, NotFoundError } from './errors';
@@ -13,9 +14,9 @@ beforeAll(async () => {
 });
 afterAll(() => close());
 
-function makeApp(listenHost?: string) {
+function makeApp(allowedHosts?: Set<string>) {
   return createApp({
-    listenHost,
+    allowedHosts,
     db,
     runner: new SyncRunner({
       db,
@@ -104,10 +105,20 @@ describe('createApp', () => {
     }
   });
 
-  it('accepts any Host when the API was deliberately exposed with HOST=0.0.0.0', async () => {
-    const response = await makeApp('0.0.0.0').request('/api/health', {
-      headers: { host: 'evil.example' },
+  it('rejects a public hostname unless it is allowed, even when listening on 0.0.0.0', async () => {
+    const denied = await makeApp().request('/api/health', {
+      headers: { host: 'bcp.example.com' },
     });
+    expect(denied.status).toBe(403);
+    const allowed = await makeApp(
+      allowedHostsOf(loadConfig({ PUBLIC_HOSTNAME: 'bcp.example.com' })),
+    ).request('/api/health', { headers: { host: 'bcp.example.com' } });
+    expect(allowed.status).toBe(200);
+  });
+
+  it('keeps admitting localhost when a public hostname is configured', async () => {
+    const app = makeApp(allowedHostsOf(loadConfig({ PUBLIC_HOSTNAME: 'bcp.example.com' })));
+    const response = await app.request('/api/health', { headers: { host: 'localhost:3001' } });
     expect(response.status).toBe(200);
   });
 });

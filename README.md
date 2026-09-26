@@ -99,6 +99,11 @@ events smaller than this are not stored or shown (RTTs and small events). Existi
 are deleted at API startup. Set both to `0` with `TOURNAMENT_SOURCE=fixtures` so the tiny sample
 fixtures show up in dev and e2e.
 
+## Hosting
+
+To run it on a server for yourself and a few friends (Portainer, Docker, Cloudflare Tunnel, with
+logins), follow [docs/deploy/portainer.md](docs/deploy/portainer.md).
+
 ## Layout
 
 ```
@@ -107,4 +112,5 @@ apps/web        React 19 + React Compiler, Mantine, TanStack Router/Query
 packages/shared Zod schemas and types shared by both apps
 fixtures/bcp    BCP-shaped JSON: sample/ (committed), recorded/ (git-ignored)
 docs/superpowers Design spec and implementation plans
+deploy          Portainer stack (Postgres, app, Cloudflare Tunnel); Dockerfile at the root
 ```

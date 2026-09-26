@@ -1,12 +1,13 @@
 import { serve } from '@hono/node-server';
 import { createApp } from './app';
 import { createSource } from './bcp/create-source';
-import { loadConfig } from './config';
+import { allowedHostsOf, loadConfig } from './config';
 import { createDb } from './db/client';
 import { FetchQueueWorker } from './fetch-queue/worker';
 import { createLogger } from './logger';
 import { deleteSmallEvents } from './repo/events';
 import { failInterruptedSyncRuns } from './repo/sync-runs';
+import { serveWebApp } from './static';
 import { SyncRunner } from './sync/runner';
 
 const config = loadConfig();
@@ -44,8 +45,9 @@ const app = createApp({
   bcpStatus: status,
   logger,
   eventRule,
-  listenHost: config.HOST,
+  allowedHosts: allowedHostsOf(config),
 });
+if (config.WEB_DIST_DIR !== undefined) serveWebApp(app, config.WEB_DIST_DIR);
 
 const server = serve({ fetch: app.fetch, port: config.PORT, hostname: config.HOST }, (info) => {
   logger.info(

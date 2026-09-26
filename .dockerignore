@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+node_modules
+**/node_modules
+**/dist
+fixtures/bcp/recorded
+.superpowers
+.worktrees
+.claude
+.git
+.husky
+test-results
+playwright-report
+coverage
