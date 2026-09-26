@@ -8,6 +8,7 @@ import {
   groupPlayersByTeam,
   lossOptions,
   missingListCount,
+  type PlayerFilter,
 } from './players-filter';
 
 const players = [
@@ -17,7 +18,7 @@ const players = [
 ];
 
 describe('filterPlayers', () => {
-  const none = { query: '', factions: [], dispositions: [], maxLosses: null };
+  const none: PlayerFilter = { query: '', factions: [], dispositions: [], maxLosses: null };
 
   it('matches player or team names, ignoring case and surrounding spaces', () => {
     const names = (query: string) => filterPlayers(players, { ...none, query }).map((p) => p.name);
@@ -44,7 +45,7 @@ describe('filterPlayers', () => {
       aPlayer({ bcpId: 'C', faction: 'Necrons', disposition: 'Disruption' }),
       aPlayer({ bcpId: 'D', faction: 'Orks', disposition: null }),
     ];
-    const ids = (filter: Partial<typeof none>) =>
+    const ids = (filter: Partial<PlayerFilter>) =>
       filterPlayers(withDispositions, { ...none, ...filter }).map((p) => p.bcpId);
     expect(ids({ dispositions: ['Disruption', 'Take and Hold'] })).toEqual(['A', 'B', 'C']);
     expect(ids({ factions: ['Orks'], dispositions: ['Disruption'] })).toEqual(['B']);
