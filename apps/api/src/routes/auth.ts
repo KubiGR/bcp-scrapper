@@ -61,15 +61,17 @@ export function authRoutes(deps: {
       throw new LoginRateLimitedError(Math.max(byUser.retryAfterSeconds, byIp.retryAfterSeconds));
     }
 
+    // Count the attempt as failed before any await, so parallel guesses can't all get past the
+    // check while the first ones are still being verified; a success takes it back below.
+    limiters.perUser.fail(userKey);
+    limiters.perIp.fail(ip);
+
     const user = await findLoginUser(db, username);
     // Unknown users are checked against a dummy hash, so both failures cost the same.
     const matches = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
-    if (user === null || !matches || user.disabled) {
-      limiters.perUser.fail(userKey);
-      limiters.perIp.fail(ip);
-      throw new UnauthorizedError(INVALID_LOGIN);
-    }
+    if (user === null || !matches || user.disabled) throw new UnauthorizedError(INVALID_LOGIN);
     limiters.perUser.succeed(userKey);
+    limiters.perIp.release(ip);
 
     const { token } = await createSession(db, options.secret, user.id, now());
     setCookie(c, SESSION_COOKIE, token, {

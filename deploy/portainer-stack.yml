@@ -42,10 +42,9 @@ services:
       MIN_EVENT_PLAYERS: ${MIN_EVENT_PLAYERS:-20}
       FETCH_QUEUE_INTERVAL_MS: ${FETCH_QUEUE_INTERVAL_MS:-5000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-    # No published ports: the tunnel reaches the app on the private network. For LAN debugging,
-    # uncomment and add the LAN name or IP to ALLOWED_HOSTS.
-    # ports:
-    #   - '3000:3000'
+    # No published ports: the tunnel reaches the app on the private network, and login only works
+    # over HTTPS (the session cookie is Secure). Publishing 3000 would also let LAN clients fake the
+    # visitor address the login rate limit uses.
     networks: [bcp]
 
   tunnel:

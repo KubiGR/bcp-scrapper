@@ -46,6 +46,14 @@ export class LoginLimiter {
     }
   }
 
+  /** Takes back one counted failure (an attempt counted up front that turned out fine). */
+  release(key: string): void {
+    const entry = this.#entries.get(key);
+    if (entry === undefined) return;
+    entry.failures -= 1;
+    if (entry.failures <= 0) this.#entries.delete(key);
+  }
+
   succeed(key: string): void {
     this.#entries.delete(key);
   }

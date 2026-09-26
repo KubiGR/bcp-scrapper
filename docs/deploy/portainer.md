@@ -61,8 +61,10 @@ stack's `bcp` network, and delete the `tunnel` service from `deploy/portainer-st
    | `ADMIN_USERNAME`    | Your login name                                                      |
    | `ADMIN_PASSWORD`    | A password of 12+ characters, used once to create your admin account |
 
-   Optional: `MIN_EVENT_ROUNDS`, `MIN_EVENT_PLAYERS`, `FETCH_QUEUE_INTERVAL_MS`, `LOG_LEVEL`,
-   `ALLOWED_HOSTS` (extra names, e.g. a LAN address if you publish port 3000 for debugging).
+   Optional: `MIN_EVENT_ROUNDS`, `MIN_EVENT_PLAYERS`, `FETCH_QUEUE_INTERVAL_MS`, `LOG_LEVEL`.
+
+   The app publishes no ports: open it through `https://<PUBLIC_HOSTNAME>` only. Logging in needs
+   HTTPS, and the login rate limit trusts the visitor address Cloudflare adds.
 
 5. **Deploy the stack.** The first build takes a few minutes (Portainer builds the image from
    the repository's `Dockerfile`).

@@ -42,4 +42,13 @@ describe('LoginLimiter', () => {
     for (let i = 0; i < 4; i += 1) l.fail('k');
     expect(l.check('k').allowed).toBe(true);
   });
+
+  it('release takes back one counted failure', () => {
+    const { limiter: l } = limiter(2);
+    l.fail('k');
+    l.fail('k');
+    expect(l.check('k').allowed).toBe(false);
+    l.release('k');
+    expect(l.check('k').allowed).toBe(true);
+  });
 });

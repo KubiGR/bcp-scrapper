@@ -174,6 +174,27 @@ describe('login', () => {
     expect(elsewhere.status).toBe(200);
   });
 
+  it('counts attempts before checking the password, so a burst of parallel guesses is still capped', async () => {
+    const app = makeApp();
+    const responses = await Promise.all(
+      Array.from({ length: 10 }, () =>
+        Promise.resolve(
+          send(app, 'POST', '/api/auth/login', {
+            body: { username: 'ana', password: 'wrong password' },
+          }),
+        ),
+      ),
+    );
+    const statuses = responses.map((r) => r.status);
+    expect(statuses.filter((status) => status === 401)).toHaveLength(5);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(5);
+  });
+
+  it('a successful login does not use up the address’s allowance', async () => {
+    const app = makeApp();
+    for (let i = 0; i < 60; i += 1) await login(app, 'ana', MEMBER_PASSWORD);
+  });
+
   it('blocks an address after 50 failures across usernames', async () => {
     const app = makeApp();
     for (let i = 0; i < 50; i += 1) {
