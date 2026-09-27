@@ -24,6 +24,9 @@ services:
       context: ..
       dockerfile: Dockerfile
     image: bcp-analyzer:latest
+    # Rebuild on every deploy: Portainer CE's Git polling redeploys on a new commit, and without
+    # this Compose would reuse the image built from the old code.
+    pull_policy: build
     restart: unless-stopped
     depends_on:
       db:

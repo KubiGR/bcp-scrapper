@@ -81,8 +81,12 @@ Your address is now e.g. `bcp.example.com`.
 
 ## Updating
 
-Push to `main`, then in Portainer open the stack and click **Pull and redeploy** (tick
-**Re-pull image and redeploy** so the image is rebuilt). Database migrations run on start.
+Turn on automatic updates once: open the stack → **GitOps updates** (Portainer CE) → **Polling**,
+interval e.g. `5m`, reference `refs/heads/main`. After that every push to `main` is picked up
+within the interval: Portainer redeploys the stack, and the app image is rebuilt from the new code
+(`pull_policy: build` in the stack file). Database migrations run on start.
+
+To update by hand instead: open the stack → **Pull and redeploy**.
 
 ## Backups
 
