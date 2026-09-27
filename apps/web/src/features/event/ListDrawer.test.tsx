@@ -47,6 +47,32 @@ describe('ListDrawer', () => {
     expect(screen.getByRole('button', { name: 'Copy list' })).toBeInTheDocument();
   });
 
+  it('copies the list and opens 40kCompactor in a new tab', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    stubFetchRoutes({
+      'GET /api/players/PL-ADA/list': {
+        playerId: 'PL-ADA',
+        playerName: 'Ada Archer',
+        teamName: null,
+        faction: 'Space Marines',
+        listId: 'LS-ADA',
+        text: 'Space Marines list text',
+        fetchedAt: '2026-09-23T10:00:00.000Z',
+      },
+    });
+    renderWithProviders(<ListDrawer eventId="EVT1" player={aPlayer()} onClose={vi.fn()} />);
+    const link = await screen.findByRole('link', { name: /Compact on 40kCompactor/ });
+    expect(link).toHaveAttribute('href', 'https://desjani.github.io/40kCompactor/');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link.getAttribute('rel')).toContain('noreferrer');
+    fireEvent.click(link);
+    expect(writeText).toHaveBeenCalledWith('Space Marines list text');
+    expect(
+      await screen.findByText('List copied: paste it into 40kCompactor, then press Compact.'),
+    ).toBeInTheDocument();
+  });
+
   it('explains a list that was never submitted', () => {
     renderWithProviders(
       <ListDrawer eventId="EVT1" player={aPlayer({ listStatus: 'none' })} onClose={vi.fn()} />,

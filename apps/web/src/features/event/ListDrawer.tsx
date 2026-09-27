@@ -11,7 +11,7 @@ import {
   Text,
 } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ErrorState } from '../../components/ErrorState';
 import { formatDuration } from '../../lib/format';
 import { queueLists } from '../fetch-queue/fetch-queue-api';
@@ -107,6 +107,50 @@ function QueuedStatus({ eventId, player }: { eventId: string; player: EventPlaye
   );
 }
 
+const COMPACTOR_URL = 'https://desjani.github.io/40kCompactor/';
+
+/**
+ * 40kCompactor shortens a list, but takes no input in its URL: copy the list, open the site in a
+ * new tab (a real link, so no popup blocker), and say what to do there.
+ */
+function CompactButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState<boolean | null>(null);
+  return (
+    <Stack gap={4} align="flex-end">
+      <Button
+        component="a"
+        href={COMPACTOR_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        size="xs"
+        variant="subtle"
+        onClick={() => {
+          navigator.clipboard.writeText(text).then(
+            () => {
+              setCopied(true);
+            },
+            () => {
+              setCopied(false);
+            },
+          );
+        }}
+      >
+        Compact on 40kCompactor ↗
+      </Button>
+      {copied === true && (
+        <Text size="xs" c="dimmed" aria-live="polite">
+          List copied: paste it into 40kCompactor, then press Compact.
+        </Text>
+      )}
+      {copied === false && (
+        <Text size="xs" c="red" aria-live="polite">
+          Couldn't copy the list: use Copy list, then paste it there.
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
 function ListContent({ eventId, player }: { eventId: string; player: EventPlayer }) {
   const list = useQuery({
     ...playerListQuery(player.bcpId),
@@ -154,13 +198,16 @@ function ListContent({ eventId, player }: { eventId: string; player: EventPlayer
         <Text size="sm" c="dimmed">
           {[list.data.faction, list.data.teamName].filter(Boolean).join(' · ')}
         </Text>
-        <CopyButton value={text}>
-          {({ copied, copy }) => (
-            <Button size="xs" variant="outline" onClick={copy}>
-              {copied ? 'Copied' : 'Copy list'}
-            </Button>
-          )}
-        </CopyButton>
+        <Group gap="xs">
+          <CopyButton value={text}>
+            {({ copied, copy }) => (
+              <Button size="xs" variant="outline" onClick={copy}>
+                {copied ? 'Copied' : 'Copy list'}
+              </Button>
+            )}
+          </CopyButton>
+          <CompactButton text={text} />
+        </Group>
       </Group>
       <Code block>{text === '' ? 'The list is empty.' : text}</Code>
     </Stack>
