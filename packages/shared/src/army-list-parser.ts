@@ -1,5 +1,7 @@
+import { canonicalArmy } from './factions';
+
 /** Bump when the parser changes: stored lists with an older version are re-read on startup. */
-export const PARSER_VERSION = 2;
+export const PARSER_VERSION = 3;
 
 /** What a list says about the army; only these three things are ever read from list text. */
 export interface ParsedList {
@@ -44,8 +46,8 @@ const OWN_FACTION_CHAPTERS = new Set([
   'Deathwatch',
 ]);
 
-/** Army names as BCP writes them: straight apostrophes. */
-const cleanArmy = (name: string) => name.replace(/[\u2018\u2019]/g, "'").trim();
+/** The army as BCP names the faction, or null when the name isn't a known faction. */
+const cleanArmy = (name: string) => canonicalArmy(name);
 
 /**
  * The detachment line is followed, within two lines, by the battle size ("Strike Force (2000
@@ -147,7 +149,7 @@ function template(lines: string[]): ParsedList | null {
     inline !== '' ? inline : (lines.slice(at + 1).find((line) => line.trim() !== '') ?? '');
   const army = first.split(',')[0]?.trim() ?? '';
   return {
-    army: army === '' ? null : army,
+    army: army === '' ? null : cleanArmy(army),
     detachments: commaList(field(lines, /^\s*Detachments?(?: used)?(?:\(s\))?:\s*(.+)$/i)),
     disposition: knownDisposition(field(lines, /^\s*(?:Force )?Disposition:\s*(.+)$/i)),
     format: 'template',

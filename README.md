@@ -76,7 +76,9 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
 - Fetched lists are read for the **army, detachments and disposition** (GW app exports, the
   `+ FACTION KEYWORD` header format and the "Factions used" template; anything else is left
   alone). When BCP has no army for a player, or only an allegiance like "Chaos", the army from the
-  list is shown with a ⚠ ("From the list"). Players & lists has a Detachment column and filter;
+  list is shown with a ⚠ ("From the list"). Army names are matched to BCP's factions in any
+  common wording or language ("Orkos", "Genestealer Cults", "Raven Guard"); unrecognised names are
+  not used. Players & lists has a Detachment column and filter;
   games show "Army · Detachment · Disposition"; matchups filter by detachment too.
 - In the list drawer, **Compact on 40kCompactor ↗** copies the list and opens
   [40kCompactor](https://desjani.github.io/40kCompactor/) in a new tab: paste it there and press

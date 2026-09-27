@@ -8,9 +8,6 @@ lists and Top lists, automatic fetching) and hosting with accounts.
 
 - **Archetypes, team compositions and popular armies.** Which armies and detachments are played
   most, and how teams are composed (faction mixes per team), per event and across events.
-- **Localised army names.** Map Spanish/German GW-app army names ("Orkos", "Legiones
-  Daemónicas", "Hijos del Emperador", "Konglomerate der Votann"…) to the English factions, so
-  guessed armies don't become separate matrix rows and filter options.
 - **Pairing process.** Defender/attacker/refusal picks, if a source for them is ever found (BCP
   doesn't expose them).
 - **Top-N list fetching.** Queue lists by placing (top 8, top 16) in addition to "X-n or better".

@@ -29,3 +29,134 @@ export function resolveFaction(
     return { faction: parsedArmy, factionGuessed: true };
   return { faction: bcpFaction, factionGuessed: false };
 }
+
+/** BCP's faction names (10th edition), as players' factions are stored. */
+export const BCP_FACTIONS = [
+  'Adepta Sororitas',
+  'Adeptus Custodes',
+  'Adeptus Mechanicus',
+  'Aeldari',
+  'Astra Militarum',
+  'Black Templars',
+  'Blood Angels',
+  'Chaos Daemons',
+  'Chaos Knights',
+  'Chaos Space Marines',
+  'Dark Angels',
+  'Death Guard',
+  'Deathwatch',
+  'Drukhari',
+  "Emperor's Children",
+  'Genestealer Cult',
+  'Grey Knights',
+  'Imperial Agents',
+  'Imperial Knights',
+  'Leagues of Votann',
+  'Necrons',
+  'Orks',
+  'Space Marines (Astartes)',
+  'Space Wolves',
+  "T'au Empire",
+  'Thousand Sons',
+  'Tyranids',
+  'World Eaters',
+] as const;
+
+const SPACE_MARINES = 'Space Marines (Astartes)';
+
+/**
+ * Other names armies go by in lists: GW-app wording, chapters BCP counts as Space Marines, and
+ * the Spanish, German, French and Italian GW app. Keys are normalised (see `normalise`).
+ */
+const ALIASES: Record<string, (typeof BCP_FACTIONS)[number]> = {
+  // English variants
+  'space marines': SPACE_MARINES,
+  'adeptus astartes': SPACE_MARINES,
+  'genestealer cults': 'Genestealer Cult',
+  'tau empire': "T'au Empire",
+  "t'au": "T'au Empire",
+  'heretic astartes': 'Chaos Space Marines',
+  daemons: 'Chaos Daemons',
+  'legiones daemonica': 'Chaos Daemons',
+  votann: 'Leagues of Votann',
+  // Chapters without a BCP faction of their own
+  ultramarines: SPACE_MARINES,
+  'imperial fists': SPACE_MARINES,
+  'iron hands': SPACE_MARINES,
+  'raven guard': SPACE_MARINES,
+  salamanders: SPACE_MARINES,
+  'white scars': SPACE_MARINES,
+  'crimson fists': SPACE_MARINES,
+  // Spanish
+  'marines espaciales': SPACE_MARINES,
+  'angeles oscuros': 'Dark Angels',
+  'angeles sangrientos': 'Blood Angels',
+  'lobos espaciales': 'Space Wolves',
+  'templarios negros': 'Black Templars',
+  'caballeros grises': 'Grey Knights',
+  'guardia de la muerte': 'Death Guard',
+  'mil hijos': 'Thousand Sons',
+  'devoradores de mundos': 'World Eaters',
+  'marines espaciales del caos': 'Chaos Space Marines',
+  'astartes herejes': 'Chaos Space Marines',
+  'legiones daemonicas': 'Chaos Daemons',
+  'caballeros del caos': 'Chaos Knights',
+  'caballeros imperiales': 'Imperial Knights',
+  'hijos del emperador': "Emperor's Children",
+  orkos: 'Orks',
+  necrones: 'Necrons',
+  tiranidos: 'Tyranids',
+  'cultos genestealer': 'Genestealer Cult',
+  "imperio t'au": "T'au Empire",
+  'ligas de los votann': 'Leagues of Votann',
+  'agentes imperiales': 'Imperial Agents',
+  // German
+  'konglomerate der votann': 'Leagues of Votann',
+  tyraniden: 'Tyranids',
+  chaosdamonen: 'Chaos Daemons',
+  'chaos-space-marines': 'Chaos Space Marines',
+  'imperiale ritter': 'Imperial Knights',
+  'chaos-ritter': 'Chaos Knights',
+  symbiontenkulte: 'Genestealer Cult',
+  'imperiale agenten': 'Imperial Agents',
+  'kinder des imperators': "Emperor's Children",
+  // French
+  tyranides: 'Tyranids',
+  'demons du chaos': 'Chaos Daemons',
+  'space marines du chaos': 'Chaos Space Marines',
+  'chevaliers imperiaux': 'Imperial Knights',
+  'chevaliers du chaos': 'Chaos Knights',
+  'cultes genestealers': 'Genestealer Cult',
+  "empire t'au": "T'au Empire",
+  'ligues de votann': 'Leagues of Votann',
+  'agents imperiaux': 'Imperial Agents',
+  "enfants de l'empereur": "Emperor's Children",
+  // Italian
+  tiranidi: 'Tyranids',
+  'legioni demoniache': 'Chaos Daemons',
+  'cavalieri imperiali': 'Imperial Knights',
+  'space marine del caos': 'Chaos Space Marines',
+};
+
+/** Lower case, no accents, straight apostrophes, single spaces. */
+const normalise = (name: string) =>
+  name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[‘’]/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+const BY_NAME = new Map<string, string>([
+  ...BCP_FACTIONS.map((faction) => [normalise(faction), faction] as const),
+  ...Object.entries(ALIASES),
+]);
+
+/**
+ * BCP's faction name for an army named in a list (any known wording or language), or null when
+ * the name isn't a faction at all: a list's army is only used when it's recognised.
+ */
+export function canonicalArmy(name: string): string | null {
+  return BY_NAME.get(normalise(name)) ?? null;
+}

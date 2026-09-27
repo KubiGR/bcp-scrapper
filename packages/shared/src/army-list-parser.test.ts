@@ -130,7 +130,7 @@ describe('parseArmyList', () => {
       'GW app with a sub-army line',
       GW_SUBARMY,
       {
-        army: 'Space Marines',
+        army: 'Space Marines (Astartes)',
         detachments: ['Blade of Ultramar'],
         disposition: 'Take and Hold',
         format: 'gw-app',
@@ -160,7 +160,7 @@ describe('parseArmyList', () => {
       'GW app in Spanish',
       GW_ES,
       {
-        army: 'Legiones Daemónicas',
+        army: 'Chaos Daemons',
         detachments: ['Blood Legion y Cabalgata del Caos'],
         disposition: null,
         format: 'gw-app',
@@ -197,6 +197,21 @@ describe('parseArmyList', () => {
       },
     ],
     ['free text (a unit line is not a detachment line)', FREE, unknown],
+    [
+      'a title line that is no army leaves the army unknown',
+      `*** Big quote ***
+
+Not An Army
+Grand Coven (3 Detachment Points)
+Priority Assets
+Strike Force (2000 points)`,
+      {
+        army: null,
+        detachments: ['Grand Coven'],
+        disposition: 'Priority Assets',
+        format: 'gw-app',
+      },
+    ],
     ['units only (small points values are not a battle size)', UNITS_ONLY, unknown],
     [
       'one-line header: name - army - disposition - detachments',
