@@ -1,4 +1,9 @@
-import type { ComboboxItem, ComboboxParsedItem, OptionsFilter } from '@mantine/core';
+import type {
+  ComboboxItem,
+  ComboboxParsedItem,
+  ComboboxParsedItemGroup,
+  OptionsFilter,
+} from '@mantine/core';
 
 /** 0: the name starts with the text; 1: a later word does; 2: it's somewhere inside; null: no match. */
 function rankOf(label: string, needle: string): number | null {
@@ -31,8 +36,7 @@ function rankItems<T extends ComboboxItem>(items: T[], search: string): T[] {
     .map(({ item }) => item);
 }
 
-const isGroup = (item: ComboboxParsedItem): item is { group: string; items: ComboboxItem[] } =>
-  'group' in item;
+const isGroup = (item: ComboboxParsedItem): item is ComboboxParsedItemGroup => 'group' in item;
 
 /** Mantine's `filter` for every searchable Select/MultiSelect (set in the theme). */
 export const prefixFilter: OptionsFilter = ({ options, search, limit }) => {
