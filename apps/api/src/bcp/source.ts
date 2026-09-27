@@ -122,14 +122,24 @@ export class BcpSource implements TournamentSource {
     return { ...mapEventDetail(parseBcp(RawEventDetail, raw, path)), raw };
   }
 
-  async getPlayers(eventId: string): Promise<Fetched<Player>[]> {
-    const path = `/v1/events/${encodeURIComponent(eventId)}/players`;
-    const body = parseBcp(
+  /**
+   * An event's players or teams, with placings when BCP has them. While an event is running
+   * BCP answers the placings request with an empty list (seen live: the London GT, 1059 players),
+   * so an empty answer is asked again without placings.
+   */
+  async #participants(path: string): Promise<unknown[]> {
+    const withPlacings = parseBcp(
       RawListEnvelope,
       await this.#transport.get({ path, query: { placings: 'true' } }),
       path,
     );
-    return parseItems(RawPlayer, body.active, path).map(({ parsed, raw }) => ({
+    if (withPlacings.active.length > 0) return withPlacings.active;
+    return parseBcp(RawListEnvelope, await this.#transport.get({ path }), path).active;
+  }
+
+  async getPlayers(eventId: string): Promise<Fetched<Player>[]> {
+    const path = `/v1/events/${encodeURIComponent(eventId)}/players`;
+    return parseItems(RawPlayer, await this.#participants(path), path).map(({ parsed, raw }) => ({
       ...mapPlayer(parsed, eventId),
       raw,
     }));
@@ -137,12 +147,7 @@ export class BcpSource implements TournamentSource {
 
   async getTeams(eventId: string): Promise<Fetched<Team>[]> {
     const path = `/v1/events/${encodeURIComponent(eventId)}/teamplayers`;
-    const body = parseBcp(
-      RawListEnvelope,
-      await this.#transport.get({ path, query: { placings: 'true' } }),
-      path,
-    );
-    return parseItems(RawTeam, body.active, path).map(({ parsed, raw }) => ({
+    return parseItems(RawTeam, await this.#participants(path), path).map(({ parsed, raw }) => ({
       ...mapTeam(parsed, eventId),
       raw,
     }));

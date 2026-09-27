@@ -117,4 +117,49 @@ describe('BcpSource.getGames paging', () => {
     );
     expect(transport.requests).toHaveLength(2);
   });
+
+  describe('running events', () => {
+    // Seen live (The London GT, round 4 of 10): with placings=true BCP answers an empty list
+    // until the event has placings; without it, all 1059 players.
+    function runningEventTransport() {
+      const requests: BcpRequest[] = [];
+      const transport: BcpTransport = {
+        get(request) {
+          requests.push(request);
+          if (request.query?.placings === 'true')
+            return Promise.resolve({ active: [], deleted: [] });
+          const item = request.path.endsWith('/teamplayers')
+            ? { id: 'T1', name: 'Team One' }
+            : { id: 'P1', user: { firstName: 'Ada', lastName: 'Archer' } };
+          return Promise.resolve({ active: [item], deleted: [] });
+        },
+      };
+      return { transport, requests };
+    }
+
+    it('asks for players again without placings when BCP has none yet', async () => {
+      const { transport, requests } = runningEventTransport();
+      const players = await new BcpSource(transport).getPlayers(EVENT);
+      expect(players.map((player) => player.bcpId)).toEqual(['P1']);
+      expect(requests.map((r) => r.query?.placings)).toEqual(['true', undefined]);
+    });
+
+    it('does the same for teams', async () => {
+      const { transport } = runningEventTransport();
+      const teams = await new BcpSource(transport).getTeams(EVENT);
+      expect(teams.map((team) => team.bcpId)).toEqual(['T1']);
+    });
+
+    it('asks once when BCP has placings', async () => {
+      const requests: BcpRequest[] = [];
+      const transport: BcpTransport = {
+        get(request) {
+          requests.push(request);
+          return Promise.resolve({ active: [{ id: 'P1', placing: 1 }], deleted: [] });
+        },
+      };
+      await new BcpSource(transport).getPlayers(EVENT);
+      expect(requests).toHaveLength(1);
+    });
+  });
 });
