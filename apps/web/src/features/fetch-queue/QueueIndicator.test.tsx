@@ -108,4 +108,30 @@ describe('QueueIndicator', () => {
       await screen.findByRole('button', { name: /Fetching paused: login expired/ }),
     ).toBeInTheDocument();
   });
+
+  it('shows automatic fetching apart from the user’s jobs', async () => {
+    stubFetchRoutes({
+      'GET /api/fetch-queue': state({
+        totals: listJobTotals({ queued: 3, fetching: 0, failed: 0 }),
+        estimatedSeconds: 15,
+        auto: { enabled: true, jobs: 900, events: 42 },
+      }),
+    });
+    renderInRouter();
+    expect(
+      await screen.findByRole('button', {
+        name: 'Fetching · 3 jobs · ~15 s · auto: 42 events left',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows up when only automatic work is left', async () => {
+    stubFetchRoutes({
+      'GET /api/fetch-queue': state({ auto: { enabled: true, jobs: 10, events: 1 } }),
+    });
+    renderInRouter();
+    expect(
+      await screen.findByRole('button', { name: 'Fetching · auto: 1 event left' }),
+    ).toBeInTheDocument();
+  });
 });

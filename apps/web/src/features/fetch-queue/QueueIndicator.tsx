@@ -6,15 +6,17 @@ import { QueueControls } from './QueueControls';
 import classes from './QueueIndicator.module.css';
 
 /**
- * "Fetching · 12 jobs · ~1 min" in the header while there is anything to show: queued/fetching
- * jobs, failed ones, or a pause (so Resume stays reachable even once the queue drains).
+ * "Fetching · 12 jobs · ~1 min · auto: 42 events left" in the header while there is anything to
+ * show: the user's queued/fetching jobs, failed ones, automatic work (counted in events), or a
+ * pause (so Resume stays reachable even once the queue drains).
  */
 export function QueueIndicator() {
   const { data: state } = useQuery(fetchQueueQuery);
   if (!state) return null;
   const { queued, fetching, failed } = state.totals;
   const inProgress = queued + fetching;
-  if (inProgress === 0 && failed === 0 && !state.paused) return null;
+  const autoEvents = state.auto.enabled ? state.auto.events : 0;
+  if (inProgress === 0 && failed === 0 && autoEvents === 0 && !state.paused) return null;
 
   const loginExpired = state.pausedReason === 'login-rejected';
   const label = loginExpired
@@ -28,6 +30,7 @@ export function QueueIndicator() {
           : state.estimatedSeconds !== null
             ? `~${formatDuration(state.estimatedSeconds)}`
             : null,
+        autoEvents > 0 ? `auto: ${autoEvents} event${autoEvents === 1 ? '' : 's'} left` : null,
       ]
         .filter(Boolean)
         .join(' · ');

@@ -4,7 +4,8 @@ import { z } from 'zod';
 import { apiDelete, apiGet, apiPost } from '../../api/client';
 
 const hasWork = (state: FetchQueueState | undefined) =>
-  state !== undefined && (state.totals.queued > 0 || state.totals.fetching > 0);
+  state !== undefined &&
+  (state.totals.queued > 0 || state.totals.fetching > 0 || state.auto.jobs > 0);
 
 /** Polls quickly while lists are being fetched, and rarely otherwise (another tab may queue some). */
 export const fetchQueueQuery = queryOptions({
