@@ -58,7 +58,8 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
 - **An event page** loads its players from BCP the first time you open it. **Fetch lists** queues
   army lists for a background worker that fetches **one list every 5 seconds**, so BCP is never
   flooded: choose **All missing lists**, or only the good results (**X-0**, **X-1 or better**, …;
-  draws don't count as losses). Clicking a player shows their list; if it isn't fetched yet,
+  draws don't count as losses), or by final placing (**Top 8/16/32**; on team events **Top 4/8
+  teams**, greyed out until the event has placings). Clicking a player shows their list; if it isn't fetched yet,
   **Fetch this list** jumps the queue. The header shows the fetch queue while it's working (click
   it to pause or resume); if BCP rejects your login the queue pauses itself — fix the token and
   restart the API (a restart clears the pause). **Export lists** saves what's fetched as `.txt` or

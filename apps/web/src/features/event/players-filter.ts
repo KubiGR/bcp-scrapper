@@ -122,3 +122,27 @@ export function groupPlayersByTeam(players: EventPlayer[]): PlayerGroup[] {
       a.teamName.localeCompare(b.teamName),
   );
 }
+
+/** Offered "Top N" choices: players 8/16/32, teams 4/8, each only when smaller than the field. */
+export const TOP_PLAYER_CHOICES = [8, 16, 32] as const;
+export const TOP_TEAM_CHOICES = [4, 8] as const;
+
+export function topChoices(choices: readonly number[], fieldSize: number): number[] {
+  return choices.filter((n) => n < fieldSize);
+}
+
+/** Missing lists among players placed N or better (ties included; unplaced players never). */
+export function missingListCountTop(players: EventPlayer[], n: number): number {
+  return missingListCount(
+    players.filter((player) => player.placing !== null && player.placing <= n),
+    null,
+  );
+}
+
+/** Missing lists among the players of teams placed N or better. */
+export function missingListCountTopTeams(players: EventPlayer[], n: number): number {
+  return missingListCount(
+    players.filter((player) => player.teamPlacing !== null && player.teamPlacing <= n),
+    null,
+  );
+}

@@ -11,7 +11,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
-import { fetchQueue as fetchQueueTable, players } from '../db/schema';
+import { fetchQueue as fetchQueueTable, players, teams } from '../db/schema';
 import { upsertEventSummaries } from '../repo/events';
 import { claimNextJob, markJobFailed } from '../repo/fetch-queue';
 import { createTestDb, resetDb } from '../db/test-db';
@@ -125,6 +125,47 @@ describe('fetch queue routes', () => {
     const path = `/api/events/${EVENT}/lists/queue`;
     expect((await send('POST', path, { teamIds: ['TB-RED'] })).status).toBe(400);
     expect((await send('POST', path, { teamIds: ['TM-ALPHA'], maxLosses: 1 })).status).toBe(400);
+  });
+
+  it('queues the top N players by placing, ties included, without unplaced players', async () => {
+    await queue({ playerIds: ['PL-ADA'] }).then(() => db.delete(fetchQueueTable)); // load the event
+    const placings: Record<string, number | null> = {
+      'PL-ADA': 1,
+      'PL-BEN': 2,
+      'PL-CARA': 2, // tied with Ben
+      'PL-DAN': 4,
+      'PL-EVE': null,
+    };
+    await db.update(players).set({ placing: null }).where(eq(players.eventId, EVENT));
+    for (const [id, placing] of Object.entries(placings)) {
+      await db.update(players).set({ placing }).where(eq(players.id, id));
+    }
+    expect(await queue({ topPlacings: 2 })).toMatchObject({ queued: 3 });
+    const queued = (await db.select({ playerId: fetchQueueTable.playerId }).from(fetchQueueTable))
+      .map((row) => row.playerId)
+      .sort();
+    expect(queued).toEqual(['PL-ADA', 'PL-BEN', 'PL-CARA']);
+  });
+
+  it('queues every list of the top N teams', async () => {
+    await queue({ playerIds: ['PL-ADA'] }).then(() => db.delete(fetchQueueTable));
+    await db.update(teams).set({ placing: 1 }).where(eq(teams.id, 'TM-ALPHA'));
+    await db.update(teams).set({ placing: 2 }).where(eq(teams.id, 'TM-BRAVO'));
+    await db.update(teams).set({ placing: 3 }).where(eq(teams.id, 'TM-CHARLIE'));
+    await db.update(teams).set({ placing: 4 }).where(eq(teams.id, 'TM-DELTA'));
+    expect(await queue({ topTeams: 1 })).toMatchObject({ queued: 2 });
+    const queued = (await db.select({ playerId: fetchQueueTable.playerId }).from(fetchQueueTable))
+      .map((row) => row.playerId)
+      .sort();
+    expect(queued).toEqual(['PL-ADA', 'PL-BEN']);
+  });
+
+  it('accepts only one way of choosing players, and a top N of 1 to 256', async () => {
+    const path = `/api/events/${EVENT}/lists/queue`;
+    expect((await send('POST', path, { topPlacings: 8, maxLosses: 1 })).status).toBe(400);
+    expect((await send('POST', path, { topTeams: 4, topPlacings: 8 })).status).toBe(400);
+    expect((await send('POST', path, { topPlacings: 0 })).status).toBe(400);
+    expect((await send('POST', path, { topTeams: 257 })).status).toBe(400);
   });
 
   it('validates the request', async () => {

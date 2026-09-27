@@ -122,4 +122,95 @@ describe('FetchListsMenu', () => {
       expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ teamIds: ['T1'] });
     });
   });
+
+  describe('top N', () => {
+    /** `count` singles players placed 1..count, each with a list to fetch. */
+    const field = (count: number, placed = true) =>
+      Array.from({ length: count }, (_, i) =>
+        aPlayer({
+          bcpId: `P${i + 1}`,
+          placing: placed ? i + 1 : null,
+          teamId: null,
+          teamName: null,
+          listStatus: i % 2 === 0 ? 'available' : 'fetched',
+        }),
+      );
+
+    it('offers Top 8 and Top 16 for a 24-player event, with the lists each would fetch', async () => {
+      const fetchMock = stubFetchRoutes({
+        'POST /api/events/EVT1/lists/queue': {
+          queued: 4,
+          alreadyQueued: 0,
+          alreadyFetched: 0,
+          noListOnBcp: 0,
+          notQualifying: 0,
+          estimatedSeconds: 20,
+        },
+      });
+      renderWithProviders(
+        <FetchListsMenu
+          event={anEventDetail({ roundCount: 5, isTeamEvent: false })}
+          players={field(24)}
+        />,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Fetch lists' }));
+      expect(screen.getByRole('menuitem', { name: 'Top 8 (4)' })).toBeEnabled();
+      expect(screen.getByRole('menuitem', { name: 'Top 16 (8)' })).toBeEnabled();
+      expect(screen.queryByRole('menuitem', { name: /Top 32/ })).toBeNull();
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Top 8 (4)' }));
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalled();
+      });
+      expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({ topPlacings: 8 });
+    });
+
+    it('greys the options out while there are no placings yet', () => {
+      renderWithProviders(
+        <FetchListsMenu
+          event={anEventDetail({ roundCount: 5, isTeamEvent: false })}
+          players={field(24, false)}
+        />,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Fetch lists' }));
+      expect(screen.getByRole('menuitem', { name: /Top 8/ })).toBeDisabled();
+      expect(screen.getByText('No placings yet')).toBeInTheDocument();
+    });
+
+    it('offers Top 4 and Top 8 teams on a team event', async () => {
+      const fetchMock = stubFetchRoutes({
+        'POST /api/events/EVT1/lists/queue': {
+          queued: 2,
+          alreadyQueued: 0,
+          alreadyFetched: 0,
+          noListOnBcp: 0,
+          notQualifying: 0,
+          estimatedSeconds: 10,
+        },
+      });
+      const teamPlayers = Array.from({ length: 10 }, (_, t) =>
+        [0, 1].map((p) =>
+          aPlayer({
+            bcpId: `T${t}P${p}`,
+            teamId: `T${t}`,
+            teamName: `Team ${t}`,
+            teamPlacing: t + 1,
+            listStatus: 'available',
+          }),
+        ),
+      ).flat();
+      renderWithProviders(
+        <FetchListsMenu
+          event={anEventDetail({ roundCount: 5, isTeamEvent: true })}
+          players={teamPlayers}
+        />,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Fetch lists' }));
+      expect(screen.getByRole('menuitem', { name: 'Top 8 teams (16)' })).toBeEnabled();
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Top 4 teams (8)' }));
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalled();
+      });
+      expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({ topTeams: 4 });
+    });
+  });
 });

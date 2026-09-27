@@ -199,12 +199,24 @@ export const QueueListsRequestSchema = z
     playerIds: z.array(z.string().min(1)).min(1).max(1000).optional(),
     /** Whole teams (team events): every player of these teams. */
     teamIds: z.array(z.string().min(1)).min(1).max(200).optional(),
+    /** Players whose final placing is N or better (ties included). */
+    topPlacings: z.number().int().min(1).max(256).optional(),
+    /** Every player of the teams whose final placing is N or better. */
+    topTeams: z.number().int().min(1).max(256).optional(),
   })
   .refine(
     (request) =>
-      [request.maxLosses, request.playerIds, request.teamIds].filter((value) => value !== undefined)
-        .length <= 1,
-    { message: 'Send at most one of `maxLosses`, `playerIds` or `teamIds`' },
+      [
+        request.maxLosses,
+        request.playerIds,
+        request.teamIds,
+        request.topPlacings,
+        request.topTeams,
+      ].filter((value) => value !== undefined).length <= 1,
+    {
+      message:
+        'Send at most one of `maxLosses`, `playerIds`, `teamIds`, `topPlacings` or `topTeams`',
+    },
   );
 export type QueueListsRequest = z.infer<typeof QueueListsRequestSchema>;
 

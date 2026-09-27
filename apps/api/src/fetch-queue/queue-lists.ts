@@ -14,8 +14,8 @@ export interface QueueListsDeps {
 }
 
 /**
- * Queues an event's missing lists: all of them, those within a loss limit, or chosen players
- * (who jump the queue). Never fetches anything itself; the worker does, gently.
+ * Queues an event's missing lists: all of them, those within a loss limit, the top N players or
+ * teams by placing, or chosen players (who jump the queue). Never fetches anything itself; the worker does, gently.
  */
 export async function queueEventLists(
   deps: QueueListsDeps,
@@ -52,6 +52,19 @@ export async function queueEventLists(
     }
     const wanted = new Set(request.teamIds);
     selected = everyone.filter((player) => player.teamId !== null && wanted.has(player.teamId));
+  }
+
+  // Top N by final placing: ties are included; players or teams without a placing never are.
+  const { topPlacings, topTeams } = request;
+  if (topPlacings !== undefined) {
+    selected = everyone.filter(
+      (player) => player.placing !== null && player.placing <= topPlacings,
+    );
+  }
+  if (topTeams !== undefined) {
+    selected = everyone.filter(
+      (player) => player.teamPlacing !== null && player.teamPlacing <= topTeams,
+    );
   }
 
   let notQualifying = 0;

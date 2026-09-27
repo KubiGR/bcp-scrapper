@@ -1,6 +1,16 @@
 import type { EventDetail, EventPlayer } from '@bcp/shared';
 import { Button, Menu, Stack, Text } from '@mantine/core';
-import { lossLabel, lossOptions, missingListCount, missingListCountFor } from './players-filter';
+import {
+  lossLabel,
+  lossOptions,
+  missingListCount,
+  missingListCountFor,
+  missingListCountTop,
+  missingListCountTopTeams,
+  topChoices,
+  TOP_PLAYER_CHOICES,
+  TOP_TEAM_CHOICES,
+} from './players-filter';
 import { useQueueLists } from './use-queue-lists';
 
 interface FetchListsMenuProps {
@@ -17,6 +27,23 @@ export function FetchListsMenu({ event, players, selectedTeamIds = [] }: FetchLi
   const allMissing = missingListCount(players, null);
   const selectedMissing = missingListCountFor(players, new Set(selectedTeamIds));
   const teams = selectedTeamIds.length;
+  const teamCount = new Set(players.flatMap((p) => (p.teamId === null ? [] : [p.teamId]))).size;
+  const placed = event.isTeamEvent
+    ? players.some((p) => p.teamPlacing !== null)
+    : players.some((p) => p.placing !== null);
+  const tops = event.isTeamEvent
+    ? topChoices(TOP_TEAM_CHOICES, teamCount).map((n) => ({
+        n,
+        label: `Top ${n} teams`,
+        count: missingListCountTopTeams(players, n),
+        request: { topTeams: n },
+      }))
+    : topChoices(TOP_PLAYER_CHOICES, players.length).map((n) => ({
+        n,
+        label: `Top ${n}`,
+        count: missingListCountTop(players, n),
+        request: { topPlacings: n },
+      }));
 
   return (
     <Stack gap={4} align="flex-end" maw={360}>
@@ -62,6 +89,24 @@ export function FetchListsMenu({ event, players, selectedTeamIds = [] }: FetchLi
                 </Menu.Item>
               );
             })
+          )}
+          {tops.length > 0 && (
+            <>
+              <Menu.Divider />
+              {/* By final placing: nothing to choose from while the event is running. */}
+              {!placed && <Menu.Label>No placings yet</Menu.Label>}
+              {tops.map((top) => (
+                <Menu.Item
+                  key={top.n}
+                  disabled={!placed || top.count === 0}
+                  onClick={() => {
+                    queue.mutate(top.request);
+                  }}
+                >
+                  {placed ? `${top.label} (${top.count})` : top.label}
+                </Menu.Item>
+              ))}
+            </>
           )}
         </Menu.Dropdown>
       </Menu>
