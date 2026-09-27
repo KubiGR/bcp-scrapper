@@ -45,6 +45,16 @@ describe('computeMeta', () => {
     expect(meta.factions.find((f) => f.faction === 'Necrons')).toMatchObject({ x1: 0, winRate: 0 });
   });
 
+  it('treats the same detachments in another order as one archetype', () => {
+    const result = computeMeta([
+      row({ faction: 'Adeptus Custodes', detachments: ['Shield Host', 'Tharanatoi Hammerblow'] }),
+      row({ faction: 'Adeptus Custodes', detachments: ['Tharanatoi Hammerblow', 'Shield Host'] }),
+    ]);
+    expect(result.factions[0]?.archetypes).toMatchObject([
+      { detachments: ['Shield Host', 'Tharanatoi Hammerblow'], players: 2 },
+    ]);
+  });
+
   it('puts the Unknown faction last', () => {
     expect(meta.factions.map((f) => f.faction)).toEqual(['Orks', 'Necrons', null]);
   });

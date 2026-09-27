@@ -158,4 +158,69 @@ describe('parsed lists', () => {
     expect((await rowOf('PL-ADA')).detachments).toEqual(['Might of the Moritoi', 'Shield Host']);
     expect((await rowOf('PL-DAN')).detachments).toEqual(['Exhibition of Slaughter']);
   });
+
+  describe('learning from the detachment picked on BCP', () => {
+    it('learns a translation seen twice, and applies it everywhere', async () => {
+      await storeList(
+        db,
+        'PL-ADA',
+        gwList('Tyranids', 'Klauen der Nornkönigin'),
+        'Talons of the Norn Queen',
+      );
+      await storeList(
+        db,
+        'PL-BEN',
+        gwList('Tyranids', 'Klauen der Nornkönigin'),
+        'Talons of the Norn Queen',
+      );
+      await storeList(
+        db,
+        'PL-CARA',
+        gwList('Tyranids', 'Klauen der Nornkönigin und Synaptic Nexus'),
+        'Synaptic Nexus',
+      );
+      await tidyDetachments(db);
+      expect((await rowOf('PL-ADA')).detachments).toEqual(['Talons of the Norn Queen']);
+      expect((await rowOf('PL-CARA')).detachments).toEqual([
+        'Talons of the Norn Queen',
+        'Synaptic Nexus',
+      ]);
+    });
+
+    it('does not learn from a single list, or from conflicting ones', async () => {
+      await storeList(db, 'PL-ADA', gwList('Tyranids', 'Unbekannter Trupp'), 'Crusher Stampede');
+      await storeList(db, 'PL-BEN', gwList('Tyranids', 'Zweideutig'), 'Assimilation Swarm');
+      await storeList(db, 'PL-CARA', gwList('Tyranids', 'Zweideutig'), 'Assimilation Swarm');
+      await storeList(db, 'PL-DAN', gwList('Tyranids', 'Zweideutig'), 'Vanguard Onslaught');
+      await storeList(db, 'PL-EVE', gwList('Tyranids', 'Zweideutig'), 'Vanguard Onslaught');
+      await tidyDetachments(db);
+      expect((await rowOf('PL-ADA')).detachments).toEqual(['Unbekannter Trupp']);
+      expect((await rowOf('PL-BEN')).detachments).toEqual(['Zweideutig']);
+    });
+
+    it('uses BCP’s detachment when the list itself can’t be read', async () => {
+      await storeList(db, 'PL-ADA', 'Just some units\nCaptain (80 pts)', 'Blood Legion');
+      expect((await rowOf('PL-ADA')).detachments).toEqual(['Blood Legion']);
+    });
+
+    it('knows BCP’s names as detachments, so joined lines split around them', async () => {
+      // The name is known only from BCP's field (this list names another detachment).
+      await storeList(
+        db,
+        'PL-ADA',
+        gwList('Space Wolves', 'Champions of Fenris'),
+        'Saga of the Great Wolf',
+      );
+      await storeList(
+        db,
+        'PL-BEN',
+        gwList('Space Wolves', 'Legends of Saga and Song and Saga of the Great Wolf'),
+      );
+      await tidyDetachments(db);
+      expect((await rowOf('PL-BEN')).detachments).toEqual([
+        'Legends of Saga and Song',
+        'Saga of the Great Wolf',
+      ]);
+    });
+  });
 });

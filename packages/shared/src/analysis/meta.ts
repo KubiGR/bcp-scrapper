@@ -37,9 +37,11 @@ function groupRows<T>(
       archetypes: new Map<string, { detachments: string[] | null; tally: T }>(),
     };
     add(group.tally, row);
-    const key = archetypeKey(row.detachments);
+    // An archetype is a set of detachments: the order a list names them in doesn't matter.
+    const detachments = [...row.detachments].sort((a, b) => a.localeCompare(b));
+    const key = archetypeKey(detachments);
     const archetype = group.archetypes.get(key) ?? {
-      detachments: row.detachments.length === 0 ? null : row.detachments,
+      detachments: detachments.length === 0 ? null : detachments,
       tally: empty(),
     };
     add(archetype.tally, row);
