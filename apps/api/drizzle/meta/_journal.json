@@ -64,6 +64,13 @@
       "when": 1790456780182,
       "tag": "0008_parsed-lists",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790487751556,
+      "tag": "0009_auto-fetch",
+      "breakpoints": true
     }
   ]
 }

@@ -250,10 +250,24 @@ export const FetchQueueStateSchema = z.object({
   intervalMs: z.number().int().positive(),
   /** Sums over all kinds, and per kind. */
   totals: JobTotalsSchema.extend({ byKind: z.record(FetchJobKindSchema, JobTotalsSchema) }),
-  /** Until the whole queue is empty, at the current pace; null when it is empty. */
+  /** Until the user's jobs are done, at the current pace; null when there are none. */
   estimatedSeconds: count.nullable(),
+  /** Automatic fetching, counted apart from the user's jobs above. */
+  auto: z.object({ enabled: z.boolean(), jobs: count, events: count }),
 });
 export type FetchQueueState = z.infer<typeof FetchQueueStateSchema>;
+
+/** GET/POST /api/auto-fetch. */
+export const AutoFetchStateSchema = z.object({
+  enabled: z.boolean(),
+  lastPlannedAt: z.iso.datetime().nullable(),
+  /** Events with automatic work still open. */
+  eventsPending: count,
+});
+export type AutoFetchState = z.infer<typeof AutoFetchStateSchema>;
+
+export const AutoFetchRequestSchema = z.object({ enabled: z.boolean() });
+export type AutoFetchRequest = z.infer<typeof AutoFetchRequestSchema>;
 
 const commaSeparated = z
   .string()

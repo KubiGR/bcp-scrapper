@@ -12,6 +12,7 @@ const base: FetchQueueState = {
   intervalMs: 5000,
   totals: listJobTotals({ queued: 3, fetching: 1, failed: 2 }),
   estimatedSeconds: 20,
+  auto: { enabled: false, jobs: 0, events: 0 },
 };
 
 describe('QueueControls', () => {

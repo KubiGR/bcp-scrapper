@@ -6,7 +6,9 @@ import { createTestDb, resetDb } from '../db/test-db';
 import { sampleSource } from '../test/helpers';
 import { upsertEventDetail, upsertEventSummaries } from './events';
 import {
+  autoJobSummary,
   cancelQueuedLists,
+  deleteQueuedAutoJobs,
   claimNextJob,
   enqueueEventPairings,
   enqueueLists,
@@ -170,6 +172,69 @@ describe('fetch queue repository', () => {
       expect(await retryFailedJobs(db)).toBe(2);
       expect(await queueTotals(db)).toMatchObject({ queued: 2 });
     });
+  });
+});
+
+describe('automatic jobs', () => {
+  const rowsOf = () => db.select().from(fetchQueue).orderBy(fetchQueue.id);
+
+  it('a user asking for a list the planner queued takes it over, at their priority', async () => {
+    await enqueueLists(db, EVENT, [ada, ben], -10, 'auto');
+    await enqueueLists(db, EVENT, [ada], SINGLE_LIST_PRIORITY);
+    await enqueueLists(db, EVENT, [ben], 0);
+    const rows = await rowsOf();
+    expect(rows).toHaveLength(2);
+    expect(rows.find((r) => r.playerId === 'PL-ADA')).toMatchObject({
+      priority: 10,
+      origin: 'user',
+    });
+    expect(rows.find((r) => r.playerId === 'PL-BEN')).toMatchObject({
+      priority: 0,
+      origin: 'user',
+    });
+  });
+
+  it('an automatic request never lowers or takes over a user job', async () => {
+    await enqueueLists(db, EVENT, [ada], 0);
+    await enqueueLists(db, EVENT, [ada], -10, 'auto');
+    expect((await rowsOf())[0]).toMatchObject({ priority: 0, origin: 'user' });
+  });
+
+  it('a user asking for an event’s pairings takes over its automatic rounds', async () => {
+    await enqueueEventPairings(db, EVENT, { rounds: [1, 2], priority: -10, origin: 'auto' });
+    await enqueueEventPairings(db, EVENT, { rounds: [1, 2], priority: 0 });
+    expect((await rowsOf()).map((r) => [r.priority, r.origin])).toEqual([
+      [0, 'user'],
+      [0, 'user'],
+    ]);
+  });
+
+  it('deletes queued automatic jobs only, and counts them apart from user jobs', async () => {
+    await enqueueLists(db, EVENT, [ada, ben], -10, 'auto');
+    await enqueueLists(db, EVENT, [cara], 0);
+    await enqueueEventPairings(db, EVENT, { rounds: [1], priority: -10, origin: 'auto' });
+    expect(await autoJobSummary(db)).toEqual({ jobs: 3, events: 1 });
+    expect((await queueTotals(db)).queued).toBe(1);
+
+    const claimed = await claimNextJob(db, soon()); // Cara's user job (highest priority)
+    expect(claimed?.playerId).toBe('PL-CARA');
+    await db
+      .update(fetchQueue)
+      .set({ status: 'fetching' })
+      .where(eq(fetchQueue.playerId, 'PL-ADA'));
+
+    expect(await deleteQueuedAutoJobs(db)).toBe(2); // Ben's list and the round
+    const left = await rowsOf();
+    expect(left.map((r) => r.playerId)).toEqual(['PL-ADA', 'PL-CARA']);
+  });
+
+  it('leaves automatic jobs out of the queue order used for the user’s estimate', async () => {
+    await enqueueLists(db, EVENT, [ada], -10, 'auto');
+    await enqueueLists(db, EVENT, [ben], 0);
+    expect((await queuedInOrder(db, { userOnly: true })).map((r) => r.playerId)).toEqual([
+      'PL-BEN',
+    ]);
+    expect(await queuedInOrder(db)).toHaveLength(2);
   });
 });
 

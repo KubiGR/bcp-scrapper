@@ -18,6 +18,7 @@ const state = (changes: Partial<FetchQueueState> = {}): FetchQueueState => ({
   intervalMs: 5000,
   totals: listJobTotals({ queued: 0, fetching: 0, failed: 0 }),
   estimatedSeconds: null,
+  auto: { enabled: false, jobs: 0, events: 0 },
   ...changes,
 });
 
@@ -43,6 +44,7 @@ describe('QueueIndicator', () => {
       'GET /api/fetch-queue': state({
         totals: listJobTotals({ queued: 34, fetching: 1, failed: 0 }),
         estimatedSeconds: 175,
+        auto: { enabled: false, jobs: 0, events: 0 },
       }),
     });
     renderInRouter();
@@ -76,6 +78,7 @@ describe('QueueIndicator', () => {
       'GET /api/fetch-queue': state({
         totals: listJobTotals({ queued: 2, fetching: 0, failed: 1 }),
         estimatedSeconds: 10,
+        auto: { enabled: false, jobs: 0, events: 0 },
       }),
     });
     renderInRouter();

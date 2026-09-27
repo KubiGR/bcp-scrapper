@@ -13,6 +13,7 @@ const running: FetchQueueState = {
   intervalMs: 5000,
   totals: listJobTotals({ queued: 3, fetching: 0, failed: 0 }),
   estimatedSeconds: 15,
+  auto: { enabled: false, jobs: 0, events: 0 },
 };
 
 /** Stubs the event (with its lists' estimate) and the queue state the queued status reads. */
@@ -62,6 +63,7 @@ describe('ListDrawer', () => {
         noListOnBcp: 0,
         notQualifying: 0,
         estimatedSeconds: 5,
+        auto: { enabled: false, jobs: 0, events: 0 },
       },
     });
     renderWithProviders(
@@ -87,6 +89,7 @@ describe('ListDrawer', () => {
         noListOnBcp: 0,
         notQualifying: 0,
         estimatedSeconds: 5,
+        auto: { enabled: false, jobs: 0, events: 0 },
       },
     });
     const { queryClient } = renderWithProviders(

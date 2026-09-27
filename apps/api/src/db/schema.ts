@@ -228,8 +228,10 @@ export const fetchQueue = pgTable(
     round: integer('round'),
     /** 'pairings' on an event job queued so pairings can follow: it queues the rounds when done. */
     followUp: text('follow_up'),
-    /** 0 = normal, 10 = work someone is waiting for. Higher is claimed first. */
+    /** 0 = normal, 10 = work someone is waiting for, -10 = automatic. Higher is claimed first. */
     priority: integer('priority').notNull().default(0),
+    /** 'user' (asked for) or 'auto' (the automatic planner); switching auto-fetch off drops queued auto jobs. */
+    origin: text('origin').$type<'user' | 'auto'>().notNull().default('user'),
     status: fetchQueueStatus('status').notNull().default('queued'),
     attempts: integer('attempts').notNull().default(0),
     /** Not claimed before this time (backoff after a transient failure). */
@@ -308,3 +310,13 @@ export const sessions = pgTable(
   },
   (t) => [index('sessions_user_id_idx').on(t.userId)],
 );
+
+/** App-wide settings changed at run time (e.g. automatic fetching on/off), one row per key. */
+export const appSettings = pgTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').notNull(),
+  updatedAt: timestamptz('updated_at')
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});

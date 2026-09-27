@@ -1,12 +1,12 @@
 import {
   and,
   count,
+  countDistinct,
   desc,
   eq,
   gt,
   inArray,
   isNull,
-  lt,
   ne,
   notExists,
   or,
@@ -25,6 +25,12 @@ export const USER_WAITING_PRIORITY = 10;
 export const SINGLE_LIST_PRIORITY = USER_WAITING_PRIORITY;
 /** `error_code` of a list BCP says doesn't exist; never retried. */
 export const NO_LIST_CODE = 'NO_LIST';
+
+/** Jobs the automatic planner queues sit below everything a person asked for. */
+export const AUTO_PRIORITY = -10;
+
+/** Who asked: a person ('user') or the automatic planner ('auto'). */
+export type JobOrigin = 'user' | 'auto';
 
 export type FetchQueueStatus = (typeof fetchQueue.$inferSelect)['status'];
 
@@ -45,8 +51,19 @@ const PAIRINGS_KINDS = ['event', 'pairings-round'] as const;
 const ALL_KINDS: readonly FetchJobKind[] = ['list', 'event', 'pairings-round'];
 
 /**
- * Queues lists; a player with an open request is skipped. At the single-list priority, open
- * requests of those players are raised too, so a list someone is waiting for jumps the queue.
+ * A person asking for work that is already queued takes it over: the queued job gets their
+ * priority (when higher) and becomes a user job, so switching automatic fetching off keeps it.
+ */
+async function claimForUser(db: Db, where: SQL, priority: number): Promise<void> {
+  await db
+    .update(fetchQueue)
+    .set({ priority: sql`greatest(${fetchQueue.priority}, ${priority})`, origin: 'user' })
+    .where(and(where, eq(fetchQueue.status, 'queued')));
+}
+
+/**
+ * Queues lists; a player with an open request is skipped. A user request takes over those
+ * players' queued requests (see claimForUser), so a list someone is waiting for jumps the queue.
  * Returns how many rows were newly queued.
  */
 export async function enqueueLists(
@@ -54,27 +71,23 @@ export async function enqueueLists(
   eventId: string,
   items: { playerId: string; listId: string }[],
   priority: number,
+  origin: JobOrigin = 'user',
 ): Promise<number> {
   if (items.length === 0) return 0;
   const inserted = await db
     .insert(fetchQueue)
-    .values(items.map((item) => ({ kind: 'list' as const, eventId, ...item, priority })))
+    .values(items.map((item) => ({ kind: 'list' as const, eventId, ...item, priority, origin })))
     .onConflictDoNothing()
     .returning({ id: fetchQueue.id });
-  if (priority === SINGLE_LIST_PRIORITY) {
-    await db
-      .update(fetchQueue)
-      .set({ priority })
-      .where(
-        and(
-          eq(fetchQueue.kind, 'list'),
-          inArray(
-            fetchQueue.playerId,
-            items.map((item) => item.playerId),
-          ),
-          eq(fetchQueue.status, 'queued'),
-        ),
-      );
+  if (origin === 'user') {
+    const where = and(
+      eq(fetchQueue.kind, 'list'),
+      inArray(
+        fetchQueue.playerId,
+        items.map((item) => item.playerId),
+      ),
+    );
+    if (where) await claimForUser(db, where, priority);
   }
   return inserted.length;
 }
@@ -88,13 +101,17 @@ export async function enqueueLists(
 export async function enqueueEventPairings(
   db: Db,
   eventId: string,
-  { rounds, priority }: { rounds: number[] | null; priority: number },
+  {
+    rounds,
+    priority,
+    origin = 'user',
+  }: { rounds: number[] | null; priority: number; origin?: JobOrigin },
 ): Promise<{ eventQueued: boolean; queuedRounds: number }> {
   let result: { eventQueued: boolean; queuedRounds: number };
   if (rounds === null) {
     await db
       .insert(fetchQueue)
-      .values({ kind: 'event', eventId, priority, followUp: 'pairings' })
+      .values({ kind: 'event', eventId, priority, followUp: 'pairings', origin })
       .onConflictDoNothing();
     // Queued before without the follow-up (or both callers raced): make sure pairings follow.
     await db
@@ -120,24 +137,19 @@ export async function enqueueEventPairings(
                 eventId,
                 round,
                 priority,
+                origin,
               })),
             )
             .onConflictDoNothing()
             .returning({ id: fetchQueue.id });
     result = { eventQueued: false, queuedRounds: inserted.length };
   }
-  if (priority >= USER_WAITING_PRIORITY) {
-    await db
-      .update(fetchQueue)
-      .set({ priority })
-      .where(
-        and(
-          eq(fetchQueue.eventId, eventId),
-          inArray(fetchQueue.kind, [...PAIRINGS_KINDS]),
-          eq(fetchQueue.status, 'queued'),
-          lt(fetchQueue.priority, priority),
-        ),
-      );
+  if (origin === 'user') {
+    const where = and(
+      eq(fetchQueue.eventId, eventId),
+      inArray(fetchQueue.kind, [...PAIRINGS_KINDS]),
+    );
+    if (where) await claimForUser(db, where, priority);
   }
   return result;
 }
@@ -312,7 +324,8 @@ export async function queueTotals(
   const open = await db
     .select({ kind: fetchQueue.kind, status: fetchQueue.status, n: count() })
     .from(fetchQueue)
-    .where(inArray(fetchQueue.status, [...OPEN]))
+    // Automatic jobs are counted apart (autoJobSummary): they'd drown the user's own work.
+    .where(and(inArray(fetchQueue.status, [...OPEN]), eq(fetchQueue.origin, 'user')))
     .groupBy(fetchQueue.kind, fetchQueue.status);
   const newest = await newestJobPerTarget(db);
   const of = (kind: FetchJobKind, status: FetchQueueStatus) =>
@@ -383,9 +396,10 @@ export async function markPairingsSyncedIfComplete(
   return true;
 }
 
-/** Queued rows in the order the worker will claim them. */
+/** Queued rows in the order the worker will claim them (`userOnly`: leave out automatic ones). */
 export async function queuedInOrder(
   db: Db,
+  { userOnly = false }: { userOnly?: boolean } = {},
 ): Promise<{ id: number; kind: FetchJobKind; eventId: string; playerId: string | null }[]> {
   return db
     .select({
@@ -395,7 +409,11 @@ export async function queuedInOrder(
       playerId: fetchQueue.playerId,
     })
     .from(fetchQueue)
-    .where(eq(fetchQueue.status, 'queued'))
+    .where(
+      userOnly
+        ? and(eq(fetchQueue.status, 'queued'), eq(fetchQueue.origin, 'user'))
+        : eq(fetchQueue.status, 'queued'),
+    )
     .orderBy(desc(fetchQueue.priority), fetchQueue.queuedAt, fetchQueue.id);
 }
 
@@ -427,4 +445,49 @@ export async function latestQueueRowsByPlayer(
     byPlayer.set(row.playerId, { status: row.status, error: row.error, errorCode: row.errorCode });
   }
   return byPlayer;
+}
+
+/** Drops the automatic planner's queued jobs (a job being fetched finishes). */
+export async function deleteQueuedAutoJobs(db: Db): Promise<number> {
+  const deleted = await db
+    .delete(fetchQueue)
+    .where(and(eq(fetchQueue.origin, 'auto'), eq(fetchQueue.status, 'queued')))
+    .returning({ id: fetchQueue.id });
+  return deleted.length;
+}
+
+/** Open automatic jobs, and how many events they belong to. */
+export async function autoJobSummary(db: Db): Promise<{ jobs: number; events: number }> {
+  const [row] = await db
+    .select({ jobs: count(), events: countDistinct(fetchQueue.eventId) })
+    .from(fetchQueue)
+    .where(and(eq(fetchQueue.origin, 'auto'), inArray(fetchQueue.status, [...OPEN])));
+  return { jobs: row?.jobs ?? 0, events: row?.events ?? 0 };
+}
+
+/**
+ * Targets whose newest job failed (any failure, "no list" included): the planner leaves them
+ * for the user's Retry instead of queueing them again every pass.
+ */
+export async function failedTargets(
+  db: Db,
+  eventId: string,
+): Promise<{ players: Set<string>; event: boolean; pairings: boolean; doneRounds: Set<number> }> {
+  const rows = await newestJobPerTarget(db, eq(fetchQueue.eventId, eventId));
+  const failed = rows.filter((row) => row.status === 'failed');
+  return {
+    players: new Set(
+      failed.flatMap((row) => (row.kind === 'list' && row.playerId !== null ? [row.playerId] : [])),
+    ),
+    event: failed.some((row) => row.kind === 'event'),
+    pairings: failed.some((row) => row.kind === 'pairings-round'),
+    /** Rounds already fetched (their newest job is done): never fetched twice by the planner. */
+    doneRounds: new Set(
+      rows.flatMap((row) =>
+        row.kind === 'pairings-round' && row.status === 'done' && row.round !== null
+          ? [row.round]
+          : [],
+      ),
+    ),
+  };
 }

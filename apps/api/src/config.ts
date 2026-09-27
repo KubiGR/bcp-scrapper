@@ -23,6 +23,17 @@ const EnvSchema = z.object({
   MIN_EVENT_ROUNDS: z.coerce.number().int().min(0).default(4),
   /** Events smaller than this are not stored or shown (RTTs and small events). */
   MIN_EVENT_PLAYERS: z.coerce.number().int().min(0).default(20),
+  /** Automatic background fetching of big finished events; false switches the planner off. */
+  AUTO_FETCH_ENABLED: z
+    .enum(['true', 'false', '1', '0'])
+    .default('true')
+    .transform((value) => value === 'true' || value === '1'),
+  /** How often the planner looks for missing events, pairings and lists. */
+  AUTO_FETCH_INTERVAL_MS: z.coerce.number().int().min(1000).default(600_000),
+  /** Only events that started within this many days are fetched automatically. */
+  AUTO_FETCH_DAYS: z.coerce.number().int().min(1).default(60),
+  /** How often the latest-window catalogue is refreshed while automatic fetching is on. */
+  AUTO_CATALOG_INTERVAL_MS: z.coerce.number().int().min(60_000).default(21_600_000),
   /** The name the app is reached by from outside (e.g. through a Cloudflare Tunnel). */
   PUBLIC_HOSTNAME: z.string().min(1).optional(),
   /** Extra hostnames the Host check admits, comma-separated (e.g. a LAN name). */

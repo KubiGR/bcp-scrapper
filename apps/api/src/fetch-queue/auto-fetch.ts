@@ -1,0 +1,147 @@
+import { eventPhase, isBigEvent, type EventSizeRule } from '@bcp/shared';
+import { and, desc, gte, lte } from 'drizzle-orm';
+import { refreshLatest } from '../catalog';
+import type { Db } from '../db/client';
+import { events } from '../db/schema';
+import type { Logger } from '../logger';
+import { getAutoFetchEnabled } from '../repo/app-settings';
+import {
+  AUTO_PRIORITY,
+  enqueueEventPairings,
+  enqueueLists,
+  eventPairingsJobs,
+  failedTargets,
+} from '../repo/fetch-queue';
+import { findPlayersMissingLists } from '../repo/lists';
+import type { SyncRunner } from '../sync/runner';
+
+const DAY_MS = 86_400_000;
+
+export interface AutoFetchPlannerOptions {
+  db: Db;
+  runner: SyncRunner;
+  logger: Logger;
+  eventRule: EventSizeRule;
+  /** Only events that started within this many days are planned. */
+  days: number;
+  intervalMs: number;
+  catalogIntervalMs: number;
+  now?: () => Date;
+}
+
+/**
+ * Keeps big finished events of the last `days` fully loaded: every `intervalMs` it queues, at the
+ * lowest priority and marked automatic, whatever an event is missing (the event itself, its
+ * pairings, its lists), newest event first. It only queues work; the fetch queue does it at its
+ * usual pace. Failed work is left for the user's Retry, and fetched rounds aren't fetched again.
+ */
+export class AutoFetchPlanner {
+  readonly #options: AutoFetchPlannerOptions;
+  readonly #now: () => Date;
+  #timers: NodeJS.Timeout[] = [];
+  #running: Promise<unknown> = Promise.resolve();
+  lastPlannedAt: Date | null = null;
+
+  constructor(options: AutoFetchPlannerOptions) {
+    this.#options = options;
+    this.#now = options.now ?? (() => new Date());
+  }
+
+  /** Plans now and refreshes the catalogue, then keeps doing both on their intervals. */
+  start(): void {
+    this.#schedule(() => this.planOnce());
+    this.#schedule(() => this.refreshCatalogue());
+    this.#timers = [
+      setInterval(() => {
+        this.#schedule(() => this.planOnce());
+      }, this.#options.intervalMs),
+      setInterval(() => {
+        this.#schedule(() => this.refreshCatalogue());
+      }, this.#options.catalogIntervalMs),
+    ];
+  }
+
+  async stop(): Promise<void> {
+    this.#timers.forEach((timer) => {
+      clearInterval(timer);
+    });
+    this.#timers = [];
+    await this.#running;
+  }
+
+  /** Runs one piece of work after the previous one, logging failures instead of throwing. */
+  #schedule(work: () => Promise<unknown>): void {
+    this.#running = this.#running.then(work).catch((error: unknown) => {
+      this.#options.logger.warn({ err: error }, 'Automatic fetching failed; will try again');
+    });
+  }
+
+  /** The latest-window catalogue sync (skipped while fresh), so new events appear. */
+  async refreshCatalogue(): Promise<void> {
+    if (!(await getAutoFetchEnabled(this.#options.db))) return;
+    await refreshLatest({ db: this.#options.db, runner: this.#options.runner }, this.#now());
+  }
+
+  /** Queues what the window's events are missing; returns how many events and jobs it queued. */
+  async planOnce(): Promise<{ events: number; jobs: number }> {
+    const { db, eventRule, days } = this.#options;
+    if (!(await getAutoFetchEnabled(db))) return { events: 0, jobs: 0 };
+    const now = this.#now();
+    const candidates = await db
+      .select()
+      .from(events)
+      .where(
+        and(
+          gte(events.startDate, new Date(now.getTime() - days * DAY_MS)),
+          lte(events.startDate, now),
+        ),
+      )
+      .orderBy(desc(events.startDate), events.id);
+
+    let planned = 0;
+    let jobs = 0;
+    for (const event of candidates) {
+      if (!isBigEvent(event, eventRule) || eventPhase(event, now) !== 'finished') continue;
+      const queued = await this.#planEvent(event);
+      if (queued > 0) planned += 1;
+      jobs += queued;
+    }
+    this.lastPlannedAt = now;
+    if (jobs > 0)
+      this.#options.logger.info({ events: planned, jobs }, 'Automatic fetching queued work');
+    return { events: planned, jobs };
+  }
+
+  async #planEvent(event: typeof events.$inferSelect): Promise<number> {
+    const { db } = this.#options;
+    const failed = await failedTargets(db, event.id);
+    if (event.lastSyncedAt === null) {
+      // Already being loaded (or it failed and waits for Retry): nothing to add.
+      if (failed.event || (await eventPairingsJobs(db, event.id)).queued > 0) return 0;
+      await enqueueEventPairings(db, event.id, {
+        rounds: null,
+        priority: AUTO_PRIORITY,
+        origin: 'auto',
+      });
+      return 1;
+    }
+    let queued = 0;
+    if (event.pairingsSyncedAt === null && !failed.pairings) {
+      const rounds = Array.from({ length: event.roundCount }, (_, i) => i + 1).filter(
+        (round) => !failed.doneRounds.has(round),
+      );
+      queued += (
+        await enqueueEventPairings(db, event.id, {
+          rounds,
+          priority: AUTO_PRIORITY,
+          origin: 'auto',
+        })
+      ).queuedRounds;
+    }
+    const missing = (await findPlayersMissingLists(db, event.id)).filter(
+      (item) => !failed.players.has(item.playerId),
+    );
+    queued += await enqueueLists(db, event.id, missing, AUTO_PRIORITY, 'auto');
+    return queued;
+  }
+}

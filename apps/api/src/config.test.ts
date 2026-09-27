@@ -86,4 +86,24 @@ describe('loadConfig', () => {
     expect(config.WEB_DIST_DIR).toBe('/app/web');
     expect(config.ADMIN_USERNAME).toBe('kubi');
   });
+
+  it('reads the automatic fetching settings, with defaults', () => {
+    expect(loadConfig({})).toMatchObject({
+      AUTO_FETCH_ENABLED: true,
+      AUTO_FETCH_INTERVAL_MS: 600_000,
+      AUTO_FETCH_DAYS: 60,
+      AUTO_CATALOG_INTERVAL_MS: 21_600_000,
+    });
+    expect(
+      loadConfig({
+        AUTO_FETCH_ENABLED: 'false',
+        AUTO_FETCH_DAYS: '30',
+        AUTO_FETCH_INTERVAL_MS: '1000',
+      }),
+    ).toMatchObject({
+      AUTO_FETCH_ENABLED: false,
+      AUTO_FETCH_DAYS: 30,
+      AUTO_FETCH_INTERVAL_MS: 1000,
+    });
+  });
 });

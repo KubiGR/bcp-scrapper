@@ -171,6 +171,7 @@ describe('FetchQueueStateSchema', () => {
         },
       },
       estimatedSeconds: 15,
+      auto: { enabled: true, jobs: 0, events: 0 },
     };
     expect(FetchQueueStateSchema.parse(state)).toEqual(state);
   });

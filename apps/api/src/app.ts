@@ -4,9 +4,11 @@ import { authMiddleware, securityHeaders, type AuthOptions } from './auth/middle
 import { LoginLimiter } from './auth/rate-limit';
 import type { Db } from './db/client';
 import { AppError, BcpRateLimitedError, LoginRateLimitedError, toErrorBody } from './errors';
+import type { AutoFetchPlanner } from './fetch-queue/auto-fetch';
 import type { FetchQueueWorker } from './fetch-queue/worker';
 import type { Logger } from './logger';
 import { analysisRoutes } from './routes/analysis';
+import { autoFetchRoutes } from './routes/auto-fetch';
 import { authRoutes } from './routes/auth';
 import { bcpRoutes } from './routes/bcp';
 import { catalogRoutes } from './routes/catalog';
@@ -32,6 +34,8 @@ export interface AppDeps {
   allowedHosts?: Set<string>;
   /** Logins (AUTH_REQUIRED); off by default, as in local development. */
   auth?: AuthOptions;
+  /** The automatic fetching planner, when it runs (not in tests or e2e). */
+  autoFetch?: AutoFetchPlanner;
 }
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -105,6 +109,10 @@ export function createApp(deps: AppDeps) {
   app.route('/api', analysisRoutes(deps));
   app.route('/api', matchupsRoutes({ ...deps, now }));
   app.route('/api', playersSearchRoutes({ ...deps, now }));
+  app.route(
+    '/api',
+    autoFetchRoutes({ db: deps.db, planner: deps.autoFetch, authRequired: auth.required }),
+  );
 
   return app;
 }

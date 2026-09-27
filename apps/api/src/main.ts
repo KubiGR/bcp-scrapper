@@ -4,6 +4,7 @@ import { ensureAdmin } from './auth/bootstrap';
 import { createSource } from './bcp/create-source';
 import { allowedHostsOf, loadConfig } from './config';
 import { createDb } from './db/client';
+import { AutoFetchPlanner } from './fetch-queue/auto-fetch';
 import { FetchQueueWorker } from './fetch-queue/worker';
 import { createLogger } from './logger';
 import { deleteSmallEvents } from './repo/events';
@@ -43,6 +44,18 @@ const fetchQueue = new FetchQueueWorker({
   },
 });
 await fetchQueue.start();
+const autoFetch = config.AUTO_FETCH_ENABLED
+  ? new AutoFetchPlanner({
+      db: database.db,
+      runner,
+      logger: logger.child({ module: 'auto-fetch' }),
+      eventRule,
+      days: config.AUTO_FETCH_DAYS,
+      intervalMs: config.AUTO_FETCH_INTERVAL_MS,
+      catalogIntervalMs: config.AUTO_CATALOG_INTERVAL_MS,
+    })
+  : undefined;
+autoFetch?.start();
 const app = createApp({
   db: database.db,
   runner,
@@ -51,6 +64,7 @@ const app = createApp({
   logger,
   eventRule,
   allowedHosts: allowedHostsOf(config),
+  autoFetch,
   auth: { required: config.AUTH_REQUIRED, secret: config.SESSION_SECRET ?? '' },
 });
 if (config.WEB_DIST_DIR !== undefined) serveWebApp(app, config.WEB_DIST_DIR);
@@ -64,6 +78,7 @@ const server = serve({ fetch: app.fetch, port: config.PORT, hostname: config.HOS
 async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'Shutting down');
   server.close();
+  await autoFetch?.stop();
   // Let a list fetch in flight finish writing before the database closes.
   await fetchQueue.stop();
   await database.close();

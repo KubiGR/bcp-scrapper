@@ -3,8 +3,10 @@ import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import { AppError, BcpAuthError, BcpRateLimitedError } from '../errors';
 import type { Logger } from '../logger';
+import { getAutoFetchEnabled } from '../repo/app-settings';
 import { findEvent } from '../repo/events';
 import {
+  autoJobSummary,
   claimNextJob,
   enqueueEventPairings,
   markJobDone,
@@ -124,6 +126,10 @@ export class FetchQueueWorker {
       intervalMs: this.intervalMs,
       totals: await queueTotals(this.#options.db),
       estimatedSeconds: await this.estimateSecondsFor(),
+      auto: {
+        enabled: await getAutoFetchEnabled(this.#options.db),
+        ...(await autoJobSummary(this.#options.db)),
+      },
     };
   }
 
@@ -132,7 +138,8 @@ export class FetchQueueWorker {
    * current pace; null when there is nothing queued.
    */
   async estimateSecondsFor(eventId?: string): Promise<number | null> {
-    const order = await queuedInOrder(this.#options.db);
+    // The whole-queue estimate is the user's own work; automatic jobs come after it anyway.
+    const order = await queuedInOrder(this.#options.db, { userOnly: eventId === undefined });
     const last =
       eventId === undefined
         ? order.length
