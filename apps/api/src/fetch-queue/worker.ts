@@ -19,6 +19,7 @@ import {
   requeueInterrupted,
   retryJobLater,
   type ClaimedJob,
+  jobPriorityAndOrigin,
 } from '../repo/fetch-queue';
 import { saveArmyList } from '../repo/lists';
 import { syncEvent } from '../sync/jobs';
@@ -258,7 +259,9 @@ export class FetchQueueWorker {
       // Before markJobDone, so a failure here retries this job rather than a done row. Queueing
       // again is a no-op for rounds already open.
       const rounds = Array.from({ length: event.roundCount }, (_, index) => index + 1);
-      await enqueueEventPairings(db, job.eventId, { rounds, priority: job.priority });
+      // The rounds inherit the load's priority and origin as they are now, not as claimed.
+      const { priority, origin } = (await jobPriorityAndOrigin(db, job.id)) ?? job;
+      await enqueueEventPairings(db, job.eventId, { rounds, priority, origin });
     }
     await markJobDone(db, job.id);
     return 'fetched';

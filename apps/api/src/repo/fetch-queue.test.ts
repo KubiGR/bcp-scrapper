@@ -228,6 +228,16 @@ describe('automatic jobs', () => {
     expect(left.map((r) => r.playerId)).toEqual(['PL-ADA', 'PL-CARA']);
   });
 
+  it('a retried automatic job becomes the user’s', async () => {
+    await enqueueLists(db, EVENT, [ada], -10, 'auto');
+    const [row] = await rowsOf();
+    if (row === undefined) throw new Error('no row');
+    await markJobFailed(db, row.id, 'boom', 'BCP_UNAVAILABLE');
+    expect(await retryFailedJobs(db, EVENT)).toBe(1);
+    const retried = (await rowsOf()).find((r) => r.status === 'queued');
+    expect(retried).toMatchObject({ origin: 'user', priority: 0 });
+  });
+
   it('leaves automatic jobs out of the queue order used for the user’s estimate', async () => {
     await enqueueLists(db, EVENT, [ada], -10, 'auto');
     await enqueueLists(db, EVENT, [ben], 0);

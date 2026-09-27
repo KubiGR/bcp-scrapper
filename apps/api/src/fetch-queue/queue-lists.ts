@@ -86,9 +86,10 @@ export async function queueEventLists(
       counts.noListOnBcp += 1;
       continue;
     }
-    // A chosen player already in the queue is "queued" again at single priority: it jumps ahead.
-    if (!open || priority === SINGLE_LIST_PRIORITY)
-      toQueue.push({ playerId: player.bcpId, listId });
+    // Already queued players are passed on too: nothing is inserted for them, but the user's
+    // request takes their queued job over (a chosen player jumps ahead; an automatic job
+    // becomes the user's).
+    toQueue.push({ playerId: player.bcpId, listId });
   }
 
   const queued = await enqueueLists(db, eventId, toQueue, priority);

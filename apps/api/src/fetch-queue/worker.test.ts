@@ -76,6 +76,18 @@ const ada = { playerId: 'PL-ADA', listId: 'LS-ADA' };
 const ben = { playerId: 'PL-BEN', listId: 'LS-BEN' };
 
 describe('FetchQueueWorker', () => {
+  it('keeps an automatic event load’s rounds automatic, at its priority', async () => {
+    await fetchQueueRepo.enqueueEventPairings(db, EVENT, {
+      rounds: null,
+      priority: fetchQueueRepo.AUTO_PRIORITY,
+      origin: 'auto',
+    });
+    expect(await worker().tick()).toBe('fetched');
+    const rounds = (await db.select().from(fetchQueue)).filter((j) => j.kind === 'pairings-round');
+    expect(rounds.length).toBeGreaterThan(0);
+    expect(rounds.every((j) => j.origin === 'auto' && j.priority === -10)).toBe(true);
+  });
+
   it('fetches one list per tick, priority first, and stores it', async () => {
     await enqueueLists(db, EVENT, [ada], 0);
     await enqueueLists(db, EVENT, [ben], SINGLE_LIST_PRIORITY);

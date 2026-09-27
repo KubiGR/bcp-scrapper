@@ -61,6 +61,16 @@ export class AutoFetchPlanner {
     ];
   }
 
+  /** Plans as soon as the previous piece of work is done, without waiting for it. */
+  planSoon(): void {
+    this.#schedule(() => this.planOnce());
+  }
+
+  /** Resolves once the planner has nothing running. */
+  async idle(): Promise<void> {
+    await this.#running;
+  }
+
   async stop(): Promise<void> {
     this.#timers.forEach((timer) => {
       clearInterval(timer);
@@ -102,6 +112,8 @@ export class AutoFetchPlanner {
     let jobs = 0;
     for (const event of candidates) {
       if (!isBigEvent(event, eventRule) || eventPhase(event, now) !== 'finished') continue;
+      // Switched off mid-pass: stop adding work.
+      if (!(await getAutoFetchEnabled(db))) break;
       const queued = await this.#planEvent(event);
       if (queued > 0) planned += 1;
       jobs += queued;

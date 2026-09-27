@@ -37,8 +37,10 @@ export function autoFetchRoutes(deps: {
       );
       await setAutoFetchEnabled(db, enabled);
       if (enabled) {
-        await planner?.planOnce();
+        planner?.planSoon();
       } else {
+        // Let a pass under way notice the switch and finish, then drop what it queued.
+        await planner?.idle();
         await deleteQueuedAutoJobs(db);
       }
       return c.json(await state());

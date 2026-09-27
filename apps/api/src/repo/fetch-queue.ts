@@ -43,6 +43,7 @@ export interface ClaimedJob {
   round: number | null;
   followUp: string | null;
   priority: number;
+  origin: JobOrigin;
   attempts: number;
 }
 
@@ -58,7 +59,8 @@ async function claimForUser(db: Db, where: SQL, priority: number): Promise<void>
   await db
     .update(fetchQueue)
     .set({ priority: sql`greatest(${fetchQueue.priority}, ${priority})`, origin: 'user' })
-    .where(and(where, eq(fetchQueue.status, 'queued')));
+    // Fetching rows too: an event load's follow-up takes its priority and origin from its row.
+    .where(and(where, inArray(fetchQueue.status, [...OPEN])));
 }
 
 /**
@@ -176,6 +178,7 @@ export async function claimNextJob(db: Db, now: Date): Promise<ClaimedJob | null
       round: fetchQueue.round,
       followUp: fetchQueue.followUp,
       priority: fetchQueue.priority,
+      origin: fetchQueue.origin,
       attempts: fetchQueue.attempts,
     });
   return row ?? null;
@@ -255,7 +258,16 @@ export async function retryFailedJobs(db: Db, eventId?: string): Promise<number>
   const newer = alias(fetchQueue, 'newer');
   const rows = await db
     .update(fetchQueue)
-    .set({ status: 'queued', attempts: 0, notBefore: new Date(), error: null, errorCode: null })
+    // A retry is the user asking: an automatic job becomes theirs (see claimForUser).
+    .set({
+      status: 'queued',
+      attempts: 0,
+      notBefore: new Date(),
+      error: null,
+      errorCode: null,
+      origin: 'user',
+      priority: sql`greatest(${fetchQueue.priority}, 0)`,
+    })
     .where(
       and(
         eq(fetchQueue.status, 'failed'),
@@ -490,4 +502,16 @@ export async function failedTargets(
       ),
     ),
   };
+}
+
+/** A job's current priority and origin (a user may have taken it over since it was claimed). */
+export async function jobPriorityAndOrigin(
+  db: Db,
+  id: number,
+): Promise<{ priority: number; origin: JobOrigin } | null> {
+  const [row] = await db
+    .select({ priority: fetchQueue.priority, origin: fetchQueue.origin })
+    .from(fetchQueue)
+    .where(eq(fetchQueue.id, id));
+  return row ?? null;
 }

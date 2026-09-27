@@ -15,6 +15,7 @@ import { users } from '../db/schema';
 let db: Db;
 let close: () => Promise<void>;
 let app: ReturnType<typeof createApp>;
+let planner: AutoFetchPlanner;
 const source = sampleSource();
 const now = () => new Date('2026-04-20T12:00:00Z');
 
@@ -44,7 +45,7 @@ beforeEach(async () => {
     logger: silentLogger,
     eventRule: ALL_EVENTS,
     now,
-    autoFetch: new AutoFetchPlanner({
+    autoFetch: (planner = new AutoFetchPlanner({
       db,
       runner,
       logger: silentLogger,
@@ -53,7 +54,7 @@ beforeEach(async () => {
       intervalMs: 600_000,
       catalogIntervalMs: 21_600_000,
       now,
-    }),
+    })),
   });
 });
 
@@ -62,6 +63,18 @@ const post = (enabled: unknown) =>
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ enabled }),
+  });
+
+const autoPlanner = () =>
+  new AutoFetchPlanner({
+    db,
+    runner: new SyncRunner({ db, source, logger: silentLogger, eventRule: ALL_EVENTS }),
+    logger: silentLogger,
+    eventRule: ALL_EVENTS,
+    days: 60,
+    intervalMs: 600_000,
+    catalogIntervalMs: 21_600_000,
+    now,
   });
 
 describe('/api/auto-fetch', () => {
@@ -144,5 +157,28 @@ describe('/api/auto-fetch', () => {
     };
     expect((await as(member.id)).status).toBe(403);
     expect((await as(admin.id)).status).toBe(200);
+  });
+
+  it('"All missing lists" takes over lists the planner already queued', async () => {
+    await autoPlanner().planOnce();
+    const response = await app.request('/api/events/EVTTEAM0001/lists/queue', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(response.status).toBe(200);
+    const lists = (await db.select().from(fetchQueue)).filter((j) => j.kind === 'list');
+    expect(lists.length).toBeGreaterThan(0);
+    expect(lists.every((j) => j.origin === 'user' && j.priority === 0)).toBe(true);
+  });
+
+  it('switching off while a planning pass runs leaves no automatic jobs queued', async () => {
+    planner.planSoon(); // a pass is under way…
+    expect((await post(false)).status).toBe(200); // …when the switch goes off
+    await planner.idle();
+    const queuedAuto = (await db.select().from(fetchQueue)).filter(
+      (j) => j.origin === 'auto' && j.status === 'queued',
+    );
+    expect(queuedAuto).toEqual([]);
   });
 });
