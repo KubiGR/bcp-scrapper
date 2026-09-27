@@ -54,11 +54,21 @@ describe('searchTopLists', () => {
     expect(ids).not.toContain('PL-BEN');
   });
 
-  it('sorts by event date (newest first), then fewest losses, then most wins', async () => {
-    const result = await searchTopLists(db, query({ maxLosses: 5 }), ALL_EVENTS, TODAY);
-    const keys = result.players.map((p) => [p.eventStartDate, p.losses, -p.wins] as const);
-    const sorted = [...keys].sort((a, b) => b[0].localeCompare(a[0]) || a[1] - b[1] || a[2] - b[2]);
-    expect(keys).toEqual(sorted);
+  it('sorts by win/loss ratio (draws count half), then most wins, then newest event', async () => {
+    await record('PL-ADA', 3, 1, 0); // 0.75
+    await record('PL-BEN', 4, 1, 0); // 0.8
+    await record('PL-CARA', 2, 0, 0); // 1.0
+    await record('PL-DAN', 5, 0, 0); // 1.0, more wins than Cara
+    await record('PL-EVE', 2, 1, 1); // 0.625
+    const ids = (await searchTopLists(db, query({ maxLosses: 5 }), ALL_EVENTS, TODAY)).players
+      .map((p) => p.bcpId)
+      .filter((id) => ['PL-ADA', 'PL-BEN', 'PL-CARA', 'PL-DAN', 'PL-EVE'].includes(id));
+    expect(ids).toEqual(['PL-DAN', 'PL-CARA', 'PL-BEN', 'PL-ADA', 'PL-EVE']);
+
+    const ratios = (
+      await searchTopLists(db, query({ maxLosses: 5 }), ALL_EVENTS, TODAY)
+    ).players.map((p) => (p.wins + p.draws / 2) / (p.wins + p.losses + p.draws));
+    expect(ratios).toEqual([...ratios].sort((x, y) => y - x));
   });
 
   it('filters by faction, including an army guessed from the list', async () => {

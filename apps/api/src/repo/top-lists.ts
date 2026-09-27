@@ -27,7 +27,8 @@ const sorted = (values: Iterable<string>) =>
 /**
  * Players of big events starting in the range (default: the last 90 days) who went X-n or better,
  * filtered by faction (the guessed army counts), disposition and detachment (only read lists).
- * Newest event first, then fewest losses, then most wins; at most TOP_LISTS_LIMIT. One query for
+ * Best win/loss ratio first (draws count half), then most wins, then newest event; at most
+ * TOP_LISTS_LIMIT. One query for
  * the qualifying players; list states only for the rows returned.
  */
 export async function searchTopLists(
@@ -105,7 +106,15 @@ export async function searchTopLists(
           gt(sql`${players.wins} + ${players.losses} + ${players.draws}`, 0),
         ),
       )
-      .orderBy(desc(events.startDate), players.losses, desc(players.wins), players.name),
+      // Best record first: win/loss ratio with draws as half a win, then more wins, then newest.
+      .orderBy(
+        desc(
+          sql`(${players.wins} + ${players.draws} * 0.5) / (${players.wins} + ${players.losses} + ${players.draws})`,
+        ),
+        desc(players.wins),
+        desc(events.startDate),
+        players.name,
+      ),
   ]);
 
   const qualifying = rows.map((row) => ({
