@@ -6,8 +6,8 @@ lists and Top lists, automatic fetching) and hosting with accounts.
 
 ## Feature ideas
 
-- **Archetypes, team compositions and popular armies.** Which armies and detachments are played
-  most, and how teams are composed (faction mixes per team), per event and across events.
+- **More team views on the Meta page.** Factions that go together in teams, whole top-team
+  line-ups, and each faction's record inside team events (left out of the first Meta page).
 - **Pairing process.** Defender/attacker/refusal picks, if a source for them is ever found (BCP
   doesn't expose them).
 - **Top-N list fetching.** Queue lists by placing (top 8, top 16) in addition to "X-n or better".
@@ -33,6 +33,11 @@ lists and Top lists, automatic fetching) and hosting with accounts.
 - Matchups: the cross-event drill-down lists games by event name; order by event date instead.
 - The ⚠ "guessed from the list" icon isn't announced by screen readers (`role="img"` + label).
 
+- Meta: archetype sub-rows don't follow the chosen sort or minimum-players dimming (team
+  archetypes are never dimmed); the drill-down briefly shows the previous row's players; typing
+  0 in Min players jumps back to 5; the difference can read "−0.0 pp" in red; sort headers lack
+  `aria-sort`.
+
 ## Robustness and hygiene
 
 - Accounts: expired sessions are never purged; password change has no limit on wrong current
@@ -55,5 +60,8 @@ lists and Top lists, automatic fetching) and hosting with accounts.
 - Matchups: the cross-event page refetches all games every 5 s while any event syncs.
 - Analysis: duplicate team or player rows in one round (bad data) silently use the first;
   one-sided missing scores have no test.
+- Meta: running team events are excluded only because BCP gives them no placings (also require
+  `ended`); the top-quarter cutoff counts teams with a counted player, not all teams; no tests for
+  3 teams → top 1 or for partially placed events.
 - Tests: no integration test of a stored game's team-matchup link; a `delegate()` test helper is
   duplicated.
