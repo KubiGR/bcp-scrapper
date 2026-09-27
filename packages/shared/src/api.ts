@@ -354,3 +354,26 @@ export const PlayerSearchResponseSchema = z.object({
   eventsLoaded: z.number().int().nonnegative(),
 });
 export type PlayerSearchResponse = z.infer<typeof PlayerSearchResponseSchema>;
+
+/** Settings → Detachment names: names BCP doesn't use, the detachments to link them to, links. */
+export const DetachmentNamesResponseSchema = z.object({
+  unsure: z.array(
+    z.object({
+      name: z.string(),
+      lists: z.number().int().nonnegative(),
+      factions: z.array(z.string()),
+    }),
+  ),
+  /** BCP's detachment names, with the factions they're played in. */
+  targets: z.array(z.object({ name: z.string(), factions: z.array(z.string()) })),
+  /** `target` null = marked as its own detachment. */
+  links: z.array(z.object({ name: z.string(), target: z.string().nullable() })),
+});
+export type DetachmentNamesResponse = z.infer<typeof DetachmentNamesResponseSchema>;
+
+export const DetachmentLinkRequestSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  /** The detachment `name` means, or null: `name` is its own detachment. */
+  target: z.string().trim().min(1).max(200).nullable(),
+});
+export type DetachmentLinkRequest = z.infer<typeof DetachmentLinkRequestSchema>;

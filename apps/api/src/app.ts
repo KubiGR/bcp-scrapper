@@ -12,6 +12,7 @@ import { autoFetchRoutes } from './routes/auto-fetch';
 import { authRoutes } from './routes/auth';
 import { bcpRoutes } from './routes/bcp';
 import { catalogRoutes } from './routes/catalog';
+import { detachmentLinkRoutes } from './routes/detachment-links';
 import { eventRoutes } from './routes/events';
 import { fetchQueueRoutes } from './routes/fetch-queue';
 import { matchupsRoutes } from './routes/matchups';
@@ -111,6 +112,7 @@ export function createApp(deps: AppDeps) {
   app.route('/api', matchupsRoutes({ ...deps, now }));
   app.route('/api', playersSearchRoutes({ ...deps, now }));
   app.route('/api', metaRoutes({ ...deps, now }));
+  app.route('/api', detachmentLinkRoutes({ db: deps.db, authRequired: auth.required }));
   app.route(
     '/api',
     autoFetchRoutes({ db: deps.db, planner: deps.autoFetch, authRequired: auth.required }),

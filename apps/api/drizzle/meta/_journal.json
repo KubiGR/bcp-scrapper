@@ -71,6 +71,13 @@
       "when": 1790487751556,
       "tag": "0009_auto-fetch",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790545390713,
+      "tag": "0010_detachment-links",
+      "breakpoints": true
     }
   ]
 }

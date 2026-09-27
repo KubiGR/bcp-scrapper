@@ -320,3 +320,16 @@ export const appSettings = pgTable('app_settings', {
     .defaultNow()
     .$onUpdate(() => new Date()),
 });
+
+/**
+ * Detachment names an admin has linked by hand: `target` is the English detachment the name
+ * means, or null when the name is its own (correct) detachment. They win over learned
+ * translations.
+ */
+export const detachmentLinks = pgTable('detachment_links', {
+  /** Lower-case name, as lists write it (after cleaning). */
+  nameKey: text('name_key').primaryKey(),
+  name: text('name').notNull(),
+  target: text('target'),
+  createdAt: timestamptz('created_at').notNull().defaultNow(),
+});

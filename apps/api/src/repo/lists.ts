@@ -14,7 +14,7 @@ import { z } from 'zod';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import type { Logger } from '../logger';
-import { armyLists, players, teams } from '../db/schema';
+import { armyLists, detachmentLinks, players, teams } from '../db/schema';
 
 /** Joins a player's stored list only while it is their current BCP list. */
 export const storedCurrentList = and(
@@ -75,6 +75,8 @@ interface DetachmentVocabulary {
   spellings: Map<string, string>;
   /** Lower-case name as written in a list → the English name, learned from BCP. */
   translations: Map<string, string>;
+  /** Lower-case name → what an admin linked it to (null: its own detachment); wins over all. */
+  links: Map<string, string | null>;
 }
 
 /**
@@ -139,6 +141,13 @@ async function detachmentVocabulary(db: Db): Promise<DetachmentVocabulary> {
       translations.set(name, best[0]);
     }
   }
+  const links = new Map(
+    (await db.select().from(detachmentLinks)).map((link) => [link.nameKey, link.target]),
+  );
+  for (const [name, target] of links) {
+    known.add(name);
+    if (target !== null) known.add(target);
+  }
   // Translated names are detachments too, so "Die Macht der Moritoi und Shield Host" splits.
   for (const [name, english] of Object.entries(DETACHMENT_TRANSLATIONS)) {
     known.add(name);
@@ -150,7 +159,7 @@ async function detachmentVocabulary(db: Db): Promise<DetachmentVocabulary> {
       [...spelled].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? lower,
     ]),
   );
-  return { known, spellings, translations };
+  return { known, spellings, translations, links };
 }
 
 /** Names known to be single detachments (see detachmentVocabulary). */
@@ -170,7 +179,11 @@ function tidy(
   if (detachments.length === 0) return bcpDetachment === null ? [] : [bcpDetachment];
   const known = new Set([...vocabulary.known, ...vocabulary.translations.keys()]);
   return splitDetachments(detachments.map(cleanDetachmentName), known)
-    .map((name) => vocabulary.translations.get(name.toLowerCase()) ?? canonicalDetachment(name))
+    .map((name) => {
+      const key = name.toLowerCase();
+      if (vocabulary.links.has(key)) return vocabulary.links.get(key) ?? name;
+      return vocabulary.translations.get(key) ?? canonicalDetachment(name);
+    })
     .map((name) => vocabulary.spellings.get(name.toLowerCase()) ?? name);
 }
 
@@ -306,6 +319,7 @@ const EMPTY_VOCABULARY: DetachmentVocabulary = {
   known: new Set(),
   spellings: new Map(),
   translations: new Map(),
+  links: new Map(),
 };
 
 /**
