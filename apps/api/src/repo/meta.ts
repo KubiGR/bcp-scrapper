@@ -1,5 +1,6 @@
 import {
   countedFaction,
+  eventPhase,
   isBigEvent,
   type EventSizeRule,
   type MetaPlayerRow,
@@ -35,6 +36,9 @@ export async function loadMetaRows(
         roundCount: events.roundCount,
         playerCount: events.playerCount,
         isTeamEvent: events.isTeamEvent,
+        startDate: events.startDate,
+        endDate: events.endDate,
+        ended: events.ended,
       })
       .from(events)
       .where(
@@ -48,6 +52,9 @@ export async function loadMetaRows(
   const ids = inRange.map((event) => event.id);
   if (ids.length === 0) return { rows: [], eventsInRange: 0, eventsLoaded: 0 };
   const teamEvents = new Set(inRange.filter((event) => event.isTeamEvent).map((event) => event.id));
+  const finished = new Set(
+    inRange.filter((event) => eventPhase(event, today) === 'finished').map((event) => event.id),
+  );
 
   const [loaded, found] = await Promise.all([
     db
@@ -82,6 +89,7 @@ export async function loadMetaRows(
     return {
       eventId: row.eventId,
       isTeamEvent: teamEvents.has(row.eventId),
+      eventFinished: finished.has(row.eventId),
       teamId: row.teamId,
       teamPlacing: row.teamPlacing,
       faction,

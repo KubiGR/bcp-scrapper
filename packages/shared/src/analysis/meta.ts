@@ -4,6 +4,8 @@ import type { ArchetypeRow, MetaRow, TeamArchetypeRow, TeamMetaRow } from './met
 export interface MetaPlayerRow {
   eventId: string;
   isTeamEvent: boolean;
+  /** Finished events only count in the team section (running ones have no final placings). */
+  eventFinished: boolean;
   teamId: string | null;
   teamPlacing: number | null;
   faction: string | null;
@@ -127,7 +129,9 @@ export function computeTeamMeta(
 ): { rows: TeamMetaRow[]; eventsCounted: number } | null {
   const byEvent = new Map<string, MetaPlayerRow[]>();
   for (const row of rows) {
-    if (!row.isTeamEvent || row.teamId === null || gamesOf(row) === 0) continue;
+    if (!row.isTeamEvent || !row.eventFinished || row.teamId === null || gamesOf(row) === 0) {
+      continue;
+    }
     byEvent.set(row.eventId, [...(byEvent.get(row.eventId) ?? []), row]);
   }
   const slots: { row: MetaPlayerRow; top: boolean }[] = [];

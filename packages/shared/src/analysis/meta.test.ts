@@ -4,6 +4,7 @@ import { computeMeta, computeTeamMeta, type MetaPlayerRow } from './meta';
 const row = (overrides: Partial<MetaPlayerRow> = {}): MetaPlayerRow => ({
   eventId: 'E1',
   isTeamEvent: false,
+  eventFinished: true,
   teamId: null,
   teamPlacing: null,
   faction: 'Orks',
@@ -110,6 +111,20 @@ describe('computeTeamMeta', () => {
     expect(custodes?.difference).toBeCloseTo(1 - 8 / 30);
     expect(result?.rows.map((r) => r.faction)).toEqual(['Adeptus Custodes', 'Necrons', 'Orks']);
     expect(result?.rows.every((r) => Number.isFinite(r.difference))).toBe(true);
+  });
+
+  it('keeps only the top team of a 3-team event', () => {
+    const result = computeTeamMeta(teamEvent('A', 3, (p) => (p === 1 ? 'Orks' : 'Necrons')));
+    expect(result?.rows.find((r) => r.faction === 'Orks')).toMatchObject({
+      topSlots: 2,
+      topShare: 1,
+    });
+    expect(result?.rows.find((r) => r.faction === 'Necrons')?.topSlots).toBe(0);
+  });
+
+  it('leaves out team events that haven’t finished, even with placings', () => {
+    const running = teamEvent('A', 8, () => 'Orks').map((r) => ({ ...r, eventFinished: false }));
+    expect(computeTeamMeta(running)).toBeNull();
   });
 
   it('treats the only team of a one-team event as a top team', () => {

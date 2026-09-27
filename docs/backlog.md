@@ -33,10 +33,6 @@ list fetching.
   they can differ by a day.
 - Matchups: the cross-event drill-down lists games by event name; order by event date instead.
 - The ⚠ "guessed from the list" icon isn't announced by screen readers (`role="img"` + label).
-- Meta: archetype sub-rows don't follow the chosen sort or minimum-players dimming (team
-  archetypes are never dimmed); the drill-down briefly shows the previous row's players; typing
-  0 in Min players jumps back to 10; the difference can read "−0.0 pp" in red; sort headers lack
-  `aria-sort`.
 
 ## Robustness and hygiene
 
@@ -62,8 +58,5 @@ list fetching.
 - Matchups: the cross-event page refetches all games every 5 s while any event syncs.
 - Analysis: duplicate team or player rows in one round (bad data) silently use the first;
   one-sided missing scores have no test.
-- Meta: running team events are excluded only because BCP gives them no placings (also require
-  `ended`); the top-quarter cutoff counts teams with a counted player, not all teams; no tests for
-  3 teams → top 1 or for partially placed events.
 - Tests: no integration test of a stored game's team-matchup link; a `delegate()` test helper is
   duplicated.

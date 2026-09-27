@@ -5,8 +5,15 @@ import { plural } from '../../lib/format';
 import { factionKey } from './FactionTable';
 import { percent } from './meta-queries';
 
-const difference = (value: number) =>
-  `${value >= 0 ? '+' : '−'}${Math.abs(value * 100).toFixed(1)} pp`;
+/** Percentage points to one decimal; a difference that rounds to 0 is neutral. */
+function difference(value: number): { text: string; tone: 'good' | 'bad' | 'even' } {
+  const points = Math.round(value * 1000) / 10;
+  if (points === 0) return { text: '0.0 pp', tone: 'even' };
+  return points > 0
+    ? { text: `+${points.toFixed(1)} pp`, tone: 'good' }
+    : { text: `−${Math.abs(points).toFixed(1)} pp`, tone: 'bad' };
+}
+const TONE_COLOR = { good: 'green.5', bad: 'red.5', even: undefined } as const;
 
 function Slots({ row }: { row: Omit<TeamMetaRow, 'faction' | 'archetypes'> }) {
   return (
@@ -25,9 +32,10 @@ function Slots({ row }: { row: Omit<TeamMetaRow, 'faction' | 'archetypes'> }) {
           size="sm"
           component="span"
           className="numeric"
-          c={row.difference > 0 ? 'green.5' : row.difference < 0 ? 'red.5' : undefined}
+          c={TONE_COLOR[difference(row.difference).tone]}
+          data-tone={difference(row.difference).tone}
         >
-          {difference(row.difference)}
+          {difference(row.difference).text}
         </Text>
       </Table.Td>
     </>
@@ -71,7 +79,7 @@ export function TeamMeta({
               const expanded = open.includes(key);
               return (
                 <Fragment key={key}>
-                  <Table.Tr style={{ opacity: dimmed(row) ? 0.55 : 1 }}>
+                  <Table.Tr data-dimmed={dimmed(row)} style={{ opacity: dimmed(row) ? 0.55 : 1 }}>
                     <Table.Td>
                       <ActionIcon
                         variant="subtle"
@@ -91,22 +99,31 @@ export function TeamMeta({
                     <Slots row={row} />
                   </Table.Tr>
                   {expanded &&
-                    row.archetypes.map((archetype) => {
-                      const label =
-                        archetype.detachments === null
-                          ? 'Detachment unknown'
-                          : archetype.detachments.join(' + ');
-                      return (
-                        <Table.Tr key={`${key}:${label}`}>
-                          <Table.Td pl={40}>
-                            <Text size="sm" c="dimmed" component="span">
-                              {label}
-                            </Text>
-                          </Table.Td>
-                          <Slots row={archetype} />
-                        </Table.Tr>
-                      );
-                    })}
+                    [...row.archetypes]
+                      .sort(
+                        (a, b) => Number(a.allSlots < minPlayers) - Number(b.allSlots < minPlayers),
+                      )
+                      .map((archetype) => {
+                        const label =
+                          archetype.detachments === null
+                            ? 'Detachment unknown'
+                            : archetype.detachments.join(' + ');
+                        const small = archetype.allSlots < minPlayers;
+                        return (
+                          <Table.Tr
+                            key={`${key}:${label}`}
+                            data-dimmed={small}
+                            style={{ opacity: small ? 0.55 : 1 }}
+                          >
+                            <Table.Td pl={40}>
+                              <Text size="sm" c="dimmed" component="span">
+                                {label}
+                              </Text>
+                            </Table.Td>
+                            <Slots row={archetype} />
+                          </Table.Tr>
+                        );
+                      })}
                 </Fragment>
               );
             })}

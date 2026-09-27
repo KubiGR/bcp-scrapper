@@ -73,7 +73,10 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
           w={110}
           value={minPlayers}
           onChange={(value) => {
-            if (typeof value === 'number') onSearchChange({ ...search, minPlayers: value });
+            // Only whole numbers 1–50: a half-typed 0 would otherwise reset to the default.
+            if (typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 50) {
+              onSearchChange({ ...search, minPlayers: value });
+            }
           }}
         />
       </Group>

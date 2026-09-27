@@ -82,4 +82,67 @@ describe('FactionTable', () => {
     fireEvent.click(screen.getByRole('button', { name: '8 Orks · Detachment unknown players' }));
     expect(onOpenPlayers).toHaveBeenCalledWith({ faction: 'Orks', detachments: null });
   });
+
+  it('sorts and dims detachment rows like faction rows', () => {
+    const faction = {
+      ...orks,
+      archetypes: [
+        {
+          detachments: ['A'],
+          players: 12,
+          share: 0.12,
+          games: 60,
+          winRate: 0.4,
+          x1: 1,
+          x1Share: 0.1,
+        },
+        {
+          detachments: ['B'],
+          players: 11,
+          share: 0.11,
+          games: 50,
+          winRate: 0.7,
+          x1: 5,
+          x1Share: 0.5,
+        },
+        { detachments: ['C'], players: 2, share: 0.02, games: 10, winRate: 0.9, x1: 2, x1Share: 1 },
+        {
+          detachments: null,
+          players: 30,
+          share: 0.3,
+          games: 150,
+          winRate: 0.5,
+          x1: 3,
+          x1Share: 0.1,
+        },
+      ],
+    };
+    renderWithProviders(
+      <FactionTable
+        {...props}
+        rows={[faction]}
+        sort="winRate"
+        expanded={['Orks']}
+        minPlayers={10}
+      />,
+    );
+    const names = screen
+      .getAllByRole('row')
+      .slice(2)
+      .map((r) => r.querySelector('td')?.textContent);
+    expect(names).toEqual(['B', 'A', 'C', 'Detachment unknown']);
+    expect(rowOf('C')).toHaveAttribute('data-dimmed', 'true');
+  });
+
+  it('tells screen readers which column is sorted', () => {
+    renderWithProviders(<FactionTable {...props} sort="winRate" />);
+    expect(screen.getByRole('columnheader', { name: 'Win rate' })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    );
+    expect(screen.getByRole('columnheader', { name: 'Players' })).toHaveAttribute(
+      'aria-sort',
+      'none',
+    );
+  });
 });

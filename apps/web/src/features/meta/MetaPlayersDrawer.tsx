@@ -50,6 +50,8 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
       // Everyone with games: the table counts every record.
       maxLosses: MAX_LOSSES_LIMIT,
     }),
+    // Another row's players are other players: never show them while this row's load.
+    placeholderData: undefined,
     enabled: filter !== null,
   });
   const found = players.data?.players ?? [];

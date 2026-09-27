@@ -99,4 +99,44 @@ describe('MetaPage', () => {
     renderWithRouter(<MetaPage search={{}} onSearchChange={vi.fn()} />);
     expect(await screen.findByRole('button', { name: 'Retry' })).toBeInTheDocument();
   });
+
+  it('keeps Min players between 1 and 50', async () => {
+    stubFetchRoutes({ 'GET /api/meta': metaResponse() });
+    const onSearchChange = vi.fn();
+    renderWithRouter(<MetaPage search={{}} onSearchChange={onSearchChange} />);
+    await screen.findByText('Orks');
+    fireEvent.change(screen.getByLabelText('Min players'), { target: { value: '0' } });
+    expect(onSearchChange).not.toHaveBeenCalledWith({ minPlayers: 0 });
+    fireEvent.change(screen.getByLabelText('Min players'), { target: { value: '12' } });
+    expect(onSearchChange).toHaveBeenCalledWith({ minPlayers: 12 });
+  });
+
+  it('shows the new row’s players, not the previous row’s, while they load', async () => {
+    const player = (name: string) => ({
+      ...aPlayer({ name, faction: 'Orks' }),
+      eventId: 'EVT1',
+      eventName: 'Sample Team Open',
+      eventStartDate: '2026-03-28T09:00:00.000Z',
+    });
+    stubFetchRoutes({
+      'GET /api/meta': metaResponse(),
+      'GET /api/players/search': (url: string) =>
+        url.includes('factions=Orks')
+          ? Response.json({
+              players: [player('Ada Archer')],
+              truncated: false,
+              factionOptions: [],
+              detachmentOptions: [],
+              eventsInRange: 1,
+              eventsLoaded: 1,
+            })
+          : new Promise<Response>(() => undefined), // Necrons never arrive
+    });
+    renderWithRouter(<MetaPage search={{}} onSearchChange={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: '20 Orks players' }));
+    expect(await screen.findByText('Ada Archer')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '10 Necrons players' }));
+    await screen.findByRole('heading', { name: 'Necrons' });
+    expect(screen.queryByText('Ada Archer')).not.toBeInTheDocument();
+  });
 });

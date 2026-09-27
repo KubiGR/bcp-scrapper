@@ -88,8 +88,21 @@ export function FactionTable({
       b.players - a.players ||
       factionName(a.faction).localeCompare(factionName(b.faction)),
   );
+  // Detachment rows follow the same rules: the chosen column, small ones and "unknown" last.
+  const sortArchetypes = (archetypes: MetaRow['archetypes']) =>
+    [...archetypes].sort((a, b) => {
+      const small = (x: typeof a) => x.players < minPlayers;
+      const metric = (x: typeof a) =>
+        sort === 'winRate' ? x.winRate : sort === 'x1' ? x.x1Share : x.players;
+      return (
+        Number(a.detachments === null) - Number(b.detachments === null) ||
+        Number(small(a)) - Number(small(b)) ||
+        metric(b) - metric(a) ||
+        b.players - a.players
+      );
+    });
   const header = (label: string, key: MetaSort) => (
-    <Table.Th ta="right">
+    <Table.Th ta="right" aria-sort={sort === key ? 'descending' : 'none'}>
       <UnstyledButton
         onClick={() => {
           onSortChange(key);
@@ -147,12 +160,14 @@ export function FactionTable({
                   />
                 </Table.Tr>
                 {open &&
-                  row.archetypes.map((archetype) => {
+                  sortArchetypes(row.archetypes).map((archetype) => {
                     const label = archetypeName(archetype.detachments);
+                    const small = archetype.players < minPlayers;
                     return (
                       <Table.Tr
                         key={`${key}:${label}`}
-                        style={{ opacity: archetype.players < minPlayers ? 0.55 : 1 }}
+                        data-dimmed={small}
+                        style={{ opacity: small ? 0.55 : 1 }}
                       >
                         <Table.Td pl={40}>
                           <Text size="sm" c="dimmed" component="span">
