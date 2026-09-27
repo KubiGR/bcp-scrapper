@@ -14,7 +14,7 @@ export interface MetaSearch {
   expanded?: string;
 }
 
-export const DEFAULT_MIN_PLAYERS = 5;
+export const DEFAULT_MIN_PLAYERS = 10;
 
 /** Only the date range and event type go to the API; the rest is display. */
 export function metaParams(search: MetaSearch): string {

@@ -1,6 +1,8 @@
 import {
   parseArmyList,
   PARSER_VERSION,
+  cleanDetachmentName,
+  detachmentParts,
   splitDetachments,
   type ArmyList,
   type PlayerList,
@@ -36,34 +38,98 @@ export async function findPlayersMissingLists(
   return rows.flatMap(({ playerId, listId }) => (listId === null ? [] : [{ playerId, listId }]));
 }
 
+/** What the stored lists say about detachment names. */
+interface DetachmentVocabulary {
+  /** Names known to be single detachments: taken alone, or named in a comma list. */
+  known: Set<string>;
+  /** Lower-case name → its most common spelling. */
+  spellings: Map<string, string>;
+}
+
 /**
- * Detachments seen on their own: every name of a list naming several, and a list's single name
- * when it has no joiner (a joined "A and B" is what splitting decides about).
+ * Learns detachment names from every stored list. A line without "and"-type joiners is one name;
+ * a comma list names its detachments (commas never occur inside a name); "A and B" teaches
+ * nothing on its own, since a single name may contain "and".
  */
-export async function knownDetachments(db: Db): Promise<Set<string>> {
+async function detachmentVocabulary(db: Db): Promise<DetachmentVocabulary> {
   const rows = await db
     .select({ detachments: armyLists.detachments })
     .from(armyLists)
     .where(sql`cardinality(${armyLists.detachments}) > 0`);
   const known = new Set<string>();
+  const counts = new Map<string, Map<string, number>>();
+  const learn = (name: string) => {
+    known.add(name);
+    const spelled = counts.get(name.toLowerCase()) ?? new Map<string, number>();
+    spelled.set(name, (spelled.get(name) ?? 0) + 1);
+    counts.set(name.toLowerCase(), spelled);
+  };
   for (const { detachments } of rows) {
-    if (detachments.length > 1) detachments.forEach((name) => known.add(name));
-    else if (detachments[0] !== undefined && !/,|\s(?:and|y|und|et|e)\s/.test(detachments[0])) {
-      known.add(detachments[0]);
+    const names = detachments.map(cleanDetachmentName);
+    if (names.length > 1) {
+      names.forEach(learn);
+      continue;
+    }
+    for (const piece of (names[0] ?? '').split(/\s*,\s*/)) {
+      const words = detachmentParts(piece);
+      // A piece without joiners is a name; "A and B" might be one name or two: learn nothing.
+      if (words.length === 1 && words[0] !== undefined) learn(words[0]);
     }
   }
-  return known;
+  const spellings = new Map(
+    [...counts].map(([lower, spelled]) => [
+      lower,
+      [...spelled].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? lower,
+    ]),
+  );
+  return { known, spellings };
 }
 
-/** The parsed columns for a list's text, splitting joined detachments against `known`. */
-function parsedColumns(text: string | null, known: ReadonlySet<string>) {
+/** Names known to be single detachments (see detachmentVocabulary). */
+export async function knownDetachments(db: Db): Promise<Set<string>> {
+  return (await detachmentVocabulary(db)).known;
+}
+
+/** Cleans, splits and respells a list's detachments against what the stored lists say. */
+function tidy(detachments: string[], vocabulary: DetachmentVocabulary): string[] {
+  return splitDetachments(detachments.map(cleanDetachmentName), vocabulary.known).map(
+    (name) => vocabulary.spellings.get(name.toLowerCase()) ?? name,
+  );
+}
+
+/** The parsed columns for a list's text. */
+function parsedColumns(text: string | null, vocabulary: DetachmentVocabulary) {
   const parsed = parseArmyList(text);
   return {
     parsedArmy: parsed.army,
-    detachments: splitDetachments(parsed.detachments, known),
+    detachments: tidy(parsed.detachments, vocabulary),
     parsedDisposition: parsed.disposition,
     parserVersion: PARSER_VERSION,
   };
+}
+
+/**
+ * Re-tidies every stored list's detachments (split, spelling) now that more lists are known;
+ * runs at startup and on every automatic-fetching pass. Returns how many lists changed.
+ */
+export async function tidyDetachments(db: Db): Promise<number> {
+  const vocabulary = await detachmentVocabulary(db);
+  const rows = await db
+    .select({ playerId: armyLists.playerId, detachments: armyLists.detachments })
+    .from(armyLists)
+    .where(sql`cardinality(${armyLists.detachments}) > 0`);
+  let changed = 0;
+  for (const { playerId, detachments } of rows) {
+    const tidied = tidy(detachments, vocabulary);
+    if (tidied.join('\u0000') !== detachments.join('\u0000')) {
+      await db
+        .update(armyLists)
+        .set({ detachments: tidied })
+        .where(eq(armyLists.playerId, playerId));
+      changed += 1;
+    }
+  }
+  return changed;
 }
 
 export async function saveArmyList(
@@ -76,7 +142,7 @@ export async function saveArmyList(
     text: list.text,
     raw: list.raw,
     fetchedAt: new Date(),
-    ...parsedColumns(list.text, await knownDetachments(db)),
+    ...parsedColumns(list.text, await detachmentVocabulary(db)),
   };
   await db
     .insert(armyLists)
@@ -154,10 +220,11 @@ export async function findPlayerList(db: Db, playerId: string): Promise<PlayerLi
 }
 
 const REPARSE_BATCH = 200;
+const EMPTY_VOCABULARY: DetachmentVocabulary = { known: new Set(), spellings: new Map() };
 
 /**
- * Re-reads lists parsed by an older parser (no BCP requests), then splits joined detachments now
- * that every list's single detachments are known. Returns how many lists were re-read.
+ * Re-reads lists parsed by an older parser (no BCP requests), then tidies every list's
+ * detachments against the full set of lists. Returns how many lists were re-read.
  */
 export async function reparseLists(db: Db, logger: Logger): Promise<number> {
   let reparsed = 0;
@@ -171,26 +238,13 @@ export async function reparseLists(db: Db, logger: Logger): Promise<number> {
     for (const { playerId, text } of batch) {
       await db
         .update(armyLists)
-        .set(parsedColumns(text, new Set()))
+        .set(parsedColumns(text, EMPTY_VOCABULARY))
         .where(eq(armyLists.playerId, playerId));
     }
     reparsed += batch.length;
     logger.debug({ reparsed }, 'Re-reading stored army lists');
   }
 
-  const known = await knownDetachments(db);
-  const single = await db
-    .select({ playerId: armyLists.playerId, detachments: armyLists.detachments })
-    .from(armyLists)
-    .where(sql`cardinality(${armyLists.detachments}) = 1`);
-  for (const { playerId, detachments } of single) {
-    const split = splitDetachments(detachments, known);
-    if (split.length > 1) {
-      await db
-        .update(armyLists)
-        .set({ detachments: split })
-        .where(eq(armyLists.playerId, playerId));
-    }
-  }
+  await tidyDetachments(db);
   return reparsed;
 }

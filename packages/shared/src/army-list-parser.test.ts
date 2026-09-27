@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { parseArmyList, splitDetachments, type ParsedList } from './army-list-parser';
+import {
+  cleanDetachmentName,
+  detachmentParts,
+  parseArmyList,
+  splitDetachments,
+  type ParsedList,
+} from './army-list-parser';
 
 const GW_EN = `Night Shift (1995 points)
 
@@ -276,15 +282,68 @@ describe('splitDetachments', () => {
     expect(splitDetachments(['A y B'], new Set(['A', 'B']))).toEqual(['A', 'B']);
   });
 
-  it('keeps the name when any part is unknown (names may contain "and")', () => {
+  it('splits when at least one part is a known detachment', () => {
+    // 11th-edition GW-app lines join several detachments; "Shield Host" is never taken alone.
+    expect(
+      splitDetachments(['Shield Host and Tharanatoi Hammerblow'], new Set(['Shield Host'])),
+    ).toEqual(['Shield Host', 'Tharanatoi Hammerblow']);
     expect(
       splitDetachments(['Houndpack Lance and Hunting Warpack'], new Set(['Houndpack Lance'])),
-    ).toEqual(['Houndpack Lance and Hunting Warpack']);
-    expect(splitDetachments(['Blood and Iron'], new Set(['Iron']))).toEqual(['Blood and Iron']);
+    ).toEqual(['Houndpack Lance', 'Hunting Warpack']);
+  });
+
+  it('keeps the name when no part is known (a single name may contain "and")', () => {
+    expect(splitDetachments(['Blood and Iron'], new Set())).toEqual(['Blood and Iron']);
+  });
+
+  it('keeps a name that contains "and" whole when that gives more known names', () => {
+    expect(
+      splitDetachments(
+        ['Legends of Saga and Song and Saga of the Great Wolf'],
+        new Set(['Saga of the Great Wolf']),
+      ),
+    ).toEqual(['Legends of Saga and Song', 'Saga of the Great Wolf']);
+  });
+
+  it('always splits on commas, including a comma before the last "and"', () => {
+    expect(splitDetachments(['Blitz Brigade, Dread Mob, and Wreckas'], new Set())).toEqual([
+      'Blitz Brigade',
+      'Dread Mob',
+      'Wreckas',
+    ]);
+    expect(splitDetachments(['Shield Host, Tharanatoi Hammerblow'], new Set())).toEqual([
+      'Shield Host',
+      'Tharanatoi Hammerblow',
+    ]);
+  });
+
+  it('compares known names ignoring case', () => {
+    expect(splitDetachments(['shield host and Moritoi'], new Set(['Shield Host']))).toEqual([
+      'shield host',
+      'Moritoi',
+    ]);
   });
 
   it('leaves lists that are already split, or empty', () => {
     expect(splitDetachments(['A', 'B'], new Set(['A', 'B']))).toEqual(['A', 'B']);
     expect(splitDetachments([], new Set())).toEqual([]);
+  });
+});
+
+describe('cleanDetachmentName', () => {
+  it('collapses every kind of space and straightens apostrophes', () => {
+    expect(cleanDetachmentName('Lions\u00a0of the  Emperor ')).toBe('Lions of the Emperor');
+    expect(cleanDetachmentName('Emperor’s Wrath')).toBe("Emperor's Wrath");
+  });
+});
+
+describe('detachmentParts', () => {
+  it('splits a joined line on commas and joining words', () => {
+    expect(detachmentParts('Flyboyz, Kult of Speed and Wreckas')).toEqual([
+      'Flyboyz',
+      'Kult of Speed',
+      'Wreckas',
+    ]);
+    expect(detachmentParts('Grand Coven')).toEqual(['Grand Coven']);
   });
 });

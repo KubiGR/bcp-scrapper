@@ -7,7 +7,7 @@ import { createTestDb, resetDb } from '../db/test-db';
 import { gwList, storeList } from '../test/lists';
 import { sampleSource, silentLogger } from '../test/helpers';
 import { upsertEventDetail } from './events';
-import { knownDetachments, reparseLists } from './lists';
+import { knownDetachments, reparseLists, tidyDetachments } from './lists';
 import { replaceEventPlayers, replaceEventTeams } from './participants';
 
 let db: Db;
@@ -80,10 +80,57 @@ describe('parsed lists', () => {
     expect((await rowOf('PL-DAN')).detachments).toEqual(['Wreckas', 'Kult of Speed']);
   });
 
-  it('keeps a joined name when a part was never seen alone', async () => {
+  it('keeps a joined name when no part is known', async () => {
     await storeList(db, 'PL-ADA', gwList('Orks', 'Blood and Iron'));
-    await storeList(db, 'PL-BEN', gwList('Orks', 'Iron'));
     await reparseLists(db, silentLogger);
     expect((await rowOf('PL-ADA')).detachments).toEqual(['Blood and Iron']);
+  });
+
+  it('splits "and" lines once a comma list has named their detachments', async () => {
+    await storeList(
+      db,
+      'PL-ADA',
+      gwList('Adeptus Custodes', 'Shield Host and Tharanatoi Hammerblow'),
+    );
+    await storeList(
+      db,
+      'PL-BEN',
+      gwList('Adeptus Custodes', 'Might of the Moritoi and Shield Host'),
+    );
+    await storeList(
+      db,
+      'PL-CARA',
+      gwList('Adeptus Custodes', 'Shield Host, Tharanatoi Hammerblow'),
+    );
+    await tidyDetachments(db);
+    expect((await rowOf('PL-ADA')).detachments).toEqual(['Shield Host', 'Tharanatoi Hammerblow']);
+    expect((await rowOf('PL-BEN')).detachments).toEqual(['Might of the Moritoi', 'Shield Host']);
+  });
+
+  it('does not learn a word inside a name as a detachment', async () => {
+    await storeList(db, 'PL-ADA', gwList('Space Wolves', 'Legends of Saga and Song'));
+    await storeList(db, 'PL-BEN', gwList('Space Wolves', 'Saga of the Great Wolf'));
+    await storeList(
+      db,
+      'PL-CARA',
+      gwList('Space Wolves', 'Legends of Saga and Song and Saga of the Great Wolf'),
+    );
+    await tidyDetachments(db);
+    expect((await rowOf('PL-ADA')).detachments).toEqual(['Legends of Saga and Song']);
+    expect((await rowOf('PL-CARA')).detachments).toEqual([
+      'Legends of Saga and Song',
+      'Saga of the Great Wolf',
+    ]);
+  });
+
+  it('merges spellings that differ in spaces or capitals into the most common one', async () => {
+    await storeList(db, 'PL-ADA', gwList('Adeptus Custodes', 'Lions of the Emperor'));
+    await storeList(db, 'PL-BEN', gwList('Adeptus Custodes', 'Lions of the Emperor'));
+    await storeList(db, 'PL-CARA', gwList('Adeptus Custodes', 'Lions of The Emperor'));
+    await storeList(db, 'PL-DAN', gwList('Adeptus Custodes', 'Lions\u00a0of the Emperor'));
+    await tidyDetachments(db);
+    for (const id of ['PL-ADA', 'PL-BEN', 'PL-CARA', 'PL-DAN']) {
+      expect((await rowOf(id)).detachments, id).toEqual(['Lions of the Emperor']);
+    }
   });
 });

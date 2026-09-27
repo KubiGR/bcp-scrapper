@@ -12,7 +12,7 @@ import {
   eventPairingsJobs,
   failedTargets,
 } from '../repo/fetch-queue';
-import { findPlayersMissingLists } from '../repo/lists';
+import { findPlayersMissingLists, tidyDetachments } from '../repo/lists';
 import type { SyncRunner } from '../sync/runner';
 
 const DAY_MS = 86_400_000;
@@ -96,6 +96,8 @@ export class AutoFetchPlanner {
   async planOnce(): Promise<{ events: number; jobs: number }> {
     const { db, eventRule, days } = this.#options;
     if (!(await getAutoFetchEnabled(db))) return { events: 0, jobs: 0 };
+    // Lists fetched since the last pass teach new detachment names: split and respell with them.
+    await tidyDetachments(db);
     const now = this.#now();
     const candidates = await db
       .select()

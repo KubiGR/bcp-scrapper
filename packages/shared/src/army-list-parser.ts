@@ -1,7 +1,7 @@
 import { canonicalArmy } from './factions';
 
 /** Bump when the parser changes: stored lists with an older version are re-read on startup. */
-export const PARSER_VERSION = 3;
+export const PARSER_VERSION = 4;
 
 /** What a list says about the army; only these three things are ever read from list text. */
 export interface ParsedList {
@@ -84,7 +84,7 @@ function gwApp(lines: string[]): ParsedList | null {
   const next = lines[at + 1]?.trim() ?? '';
   return {
     army: cleanArmy(army),
-    detachments: detachment === '' ? [] : [detachment],
+    detachments: detachment === '' ? [] : [cleanDetachmentName(detachment)],
     disposition: next.includes('(') ? null : knownDisposition(next),
     format: 'gw-app',
   };
@@ -103,7 +103,7 @@ const commaList = (value: string | null) =>
   (value ?? '')
     .replace(/\s*\([^)]*\)\s*$/, '')
     .split(',')
-    .map((part) => part.trim())
+    .map(cleanDetachmentName)
     .filter(Boolean);
 
 /** One line: `Name - Army - Disposition - Detachment, Detachment (2000 Points)`; name optional. */
@@ -163,15 +163,75 @@ export function parseArmyList(text: string | null): ParsedList {
   return gwApp(lines) ?? oneLine(lines) ?? header(lines) ?? template(lines) ?? UNKNOWN;
 }
 
-const JOINERS = /\s*,\s*|\s+(?:and|y|und|et|e)\s+/;
+/** Commas always separate detachments (no name has one), also before a last "and". */
+const COMMA = /\s*,\s*(?:(?:and|y|und|et|e)\s+)?/;
+/** Words that join detachments on a GW-app line, but can also be part of one name. */
+const WORD_JOINER = /(\s+(?:and|y|und|et|e)\s+)/;
 
-/** Splits one joined detachment name when every part is a detachment seen on its own. */
+/** A detachment name with every kind of space collapsed and straight apostrophes. */
+export function cleanDetachmentName(name: string): string {
+  return name
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** The names a joined detachment line lists ("A, B and C" → A, B, C); one name stays one. */
+export function detachmentParts(name: string): string[] {
+  return name
+    .split(COMMA)
+    .flatMap((part) => part.split(WORD_JOINER).filter((_, index) => index % 2 === 0))
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Groups a comma-free piece's words-joined parts ("A and B and C") into names: the grouping with
+ * the most known names wins, then the one with fewest names, so "Legends of Saga and Song and Saga
+ * of the Great Wolf" keeps "Legends of Saga and Song" whole.
+ */
+function segment(piece: string, isKnown: (name: string) => boolean): string[] {
+  const tokens = piece.split(WORD_JOINER); // [part, joiner, part, joiner, part…]
+  const parts = tokens.filter((_, index) => index % 2 === 0);
+  const joinerAfter = (index: number) => tokens[index * 2 + 1] ?? ' ';
+  const best: ({ known: number; names: string[] } | undefined)[] = [];
+  best[parts.length] = { known: 0, names: [] };
+  for (let i = parts.length - 1; i >= 0; i -= 1) {
+    let group = '';
+    for (let j = i; j < parts.length; j += 1) {
+      group = j === i ? (parts[i] ?? '') : `${group}${joinerAfter(j - 1)}${parts[j] ?? ''}`;
+      const rest = best[j + 1];
+      if (rest === undefined) continue;
+      const candidate = {
+        known: rest.known + (isKnown(group.trim()) ? 1 : 0),
+        names: [group.trim(), ...rest.names],
+      };
+      const current = best[i];
+      if (
+        current === undefined ||
+        candidate.known > current.known ||
+        (candidate.known === current.known && candidate.names.length < current.names.length)
+      ) {
+        best[i] = candidate;
+      }
+    }
+  }
+  return best[0]?.names ?? [piece];
+}
+
+/**
+ * Splits one joined detachment line: always on commas; on "and"/"y"/"und"/… only where that gives
+ * more known detachments (case ignored), so a single name containing "and" stays whole.
+ */
 export function splitDetachments(detachments: string[], known: ReadonlySet<string>): string[] {
   const [only] = detachments;
   if (detachments.length !== 1 || only === undefined) return detachments;
-  const parts = only
-    .split(JOINERS)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return parts.length > 1 && parts.every((part) => known.has(part)) ? parts : detachments;
+  const lowerKnown = new Set([...known].map((name) => name.toLowerCase()));
+  const isKnown = (name: string) => lowerKnown.has(name.toLowerCase());
+  const names = only
+    .split(COMMA)
+    .map((piece) => piece.trim())
+    .filter(Boolean)
+    .flatMap((piece) => segment(piece, isKnown));
+  return names.length > 1 ? names : detachments;
 }

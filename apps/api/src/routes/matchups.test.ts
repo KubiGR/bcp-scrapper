@@ -133,10 +133,10 @@ describe('matchups routes', () => {
     });
   });
 
-  it('takes detachments separated by |, keeping names with commas whole', async () => {
+  it('takes detachments separated by |', async () => {
     await storeList(db, 'PB-R1', gwList('Adepta Sororitas', 'Martyrs, Saints and Relics'));
     const row = await get<MatchupsResponse>(
-      `/api/events/EVTBRACKET01/matchups?detachments=${encodeURIComponent('Martyrs, Saints and Relics|Other')}&side=row`,
+      `/api/events/EVTBRACKET01/matchups?detachments=${encodeURIComponent('Martyrs|Other')}&side=row`,
     );
     expect(row.body.matrix.games).toBeGreaterThan(0);
   });
