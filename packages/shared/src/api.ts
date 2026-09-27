@@ -295,6 +295,9 @@ const pipeSeparated = z
       .filter(Boolean),
   );
 
+/** A factions/detachments filter value matching players without one (Unknown faction etc.). */
+export const UNKNOWN_FILTER = '(unknown)';
+
 /** GET /api/players/search: players of big events who went X-n or better. */
 export const PlayerSearchQuerySchema = z
   .object({
@@ -304,6 +307,8 @@ export const PlayerSearchQuerySchema = z
     from: z.iso.date().optional(),
     to: z.iso.date().optional(),
     maxLosses: z.coerce.number().int().min(0).max(5).default(1),
+    /** Event type; all when absent. */
+    type: z.enum(['all', 'singles', 'teams']).optional(),
   })
   .refine((q) => !q.from || !q.to || q.from <= q.to, {
     message: '`from` must be on or before `to`',

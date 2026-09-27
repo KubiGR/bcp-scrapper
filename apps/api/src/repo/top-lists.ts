@@ -4,6 +4,7 @@ import {
   resolveFaction,
   TOP_LISTS_LIMIT,
   type EventSizeRule,
+  UNKNOWN_FILTER,
   type PlayerSearchQuery,
   type PlayerSearchResponse,
   type TopListPlayer,
@@ -18,8 +19,10 @@ import { listStateOf } from './participants';
 const DAY_MS = 86_400_000;
 const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
+/** Any chosen value matches; `(unknown)` matches a missing one. */
 const anyOf = (chosen: string[], value: string | null) =>
-  chosen.length === 0 || (value !== null && chosen.includes(value));
+  chosen.length === 0 ||
+  (value === null ? chosen.includes(UNKNOWN_FILTER) : chosen.includes(value));
 
 const sorted = (values: Iterable<string>) =>
   [...new Set(values)].sort((a, b) => a.localeCompare(b));
@@ -47,12 +50,19 @@ export async function searchTopLists(
         id: events.id,
         roundCount: events.roundCount,
         playerCount: events.playerCount,
+        isTeamEvent: events.isTeamEvent,
       })
       .from(events)
       .where(
         and(gte(events.startDate, new Date(`${from}T00:00:00.000Z`)), lt(events.startDate, end)),
       )
-  ).filter((event) => isBigEvent(event, rule));
+  ).filter(
+    (event) =>
+      isBigEvent(event, rule) &&
+      (query.type === undefined ||
+        query.type === 'all' ||
+        event.isTeamEvent === (query.type === 'teams')),
+  );
   const ids = inRange.map((event) => event.id);
   if (ids.length === 0) {
     return {
@@ -128,7 +138,9 @@ export async function searchTopLists(
       anyOf(query.factions, player.faction) &&
       anyOf(query.dispositions, player.disposition) &&
       (query.detachments.length === 0 ||
-        player.detachments.some((name) => query.detachments.includes(name))),
+        (player.detachments.length === 0
+          ? query.detachments.includes(UNKNOWN_FILTER)
+          : player.detachments.some((name) => query.detachments.includes(name)))),
   );
   const page = matching.slice(0, TOP_LISTS_LIMIT);
 

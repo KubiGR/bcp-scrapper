@@ -5,3 +5,5 @@ export * from './matchups';
 export * from './rounds';
 export * from './schemas';
 export * from './standings';
+export * from './meta';
+export * from './meta-schemas';

@@ -173,4 +173,38 @@ describe('searchTopLists', () => {
     expect(result.players).toHaveLength(500);
     expect(result.truncated).toBe(true);
   });
+
+  it('filters by event type, and matches unknown factions and unknown detachments', async () => {
+    await record('PL-ADA', 3, 0, 0);
+    await db.update(players).set({ faction: null }).where(eq(players.id, 'PL-ADA'));
+    const teams = await searchTopLists(
+      db,
+      query({ type: 'teams', maxLosses: 5 }),
+      ALL_EVENTS,
+      TODAY,
+    );
+    expect(teams.players.length).toBeGreaterThan(0);
+    const singles = await searchTopLists(
+      db,
+      query({ type: 'singles', maxLosses: 5 }),
+      ALL_EVENTS,
+      TODAY,
+    );
+    expect(singles.players).toEqual([]);
+    const unknown = await searchTopLists(
+      db,
+      query({ factions: ['(unknown)'], maxLosses: 5 }),
+      ALL_EVENTS,
+      TODAY,
+    );
+    expect(unknown.players.map((p) => p.bcpId)).toEqual(['PL-ADA']);
+    const noDetachments = await searchTopLists(
+      db,
+      query({ detachments: ['(unknown)'], maxLosses: 5 }),
+      ALL_EVENTS,
+      TODAY,
+    );
+    expect(noDetachments.players.length).toBeGreaterThan(0);
+    expect(noDetachments.players.every((p) => p.detachments.length === 0)).toBe(true);
+  });
 });
