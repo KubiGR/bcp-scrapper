@@ -30,6 +30,20 @@ export function resolveFaction(
   return { faction: bcpFaction, factionGuessed: false };
 }
 
+/**
+ * The faction a player counts under in the analysis: `resolveFaction`, except that an allegiance
+ * left over (BCP had only "Xenos" and no readable list says more) is no faction at all (null).
+ */
+export function countedFaction(
+  bcpFaction: string | null,
+  parsedArmy: string | null,
+): { faction: string | null; factionGuessed: boolean } {
+  const resolved = resolveFaction(bcpFaction, parsedArmy);
+  return resolved.faction !== null && isAllegiance(resolved.faction)
+    ? { faction: null, factionGuessed: false }
+    : resolved;
+}
+
 /** BCP's faction names (10th edition), as players' factions are stored. */
 export const BCP_FACTIONS = [
   'Adepta Sororitas',

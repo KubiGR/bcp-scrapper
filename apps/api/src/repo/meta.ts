@@ -1,7 +1,6 @@
 import {
-  isAllegiance,
+  countedFaction,
   isBigEvent,
-  resolveFaction,
   type EventSizeRule,
   type MetaPlayerRow,
   type MetaQuery,
@@ -79,14 +78,13 @@ export async function loadMetaRows(
   ]);
 
   const rows = found.map((row) => {
-    const { faction } = resolveFaction(row.faction, row.parsedArmy);
+    const { faction } = countedFaction(row.faction, row.parsedArmy);
     return {
       eventId: row.eventId,
       isTeamEvent: teamEvents.has(row.eventId),
       teamId: row.teamId,
       teamPlacing: row.teamPlacing,
-      // Only an allegiance ("Xenos") and no readable list: not a faction.
-      faction: faction !== null && isAllegiance(faction) ? null : faction,
+      faction,
       detachments: row.detachments ?? [],
       wins: row.wins,
       losses: row.losses,

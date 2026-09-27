@@ -1,4 +1,4 @@
-import { DETACHMENT_SEPARATOR, UNKNOWN_FILTER } from '@bcp/shared';
+import { DETACHMENT_SEPARATOR, MAX_LOSSES_LIMIT, UNKNOWN_FILTER } from '@bcp/shared';
 import { Button, Drawer, Skeleton, Stack, Table, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -44,8 +44,11 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
             : filter.detachments.join(DETACHMENT_SEPARATOR),
       from: search.from,
       to: search.to,
+      // An archetype row counts players with exactly these detachments.
+      detachmentsMatch: filter?.detachments ? 'exact' : undefined,
       type: search.type,
-      maxLosses: 5,
+      // Everyone with games: the table counts every record.
+      maxLosses: MAX_LOSSES_LIMIT,
     }),
     enabled: filter !== null,
   });

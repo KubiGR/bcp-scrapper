@@ -58,7 +58,7 @@ describe('MetaPage', () => {
   });
 
   it('opens the players of a row, with their lists', async () => {
-    stubFetchRoutes({
+    const fetchMock = stubFetchRoutes({
       'GET /api/meta': metaResponse(),
       'GET /api/players/search': {
         players: [
@@ -79,6 +79,12 @@ describe('MetaPage', () => {
     renderWithRouter(<MetaPage search={{}} onSearchChange={vi.fn()} />);
     fireEvent.click(await screen.findByRole('button', { name: '20 Orks players' }));
     expect(await screen.findByText('Ada Archer')).toBeInTheDocument();
+    const searchUrl = fetchMock.mock.calls
+      .map(([input]) => (typeof input === 'string' ? input : ''))
+      .find((url) => url.startsWith('/api/players/search'));
+    expect(searchUrl).toContain('maxLosses=20');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show Orks detachments' }));
     expect(screen.getByRole('button', { name: 'List' })).toBeInTheDocument();
   });
 

@@ -306,7 +306,10 @@ export const PlayerSearchQuerySchema = z
     detachments: pipeSeparated,
     from: z.iso.date().optional(),
     to: z.iso.date().optional(),
-    maxLosses: z.coerce.number().int().min(0).max(5).default(1),
+    /** The page offers 0–5; up to 20 lets a drill-down include everyone with games. */
+    maxLosses: z.coerce.number().int().min(0).max(MAX_LOSSES_LIMIT).default(1),
+    /** `exact`: a player's detachments must be exactly the listed set (an archetype); else any. */
+    detachmentsMatch: z.enum(['any', 'exact']).optional(),
     /** Event type; all when absent. */
     type: z.enum(['all', 'singles', 'teams']).optional(),
   })

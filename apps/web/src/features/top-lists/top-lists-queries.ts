@@ -11,6 +11,7 @@ export interface TopListsSearch {
   to?: string;
   maxLosses?: number;
   type?: 'all' | 'singles' | 'teams';
+  detachmentsMatch?: 'any' | 'exact';
 }
 
 /** The query string for GET /api/players/search: only what is set. */

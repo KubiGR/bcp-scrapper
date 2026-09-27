@@ -1,7 +1,7 @@
 import {
   isBigEvent,
   knownDisposition,
-  resolveFaction,
+  countedFaction,
   TOP_LISTS_LIMIT,
   type EventSizeRule,
   UNKNOWN_FILTER,
@@ -18,6 +18,21 @@ import { listStateOf } from './participants';
 
 const DAY_MS = 86_400_000;
 const isoDay = (date: Date) => date.toISOString().slice(0, 10);
+
+/**
+ * Whether a player's detachments pass the filter: any listed one, or (`exact`) exactly the listed
+ * set, as an archetype row counts them; `(unknown)` matches a player without detachments.
+ */
+function detachmentsMatch(query: PlayerSearchQuery, detachments: string[]): boolean {
+  const wanted = query.detachments;
+  if (wanted.length === 0) return true;
+  if (detachments.length === 0) return wanted.includes(UNKNOWN_FILTER);
+  if (query.detachmentsMatch === 'exact') {
+    const key = (list: string[]) => [...list].sort().join('\u0000');
+    return key(detachments) === key(wanted);
+  }
+  return detachments.some((name) => wanted.includes(name));
+}
 
 /** Any chosen value matches; `(unknown)` matches a missing one. */
 const anyOf = (chosen: string[], value: string | null) =>
@@ -129,7 +144,7 @@ export async function searchTopLists(
 
   const qualifying = rows.map((row) => ({
     row,
-    ...resolveFaction(row.faction, row.parsedArmy),
+    ...countedFaction(row.faction, row.parsedArmy),
     disposition: row.disposition ?? knownDisposition(row.parsedDisposition),
     detachments: row.detachments ?? [],
   }));
@@ -137,10 +152,7 @@ export async function searchTopLists(
     (player) =>
       anyOf(query.factions, player.faction) &&
       anyOf(query.dispositions, player.disposition) &&
-      (query.detachments.length === 0 ||
-        (player.detachments.length === 0
-          ? query.detachments.includes(UNKNOWN_FILTER)
-          : player.detachments.some((name) => query.detachments.includes(name)))),
+      detachmentsMatch(query, player.detachments),
   );
   const page = matching.slice(0, TOP_LISTS_LIMIT);
 

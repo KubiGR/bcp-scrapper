@@ -63,8 +63,12 @@ describe('GET /api/players/search', () => {
     ).toEqual(['Flyboyz, Kult of Speed and Wreckas', 'War Horde']);
   });
 
+  it('takes any loss limit up to 20, so a drill-down can include everyone with games', async () => {
+    expect((await app.request('/api/players/search?maxLosses=20')).status).toBe(200);
+  });
+
   it('validates its input', async () => {
-    expect((await app.request('/api/players/search?maxLosses=6')).status).toBe(400);
+    expect((await app.request('/api/players/search?maxLosses=21')).status).toBe(400);
     expect((await app.request('/api/players/search?from=2026-05-01&to=2026-01-01')).status).toBe(
       400,
     );

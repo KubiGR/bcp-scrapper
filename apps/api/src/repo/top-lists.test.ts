@@ -1,7 +1,7 @@
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { events, players } from '../db/schema';
+import { armyLists, events, players } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { syncEvent } from '../sync/jobs';
 import { ALL_EVENTS, sampleSource } from '../test/helpers';
@@ -206,5 +206,46 @@ describe('searchTopLists', () => {
     );
     expect(noDetachments.players.length).toBeGreaterThan(0);
     expect(noDetachments.players.every((p) => p.detachments.length === 0)).toBe(true);
+  });
+
+  it('matches the exact set of detachments when asked to', async () => {
+    for (const id of ['PL-ADA', 'PL-BEN', 'PL-CARA']) await record(id, 3, 0, 0);
+    await storeList(db, 'PL-ADA', gwList('Orks', 'Kult of Speed'));
+    await storeList(db, 'PL-BEN', gwList('Orks', 'Wreckas'));
+    await storeList(db, 'PL-CARA', gwList('Orks', 'Kult of Speed'));
+    await db
+      .update(armyLists)
+      .set({ detachments: ['Kult of Speed', 'Wreckas'] })
+      .where(eq(armyLists.playerId, 'PL-CARA'));
+    const exact = await searchTopLists(
+      db,
+      query({ detachments: ['Kult of Speed', 'Wreckas'], detachmentsMatch: 'exact' }),
+      ALL_EVENTS,
+      TODAY,
+    );
+    expect(exact.players.map((p) => p.bcpId)).toEqual(['PL-CARA']);
+    const single = await searchTopLists(
+      db,
+      query({ detachments: ['Kult of Speed'], detachmentsMatch: 'exact' }),
+      ALL_EVENTS,
+      TODAY,
+    );
+    expect(single.players.map((p) => p.bcpId)).toEqual(['PL-ADA']);
+  });
+
+  it('treats an allegiance without a readable list as an unknown faction', async () => {
+    await record('PL-ADA', 3, 0, 0);
+    await db.update(players).set({ faction: 'Xenos' }).where(eq(players.id, 'PL-ADA'));
+    const unknown = await searchTopLists(db, query({ factions: ['(unknown)'] }), ALL_EVENTS, TODAY);
+    expect(unknown.players.map((p) => p.bcpId)).toContain('PL-ADA');
+    expect(unknown.players.find((p) => p.bcpId === 'PL-ADA')?.faction).toBeNull();
+    const all = await searchTopLists(db, query(), ALL_EVENTS, TODAY);
+    expect(all.factionOptions).not.toContain('Xenos');
+  });
+
+  it('includes players with many losses when the limit is raised', async () => {
+    await record('PL-ADA', 1, 7, 0);
+    const result = await searchTopLists(db, query({ maxLosses: 20 }), ALL_EVENTS, TODAY);
+    expect(result.players.map((p) => p.bcpId)).toContain('PL-ADA');
   });
 });
