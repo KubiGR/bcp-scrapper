@@ -40,4 +40,12 @@ test('fetch a team event’s pairings, read the standings and open a team', asyn
   await expect(cell).toBeVisible();
   await cell.click();
   await expect(page.getByRole('dialog').getByText('Ada Archer')).toBeVisible();
+
+  // The Meta page counts the sample event's players by faction, and its team section appears
+  // once the teams have placings.
+  await page.keyboard.press('Escape');
+  await page.goto('/analysis/meta?from=2026-01-01&to=2026-12-31');
+  await expect(page.getByRole('heading', { name: 'Meta' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Space Marines players/ })).toBeVisible();
+  await expect(page.getByText('What top teams bring')).toBeVisible();
 });

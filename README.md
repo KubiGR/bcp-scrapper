@@ -83,6 +83,11 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
 - In the list drawer, **Compact on 40kCompactor ↗** copies the list and opens
   [40kCompactor](https://desjani.github.io/40kCompactor/) in a new tab: paste it there and press
   Compact for a shorter version.
+- **Meta** (header): for big events in a date range (singles, teams or both), each faction's
+  players, share, win rate (draws half) and X-1-or-better rate, expandable into archetypes
+  (faction + detachments from the lists); click a player count for the players and their lists.
+  For team events, **What top teams bring** compares the factions of each event's top-quarter
+  teams with all teams.
 - **Top lists** (header) searches every loaded big event in a date range for players of chosen
   factions who went X-n or better (default X-1, last 90 days), with their lists one click away.
 - No Docker? `DATABASE_URL=pglite://memory pnpm dev` runs everything in memory (lost on restart).

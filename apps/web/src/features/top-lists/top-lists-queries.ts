@@ -10,6 +10,7 @@ export interface TopListsSearch {
   from?: string;
   to?: string;
   maxLosses?: number;
+  type?: 'all' | 'singles' | 'teams';
 }
 
 /** The query string for GET /api/players/search: only what is set. */

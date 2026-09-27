@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AnalysisMatchupsRouteImport } from './routes/analysis.matchups'
+import { Route as AnalysisMetaRouteImport } from './routes/analysis.meta'
 import { Route as AnalysisTopListsRouteImport } from './routes/analysis.top-lists'
 import { Route as EventsEventIdRouteImport } from './routes/events.$eventId'
 import { Route as EventsEventIdTeamsTeamIdRouteImport } from './routes/events.$eventId_.teams.$teamId'
@@ -37,6 +38,11 @@ const AnalysisMatchupsRoute = AnalysisMatchupsRouteImport.update({
   path: '/analysis/matchups',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnalysisMetaRoute = AnalysisMetaRouteImport.update({
+  id: '/analysis/meta',
+  path: '/analysis/meta',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalysisTopListsRoute = AnalysisTopListsRouteImport.update({
   id: '/analysis/top-lists',
   path: '/analysis/top-lists',
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/analysis/matchups': typeof AnalysisMatchupsRoute
+  '/analysis/meta': typeof AnalysisMetaRoute
   '/analysis/top-lists': typeof AnalysisTopListsRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/events/$eventId/teams/$teamId': typeof EventsEventIdTeamsTeamIdRoute
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/analysis/matchups': typeof AnalysisMatchupsRoute
+  '/analysis/meta': typeof AnalysisMetaRoute
   '/analysis/top-lists': typeof AnalysisTopListsRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/events/$eventId/teams/$teamId': typeof EventsEventIdTeamsTeamIdRoute
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/analysis/matchups': typeof AnalysisMatchupsRoute
+  '/analysis/meta': typeof AnalysisMetaRoute
   '/analysis/top-lists': typeof AnalysisTopListsRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/events/$eventId_/teams/$teamId': typeof EventsEventIdTeamsTeamIdRoute
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/analysis/matchups'
+    | '/analysis/meta'
     | '/analysis/top-lists'
     | '/events/$eventId'
     | '/events/$eventId/teams/$teamId'
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/analysis/matchups'
+    | '/analysis/meta'
     | '/analysis/top-lists'
     | '/events/$eventId'
     | '/events/$eventId/teams/$teamId'
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/analysis/matchups'
+    | '/analysis/meta'
     | '/analysis/top-lists'
     | '/events/$eventId'
     | '/events/$eventId_/teams/$teamId'
@@ -117,6 +129,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SettingsRoute: typeof SettingsRoute
   AnalysisMatchupsRoute: typeof AnalysisMatchupsRoute
+  AnalysisMetaRoute: typeof AnalysisMetaRoute
   AnalysisTopListsRoute: typeof AnalysisTopListsRoute
   EventsEventIdRoute: typeof EventsEventIdRoute
   EventsEventIdTeamsTeamIdRoute: typeof EventsEventIdTeamsTeamIdRoute
@@ -152,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalysisMatchupsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analysis/meta': {
+      id: '/analysis/meta'
+      path: '/analysis/meta'
+      fullPath: '/analysis/meta'
+      preLoaderRoute: typeof AnalysisMetaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analysis/top-lists': {
       id: '/analysis/top-lists'
       path: '/analysis/top-lists'
@@ -181,6 +201,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SettingsRoute: SettingsRoute,
   AnalysisMatchupsRoute: AnalysisMatchupsRoute,
+  AnalysisMetaRoute: AnalysisMetaRoute,
   AnalysisTopListsRoute: AnalysisTopListsRoute,
   EventsEventIdRoute: EventsEventIdRoute,
   EventsEventIdTeamsTeamIdRoute: EventsEventIdTeamsTeamIdRoute,
