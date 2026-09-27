@@ -3,7 +3,8 @@
 Ideas and follow-ups that aren't scheduled yet. Newest requests first within each section.
 Shipped so far: plans 1–8 (catalogue, lists queue, team analysis, matchups, quick wins, reading
 lists and Top lists, automatic fetching), hosting with accounts, 40kCompactor, army-name and
-detachment-name matching (including translations learned from BCP), and the Meta page.
+detachment-name matching (including translations learned from BCP), the Meta page, and Top-N
+list fetching.
 
 ## Feature ideas
 
@@ -11,7 +12,6 @@ detachment-name matching (including translations learned from BCP), and the Meta
   line-ups, and each faction's record inside team events (left out of the first Meta page).
 - **Pairing process.** Defender/attacker/refusal picks, if a source for them is ever found (BCP
   doesn't expose them).
-- **Top-N list fetching.** Queue lists by placing (top 8, top 16) in addition to "X-n or better".
 
 ## Things a user would notice
 
