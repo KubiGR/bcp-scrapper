@@ -1,7 +1,9 @@
 import {
   parseArmyList,
   PARSER_VERSION,
+  canonicalDetachment,
   cleanDetachmentName,
+  DETACHMENT_TRANSLATIONS,
   detachmentParts,
   splitDetachments,
   type ArmyList,
@@ -76,6 +78,11 @@ async function detachmentVocabulary(db: Db): Promise<DetachmentVocabulary> {
       if (words.length === 1 && words[0] !== undefined) learn(words[0]);
     }
   }
+  // Translated names are detachments too, so "Die Macht der Moritoi und Shield Host" splits.
+  for (const [name, english] of Object.entries(DETACHMENT_TRANSLATIONS)) {
+    known.add(name);
+    known.add(english);
+  }
   const spellings = new Map(
     [...counts].map(([lower, spelled]) => [
       lower,
@@ -92,9 +99,9 @@ export async function knownDetachments(db: Db): Promise<Set<string>> {
 
 /** Cleans, splits and respells a list's detachments against what the stored lists say. */
 function tidy(detachments: string[], vocabulary: DetachmentVocabulary): string[] {
-  return splitDetachments(detachments.map(cleanDetachmentName), vocabulary.known).map(
-    (name) => vocabulary.spellings.get(name.toLowerCase()) ?? name,
-  );
+  return splitDetachments(detachments.map(cleanDetachmentName), vocabulary.known)
+    .map(canonicalDetachment)
+    .map((name) => vocabulary.spellings.get(name.toLowerCase()) ?? name);
 }
 
 /** The parsed columns for a list's text. */

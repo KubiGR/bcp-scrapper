@@ -174,3 +174,31 @@ const BY_NAME = new Map<string, string>([
 export function canonicalArmy(name: string): string | null {
   return BY_NAME.get(normalise(name)) ?? null;
 }
+
+/**
+ * Detachment names from the Spanish/German GW app, as written there, and their English names.
+ * Only names whose translation is certain; add more as they turn up.
+ */
+export const DETACHMENT_TRANSLATIONS: Readonly<Record<string, string>> = {
+  'Die Macht der Moritoi': 'Might of the Moritoi',
+  'Poderío de los Moritoi': 'Might of the Moritoi',
+  'Martillazo de los Tharanatoi': 'Tharanatoi Hammerblow',
+  'Cónclave del Librarius': 'Librarius Conclave',
+  'Espolones de la Reina Norn': 'Talons of the Norn Queen',
+  'Señores de la Forja': 'Lords of the Forge',
+  'Hueste frenética': 'Frenzied Host',
+  'Senda del proscrito': 'Path of the Outcast',
+  'Incursores de Huron': "Huron's Marauders",
+  'Exhibición y matanza': 'Exhibition of Slaughter',
+  'Hueste guerrera acorazada': 'Armoured Warhost',
+  'Cábala del Caos': 'Cabal of Chaos',
+};
+
+const DETACHMENT_BY_NAME = new Map(
+  Object.entries(DETACHMENT_TRANSLATIONS).map(([name, english]) => [normalise(name), english]),
+);
+
+/** The English name of a detachment written in another language, or the name as given. */
+export function canonicalDetachment(name: string): string {
+  return DETACHMENT_BY_NAME.get(normalise(name)) ?? name;
+}

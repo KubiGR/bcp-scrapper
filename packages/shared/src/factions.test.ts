@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canonicalArmy, isAllegiance, resolveFaction } from './factions';
+import { canonicalArmy, canonicalDetachment, isAllegiance, resolveFaction } from './factions';
 
 describe('isAllegiance', () => {
   it('knows the allegiances BCP offers instead of an army', () => {
@@ -90,5 +90,20 @@ describe('canonicalArmy', () => {
     ]) {
       expect(canonicalArmy(name), name).toBeNull();
     }
+  });
+});
+
+describe('canonicalDetachment', () => {
+  it('translates known detachment names to English, ignoring case and accents', () => {
+    expect(canonicalDetachment('Die Macht der Moritoi')).toBe('Might of the Moritoi');
+    expect(canonicalDetachment('Poderío de los Moritoi')).toBe('Might of the Moritoi');
+    expect(canonicalDetachment('martillazo de los tharanatoi')).toBe('Tharanatoi Hammerblow');
+    expect(canonicalDetachment('Conclave del Librarius')).toBe('Librarius Conclave');
+    expect(canonicalDetachment('Exhibición y matanza')).toBe('Exhibition of Slaughter');
+  });
+
+  it('leaves other names as they are', () => {
+    expect(canonicalDetachment('Shield Host')).toBe('Shield Host');
+    expect(canonicalDetachment('Cabalgata del Caos')).toBe('Cabalgata del Caos');
   });
 });

@@ -71,7 +71,9 @@ describe('parsed lists', () => {
 
     await storeList(db, 'PL-BEN', gwList('Orks', 'Kult of Speed'));
     await storeList(db, 'PL-CARA', gwList('Orks', 'Wreckas'));
-    expect(await knownDetachments(db)).toEqual(new Set(['Kult of Speed', 'Wreckas']));
+    const known = await knownDetachments(db);
+    expect(known.has('Kult of Speed') && known.has('Wreckas')).toBe(true);
+    expect(known.has('Kult of Speed and Wreckas')).toBe(false);
     await reparseLists(db, silentLogger);
     expect((await rowOf('PL-ADA')).detachments).toEqual(['Kult of Speed', 'Wreckas']);
 
@@ -132,5 +134,28 @@ describe('parsed lists', () => {
     for (const id of ['PL-ADA', 'PL-BEN', 'PL-CARA', 'PL-DAN']) {
       expect((await rowOf(id)).detachments, id).toEqual(['Lions of the Emperor']);
     }
+  });
+
+  it('translates known detachment names, also inside joined lines', async () => {
+    await storeList(
+      db,
+      'PL-ADA',
+      gwList('Adeptus Custodes', 'Might of the Moritoi and Shield Host'),
+    );
+    await storeList(
+      db,
+      'PL-BEN',
+      gwList('Adeptus Custodes', 'Die Macht der Moritoi und Shield Host'),
+    );
+    await storeList(
+      db,
+      'PL-CARA',
+      gwList('Adeptus Custodes', 'Shield Host, Tharanatoi Hammerblow'),
+    );
+    await storeList(db, 'PL-DAN', gwList('Drukhari', 'Exhibición y matanza'));
+    await tidyDetachments(db);
+    expect((await rowOf('PL-BEN')).detachments).toEqual(['Might of the Moritoi', 'Shield Host']);
+    expect((await rowOf('PL-ADA')).detachments).toEqual(['Might of the Moritoi', 'Shield Host']);
+    expect((await rowOf('PL-DAN')).detachments).toEqual(['Exhibition of Slaughter']);
   });
 });
