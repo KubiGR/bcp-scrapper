@@ -2,7 +2,8 @@
 
 Ideas and follow-ups that aren't scheduled yet. Newest requests first within each section.
 Shipped so far: plans 1–8 (catalogue, lists queue, team analysis, matchups, quick wins, reading
-lists and Top lists, automatic fetching) and hosting with accounts.
+lists and Top lists, automatic fetching), hosting with accounts, 40kCompactor, army-name and
+detachment-name matching (including translations learned from BCP), and the Meta page.
 
 ## Feature ideas
 
@@ -32,10 +33,9 @@ lists and Top lists, automatic fetching) and hosting with accounts.
   they can differ by a day.
 - Matchups: the cross-event drill-down lists games by event name; order by event date instead.
 - The ⚠ "guessed from the list" icon isn't announced by screen readers (`role="img"` + label).
-
 - Meta: archetype sub-rows don't follow the chosen sort or minimum-players dimming (team
   archetypes are never dimmed); the drill-down briefly shows the previous row's players; typing
-  0 in Min players jumps back to 5; the difference can read "−0.0 pp" in red; sort headers lack
+  0 in Min players jumps back to 10; the difference can read "−0.0 pp" in red; sort headers lack
   `aria-sort`.
 
 ## Robustness and hygiene
@@ -47,9 +47,11 @@ lists and Top lists, automatic fetching) and hosting with accounts.
 - Hosting: the `cloudflared` image is `:latest`, not pinned.
 - List reader: a GW-app title line without "(N points)" and no blank line can be taken as the
   army ("(2 CP)" lines aren't excluded); nested parentheses in a header `DETACHMENT:` line produce
-  junk detachments; the template format doesn't straighten curly apostrophes; an "A and B" saved
-  before A and B are known is only split on the next restart; each save reads every list's
-  detachments.
+  junk detachments; the template format doesn't straighten curly apostrophes; each save reads every
+  list's detachments, and every tidy pass re-reads every list's text (fine at thousands of lists).
+- Detachment translations: a translated detachment that only ever appears paired with another
+  (e.g. "Blood Legion y Cabalgata del Caos") can't be learned from BCP's single detachment field;
+  it stays as written.
 - Automatic fetching: an event whose rounds are all done but `pairings_synced_at` is null is
   re-checked every pass and never marked; the 6-hourly catalogue refresh runs even while the
   queue is paused for a rejected login; a list stored under a different id than requested would
