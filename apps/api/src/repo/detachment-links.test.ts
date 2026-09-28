@@ -63,6 +63,22 @@ describe('detachment names', () => {
     ]);
   });
 
+  it('leaves out a faction with one stray list where another uses the detachment in 3+', async () => {
+    for (const id of ['PL-EVE', 'PL-FINN']) {
+      await storeList(db, id, gwList('Chaos Daemons', 'Blood Legion'), 'Blood Legion');
+    }
+    await db.update(players).set({ faction: 'World Eaters' }).where(eq(players.id, 'PL-GIA'));
+    await storeList(db, 'PL-GIA', gwList('World Eaters', 'Blood Legion'), 'Blood Legion');
+    const names = await detachmentNames(db);
+    expect(names.targets.find((t) => t.name === 'Blood Legion')?.factions).toEqual([
+      'Chaos Daemons',
+    ]);
+    // With fewer lists to go by, a second faction still counts.
+    expect(names.targets.find((t) => t.name === 'Shadow Legion')?.factions).toEqual([
+      'Chaos Daemons',
+    ]);
+  });
+
   it('sets apart the names that look foreign', async () => {
     expect((await detachmentNames(db)).foreign).toEqual([
       { name: 'Cabalgata del Caos', lists: 2, factions: ['Chaos Daemons'], marked: false },
@@ -119,6 +135,11 @@ describe('detachment names', () => {
     expect(names.links).toEqual([
       { name: 'Cabalgata del Caos', target: null, factions: ['Chaos Daemons'] },
     ]);
+    // A known detachment of its factions from then on, and one to link other names to.
+    expect(names.targets).toContainEqual({
+      name: 'Cabalgata del Caos',
+      factions: ['Chaos Daemons'],
+    });
   });
 
   it('lists the translations learned from BCP, until one is linked by hand', async () => {

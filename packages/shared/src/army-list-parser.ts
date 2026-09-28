@@ -177,10 +177,15 @@ const WORD_JOINER = /(\s+(?:and|y|und|et|e)\s+)/;
 
 /** A detachment name with every kind of space collapsed and straight apostrophes. */
 export function cleanDetachmentName(name: string): string {
-  return name
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
+  return (
+    name
+      // A non-breaking space garbled on the way (UTF-8 read as Latin-1): "Â" + the space.
+      .replace(/\u00c2\u00a0/g, ' ')
+      .replace(/[\u2010\u2011]/g, '-')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 /** The names a joined detachment line lists ("A, B and C" → A, B, C); one name stays one. */

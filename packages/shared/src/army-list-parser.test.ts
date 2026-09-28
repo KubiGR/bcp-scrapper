@@ -370,6 +370,14 @@ describe('cleanDetachmentName', () => {
     expect(cleanDetachmentName('Lions\u00a0of the  Emperor ')).toBe('Lions of the Emperor');
     expect(cleanDetachmentName('Emperor’s Wrath')).toBe("Emperor's Wrath");
   });
+
+  it('repairs a garbled non-breaking space and straightens non-breaking hyphens', () => {
+    // UTF-8's non-breaking space read as Latin-1 somewhere before BCP: "Â" + the space.
+    expect(cleanDetachmentName('Xenocult\u00c2\u00a0Masses')).toBe('Xenocult Masses');
+    expect(cleanDetachmentName('Rad\u2011zone Corps')).toBe('Rad-zone Corps');
+    // A real "Â" stays.
+    expect(cleanDetachmentName('Needgaârd Oathband')).toBe('Needgaârd Oathband');
+  });
 });
 
 describe('detachmentParts', () => {

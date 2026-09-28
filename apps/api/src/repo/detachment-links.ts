@@ -54,6 +54,19 @@ const armyOf = sql<string | null>`case
   else ${players.faction}
 end`;
 
+/** Lists of a detachment's clear owner before another faction's single list stops counting. */
+const OWNER_LISTS = 3;
+
+/**
+ * The factions a detachment belongs to, from how many lists of each use it: a faction with a
+ * single list is left out when another has OWNER_LISTS or more (most likely a slip on BCP, like a
+ * Genestealer Cult player shown with Khorne Daemonkin).
+ */
+function ownFactions(counts: Map<string, number>): string[] {
+  const clearOwner = [...counts.values()].some((lists) => lists >= OWNER_LISTS);
+  return [...counts].filter(([, lists]) => lists > 1 || !clearOwner).map(([faction]) => faction);
+}
+
 export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> {
   const [bcpRows, storedRows, links, learned] = await Promise.all([
     db
@@ -73,12 +86,19 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
     learnedTranslations(db),
   ]);
 
-  const targets = new Map<string, { name: string; factions: Set<string> }>();
+  // BCP's names, with how many lists of each faction use them.
+  const bcpNames = new Map<string, { name: string; factions: Map<string, number> }>();
   for (const row of bcpRows) {
     const name = cleanDetachmentName(row.name);
-    const target = targets.get(name.toLowerCase()) ?? { name, factions: new Set<string>() };
-    if (row.faction !== null) target.factions.add(row.faction);
-    targets.set(name.toLowerCase(), target);
+    const entry = bcpNames.get(name.toLowerCase()) ?? { name, factions: new Map<string, number>() };
+    if (row.faction !== null) {
+      entry.factions.set(row.faction, (entry.factions.get(row.faction) ?? 0) + 1);
+    }
+    bcpNames.set(name.toLowerCase(), entry);
+  }
+  const targets = new Map<string, { name: string; factions: Set<string> }>();
+  for (const [key, { name, factions }] of bcpNames) {
+    targets.set(key, { name, factions: new Set(ownFactions(factions)) });
   }
   // Linked names are settled; those marked as not English stay listed, apart.
   const settled = new Set(links.filter((link) => !link.foreign).map((link) => link.nameKey));
@@ -95,6 +115,15 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
     entry.players.add(row.playerId);
     if (row.faction !== null) entry.factions.add(row.faction);
     unsure.set(key, entry);
+  }
+
+  // A name marked as its own detachment is a known one of its factions, and one to link others to.
+  for (const link of links) {
+    if (link.foreign || link.target !== null || targets.has(link.nameKey)) continue;
+    targets.set(link.nameKey, {
+      name: link.name,
+      factions: storedFactions.get(link.nameKey) ?? new Set<string>(),
+    });
   }
 
   const names = [...unsure.values()]
