@@ -3,36 +3,33 @@
 Ideas and follow-ups that aren't scheduled yet. Newest requests first within each section.
 Shipped so far: plans 1–8 (catalogue, lists queue, team analysis, matchups, quick wins, reading
 lists and Top lists, automatic fetching), hosting with accounts, 40kCompactor, army-name and
-detachment-name matching (including translations learned from BCP), the Meta page, and Top-N
-list fetching.
+detachment-name matching (translations learned from BCP, Settings → Detachment names with links
+by faction, names not in English kept out of Meta's detachment rows), the Meta page (archetypes
+by default, grouped by popularity; armies view), Top-N list fetching, the phone layout, shareable
+list links, the logo, sortable tables, and a sweep of small fixes (lists export army, automatic
+fetching card, pairings messages, Matchups order, screen-reader ⚠, iPhone icon).
 
 ## Feature ideas
 
-- **More team views on the Meta page.** Factions that go together in teams, whole top-team
-  line-ups, and each faction's record inside team events (left out of the first Meta page).
 - **Pairing process.** Defender/attacker/refusal picks, if a source for them is ever found (BCP
-  doesn't expose them).
+  records only who played whom, by table). Blocked.
+
+Dropped (2026-09-28): faction pairs in teams and top-team line-ups on the Meta page — the data
+exists, but not wanted for now.
 
 ## Things a user would notice
 
-- Lists export shows BCP's faction, not the army guessed from the list.
-- Automatic fetching: the Settings label always says "last 60 days"; with
-  `AUTO_FETCH_ENABLED=false` the switch still shows as on.
-- Pairings: the gate says "N rounds failed" rather than naming the round, and counts a failed
-  event load as a round; Retry on the event page also re-queues the event's failed list jobs.
-- Pairings: during a refresh the progress shows "6/6 rounds" at once; a never-synced event's first
-  estimate covers only the event job; Fetch pairings silently does nothing for a synced event with
-  0 rounds.
+- Pairings: a never-synced event's first estimate covers only the event job, not the rounds it
+  will queue.
 - Finder: a deep search over a future date range offers no Fetch; CoverageNotice and CatalogStatus
   can both toast and poll for the same catalogue run.
 - Sync buttons stay disabled after a lost-track error until the next refetch.
-- The list drawer says "paused" for a list that is mid-fetch while the queue is paused.
 - The resume refusal message still says "restart the API, then resume"; a restart alone clears
   the pause.
 - Top lists: the default range uses the browser's date and the API's UTC date, so around midnight
   they can differ by a day.
-- Matchups: the cross-event drill-down lists games by event name; order by event date instead.
-- The ⚠ "guessed from the list" icon isn't announced by screen readers (`role="img"` + label).
+- The header's "auto: N events left" still reads the stored switch when the server runs without
+  automatic fetching (it shows nothing then only because no automatic jobs exist).
 
 ## Robustness and hygiene
 
