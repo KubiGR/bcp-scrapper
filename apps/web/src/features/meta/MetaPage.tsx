@@ -54,7 +54,8 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
   const expanded = search.expanded?.split('|').filter(Boolean) ?? [];
   const view = search.view ?? 'archetypes';
   const factions = search.factions?.split('|').filter(Boolean) ?? [];
-  const sort = search.sort ?? 'winRate';
+  // Win rate allowing for sample size: a big solid archetype outranks a small lucky one.
+  const sort = search.sort ?? 'reliable';
   const dir = search.dir ?? (sort === 'faction' ? 'asc' : 'desc');
   const onSortChange = (next: { sort: MetaSort; dir: 'asc' | 'desc' } | null) => {
     onSearchChange({ ...search, sort: next?.sort, dir: next?.dir });
@@ -134,11 +135,6 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
                 {view === 'archetypes' ? (
                   <ArchetypeTable
                     rows={meta.data.factions}
-                    totalPlayers={meta.data.totals.players}
-                    grouped={search.grouped ?? true}
-                    onGroupedChange={(grouped) => {
-                      onSearchChange({ ...search, grouped: grouped ? undefined : false });
-                    }}
                     minPlayers={minPlayers}
                     sort={sort}
                     dir={dir}

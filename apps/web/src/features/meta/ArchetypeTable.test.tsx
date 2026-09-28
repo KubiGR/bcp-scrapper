@@ -11,6 +11,7 @@ const greyKnights: MetaRow = {
   share: 0.02,
   games: 10,
   winRate: 0.9,
+  reliableWinRate: 0.82,
   x1: 2,
   x1Share: 1,
   archetypes: [
@@ -20,6 +21,7 @@ const greyKnights: MetaRow = {
       share: 0.02,
       games: 10,
       winRate: 0.9,
+      reliableWinRate: 0.82,
       x1: 2,
       x1Share: 1,
     },
@@ -27,12 +29,19 @@ const greyKnights: MetaRow = {
 };
 
 /** A faction with one archetype. */
-const single = (faction: string, detachment: string, players: number, winRate: number): MetaRow => {
+const single = (
+  faction: string,
+  detachment: string,
+  players: number,
+  winRate: number,
+  reliableWinRate = winRate,
+): MetaRow => {
   const figures = {
     players,
     share: players / 1000,
     games: players * 5,
     winRate,
+    reliableWinRate,
     x1: 0,
     x1Share: 0,
   };
@@ -41,9 +50,6 @@ const single = (faction: string, detachment: string, players: number, winRate: n
 
 const props = {
   rows: [orks, necrons, greyKnights],
-  totalPlayers: 100,
-  grouped: false,
-  onGroupedChange: vi.fn(),
   minPlayers: 5,
   sort: 'winRate' as const,
   dir: 'desc' as const,
@@ -116,66 +122,29 @@ describe('ArchetypeTable', () => {
     expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'faction', dir: 'asc' });
   });
 
-  it('groups by share of players, most popular first, each sorted by win rate', () => {
+  it('sorts by the reliable win rate, so a big solid archetype beats a small lucky one', () => {
+    const onSortChange = vi.fn();
     renderWithProviders(
       <ArchetypeTable
         {...props}
-        grouped
-        totalPlayers={1000}
         rows={[
-          single('Orks', 'Rare Hot', 3, 0.9),
-          single('Necrons', 'Popular Cold', 15, 0.4),
-          single('Aeldari', 'Very Popular', 30, 0.5),
-          single('Tau', 'Popular Hot', 12, 0.6),
-          single('Custodes', 'Played', 6, 0.55),
+          single('Orks', 'Small Lucky', 12, 0.71, 0.52),
+          single('Necrons', 'Big Solid', 200, 0.6, 0.57),
         ]}
         minPlayers={1}
+        sort="reliable"
+        onSortChange={onSortChange}
       />,
     );
-    const lines = screen
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => row.querySelector('td p')?.textContent ?? row.textContent);
-    expect(lines).toEqual([
-      'Very popular · 2%+ of players (20+)',
-      'Very Popular',
-      'Popular · 1–2% (10–19)',
-      'Popular Hot',
-      'Popular Cold',
-      'Played · 0.5–1% (5–9)',
-      'Played',
-      'Rare · under 0.5% (under 5)',
-      'Rare Hot',
-    ]);
+    expect(order()).toEqual(['Big Solid', 'Small Lucky']);
+    expect(screen.getByRole('columnheader', { name: /Reliable/ })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    );
+    expect(within(rowOf('Small Lucky')).getByText('52%')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Win rate/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'winRate', dir: 'desc' });
   });
-
-  it('hides empty groups, and lists everything together when grouping is off', () => {
-    const onGroupedChange = vi.fn();
-    const { rerender } = renderWithProviders(
-      <ArchetypeTable
-        {...props}
-        grouped
-        onGroupedChange={onGroupedChange}
-        totalPlayers={1000}
-        rows={[single('Orks', 'Rare Hot', 3, 0.9), single('Aeldari', 'Very Popular', 30, 0.5)]}
-        minPlayers={1}
-      />,
-    );
-    expect(screen.queryByText(/^Popular ·/)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('switch', { name: 'Group by popularity' }));
-    expect(onGroupedChange).toHaveBeenCalledWith(false);
-    rerender(
-      <ArchetypeTable
-        {...props}
-        totalPlayers={1000}
-        rows={[single('Orks', 'Rare Hot', 3, 0.9), single('Aeldari', 'Very Popular', 30, 0.5)]}
-        minPlayers={1}
-      />,
-    );
-    expect(screen.queryByText(/^Rare ·/)).not.toBeInTheDocument();
-    expect(order()).toEqual(['Rare Hot', 'Very Popular']);
-  });
-
   it('narrows to the chosen factions', () => {
     renderWithProviders(<ArchetypeTable {...props} factions={['Necrons']} />);
     expect(order()).toEqual(['Hypercrypt Legion']);

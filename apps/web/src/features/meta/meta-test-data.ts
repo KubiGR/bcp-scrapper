@@ -6,6 +6,7 @@ export const orks: MetaRow = {
   share: 0.2,
   games: 100,
   winRate: 0.58,
+  reliableWinRate: 0.5,
   x1: 6,
   x1Share: 0.3,
   archetypes: [
@@ -15,10 +16,20 @@ export const orks: MetaRow = {
       share: 0.12,
       games: 60,
       winRate: 0.6,
+      reliableWinRate: 0.52,
       x1: 4,
       x1Share: 1 / 3,
     },
-    { detachments: null, players: 8, share: 0.08, games: 40, winRate: 0.55, x1: 2, x1Share: 0.25 },
+    {
+      detachments: null,
+      players: 8,
+      share: 0.08,
+      games: 40,
+      winRate: 0.55,
+      reliableWinRate: 0.47,
+      x1: 2,
+      x1Share: 0.25,
+    },
   ],
 };
 export const necrons: MetaRow = {
@@ -27,6 +38,7 @@ export const necrons: MetaRow = {
   share: 0.1,
   games: 50,
   winRate: 0.4,
+  reliableWinRate: 0.32,
   x1: 1,
   x1Share: 0.1,
   archetypes: [
@@ -36,6 +48,7 @@ export const necrons: MetaRow = {
       share: 0.1,
       games: 50,
       winRate: 0.4,
+      reliableWinRate: 0.32,
       x1: 1,
       x1Share: 0.1,
     },
@@ -47,6 +60,7 @@ export const tiny: MetaRow = {
   share: 0.02,
   games: 10,
   winRate: 0.9,
+  reliableWinRate: 0.82,
   x1: 2,
   x1Share: 1,
   archetypes: [],

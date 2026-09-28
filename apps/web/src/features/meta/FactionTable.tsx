@@ -37,7 +37,7 @@ export function Figures({
   label,
   onOpen,
 }: {
-  row: Pick<MetaRow, 'players' | 'share' | 'winRate' | 'x1' | 'x1Share'>;
+  row: Pick<MetaRow, 'players' | 'share' | 'winRate' | 'reliableWinRate' | 'x1' | 'x1Share'>;
   label: string;
   onOpen: () => void;
 }) {
@@ -62,6 +62,9 @@ export function Figures({
         <Text size="sm" className="numeric" c={TONE_COLOR[tone]} data-tone={tone} component="span">
           {percent(row.winRate)}
         </Text>
+      </Table.Td>
+      <Table.Td ta="right" className="numeric">
+        {percent(row.reliableWinRate)}
       </Table.Td>
       <Table.Td ta="right" className="numeric" visibleFrom="sm">
         {`${row.x1} · ${percent(row.x1Share)}`}
@@ -88,8 +91,14 @@ export function FactionTable({
   const tableMinWidth = useMatches({ base: 0, sm: 560 });
   const sign = dir === 'asc' ? 1 : -1;
   const dimmed = (row: MetaRow) => row.faction === null || row.players < minPlayers;
-  const metric = (row: Pick<MetaRow, 'players' | 'winRate' | 'x1Share'>) =>
-    sort === 'winRate' ? row.winRate : sort === 'x1' ? row.x1Share : row.players;
+  const metric = (row: Pick<MetaRow, 'players' | 'winRate' | 'reliableWinRate' | 'x1Share'>) =>
+    sort === 'winRate'
+      ? row.winRate
+      : sort === 'reliable'
+        ? row.reliableWinRate
+        : sort === 'x1'
+          ? row.x1Share
+          : row.players;
   const byName = (a: MetaRow, b: MetaRow) =>
     factionName(a.faction).localeCompare(factionName(b.faction));
   const sorted = [...rows].sort(
@@ -139,6 +148,15 @@ export function FactionTable({
             </Table.Th>
             <SortableTh column="winRate" sort={state} onSort={onSort} ta="right">
               Win rate
+            </SortableTh>
+            <SortableTh
+              column="reliable"
+              sort={state}
+              onSort={onSort}
+              ta="right"
+              title="The win rate allowing for how many games there are: the low end of its 95% range. Few games pull it down."
+            >
+              Reliable
             </SortableTh>
             <SortableTh column="x1" sort={state} onSort={onSort} ta="right" visibleFrom="sm">
               X-1 or better

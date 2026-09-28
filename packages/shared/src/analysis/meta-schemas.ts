@@ -10,6 +10,8 @@ const figures = {
   games: count,
   /** (wins + ½ draws) ÷ games. */
   winRate: ratio,
+  /** The win rate allowing for sample size: the low end of its 95% range (Wilson). */
+  reliableWinRate: ratio,
   /** Players who went X-1 or better. */
   x1: count,
   x1Share: ratio,

@@ -2,7 +2,7 @@ import { addDays, MetaResponseSchema, toIsoDate, type DateRange } from '@bcp/sha
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { apiGet } from '../../api/client';
 
-export type MetaSort = 'faction' | 'players' | 'winRate' | 'x1';
+export type MetaSort = 'faction' | 'players' | 'winRate' | 'reliable' | 'x1';
 
 /** The Meta page's URL search. `expanded`: `|`-separated factions ("(unknown)" for none). */
 export interface MetaSearch {
@@ -14,8 +14,6 @@ export interface MetaSearch {
   view?: 'archetypes' | 'armies';
   /** The archetype view's factions, `|`-separated ("(unknown)" for none); unset = all. */
   factions?: string;
-  /** false: the archetype view lists everything together instead of by popularity. */
-  grouped?: boolean;
   sort?: MetaSort;
   /** Sort direction; default high to low (A→Z for faction). */
   dir?: 'asc' | 'desc';

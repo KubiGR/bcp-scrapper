@@ -61,11 +61,26 @@ interface Tally {
   x1: number;
 }
 
+/**
+ * A win rate that allows for sample size: the low end of its 95% Wilson score interval. Few games
+ * pull it towards 0.5 and below; many keep it close to the plain win rate.
+ */
+export function reliableWinRate(points: number, games: number): number {
+  if (games === 0) return 0;
+  const z = 1.96;
+  const p = points / games;
+  const z2 = z * z;
+  const centre = p + z2 / (2 * games);
+  const margin = z * Math.sqrt((p * (1 - p)) / games + z2 / (4 * games * games));
+  return Math.max(0, (centre - margin) / (1 + z2 / games));
+}
+
 const figures = (tally: Tally, total: number) => ({
   players: tally.players,
   share: total === 0 ? 0 : tally.players / total,
   games: tally.games,
   winRate: tally.games === 0 ? 0 : tally.points / tally.games,
+  reliableWinRate: reliableWinRate(tally.points, tally.games),
   x1: tally.x1,
   x1Share: tally.players === 0 ? 0 : tally.x1 / tally.players,
 });

@@ -5,7 +5,7 @@ Shipped so far: plans 1–8 (catalogue, lists queue, team analysis, matchups, qu
 lists and Top lists, automatic fetching), hosting with accounts, 40kCompactor, army-name and
 detachment-name matching (translations learned from BCP, Settings → Detachment names with links
 by faction, names not in English kept out of Meta's detachment rows), the Meta page (archetypes
-by default, grouped by popularity; armies view), Top-N list fetching, the phone layout, shareable
+by default, ranked by a reliable win rate; armies view), Top-N list fetching, the phone layout, shareable
 list links, the logo, sortable tables, account hardening, colour-blind-safe matchup colours with
 the event list in a drawer, event sizes on Top lists, and two sweeps of small fixes.
 

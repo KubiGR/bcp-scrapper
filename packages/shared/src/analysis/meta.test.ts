@@ -46,6 +46,23 @@ describe('computeMeta', () => {
     expect(meta.factions.find((f) => f.faction === 'Necrons')).toMatchObject({ x1: 0, winRate: 0 });
   });
 
+  it('gives a reliable win rate: the low end of a 95% range, so few games count for less', () => {
+    const lucky = computeMeta(
+      Array.from({ length: 12 }, () => row({ faction: 'Orks', wins: 3, losses: 1, draws: 1 })),
+    ).factions[0];
+    const solid = computeMeta(
+      Array.from({ length: 200 }, () => row({ faction: 'Orks', wins: 3, losses: 2, draws: 0 })),
+    ).factions[0];
+    // 70% from 60 games vs 60% from 1,000: the bigger sample is the more reliable result.
+    expect(lucky?.winRate).toBeCloseTo(0.7, 5);
+    expect(lucky?.reliableWinRate).toBeCloseTo(0.575, 3);
+    expect(solid?.winRate).toBeCloseTo(0.6, 5);
+    expect(solid?.reliableWinRate).toBeCloseTo(0.569, 3);
+    expect(
+      computeMeta([row({ wins: 1, losses: 0, draws: 0 })]).factions[0]?.reliableWinRate,
+    ).toBeLessThan(0.5);
+  });
+
   it('treats the same detachments in another order as one archetype', () => {
     const result = computeMeta([
       row({ faction: 'Adeptus Custodes', detachments: ['Shield Host', 'Tharanatoi Hammerblow'] }),
