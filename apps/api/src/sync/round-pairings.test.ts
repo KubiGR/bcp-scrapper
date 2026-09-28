@@ -26,6 +26,24 @@ describe('syncRoundPairings', () => {
     expect(outcome).toEqual({ matchups: 2, games: 4, gamesFrom: 'pairings' });
   });
 
+  it('links each stored game to its team matchup', async () => {
+    await upsertEventDetail(db, await source.getEvent('EVTTEAM0001'));
+    await syncRoundPairings(deps(), { id: 'EVTTEAM0001', isTeamEvent: true }, 1);
+    const matchups = await db
+      .select({ id: teamMatchups.id })
+      .from(teamMatchups)
+      .where(eq(teamMatchups.eventId, 'EVTTEAM0001'));
+    const stored = await db
+      .select({ id: games.id, matchup: games.teamMatchupId })
+      .from(games)
+      .where(eq(games.eventId, 'EVTTEAM0001'));
+    const ids = new Set(matchups.map((m) => m.id));
+    expect(stored.length).toBeGreaterThan(0);
+    expect(stored.every((game) => game.matchup !== null && ids.has(game.matchup))).toBe(true);
+    // Two games per matchup in the sample (2v2 teams).
+    for (const id of ids) expect(stored.filter((game) => game.matchup === id)).toHaveLength(2);
+  });
+
   it('falls back to the event-level endpoint for bracket events, with no VP', async () => {
     await upsertEventDetail(db, await source.getEvent('EVTBRACKET01'));
     const outcome = await syncRoundPairings(deps(), { id: 'EVTBRACKET01', isTeamEvent: true }, 1);
