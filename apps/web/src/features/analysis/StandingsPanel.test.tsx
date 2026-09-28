@@ -43,7 +43,10 @@ describe('StandingsPanel', () => {
             roundCount: 2,
             roundsDone: 2,
             queued: 0,
+            queuedRounds: 0,
             failed: 0,
+            failedRounds: [],
+            loadFailed: false,
             gamesAvailable: true,
           },
         })}

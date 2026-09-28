@@ -118,8 +118,14 @@ export const EventPairingsSchema = z.object({
   roundsDone: z.number().int().nonnegative(),
   /** Open event/pairings jobs for this event. */
   queued: z.number().int().nonnegative(),
+  /** Of those, the rounds still to fetch (without the event load that queues them). */
+  queuedRounds: z.number().int().nonnegative(),
   /** Rounds, or the event load, whose newest fetch failed. */
   failed: z.number().int().nonnegative(),
+  /** The rounds whose newest fetch failed, by number. */
+  failedRounds: z.array(z.number().int()),
+  /** The event load (which queues the rounds) failed. */
+  loadFailed: z.boolean(),
   /** False when team matchups are stored but BCP served no individual games. */
   gamesAvailable: z.boolean(),
 });

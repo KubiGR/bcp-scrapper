@@ -35,7 +35,10 @@ export async function getEventDetail(
       roundCount: row.roundCount,
       roundsDone: stored.rounds,
       queued: jobs.queued,
+      queuedRounds: jobs.queuedRounds,
       failed: jobs.failed,
+      failedRounds: jobs.failedRounds,
+      loadFailed: jobs.loadFailed,
       gamesAvailable: stored.matchups === 0 || stored.games > 0,
     },
   };

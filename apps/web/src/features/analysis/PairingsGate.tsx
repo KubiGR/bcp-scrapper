@@ -2,7 +2,7 @@ import type { EventDetail } from '@bcp/shared';
 import { Button, Group, Skeleton, Stack, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Panel } from '../../components/Panel';
 import { formatDuration } from '../../lib/format';
 import { fetchQueueQuery, retryFailed } from '../fetch-queue/fetch-queue-queries';
@@ -10,6 +10,18 @@ import { queuePairings } from './analysis-queries';
 import { useRefreshWhenPairingsSettle } from './useRefreshWhenPairingsSettle';
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+
+/** "2", "2 and 5", "2, 3 and 5". */
+const listOf = (numbers: number[]) =>
+  numbers.length <= 1
+    ? numbers.join('')
+    : `${numbers.slice(0, -1).join(', ')} and ${String(numbers.at(-1))}`;
+
+/** What failed: the event load (then no rounds are known yet), or the rounds by number. */
+function failureText(failedRounds: number[], loadFailed: boolean): string {
+  if (loadFailed) return 'Loading the event from BCP failed';
+  return `${plural(failedRounds.length, 'Round', 'Rounds')} ${listOf(failedRounds)} failed`;
+}
 
 /**
  * Wraps an analysis tab: offers to fetch pairings when there are none, shows progress while the
@@ -23,15 +35,25 @@ export function PairingsGate({ event, children }: { event: EventDetail; children
       queryClient.invalidateQueries({ queryKey: ['event', event.bcpId] }),
       queryClient.invalidateQueries({ queryKey: fetchQueueQuery.queryKey }),
     ]);
+  const [nothingToFetch, setNothingToFetch] = useState(false);
   const queue = useMutation({
     mutationFn: () => queuePairings(event.bcpId),
-    onSuccess: refresh,
+    onSuccess: async (result) => {
+      setNothingToFetch(!result.eventQueued && result.queuedRounds === 0);
+      await refresh();
+    },
     onError: (error) => {
       notifications.show({ color: 'red', title: 'Pairings', message: error.message });
     },
   });
-  const retry = useMutation({ mutationFn: () => retryFailed(event.bcpId), onSuccess: refresh });
-  const { roundsDone, roundCount, queued, failed, gamesAvailable } = event.pairings;
+  // Only the pairings: the event's failed lists are retried from the players tab.
+  const retry = useMutation({
+    mutationFn: () => retryFailed(event.bcpId, 'pairings'),
+    onSuccess: refresh,
+  });
+  const { roundsDone, roundCount, queued, queuedRounds, failed, failedRounds, loadFailed } =
+    event.pairings;
+  const { gamesAvailable } = event.pairings;
   useRefreshWhenPairingsSettle(event.bcpId, queued);
   const hasData = roundsDone > 0;
   const fetching = queued > 0;
@@ -40,8 +62,20 @@ export function PairingsGate({ event, children }: { event: EventDetail; children
     <Stack gap="md">
       {fetching && (
         <Text size="sm" c="dimmed" aria-live="polite">
-          Pairings · <span className="numeric">{roundsDone}</span>/
-          <span className="numeric">{roundCount}</span> rounds
+          {queuedRounds === 0 ? (
+            // The event load comes first; it queues the rounds.
+            'Loading the event from BCP…'
+          ) : roundsDone >= roundCount ? (
+            <>
+              Refreshing pairings · <span className="numeric">{queuedRounds}</span>{' '}
+              {plural(queuedRounds, 'round', 'rounds')} left
+            </>
+          ) : (
+            <>
+              Pairings · <span className="numeric">{roundsDone}</span>/
+              <span className="numeric">{roundCount}</span> rounds
+            </>
+          )}
           {event.queueSeconds !== null && (
             <>
               {' '}
@@ -53,7 +87,7 @@ export function PairingsGate({ event, children }: { event: EventDetail; children
       {failed > 0 && !fetching && (
         <Group gap="sm">
           <Text size="sm" c="red">
-            <span className="numeric">{failed}</span> {plural(failed, 'round', 'rounds')} failed
+            {failureText(failedRounds, loadFailed)}
           </Text>
           <Button
             size="compact-xs"
@@ -112,6 +146,11 @@ export function PairingsGate({ event, children }: { event: EventDetail; children
             >
               Fetch pairings
             </Button>
+            {nothingToFetch && (
+              <Text size="sm" c="dimmed" aria-live="polite">
+                BCP lists no rounds for this event yet.
+              </Text>
+            )}
           </Stack>
         </Panel>
       )}

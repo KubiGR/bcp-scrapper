@@ -128,7 +128,10 @@ describe('EventDetailSchema', () => {
         roundCount: 2,
         roundsDone: 0,
         queued: 0,
+        queuedRounds: 0,
         failed: 0,
+        failedRounds: [],
+        loadFailed: false,
         gamesAvailable: true,
       },
     };

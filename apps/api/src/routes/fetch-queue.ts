@@ -12,7 +12,11 @@ import { parseInput } from '../validation';
 import { requireEvent } from './require-event';
 import { requireJson } from './require-json';
 
-const RetryFailedSchema = z.object({ eventId: z.string().min(1).optional() });
+const RetryFailedSchema = z.object({
+  eventId: z.string().min(1).optional(),
+  /** `pairings`: just the event's pairings, leaving its failed lists. */
+  only: z.enum(['pairings']).optional(),
+});
 
 export function fetchQueueRoutes(deps: {
   db: Db;
@@ -45,11 +49,11 @@ export function fetchQueueRoutes(deps: {
         return c.json(await queueEventPairings(deps, c.req.param('id'), USER_WAITING_PRIORITY));
       })
       .post('/fetch-queue/retry-failed', requireJson, async (c) => {
-        const { eventId } = parseInput(
+        const { eventId, only } = parseInput(
           RetryFailedSchema,
           await c.req.json<unknown>().catch(() => null),
         );
-        return c.json({ requeued: await retryFailedJobs(db, eventId) });
+        return c.json({ requeued: await retryFailedJobs(db, eventId, only) });
       })
       .get('/fetch-queue', async (c) => c.json(await fetchQueue.state()))
       .post('/fetch-queue/pause', requireJson, async (c) => {

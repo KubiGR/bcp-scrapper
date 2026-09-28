@@ -17,10 +17,11 @@ export const fetchQueueQuery = queryOptions({
 export const pauseQueue = () => apiPost('/api/fetch-queue/pause', {}, FetchQueueStateSchema);
 export const resumeQueue = () => apiPost('/api/fetch-queue/resume', {}, FetchQueueStateSchema);
 
-export const retryFailed = (eventId?: string) =>
+/** `only: 'pairings'`: just the event's pairings, leaving its failed lists. */
+export const retryFailed = (eventId?: string, only?: 'pairings') =>
   apiPost(
     '/api/fetch-queue/retry-failed',
-    eventId === undefined ? {} : { eventId },
+    { ...(eventId === undefined ? {} : { eventId }), ...(only === undefined ? {} : { only }) },
     z.object({ requeued: z.number().int() }),
   );
 

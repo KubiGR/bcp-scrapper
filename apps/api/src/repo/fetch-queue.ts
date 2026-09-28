@@ -254,7 +254,12 @@ export async function cancelQueuedLists(db: Db, eventId: string): Promise<number
  * target's newest row is retried: a failure superseded by a newer request (open or done) stays
  * as history, so retrying never collides with an open row or refetches an older list.
  */
-export async function retryFailedJobs(db: Db, eventId?: string): Promise<number> {
+/** `only`: just the event's pairings (event loads and rounds), leaving its failed lists. */
+export async function retryFailedJobs(
+  db: Db,
+  eventId?: string,
+  only?: 'pairings',
+): Promise<number> {
   const newer = alias(fetchQueue, 'newer');
   const rows = await db
     .update(fetchQueue)
@@ -273,6 +278,7 @@ export async function retryFailedJobs(db: Db, eventId?: string): Promise<number>
         eq(fetchQueue.status, 'failed'),
         or(isNull(fetchQueue.errorCode), ne(fetchQueue.errorCode, NO_LIST_CODE)),
         eventId === undefined ? undefined : eq(fetchQueue.eventId, eventId),
+        only === 'pairings' ? inArray(fetchQueue.kind, [...PAIRINGS_KINDS]) : undefined,
         notExists(
           db
             .select({ id: newer.id })
@@ -358,15 +364,22 @@ export async function queueTotals(
 }
 
 /**
- * Open pairings work for an event, and failures: rounds whose newest pairings-round job failed,
- * plus one when the event's newest event job (the load that queues the rounds) failed.
+ * Open pairings work for an event, and failures: rounds whose newest pairings-round job failed
+ * (by number), and whether the event's newest event job (the load that queues the rounds) failed.
+ * `failed` counts both; `queuedRounds` is the open round jobs, without the event load.
  */
 export async function eventPairingsJobs(
   db: Db,
   eventId: string,
-): Promise<{ queued: number; failed: number }> {
-  const [open] = await db
-    .select({ n: count() })
+): Promise<{
+  queued: number;
+  queuedRounds: number;
+  failed: number;
+  failedRounds: number[];
+  loadFailed: boolean;
+}> {
+  const open = await db
+    .select({ kind: fetchQueue.kind })
     .from(fetchQueue)
     .where(
       and(
@@ -379,9 +392,15 @@ export async function eventPairingsJobs(
     db,
     and(eq(fetchQueue.eventId, eventId), inArray(fetchQueue.kind, [...PAIRINGS_KINDS])),
   );
+  const failed = newest.filter((row) => row.status === 'failed');
   return {
-    queued: open?.n ?? 0,
-    failed: newest.filter((row) => row.status === 'failed').length,
+    queued: open.length,
+    queuedRounds: open.filter((row) => row.kind === 'pairings-round').length,
+    failed: failed.length,
+    failedRounds: failed
+      .flatMap((row) => (row.kind === 'pairings-round' && row.round !== null ? [row.round] : []))
+      .sort((a, b) => a - b),
+    loadFailed: failed.some((row) => row.kind === 'event'),
   };
 }
 

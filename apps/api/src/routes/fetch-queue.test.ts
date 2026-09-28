@@ -238,6 +238,18 @@ describe('fetch queue routes', () => {
     expect(await queue({ playerIds: ['PL-EVE'] })).toMatchObject({ queued: 1 });
   });
 
+  it('can retry just an event’s pairings', async () => {
+    expect(
+      await json(
+        await send('POST', '/api/fetch-queue/retry-failed', { eventId: EVENT, only: 'pairings' }),
+      ),
+    ).toEqual({ requeued: 0 });
+    expect(
+      (await send('POST', '/api/fetch-queue/retry-failed', { eventId: EVENT, only: 'lists' }))
+        .status,
+    ).toBe(400);
+  });
+
   it('retries a retryable failure on request, and the worker then fetches it', async () => {
     await queue({ playerIds: ['PL-ADA'] });
     const claimed = await claimNextJob(db, new Date(Date.now() + 60_000));

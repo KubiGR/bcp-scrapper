@@ -115,7 +115,16 @@ describe('event routes', () => {
       },
       syncs: { event: null },
       queueSeconds: null,
-      pairings: { syncedAt: null, roundsDone: 0, queued: 0, failed: 0, gamesAvailable: true },
+      pairings: {
+        syncedAt: null,
+        roundsDone: 0,
+        queued: 0,
+        queuedRounds: 0,
+        failed: 0,
+        failedRounds: [],
+        loadFailed: false,
+        gamesAvailable: true,
+      },
     });
     expect((await app.request('/api/events/NOPE')).status).toBe(404);
   });
