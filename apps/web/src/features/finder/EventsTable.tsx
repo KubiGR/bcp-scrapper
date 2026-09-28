@@ -1,5 +1,5 @@
 import type { EventListItem, EventListResponse } from '@bcp/shared';
-import { Text, UnstyledButton } from '@mantine/core';
+import { Text, UnstyledButton, type MantineTheme } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
 import { EventStatusBadges } from '../../components/EventStatusBadges';
 import { Panel } from '../../components/Panel';
@@ -15,6 +15,14 @@ interface EventsTableProps {
   onOpen: (eventId: string) => void;
   emptyText: string;
 }
+
+/**
+ * Date, place, size and rounds get their own columns from tablet width up; on phones, a line under
+ * the name.
+ */
+const wide = (theme: MantineTheme) => `(min-width: ${theme.breakpoints.sm})`;
+const placeOf = (event: EventListItem) =>
+  [event.city, event.country].filter(Boolean).join(', ') || '—';
 
 export function EventsTable({
   response,
@@ -44,6 +52,7 @@ export function EventsTable({
           {
             accessor: 'startDate',
             title: 'Date',
+            visibleMediaQuery: wide,
             render: (event) => (
               <Text size="sm" className="numeric">
                 {formatEventDates(event.startDate, event.endDate)}
@@ -54,28 +63,35 @@ export function EventsTable({
             accessor: 'name',
             title: 'Tournament',
             render: (event) => (
-              <UnstyledButton
-                className={classes.eventName}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpen(event.bcpId);
-                }}
-              >
-                <Text component="span" size="sm" fw={500}>
-                  {event.name}
+              <>
+                <UnstyledButton
+                  className={classes.eventName}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpen(event.bcpId);
+                  }}
+                >
+                  <Text component="span" size="sm" fw={500}>
+                    {event.name}
+                  </Text>
+                </UnstyledButton>
+                <Text size="xs" c="dimmed" hiddenFrom="sm">
+                  {`${formatEventDates(event.startDate, event.endDate)} · ${placeOf(event)} · ${formatEventSize(event)}`}
                 </Text>
-              </UnstyledButton>
+              </>
             ),
           },
           {
             accessor: 'country',
             title: 'Location',
-            render: (event) => [event.city, event.country].filter(Boolean).join(', ') || '—',
+            visibleMediaQuery: wide,
+            render: placeOf,
           },
           {
             accessor: 'playerCount',
             title: 'Size',
             textAlign: 'right',
+            visibleMediaQuery: wide,
             render: (event) => (
               <Text size="sm" className="numeric">
                 {formatEventSize(event)}
@@ -86,6 +102,7 @@ export function EventsTable({
             accessor: 'roundCount',
             title: 'Rounds',
             textAlign: 'right',
+            visibleMediaQuery: wide,
             render: (event) => (
               <span className="numeric">{event.roundCount > 0 ? event.roundCount : '—'}</span>
             ),

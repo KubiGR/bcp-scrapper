@@ -43,6 +43,7 @@ export function AppLayout() {
                 onClick={menu.toggle}
                 hiddenFrom={NAV_BREAKPOINT}
                 size="sm"
+                className={classes.burger}
                 aria-label="Open menu"
                 aria-expanded={menuOpen}
               />

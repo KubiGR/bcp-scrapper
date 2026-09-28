@@ -1,5 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { formatEventDates } from '../../lib/format';
 import { renderWithProviders } from '../../test/render';
 import { anEvent } from '../../test/sample-data';
 import { EventsTable } from './EventsTable';
@@ -70,6 +71,22 @@ describe('EventsTable', () => {
     expect(screen.getByText('Rounds')).toBeInTheDocument();
     expect(screen.getByText('5')).toBeInTheDocument();
     expect(screen.getByText('—')).toBeInTheDocument();
+  });
+
+  it('names the dates, place and size under the name too, for phones where those columns are hidden', () => {
+    const event = anEvent({ city: 'Athens', country: 'Greece', playerCount: 44, teamCount: null });
+    renderWithProviders(
+      <EventsTable
+        {...props}
+        onOpen={vi.fn()}
+        response={{ items: [event], total: 1, page: 1, pageSize: 25 }}
+      />,
+    );
+    const line = `${formatEventDates(event.startDate, event.endDate)} · Athens, Greece · 44 players`;
+    // Compared raw: the dates hold a thin space the default text matcher would normalize.
+    expect(
+      screen.getByText((_, element) => element?.tagName === 'P' && element.textContent === line),
+    ).toBeInTheDocument();
   });
 
   it('shows the empty text', () => {
