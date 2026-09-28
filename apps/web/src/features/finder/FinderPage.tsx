@@ -55,6 +55,11 @@ export function FinderPage() {
         <ErrorState error={events.error} onRetry={() => void events.refetch()} />
       ) : (
         <EventsTable
+          sort={search.sort}
+          dir={search.dir}
+          onSortChange={(next) => {
+            update({ sort: next?.sort ?? 'date', dir: next?.dir ?? 'desc', page: 1 });
+          }}
           response={events.data}
           fetching={events.isFetching}
           page={search.page}

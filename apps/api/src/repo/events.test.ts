@@ -121,6 +121,17 @@ describe('searchEvents', () => {
     ]);
   });
 
+  it('sorts the other way when asked: smallest or oldest first', async () => {
+    const ids = async (input: Record<string, string>) =>
+      (await searchEvents(db, query(input), ALL_EVENTS)).items.map((e) => e.bcpId);
+    expect(await ids({ sort: 'players', dir: 'asc' })).toEqual([
+      'EVTSMALL001',
+      'EVTTEAM0001',
+      'EVTSINGLE01',
+    ]);
+    expect(await ids({ dir: 'asc' })).toEqual((await ids({})).reverse());
+  });
+
   it('treats % and _ in the search text literally', async () => {
     expect((await searchEvents(db, query({ q: '%' }), ALL_EVENTS)).total).toBe(0);
   });

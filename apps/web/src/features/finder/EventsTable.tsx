@@ -5,9 +5,21 @@ import { EventStatusBadges } from '../../components/EventStatusBadges';
 import { Panel } from '../../components/Panel';
 import { formatEventDates, formatEventSize } from '../../lib/format';
 import classes from './EventsTable.module.css';
-import { FINDER_PAGE_SIZE } from './finder-search';
+import { FINDER_PAGE_SIZE, type FinderSearch } from './finder-search';
+
+type EventSort = FinderSearch['sort'];
+type SortDir = FinderSearch['dir'];
+const SORT_BY_ACCESSOR: Partial<Record<string, EventSort>> = {
+  startDate: 'date',
+  playerCount: 'players',
+};
+const ACCESSOR_BY_SORT: Record<EventSort, string> = { date: 'startDate', players: 'playerCount' };
 
 interface EventsTableProps {
+  /** The server's sort (the table is paged there); `onSortChange(null)` goes back to newest first. */
+  sort: EventSort;
+  dir: SortDir;
+  onSortChange: (next: { sort: EventSort; dir: SortDir } | null) => void;
   response: EventListResponse | undefined;
   fetching: boolean;
   page: number;
@@ -25,6 +37,9 @@ const placeOf = (event: EventListItem) =>
   [event.city, event.country].filter(Boolean).join(', ') || '—';
 
 export function EventsTable({
+  sort,
+  dir,
+  onSortChange,
   response,
   fetching,
   page,
@@ -45,6 +60,15 @@ export function EventsTable({
         recordsPerPage={FINDER_PAGE_SIZE}
         page={page}
         onPageChange={onPageChange}
+        sortStatus={{ columnAccessor: ACCESSOR_BY_SORT[sort], direction: dir }}
+        onSortStatusChange={({ columnAccessor }) => {
+          const key = SORT_BY_ACCESSOR[String(columnAccessor)];
+          if (key === undefined) return;
+          // Newest or biggest first, then the other way, then back to the default.
+          if (key !== sort) onSortChange({ sort: key, dir: 'desc' });
+          else if (dir === 'desc') onSortChange({ sort: key, dir: 'asc' });
+          else onSortChange(null);
+        }}
         onRowClick={({ record }) => {
           onOpen(record.bcpId);
         }}
@@ -52,6 +76,7 @@ export function EventsTable({
           {
             accessor: 'startDate',
             title: 'Date',
+            sortable: true,
             visibleMediaQuery: wide,
             render: (event) => (
               <Text size="sm" className="numeric">
@@ -90,6 +115,7 @@ export function EventsTable({
           {
             accessor: 'playerCount',
             title: 'Size',
+            sortable: true,
             textAlign: 'right',
             visibleMediaQuery: wide,
             render: (event) => (

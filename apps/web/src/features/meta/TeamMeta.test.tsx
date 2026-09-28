@@ -24,6 +24,29 @@ describe('TeamMeta', () => {
     expect(cell).toHaveAttribute('data-tone', 'even');
   });
 
+  it('sorts factions on a column header, small ones staying last', () => {
+    renderWithProviders(
+      <TeamMeta
+        rows={[
+          row({ faction: 'Orks', allShare: 0.1, difference: 0.05 }),
+          row({ faction: 'Necrons', allShare: 0.3, difference: -0.02 }),
+          row({ faction: 'Aeldari', allShare: 0.9, allSlots: 2 }),
+        ]}
+        eventsCounted={1}
+        minPlayers={10}
+      />,
+    );
+    const factions = () =>
+      screen
+        .getAllByRole('row')
+        .slice(1)
+        // The first cell also holds the expand arrow.
+        .map((r) => r.querySelector('td')?.textContent.replace(/^[▸▾]/, ''));
+    expect(factions()).toEqual(['Orks', 'Necrons', 'Aeldari']);
+    fireEvent.click(screen.getByRole('button', { name: 'All teams' }));
+    expect(factions()).toEqual(['Necrons', 'Orks', 'Aeldari']);
+  });
+
   it('dims detachment rows below the minimum', () => {
     renderWithProviders(
       <TeamMeta

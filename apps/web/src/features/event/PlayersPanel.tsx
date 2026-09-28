@@ -167,7 +167,9 @@ const PLAYER_SORT = {
   faction: (p) => p.faction,
   detachments: (p) => (p.detachments.length > 0 ? p.detachments.join(' + ') : null),
   disposition: (p) => p.disposition,
-  wins: (p) => p.wins * 1_000_000 + p.draws * 1_000 - p.losses,
+  // No games is no record: blank, so last either way.
+  wins: (p) =>
+    p.wins + p.losses + p.draws === 0 ? null : p.wins * 1_000_000 + p.draws * 1_000 - p.losses,
   listStatus: (p) => p.listStatus,
 } satisfies Record<string, SortValue<EventPlayer>>;
 type PlayerSortKey = keyof typeof PLAYER_SORT;

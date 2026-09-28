@@ -14,7 +14,7 @@ const search = (changes: Partial<FinderSearch>): FinderSearch => ({ ...defaults,
 
 describe('FinderSearchSchema', () => {
   it('defaults to the latest view of 40+ player events, newest first', () => {
-    expect(defaults).toEqual({ size: '40', type: 'all', sort: 'date', page: 1 });
+    expect(defaults).toEqual({ size: '40', type: 'all', sort: 'date', dir: 'desc', page: 1 });
   });
 
   it('falls back to defaults for garbage instead of failing', () => {
@@ -27,7 +27,7 @@ describe('FinderSearchSchema', () => {
         sort: 1,
         page: -3,
       }),
-    ).toEqual({ size: '40', type: 'all', sort: 'date', page: 1 });
+    ).toEqual({ size: '40', type: 'all', sort: 'date', dir: 'desc', page: 1 });
   });
 
   it('falls back to the default for the removed 16+ preset, e.g. from an old link', () => {
@@ -35,6 +35,7 @@ describe('FinderSearchSchema', () => {
       size: '40',
       type: 'all',
       sort: 'date',
+      dir: 'desc',
       page: 1,
     });
   });
@@ -98,5 +99,15 @@ describe('toEventsQueryString', () => {
       q: 'open',
       country: 'Germany',
     });
+  });
+});
+
+describe('toEventsQueryString direction', () => {
+  it('asks for oldest or smallest first only when turned around', () => {
+    const now = new Date('2026-09-28T12:00:00Z');
+    const base = FinderSearchSchema.parse({});
+    expect(new URLSearchParams(toEventsQueryString(base, now)).get('dir')).toBeNull();
+    const turned = FinderSearchSchema.parse({ sort: 'players', dir: 'asc' });
+    expect(new URLSearchParams(toEventsQueryString(turned, now)).get('dir')).toBe('asc');
   });
 });

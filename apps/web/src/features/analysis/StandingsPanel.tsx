@@ -1,9 +1,10 @@
-import type { EventDetail, StandingCell } from '@bcp/shared';
+import type { EventDetail, StandingCell, StandingRow } from '@bcp/shared';
 import { Skeleton, Table, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
+import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { standingsQuery } from './analysis-queries';
 import { formatPoints, formatTotals, outcomeLabel } from './format';
 
@@ -16,8 +17,20 @@ function Cell({ cell }: { cell: StandingCell | null }) {
   );
 }
 
+/** How the columns sort; W-L-D like standings: most wins, then draws, then fewest losses. */
+const STANDING_SORT = {
+  placing: (row) => row.placing,
+  team: (row) => row.team.name,
+  record: ({ totals: t }) =>
+    t.wins + t.losses + t.draws === 0 ? null : t.wins * 1_000_000 + t.draws * 1_000 - t.losses,
+  points: (row) => row.totals.points,
+} satisfies Record<string, SortValue<StandingRow>>;
+
 export function StandingsPanel({ event }: { event: EventDetail }) {
   const standings = useQuery(standingsQuery(event.bcpId, event.pairings.queued > 0));
+  const { sorted, sort, toggle } = useTableSort(standings.data?.teams ?? [], STANDING_SORT, null, {
+    placing: 'asc',
+  });
   if (standings.isPending) return <Skeleton height={200} />;
   if (standings.error) {
     return <ErrorState error={standings.error} onRetry={() => void standings.refetch()} />;
@@ -31,19 +44,27 @@ export function StandingsPanel({ event }: { event: EventDetail }) {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th ta="right">#</Table.Th>
-              <Table.Th>Team</Table.Th>
+              <SortableTh column="placing" sort={sort} onSort={toggle} ta="right">
+                #
+              </SortableTh>
+              <SortableTh column="team" sort={sort} onSort={toggle}>
+                Team
+              </SortableTh>
               {rounds.map((round) => (
                 <Table.Th key={round.round}>
                   {round.bracket ? `R${round.round} · Bracket` : `R${round.round}`}
                 </Table.Th>
               ))}
-              <Table.Th ta="right">W-L-D</Table.Th>
-              <Table.Th ta="right">Points</Table.Th>
+              <SortableTh column="record" sort={sort} onSort={toggle} ta="right">
+                W-L-D
+              </SortableTh>
+              <SortableTh column="points" sort={sort} onSort={toggle} ta="right">
+                Points
+              </SortableTh>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {teams.map((row) => (
+            {sorted.map((row) => (
               <Table.Tr key={row.team.id}>
                 <Table.Td ta="right" className="numeric">
                   {row.placing ?? '—'}

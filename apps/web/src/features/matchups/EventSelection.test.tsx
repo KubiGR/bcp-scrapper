@@ -30,6 +30,29 @@ describe('EventSelection', () => {
     expect(checkbox).toBeChecked();
   });
 
+  it('sorts the events on a column header', async () => {
+    stubFetchRoutes({});
+    renderWithRouter(
+      <EventSelection
+        events={[
+          anEvent({ id: 'A', name: 'Zeta Open', playerCount: 40 }),
+          anEvent({ id: 'B', name: 'Alpha Cup', playerCount: 120 }),
+        ]}
+        exclude={[]}
+        include={[]}
+        onChange={vi.fn()}
+      />,
+    );
+    await screen.findByRole('link', { name: 'Zeta Open' });
+    const names = () => screen.getAllByRole('link').map((link) => link.textContent);
+    fireEvent.click(screen.getByRole('button', { name: 'Event' }));
+    expect(names()).toEqual(['Alpha Cup', 'Zeta Open']);
+    fireEvent.click(screen.getByRole('button', { name: 'Size' }));
+    expect(names()).toEqual(['Alpha Cup', 'Zeta Open']);
+    fireEvent.click(screen.getByRole('button', { name: /Size/ }));
+    expect(names()).toEqual(['Zeta Open', 'Alpha Cup']);
+  });
+
   it('shows the pairings state badge text for fetching, partial and no-pairings events', async () => {
     stubFetchRoutes({});
     renderWithRouter(

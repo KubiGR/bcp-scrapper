@@ -60,6 +60,23 @@ describe('DetachmentNamesCard', () => {
     expect(known.queryByText('War Horde')).not.toBeInTheDocument();
   });
 
+  it('sorts the names on a column header', async () => {
+    stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': names() });
+    renderWithProviders(<DetachmentNamesCard />);
+    await screen.findByText('Cabalgata del Caos');
+    const table = screen.getAllByRole('table')[0];
+    if (table === undefined) throw new Error('no table');
+    const order = () =>
+      within(table)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.querySelector('td')?.textContent);
+    expect(order()).toEqual(['Cabalgata del Caos', 'Legion de Sangre']);
+    fireEvent.click(within(table).getByRole('button', { name: 'Name in lists' }));
+    fireEvent.click(within(table).getByRole('button', { name: /Name in lists/ }));
+    expect(order()).toEqual(['Legion de Sangre', 'Cabalgata del Caos']);
+  });
+
   it('switches faction, offering only that faction’s detachments and links', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': names() });
     renderWithProviders(<DetachmentNamesCard />);

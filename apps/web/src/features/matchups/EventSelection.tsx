@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnchorLink } from '../../components/AnchorLink';
 import { Panel } from '../../components/Panel';
 import { formatDuration, formatEventSize, formatIsoDay, plural } from '../../lib/format';
+import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { fetchQueueQuery } from '../fetch-queue/fetch-queue-queries';
 import { queueManyPairingsChunked } from './matchups-queries';
 
@@ -16,6 +17,13 @@ const STATE_LABEL: Record<PairingsState, string> = {
 };
 
 const DIMMED_STATES: PairingsState[] = ['partial', 'missing'];
+
+const EVENT_SORT = {
+  name: (event) => event.name,
+  date: (event) => Date.parse(event.startDate),
+  size: (event) => event.playerCount,
+  pairings: (event) => STATE_LABEL[event.pairings],
+} satisfies Record<string, SortValue<MatchupEvent>>;
 
 interface EventSelectionProps {
   events: MatchupEvent[];
@@ -29,6 +37,7 @@ interface EventSelectionProps {
  * whose pairings are missing or partial. */
 export function EventSelection({ events, exclude, include, onChange }: EventSelectionProps) {
   const queryClient = useQueryClient();
+  const { sorted, sort, toggle: sortBy } = useTableSort(events, EVENT_SORT);
   const sync = useMutation({
     mutationFn: (eventIds: string[]) => queueManyPairingsChunked(eventIds),
     onSuccess: async (result) => {
@@ -124,14 +133,22 @@ export function EventSelection({ events, exclude, include, onChange }: EventSele
                       }}
                     />
                   </Table.Th>
-                  <Table.Th>Event</Table.Th>
-                  <Table.Th>Date</Table.Th>
-                  <Table.Th>Size</Table.Th>
-                  <Table.Th>Pairings</Table.Th>
+                  <SortableTh column="name" sort={sort} onSort={sortBy}>
+                    Event
+                  </SortableTh>
+                  <SortableTh column="date" sort={sort} onSort={sortBy}>
+                    Date
+                  </SortableTh>
+                  <SortableTh column="size" sort={sort} onSort={sortBy}>
+                    Size
+                  </SortableTh>
+                  <SortableTh column="pairings" sort={sort} onSort={sortBy}>
+                    Pairings
+                  </SortableTh>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {events.map((event) => (
+                {sorted.map((event) => (
                   <Table.Tr key={event.id}>
                     <Table.Td>
                       <Checkbox

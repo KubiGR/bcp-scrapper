@@ -2,6 +2,7 @@ import type { TeamMetaRow } from '@bcp/shared';
 import { ActionIcon, Table, Text } from '@mantine/core';
 import { Fragment, useState } from 'react';
 import { plural } from '../../lib/format';
+import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { factionKey } from './FactionTable';
 import { percent } from './meta-queries';
 
@@ -42,6 +43,14 @@ function Slots({ row }: { row: Omit<TeamMetaRow, 'faction' | 'archetypes'> }) {
   );
 }
 
+const TEAM_META_SORT = {
+  faction: (row) => row.faction,
+  topSlots: (row) => row.topSlots,
+  topShare: (row) => row.topShare,
+  allShare: (row) => row.allShare,
+  difference: (row) => row.difference,
+} satisfies Record<string, SortValue<TeamMetaRow>>;
+
 /** Which factions (and archetypes) top-25 % teams field more often than teams overall. */
 export function TeamMeta({
   rows,
@@ -54,7 +63,9 @@ export function TeamMeta({
 }) {
   const [open, setOpen] = useState<string[]>([]);
   const dimmed = (row: TeamMetaRow) => row.faction === null || row.allSlots < minPlayers;
-  const sorted = [...rows].sort((a, b) => Number(dimmed(a)) - Number(dimmed(b)));
+  const { sorted: bySort, sort, toggle } = useTableSort(rows, TEAM_META_SORT);
+  // Whatever the column, small factions and the Unknown one stay last.
+  const sorted = [...bySort].sort((a, b) => Number(dimmed(a)) - Number(dimmed(b)));
   return (
     <>
       <Text size="sm" c="dimmed" mb="xs">
@@ -65,11 +76,21 @@ export function TeamMeta({
         <Table verticalSpacing="xs">
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Faction</Table.Th>
-              <Table.Th ta="right">In top teams</Table.Th>
-              <Table.Th ta="right">Top share</Table.Th>
-              <Table.Th ta="right">All teams</Table.Th>
-              <Table.Th ta="right">Difference</Table.Th>
+              <SortableTh column="faction" sort={sort} onSort={toggle}>
+                Faction
+              </SortableTh>
+              <SortableTh column="topSlots" sort={sort} onSort={toggle} ta="right">
+                In top teams
+              </SortableTh>
+              <SortableTh column="topShare" sort={sort} onSort={toggle} ta="right">
+                Top share
+              </SortableTh>
+              <SortableTh column="allShare" sort={sort} onSort={toggle} ta="right">
+                All teams
+              </SortableTh>
+              <SortableTh column="difference" sort={sort} onSort={toggle} ta="right">
+                Difference
+              </SortableTh>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

@@ -1,5 +1,5 @@
 import type { StandingsResponse } from '@bcp/shared';
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { anEventDetail } from '../../test/sample-data';
@@ -56,5 +56,17 @@ describe('StandingsPanel', () => {
     expect(screen.getByText('W 30')).toBeInTheDocument();
     expect(screen.getAllByText('—')).toHaveLength(2); // Grey Watch's placing and its empty round
     expect(screen.getByText('2-0-0')).toBeInTheDocument();
+  });
+
+  it('sorts on a column header', async () => {
+    stubFetchRoutes({ 'GET /api/events/EVT1/standings': standings });
+    renderWithRouter(<StandingsPanel event={anEventDetail()} />);
+    await screen.findByRole('link', { name: 'Red Legion' });
+    const teams = () => screen.getAllByRole('link').map((link) => link.textContent);
+    expect(teams()).toEqual(['Red Legion', 'Grey Watch']);
+    fireEvent.click(screen.getByRole('button', { name: 'Team' }));
+    expect(teams()).toEqual(['Grey Watch', 'Red Legion']);
+    fireEvent.click(screen.getByRole('button', { name: 'Points' }));
+    expect(teams()).toEqual(['Red Legion', 'Grey Watch']);
   });
 });

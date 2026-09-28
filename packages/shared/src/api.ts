@@ -28,6 +28,8 @@ export const EventListQuerySchema = z
     type: z.enum(['all', 'singles', 'teams']).default('all'),
     q: z.string().trim().min(1).optional(),
     sort: EventSortSchema.default('date'),
+    /** `asc` turns the sort around: oldest or smallest first. */
+    dir: z.enum(['asc', 'desc']).default('desc'),
     page: z.coerce.number().int().positive().default(1),
     pageSize: z.coerce.number().int().min(1).max(100).default(50),
   })

@@ -23,6 +23,9 @@ beforeEach(() => {
 });
 
 const props = {
+  sort: 'date' as const,
+  dir: 'desc' as const,
+  onSortChange: vi.fn(),
   fetching: false,
   page: 1,
   onPageChange: vi.fn(),
@@ -87,6 +90,39 @@ describe('EventsTable', () => {
     expect(
       screen.getByText((_, element) => element?.tagName === 'P' && element.textContent === line),
     ).toBeInTheDocument();
+  });
+
+  it('sorts by size or date from the headers: high to low, low to high, then off', () => {
+    const onSortChange = vi.fn();
+    const response = { items: [anEvent()], total: 1, page: 1, pageSize: 25 };
+    const { rerender } = renderWithProviders(
+      <EventsTable {...props} onOpen={vi.fn()} response={response} onSortChange={onSortChange} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^Size/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'players', dir: 'desc' });
+    rerender(
+      <EventsTable
+        {...props}
+        sort="players"
+        onOpen={vi.fn()}
+        response={response}
+        onSortChange={onSortChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^Size/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'players', dir: 'asc' });
+    rerender(
+      <EventsTable
+        {...props}
+        sort="players"
+        dir="asc"
+        onOpen={vi.fn()}
+        response={response}
+        onSortChange={onSortChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^Size/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith(null);
   });
 
   it('shows the empty text', () => {

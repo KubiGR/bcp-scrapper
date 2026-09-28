@@ -47,6 +47,7 @@ describe('EventListQuerySchema', () => {
       minPlayers: 40,
       type: 'all',
       sort: 'date',
+      dir: 'desc',
       page: 1,
       pageSize: 50,
     });

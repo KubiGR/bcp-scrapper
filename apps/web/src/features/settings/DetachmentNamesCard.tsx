@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
+import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { meQuery } from '../auth/auth-queries';
 import classes from './DetachmentNamesCard.module.css';
 import { detachmentNamesQuery, linkDetachment, unlinkDetachment } from './detachment-names-queries';
@@ -167,25 +168,40 @@ function NameRow({
   );
 }
 
+const NAME_SORT = {
+  name: (entry) => entry.name,
+  lists: (entry) => entry.lists,
+  factions: (entry) => entry.factions.join(', '),
+} satisfies Record<string, SortValue<Unsure>>;
+
 /** A table of names, each with its link controls. */
 function NamesTable({
   entries,
   foreign = false,
   ...rowProps
 }: RowProps & { entries: (Unsure | Foreign)[]; foreign?: boolean }) {
+  const { sorted, sort, toggle } = useTableSort(entries, NAME_SORT);
   return (
     <Table.ScrollContainer minWidth={rowProps.faction === ALL ? 640 : 480}>
       <Table verticalSpacing="xs">
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>Name in lists</Table.Th>
-            <Table.Th ta="right">Lists</Table.Th>
-            {rowProps.faction === ALL && <Table.Th>Factions</Table.Th>}
+            <SortableTh column="name" sort={sort} onSort={toggle}>
+              Name in lists
+            </SortableTh>
+            <SortableTh column="lists" sort={sort} onSort={toggle} ta="right">
+              Lists
+            </SortableTh>
+            {rowProps.faction === ALL && (
+              <SortableTh column="factions" sort={sort} onSort={toggle}>
+                Factions
+              </SortableTh>
+            )}
             <Table.Th>Means</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {entries.map((entry) => (
+          {sorted.map((entry) => (
             <NameRow
               key={entry.name}
               entry={entry}

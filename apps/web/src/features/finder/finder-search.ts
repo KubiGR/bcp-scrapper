@@ -28,6 +28,8 @@ export const FinderSearchSchema = z.object({
   country: optionalText,
   type: z.enum(['all', 'singles', 'teams']).catch('all'),
   sort: z.enum(['date', 'players']).catch('date'),
+  /** `asc`: oldest or smallest first. */
+  dir: z.enum(['asc', 'desc']).catch('desc'),
   page: z.coerce.number().int().positive().catch(1),
 });
 export type FinderSearch = z.infer<typeof FinderSearchSchema>;
@@ -81,6 +83,7 @@ export function toEventsQueryString(search: FinderSearch, now: Date): string {
     page: String(search.page),
     pageSize: String(FINDER_PAGE_SIZE),
   });
+  if (search.dir === 'asc') params.set('dir', 'asc');
   if (maxPlayers !== undefined) params.set('maxPlayers', String(maxPlayers));
   if (search.q !== undefined) params.set('q', search.q);
   if (search.country !== undefined) params.set('country', search.country);

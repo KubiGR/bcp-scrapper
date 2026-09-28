@@ -5,7 +5,7 @@ import type {
   EventSizeRule,
   EventSummary,
 } from '@bcp/shared';
-import { and, desc, eq, gte, ilike, lt, lte, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, lt, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { events } from '../db/schema';
@@ -138,10 +138,11 @@ export async function searchEvents(
   const where = and(...filters);
 
   // Ties fall back to newest first, then id, so paging is stable.
+  const direction = query.dir === 'asc' ? asc : desc;
   const order =
     query.sort === 'players'
-      ? [desc(events.playerCount), desc(events.startDate), events.id]
-      : [desc(events.startDate), events.id];
+      ? [direction(events.playerCount), desc(events.startDate), events.id]
+      : [direction(events.startDate), events.id];
 
   const [rows, total] = await Promise.all([
     db

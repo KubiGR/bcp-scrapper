@@ -84,6 +84,7 @@ describe('PlayersPanel', () => {
           aPlayer({ bcpId: 'P2', name: 'Four One', placing: 2, wins: 4, losses: 1, draws: 0 }),
           aPlayer({ bcpId: 'P3', name: 'Five Oh', placing: 3, wins: 5, losses: 0, draws: 0 }),
           aPlayer({ bcpId: 'P4', name: 'Four Draw', placing: 4, wins: 4, losses: 0, draws: 1 }),
+          aPlayer({ bcpId: 'P5', name: 'No Games', placing: 5, wins: 0, losses: 0, draws: 0 }),
         ],
       },
     });
@@ -91,12 +92,18 @@ describe('PlayersPanel', () => {
       <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
     );
     await screen.findByRole('button', { name: 'Three Oh' });
+    const names = () =>
+      screen
+        .getAllByRole('button')
+        .map((b) => b.textContent)
+        .filter((text) =>
+          ['Three Oh', 'Four One', 'Five Oh', 'Four Draw', 'No Games'].includes(text),
+        );
     fireEvent.click(screen.getByRole('button', { name: /^W-L-D/ }));
-    const names = screen
-      .getAllByRole('button')
-      .map((b) => b.textContent)
-      .filter((text) => ['Three Oh', 'Four One', 'Five Oh', 'Four Draw'].includes(text));
-    expect(names).toEqual(['Five Oh', 'Four Draw', 'Four One', 'Three Oh']);
+    expect(names()).toEqual(['Five Oh', 'Four Draw', 'Four One', 'Three Oh', 'No Games']);
+    // No games is no record: last either way.
+    fireEvent.click(screen.getByRole('button', { name: /^W-L-D/ }));
+    expect(names().at(-1)).toBe('No Games');
   });
 
   it('opens the list the address names, and reports the player opened', async () => {
