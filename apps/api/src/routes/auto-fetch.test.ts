@@ -9,6 +9,7 @@ import { syncEvent } from '../sync/jobs';
 import { SyncRunner } from '../sync/runner';
 import { ALL_EVENTS, sampleSource, silentLogger, testFetchQueue } from '../test/helpers';
 import { AutoFetchPlanner } from '../fetch-queue/auto-fetch';
+import { autoFetchRoutes } from './auto-fetch';
 import { createSession } from '../auth/sessions';
 import { users } from '../db/schema';
 
@@ -80,7 +81,24 @@ const autoPlanner = () =>
 describe('/api/auto-fetch', () => {
   it('is on by default', async () => {
     const response = await app.request('/api/auto-fetch');
-    expect(await response.json()).toEqual({ enabled: true, lastPlannedAt: null, eventsPending: 0 });
+    expect(await response.json()).toEqual({
+      enabled: true,
+      available: true,
+      days: 60,
+      lastPlannedAt: null,
+      eventsPending: 0,
+    });
+  });
+
+  it('says it’s off and unavailable when the server has no planner (AUTO_FETCH_ENABLED=false)', async () => {
+    const routes = autoFetchRoutes({ db, authRequired: false });
+    expect(await (await routes.request('/auto-fetch')).json()).toEqual({
+      enabled: false,
+      available: false,
+      days: null,
+      lastPlannedAt: null,
+      eventsPending: 0,
+    });
   });
 
   it('switching off drops queued automatic jobs but keeps the user’s', async () => {

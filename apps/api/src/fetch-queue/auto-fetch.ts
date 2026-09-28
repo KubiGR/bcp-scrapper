@@ -42,6 +42,11 @@ export class AutoFetchPlanner {
   #running: Promise<unknown> = Promise.resolve();
   lastPlannedAt: Date | null = null;
 
+  /** Only events that started within this many days are planned. */
+  get days(): number {
+    return this.#options.days;
+  }
+
   constructor(options: AutoFetchPlannerOptions) {
     this.#options = options;
     this.#now = options.now ?? (() => new Date());

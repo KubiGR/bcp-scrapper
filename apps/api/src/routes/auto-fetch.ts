@@ -19,7 +19,10 @@ export function autoFetchRoutes(deps: {
 
   async function state(): Promise<AutoFetchState> {
     return {
-      enabled: await getAutoFetchEnabled(db),
+      // Without a planner nothing runs, whatever the stored switch says.
+      enabled: planner !== undefined && (await getAutoFetchEnabled(db)),
+      available: planner !== undefined,
+      days: planner?.days ?? null,
       lastPlannedAt: planner?.lastPlannedAt?.toISOString() ?? null,
       eventsPending: (await autoJobSummary(db)).events,
     };

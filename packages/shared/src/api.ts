@@ -274,6 +274,10 @@ export type FetchQueueState = z.infer<typeof FetchQueueStateSchema>;
 /** GET/POST /api/auto-fetch. */
 export const AutoFetchStateSchema = z.object({
   enabled: z.boolean(),
+  /** False when the server runs without automatic fetching (AUTO_FETCH_ENABLED=false). */
+  available: z.boolean(),
+  /** Events that started within this many days are fetched; null when unavailable. */
+  days: count.nullable(),
   lastPlannedAt: z.iso.datetime().nullable(),
   /** Events with automatic work still open. */
   eventsPending: count,

@@ -6,6 +6,8 @@ import { AutoFetchCard } from './AutoFetchCard';
 
 const state = (enabled: boolean, eventsPending = 0) => ({
   enabled,
+  available: true,
+  days: 45,
   lastPlannedAt: '2026-09-27T10:42:00.000Z',
   eventsPending,
 });
@@ -16,6 +18,19 @@ describe('AutoFetchCard', () => {
     renderWithProviders(<AutoFetchCard />);
     expect(await screen.findByRole('switch', { name: /Fetch big finished events/ })).toBeChecked();
     expect(screen.getByText(/42 events left/)).toBeInTheDocument();
+    expect(screen.getByText(/of the last 45 days/)).toBeInTheDocument();
+  });
+
+  it('shows the switch off and locked when the server turned automatic fetching off', async () => {
+    stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/auto-fetch': { ...state(false), available: false, days: null },
+    });
+    renderWithProviders(<AutoFetchCard />);
+    const toggle = await screen.findByRole('switch', { name: /Fetch big finished events/ });
+    expect(toggle).not.toBeChecked();
+    expect(toggle).toBeDisabled();
+    expect(screen.getByText(/turned off on the server/)).toBeInTheDocument();
   });
 
   it('switches off', async () => {

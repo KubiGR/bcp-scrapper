@@ -28,9 +28,9 @@ export function AutoFetchCard() {
       {auto.data && (
         <Stack gap="xs">
           <Switch
-            label="Fetch big finished events of the last 60 days in the background"
+            label={`Fetch big finished events${auto.data.days === null ? '' : ` of the last ${String(auto.data.days)} days`} in the background`}
             checked={auto.data.enabled}
-            disabled={readOnly || toggle.isPending}
+            disabled={readOnly || !auto.data.available || toggle.isPending}
             onChange={(event) => {
               toggle.mutate(event.currentTarget.checked);
             }}
@@ -50,6 +50,11 @@ export function AutoFetchCard() {
                   <span className="numeric">{formatDateTime(auto.data.lastPlannedAt)}</span>
                 </>
               )}
+            </Text>
+          )}
+          {!auto.data.available && (
+            <Text size="xs" c="dimmed">
+              Automatic fetching is turned off on the server (AUTO_FETCH_ENABLED=false).
             </Text>
           )}
           {readOnly && (
