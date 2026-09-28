@@ -45,10 +45,9 @@ exists, but not wanted for now.
 - Detachment translations: a translated detachment that only ever appears paired with another
   (e.g. "Blood Legion y Cabalgata del Caos") can't be learned from BCP's single detachment field;
   it stays as written.
-- Automatic fetching: an event whose rounds are all done but `pairings_synced_at` is null is
-  re-checked every pass and never marked; the 6-hourly catalogue refresh runs even while the
-  queue is paused for a rejected login; a list stored under a different id than requested would
-  be re-fetched every pass.
+- Automatic fetching: the 6-hourly catalogue refresh runs even while the queue is paused for a
+  rejected login; a list stored under a different id than requested would be re-fetched every
+  pass.
 - Queue: `queueEventLists` classifies players via the derived list status, so a failed player
   whose BCP list id was later cleared counts as "already fetched"; `countEventParticipants`
   computes the missing-list set twice.
