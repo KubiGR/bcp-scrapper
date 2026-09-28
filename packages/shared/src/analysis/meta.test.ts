@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeMeta, computeTeamMeta, type MetaPlayerRow } from './meta';
+import { computeMeta, computeTeamMeta, reliableWinRate, type MetaPlayerRow } from './meta';
 
 const row = (overrides: Partial<MetaPlayerRow> = {}): MetaPlayerRow => ({
   eventId: 'E1',
@@ -10,6 +10,7 @@ const row = (overrides: Partial<MetaPlayerRow> = {}): MetaPlayerRow => ({
   faction: 'Orks',
   detachments: [],
   disposition: null,
+  eventStart: '2026-09-07',
   wins: 3,
   losses: 1,
   draws: 1,
@@ -75,6 +76,32 @@ describe('computeMeta', () => {
       { name: 'Take and Hold', players: 2 },
       { name: 'Purge the Foe', players: 1 },
     ]);
+  });
+
+  it('follows each faction’s and archetype’s share week by week (weeks start on Monday)', () => {
+    const weekly = computeMeta([
+      row({ eventStart: '2026-09-07', detachments: ['War Horde'] }),
+      row({ eventStart: '2026-09-09', faction: 'Necrons' }),
+      row({ eventStart: '2026-09-26', detachments: ['War Horde'] }),
+    ]);
+    // 14 Sep had no events: no share that week, not 0.
+    expect(weekly.weeks).toEqual(['2026-09-07', '2026-09-14', '2026-09-21']);
+    const orks = weekly.factions.find((f) => f.faction === 'Orks');
+    expect(orks?.trend).toEqual([0.5, null, 1]);
+    expect(orks?.archetypes[0]?.trend).toEqual([0.5, null, 1]);
+    expect(weekly.factions.find((f) => f.faction === 'Necrons')?.trend).toEqual([0.5, null, 0]);
+  });
+
+  it('gives the reliable win rate of the period before, or null for what wasn’t played then', () => {
+    const before = [row({ detachments: ['War Horde'], wins: 1, losses: 4, draws: 0 })];
+    const compared = computeMeta(
+      [row({ detachments: ['War Horde'] }), row({ faction: 'Necrons' })],
+      before,
+    );
+    const orks = compared.factions.find((f) => f.faction === 'Orks');
+    expect(orks?.reliableBefore).toBeCloseTo(reliableWinRate(1, 5), 6);
+    expect(orks?.archetypes[0]?.reliableBefore).toBeCloseTo(reliableWinRate(1, 5), 6);
+    expect(compared.factions.find((f) => f.faction === 'Necrons')?.reliableBefore).toBeNull();
   });
 
   it('treats the same detachments in another order as one archetype', () => {

@@ -1,3 +1,4 @@
+import { addDays } from '../catalog';
 import type { ArchetypeRow, MetaRow, TeamArchetypeRow, TeamMetaRow } from './meta-schemas';
 
 /** One counted player: their event, team, faction (resolved; null = unknown) and record. */
@@ -13,6 +14,8 @@ export interface MetaPlayerRow {
   detachments: string[];
   /** Their force disposition (BCP's, else read from the list); null = unknown. */
   disposition: string | null;
+  /** The event's first day (YYYY-MM-DD), for the weekly trend. */
+  eventStart: string;
   wins: number;
   losses: number;
   draws: number;
@@ -63,6 +66,47 @@ interface Tally {
   x1: number;
   /** Players per disposition (known ones only). */
   dispositions: Map<string, number>;
+  /** Players per week (the Monday of their event's first day). */
+  weeks: Map<string, number>;
+}
+
+/** The Monday of a day's week (YYYY-MM-DD). */
+export function weekOf(day: string): string {
+  const weekday = new Date(`${day}T00:00:00Z`).getUTCDay();
+  return addDays(day, -((weekday + 6) % 7));
+}
+
+const countIn = (counts: Map<string, number>, key: string) => {
+  counts.set(key, (counts.get(key) ?? 0) + 1);
+};
+
+const emptyTally = (): Tally => ({
+  players: 0,
+  games: 0,
+  points: 0,
+  x1: 0,
+  dispositions: new Map<string, number>(),
+  weeks: new Map<string, number>(),
+});
+
+function addToTally(tally: Tally, row: MetaPlayerRow): void {
+  tally.players += 1;
+  if (row.disposition !== null) countIn(tally.dispositions, row.disposition);
+  countIn(tally.weeks, weekOf(row.eventStart));
+  tally.games += gamesOf(row);
+  tally.points += row.wins + row.draws / 2;
+  if (row.losses <= 1) tally.x1 += 1;
+}
+
+/** Every week from the first to the last with a counted player, gaps included. */
+function weeksSpanned(rows: MetaPlayerRow[]): string[] {
+  const starts = [...new Set(rows.map((row) => weekOf(row.eventStart)))].sort();
+  const first = starts[0];
+  const last = starts.at(-1);
+  if (first === undefined || last === undefined) return [];
+  const weeks: string[] = [];
+  for (let week = first; week <= last; week = addDays(week, 7)) weeks.push(week);
+  return weeks;
 }
 
 /** Dispositions most picked first (then by name). */
@@ -99,42 +143,59 @@ const figures = (tally: Tally, total: number) => ({
  * Popularity and results per faction (players, share of all counted players, win rate with draws
  * as half, X-1 or better), each split into archetypes. Players without games are left out.
  */
-export function computeMeta(rows: MetaPlayerRow[]): {
+export function computeMeta(
+  rows: MetaPlayerRow[],
+  /** The same length of time just before, for each row's reliable win rate then. */
+  previous: MetaPlayerRow[] = [],
+): {
   factions: MetaRow[];
   totals: { players: number; games: number };
+  weeks: string[];
 } {
   const counted = rows.filter((row) => gamesOf(row) > 0);
   const total = counted.length;
-  const groups = groupRows<Tally>(
-    counted,
-    () => ({ players: 0, games: 0, points: 0, x1: 0, dispositions: new Map<string, number>() }),
-    (tally, row) => {
-      tally.players += 1;
-      if (row.disposition !== null) {
-        tally.dispositions.set(row.disposition, (tally.dispositions.get(row.disposition) ?? 0) + 1);
-      }
-      tally.games += gamesOf(row);
-      tally.points += row.wins + row.draws / 2;
-      if (row.losses <= 1) tally.x1 += 1;
-    },
+  const groups = groupRows<Tally>(counted, emptyTally, addToTally);
+  const before = groupRows<Tally>(
+    previous.filter((row) => gamesOf(row) > 0),
+    emptyTally,
+    addToTally,
   );
+  const weeks = weeksSpanned(counted);
+  const weekTotals = new Map<string, number>();
+  for (const row of counted) countIn(weekTotals, weekOf(row.eventStart));
+  // Share of each week's players; null for a week without any (no events), not 0.
+  const trend = (tally: Tally) =>
+    weeks.map((week) => {
+      const all = weekTotals.get(week) ?? 0;
+      return all === 0 ? null : (tally.weeks.get(week) ?? 0) / all;
+    });
+  const reliableThen = (tally: Tally | undefined) =>
+    tally === undefined || tally.games === 0 ? null : reliableWinRate(tally.points, tally.games);
+
   const factions: MetaRow[] = [...groups.entries()]
-    .map(([faction, group]) => ({
-      faction,
-      ...figures(group.tally, total),
-      archetypes: [...group.archetypes.values()]
-        .map((a): ArchetypeRow => ({
-          detachments: a.detachments,
-          ...figures(a.tally, total),
-          dispositions: dispositionList(a.tally.dispositions),
-        }))
-        .sort(
-          (x, y) =>
-            nullsLast(x.detachments, y.detachments) ||
-            y.players - x.players ||
-            archetypeKey(x.detachments).localeCompare(archetypeKey(y.detachments)),
-        ),
-    }))
+    .map(([faction, group]) => {
+      const then = before.get(faction);
+      return {
+        faction,
+        ...figures(group.tally, total),
+        trend: trend(group.tally),
+        reliableBefore: reliableThen(then?.tally),
+        archetypes: [...group.archetypes.entries()]
+          .map(([key, a]): ArchetypeRow => ({
+            detachments: a.detachments,
+            ...figures(a.tally, total),
+            trend: trend(a.tally),
+            reliableBefore: reliableThen(then?.archetypes.get(key)?.tally),
+            dispositions: dispositionList(a.tally.dispositions),
+          }))
+          .sort(
+            (x, y) =>
+              nullsLast(x.detachments, y.detachments) ||
+              y.players - x.players ||
+              archetypeKey(x.detachments).localeCompare(archetypeKey(y.detachments)),
+          ),
+      };
+    })
     .sort(
       (x, y) =>
         nullsLast(x.faction, y.faction) || y.players - x.players || byName(x.faction, y.faction),
@@ -142,6 +203,7 @@ export function computeMeta(rows: MetaPlayerRow[]): {
   return {
     factions,
     totals: { players: total, games: counted.reduce((sum, row) => sum + gamesOf(row), 0) },
+    weeks,
   };
 }
 

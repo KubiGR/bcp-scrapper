@@ -46,6 +46,18 @@ describe('GET /api/meta', () => {
     expect(body.eventsLoaded).toBe(1);
   });
 
+  it('adds weekly trends, and the reliable win rate of the same length of time before', async () => {
+    await syncEvent({ db, source: sampleSource() }, 'EVTBRACKET01'); // 9 May
+    // 20 Apr–31 May; the 42 days before (9 Mar–19 Apr) hold EVTTEAM0001 (28 Mar).
+    const body = (await (
+      await app.request('/api/meta?from=2026-04-20&to=2026-05-31')
+    ).json()) as MetaResponse;
+    expect(body.eventsLoaded).toBe(1);
+    expect(body.weeks).toEqual(['2026-05-04']);
+    expect(body.factions.every((f) => f.trend.length === 1)).toBe(true);
+    expect(body.factions.some((f) => f.reliableBefore !== null)).toBe(true);
+  });
+
   it('has no team section for singles only', async () => {
     const body = (await (
       await app.request('/api/meta?from=2026-01-01&to=2026-12-31&type=singles')

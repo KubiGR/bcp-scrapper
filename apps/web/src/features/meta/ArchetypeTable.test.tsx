@@ -12,6 +12,8 @@ const greyKnights: MetaRow = {
   games: 10,
   winRate: 0.9,
   reliableWinRate: 0.82,
+  trend: [],
+  reliableBefore: null,
   x1: 2,
   x1Share: 1,
   archetypes: [
@@ -23,6 +25,8 @@ const greyKnights: MetaRow = {
       games: 10,
       winRate: 0.9,
       reliableWinRate: 0.82,
+      trend: [],
+      reliableBefore: null,
       x1: 2,
       x1Share: 1,
     },
@@ -43,6 +47,8 @@ const single = (
     games: players * 5,
     winRate,
     reliableWinRate,
+    trend: [],
+    reliableBefore: null,
     x1: 0,
     x1Share: 0,
   };
@@ -56,6 +62,7 @@ const single = (
 const props = {
   rows: [orks, necrons, greyKnights],
   minPlayers: 5,
+  weeks: [] as string[],
   sort: 'winRate' as const,
   dir: 'desc' as const,
   factions: [] as string[],
@@ -162,6 +169,24 @@ describe('ArchetypeTable', () => {
     fireEvent.click(screen.getByRole('button', { name: /Win rate/ }));
     expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'winRate', dir: 'desc' });
   });
+  it('sorts by change in reliable win rate, with new archetypes last either way', () => {
+    const onSortChange = vi.fn();
+    const { rerender } = renderWithProviders(
+      <ArchetypeTable {...props} sort="change" onSortChange={onSortChange} />,
+    );
+    // Kult of Speed + Wreckas fell 3 points; the others are new.
+    expect(within(rowOf('Kult of Speed + Wreckas')).getByText('−3.0 pp')).toHaveAttribute(
+      'data-tone',
+      'bad',
+    );
+    expect(order()[0]).toBe('Kult of Speed + Wreckas');
+    rerender(<ArchetypeTable {...props} sort="change" dir="asc" onSortChange={onSortChange} />);
+    expect(order()[0]).toBe('Kult of Speed + Wreckas');
+    // Already low to high: the third click turns it off.
+    fireEvent.click(screen.getByRole('button', { name: /Change/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith(null);
+  });
+
   it('narrows to the chosen factions', () => {
     renderWithProviders(<ArchetypeTable {...props} factions={['Necrons']} />);
     expect(order()).toEqual(['Hypercrypt Legion']);

@@ -3,6 +3,7 @@ import { ActionIcon, Table, Text, UnstyledButton, useMatches } from '@mantine/co
 import { Fragment } from 'react';
 import { SortableTh, type SortDir } from '../../lib/table-sort';
 import { DispositionBreakdown } from './DispositionBreakdown';
+import { Sparkline } from './Sparkline';
 import { percent, sharePercent, winRateTone, type MetaSort } from './meta-queries';
 
 /** A row's players, for the drill-down: `detachments` undefined = the whole faction. */
@@ -23,6 +24,8 @@ const TONE_COLOR = { good: 'blue.4', bad: 'orange.5', even: undefined } as const
 
 interface FactionTableProps {
   rows: MetaRow[];
+  /** The weeks each row's trend follows. */
+  weeks: string[];
   minPlayers: number;
   sort: MetaSort;
   dir: SortDir;
@@ -33,12 +36,49 @@ interface FactionTableProps {
   onOpenPlayers: (filter: PlayersFilter) => void;
 }
 
+/** Reliable win rate now minus in the period before; null when not played then. */
+export const changeOf = (row: Pick<MetaRow, 'reliableWinRate' | 'reliableBefore'>) =>
+  row.reliableBefore === null ? null : row.reliableWinRate - row.reliableBefore;
+
+/** "+4.2 pp" / "−3.0 pp"; a change that rounds to 0 is neutral. */
+function ChangeText({ change }: { change: number | null }) {
+  if (change === null) {
+    return (
+      <Text size="sm" c="dimmed" component="span">
+        new
+      </Text>
+    );
+  }
+  const points = Math.round(change * 1000) / 10;
+  const tone = points > 0 ? 'good' : points < 0 ? 'bad' : 'even';
+  const text =
+    points === 0 ? '0.0 pp' : `${points > 0 ? '+' : '−'}${Math.abs(points).toFixed(1)} pp`;
+  return (
+    <Text size="sm" className="numeric" c={TONE_COLOR[tone]} data-tone={tone} component="span">
+      {text}
+    </Text>
+  );
+}
+
 export function Figures({
   row,
+  weeks,
   label,
   onOpen,
 }: {
-  row: Pick<MetaRow, 'players' | 'share' | 'winRate' | 'reliableWinRate' | 'x1' | 'x1Share'>;
+  row: Pick<
+    MetaRow,
+    | 'players'
+    | 'share'
+    | 'winRate'
+    | 'reliableWinRate'
+    | 'reliableBefore'
+    | 'trend'
+    | 'x1'
+    | 'x1Share'
+  >;
+  /** The weeks `row.trend` follows. */
+  weeks: string[];
   label: string;
   onOpen: () => void;
 }) {
@@ -59,6 +99,9 @@ export function Figures({
       <Table.Td ta="right" className="numeric" visibleFrom="sm">
         {sharePercent(row.share)}
       </Table.Td>
+      <Table.Td visibleFrom="sm">
+        <Sparkline values={row.trend} weeks={weeks} />
+      </Table.Td>
       <Table.Td ta="right">
         <Text size="sm" className="numeric" c={TONE_COLOR[tone]} data-tone={tone} component="span">
           {percent(row.winRate)}
@@ -66,6 +109,9 @@ export function Figures({
       </Table.Td>
       <Table.Td ta="right" className="numeric">
         {percent(row.reliableWinRate)}
+      </Table.Td>
+      <Table.Td ta="right" visibleFrom="sm">
+        <ChangeText change={changeOf(row)} />
       </Table.Td>
       <Table.Td ta="right" className="numeric" visibleFrom="sm">
         {`${row.x1} · ${percent(row.x1Share)}`}
@@ -80,6 +126,7 @@ export function Figures({
  */
 export function FactionTable({
   rows,
+  weeks,
   minPlayers,
   sort,
   dir,
@@ -92,20 +139,30 @@ export function FactionTable({
   const tableMinWidth = useMatches({ base: 0, sm: 560 });
   const sign = dir === 'asc' ? 1 : -1;
   const dimmed = (row: MetaRow) => row.faction === null || row.players < minPlayers;
-  const metric = (row: Pick<MetaRow, 'players' | 'winRate' | 'reliableWinRate' | 'x1Share'>) =>
+  type Measured = Pick<
+    MetaRow,
+    'players' | 'winRate' | 'reliableWinRate' | 'reliableBefore' | 'x1Share'
+  >;
+  const metric = (row: Measured) =>
     sort === 'winRate'
       ? row.winRate
       : sort === 'reliable'
         ? row.reliableWinRate
-        : sort === 'x1'
-          ? row.x1Share
-          : row.players;
+        : sort === 'change'
+          ? (changeOf(row) ?? 0)
+          : sort === 'x1'
+            ? row.x1Share
+            : row.players;
+  // Sorting by change, rows not played in the period before ("new") go last either way.
+  const newLast = (a: Measured, b: Measured) =>
+    sort === 'change' ? Number(changeOf(a) === null) - Number(changeOf(b) === null) : 0;
   const byName = (a: MetaRow, b: MetaRow) =>
     factionName(a.faction).localeCompare(factionName(b.faction));
   const sorted = [...rows].sort(
     (a, b) =>
       Number(dimmed(a)) - Number(dimmed(b)) ||
       Number(a.faction === null) - Number(b.faction === null) ||
+      newLast(a, b) ||
       sign * (sort === 'faction' ? byName(a, b) : metric(a) - metric(b)) ||
       b.players - a.players ||
       byName(a, b),
@@ -117,6 +174,7 @@ export function FactionTable({
       return (
         Number(a.detachments === null) - Number(b.detachments === null) ||
         Number(small(a)) - Number(small(b)) ||
+        newLast(a, b) ||
         sign *
           (sort === 'faction'
             ? archetypeName(a.detachments).localeCompare(archetypeName(b.detachments))
@@ -147,6 +205,9 @@ export function FactionTable({
             <Table.Th ta="right" visibleFrom="sm">
               Share
             </Table.Th>
+            <Table.Th ta="right" visibleFrom="sm">
+              Trend
+            </Table.Th>
             <SortableTh column="winRate" sort={state} onSort={onSort} ta="right">
               Win rate
             </SortableTh>
@@ -158,6 +219,16 @@ export function FactionTable({
               title="The win rate allowing for how many games there are: the low end of its 95% range. Few games pull it down."
             >
               Reliable
+            </SortableTh>
+            <SortableTh
+              column="change"
+              sort={state}
+              onSort={onSort}
+              ta="right"
+              visibleFrom="sm"
+              title="Reliable win rate now minus in the same length of time before; new = not played then."
+            >
+              Change
             </SortableTh>
             <SortableTh column="x1" sort={state} onSort={onSort} ta="right" visibleFrom="sm">
               X-1 or better
@@ -189,6 +260,7 @@ export function FactionTable({
                     {name}
                   </Table.Td>
                   <Figures
+                    weeks={weeks}
                     row={row}
                     label={name}
                     onOpen={() => {
@@ -213,6 +285,7 @@ export function FactionTable({
                           <DispositionBreakdown archetype={archetype} />
                         </Table.Td>
                         <Figures
+                          weeks={weeks}
                           row={archetype}
                           label={`${name} · ${label}`}
                           onOpen={() => {

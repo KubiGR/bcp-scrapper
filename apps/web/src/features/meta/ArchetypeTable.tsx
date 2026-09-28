@@ -3,7 +3,7 @@ import { MultiSelect, Stack, Table, Text, useMatches } from '@mantine/core';
 import { plural } from '../../lib/format';
 import { SortableTh, type SortDir } from '../../lib/table-sort';
 import { DispositionBreakdown } from './DispositionBreakdown';
-import { factionKey, factionName, Figures, type PlayersFilter } from './FactionTable';
+import { changeOf, factionKey, factionName, Figures, type PlayersFilter } from './FactionTable';
 import type { MetaSort } from './meta-queries';
 
 /** One archetype with its faction: a row of the flat table. */
@@ -14,6 +14,8 @@ interface Archetype extends ArchetypeRow {
 
 interface ArchetypeTableProps {
   rows: MetaRow[];
+  /** The weeks each row's trend follows. */
+  weeks: string[];
   minPlayers: number;
   /** `faction` sorts by archetype name (faction, then detachments). */
   sort: MetaSort;
@@ -36,6 +38,7 @@ const nameOf = (archetype: Archetype) =>
  */
 export function ArchetypeTable({
   rows,
+  weeks,
   minPlayers,
   sort,
   dir,
@@ -68,12 +71,16 @@ export function ArchetypeTable({
       ? a.winRate
       : sort === 'reliable'
         ? a.reliableWinRate
-        : sort === 'x1'
-          ? a.x1Share
-          : a.players;
+        : sort === 'change'
+          ? (changeOf(a) ?? 0)
+          : sort === 'x1'
+            ? a.x1Share
+            : a.players;
   const sorted = [...archetypes].sort(
     (a, b) =>
       Number(dimmed(a)) - Number(dimmed(b)) ||
+      // Sorting by change, archetypes not played in the period before go last either way.
+      (sort === 'change' ? Number(changeOf(a) === null) - Number(changeOf(b) === null) : 0) ||
       sign * (sort === 'faction' ? nameOf(a).localeCompare(nameOf(b)) : metric(a) - metric(b)) ||
       b.players - a.players ||
       nameOf(a).localeCompare(nameOf(b)),
@@ -116,6 +123,9 @@ export function ArchetypeTable({
               <Table.Th ta="right" visibleFrom="sm">
                 Share
               </Table.Th>
+              <Table.Th ta="right" visibleFrom="sm">
+                Trend
+              </Table.Th>
               <SortableTh column="winRate" sort={state} onSort={onSort} ta="right">
                 Win rate
               </SortableTh>
@@ -127,6 +137,16 @@ export function ArchetypeTable({
                 title="The win rate allowing for how many games there are: the low end of its 95% range. Few games pull it down."
               >
                 Reliable
+              </SortableTh>
+              <SortableTh
+                column="change"
+                sort={state}
+                onSort={onSort}
+                ta="right"
+                visibleFrom="sm"
+                title="Reliable win rate now minus in the same length of time before; new = not played then."
+              >
+                Change
               </SortableTh>
               <SortableTh column="x1" sort={state} onSort={onSort} ta="right" visibleFrom="sm">
                 X-1 or better
@@ -150,6 +170,7 @@ export function ArchetypeTable({
                     <DispositionBreakdown archetype={archetype} />
                   </Table.Td>
                   <Figures
+                    weeks={weeks}
                     row={archetype}
                     label={nameOf(archetype)}
                     onOpen={() => {

@@ -22,14 +22,19 @@ const isoDay = (date: Date) => date.toISOString().slice(0, 10);
  * English), team and team placing. One query; the aggregation happens in computeMeta /
  * computeTeamMeta.
  */
+/** The range a Meta query covers: as given, else the last 90 days. */
+export function metaRange(query: MetaQuery, today: Date): { from: string; to: string } {
+  const to = query.to ?? isoDay(today);
+  return { from: query.from ?? isoDay(new Date(today.getTime() - 90 * DAY_MS)), to };
+}
+
 export async function loadMetaRows(
   db: Db,
   query: MetaQuery,
   rule: EventSizeRule,
   today: Date,
 ): Promise<{ rows: MetaPlayerRow[]; eventsInRange: number; eventsLoaded: number }> {
-  const to = query.to ?? isoDay(today);
-  const from = query.from ?? isoDay(new Date(today.getTime() - 90 * DAY_MS));
+  const { from, to } = metaRange(query, today);
   const end = new Date(`${to}T00:00:00.000Z`);
   end.setUTCDate(end.getUTCDate() + 1);
   const inRange = (
@@ -90,12 +95,14 @@ export async function loadMetaRows(
     foreignDetachmentCheck(db),
   ]);
 
+  const startOf = new Map(inRange.map((event) => [event.id, isoDay(event.startDate)]));
   const rows = found.map((row) => {
     const { faction } = countedFaction(row.faction, row.parsedArmy);
     return {
       eventId: row.eventId,
       isTeamEvent: teamEvents.has(row.eventId),
       eventFinished: finished.has(row.eventId),
+      eventStart: startOf.get(row.eventId) ?? from,
       teamId: row.teamId,
       teamPlacing: row.teamPlacing,
       faction,

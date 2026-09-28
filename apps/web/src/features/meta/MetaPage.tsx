@@ -135,6 +135,7 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
                 {view === 'archetypes' ? (
                   <ArchetypeTable
                     rows={meta.data.factions}
+                    weeks={meta.data.weeks}
                     minPlayers={minPlayers}
                     sort={sort}
                     dir={dir}
@@ -151,6 +152,7 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
                 ) : (
                   <FactionTable
                     rows={meta.data.factions}
+                    weeks={meta.data.weeks}
                     minPlayers={minPlayers}
                     sort={sort}
                     dir={dir}

@@ -12,6 +12,10 @@ const figures = {
   winRate: ratio,
   /** The win rate allowing for sample size: the low end of its 95% range (Wilson). */
   reliableWinRate: ratio,
+  /** Share of each week's players (see MetaResponse.weeks); null for a week without events. */
+  trend: z.array(ratio.nullable()),
+  /** The reliable win rate in the same length of time just before; null if not played then. */
+  reliableBefore: ratio.nullable(),
   /** Players who went X-1 or better. */
   x1: count,
   x1Share: ratio,
@@ -61,6 +65,8 @@ export const MetaResponseSchema = z.object({
   /** Null when the range has no team event with final placings. */
   teams: z.array(TeamMetaRowSchema).nullable(),
   totals: z.object({ players: count, games: count }),
+  /** The weeks (their Mondays) each row's `trend` follows. */
+  weeks: z.array(z.string()),
   eventsInRange: count,
   eventsLoaded: count,
   teamEventsCounted: count,

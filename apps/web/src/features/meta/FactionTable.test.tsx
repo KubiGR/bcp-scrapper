@@ -7,6 +7,7 @@ import { necrons, orks, tiny, unknown } from './meta-test-data';
 const props = {
   rows: [orks, necrons, tiny, unknown],
   minPlayers: 5,
+  weeks: [] as string[],
   sort: 'players' as const,
   dir: 'desc' as const,
   expanded: [] as string[],
@@ -82,6 +83,14 @@ describe('FactionTable', () => {
     expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'faction', dir: 'asc' });
   });
 
+  it('shows the weekly trend and the change in reliable win rate since the period before', () => {
+    renderWithProviders(<FactionTable {...props} weeks={['2026-09-14', '2026-09-21']} />);
+    const orksRow = within(rowOf('Orks'));
+    expect(orksRow.getByText('+5.0 pp')).toHaveAttribute('data-tone', 'good');
+    expect(orksRow.getByRole('img', { name: 'Share by week: 18.0% to 20.0%' })).toBeInTheDocument();
+    expect(within(rowOf('Necrons')).getByText('new')).toBeInTheDocument();
+  });
+
   it('colours win rates: blue above 55%, orange below 45%', () => {
     renderWithProviders(<FactionTable {...props} />);
     expect(within(rowOf('Orks')).getByText('58%')).toHaveAttribute('data-tone', 'good');
@@ -137,6 +146,8 @@ describe('FactionTable', () => {
           games: 60,
           winRate: 0.4,
           reliableWinRate: 0.32,
+          trend: [],
+          reliableBefore: null,
           x1: 1,
           x1Share: 0.1,
         },
@@ -148,6 +159,8 @@ describe('FactionTable', () => {
           games: 50,
           winRate: 0.7,
           reliableWinRate: 0.62,
+          trend: [],
+          reliableBefore: null,
           x1: 5,
           x1Share: 0.5,
         },
@@ -159,6 +172,8 @@ describe('FactionTable', () => {
           games: 10,
           winRate: 0.9,
           reliableWinRate: 0.82,
+          trend: [],
+          reliableBefore: null,
           x1: 2,
           x1Share: 1,
         },
@@ -170,6 +185,8 @@ describe('FactionTable', () => {
           games: 150,
           winRate: 0.5,
           reliableWinRate: 0.42,
+          trend: [],
+          reliableBefore: null,
           x1: 3,
           x1Share: 0.1,
         },
