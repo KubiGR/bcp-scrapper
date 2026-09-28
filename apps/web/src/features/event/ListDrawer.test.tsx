@@ -92,7 +92,8 @@ describe('ListDrawer', () => {
     });
     renderWithProviders(<ListDrawer eventId="EVT1" player={aPlayer()} onClose={vi.fn()} />);
     const link = await screen.findByRole('link', { name: /Compact on 40kCompactor/ });
-    expect(link).toHaveAttribute('href', 'https://desjani.github.io/40kCompactor/');
+    // The desktop version: the site sends touch/narrow screens to a mobile version that 404s.
+    expect(link).toHaveAttribute('href', 'https://desjani.github.io/40kCompactor/?ui=desktop');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link.getAttribute('rel')).toContain('noreferrer');
     fireEvent.click(link);

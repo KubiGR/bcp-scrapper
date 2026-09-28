@@ -158,7 +158,11 @@ function QueuedStatus({ eventId, player }: { eventId: string; player: EventPlaye
   );
 }
 
-const COMPACTOR_URL = 'https://desjani.github.io/40kCompactor/';
+/**
+ * The desktop version: the site sends touch and narrow screens (and anyone it once did) to a
+ * mobile version that currently leads to a missing page.
+ */
+const COMPACTOR_URL = 'https://desjani.github.io/40kCompactor/?ui=desktop';
 
 /**
  * 40kCompactor shortens a list, but takes no input in its URL: copy the list, open the site in a
