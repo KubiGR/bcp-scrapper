@@ -18,6 +18,8 @@ export interface MatchupGame {
   id: string;
   eventId: string;
   eventName: string;
+  /** ISO start of the event, for ordering games newest first. */
+  eventStartDate: string;
   round: number;
   tableNo: number | null;
   a: MatchupSide;
@@ -186,7 +188,7 @@ export function scalesAgree(games: MatchupGame[]): { consistent: boolean; scale:
   return { consistent: true, scale: [...scales][0] ?? null };
 }
 
-/** The games behind one cell, from the row side, in round then table order. */
+/** The games behind one cell, from the row side: newest event first, then round and table. */
 export function cellGames(
   games: MatchupGame[],
   row: string,
@@ -206,6 +208,7 @@ export function cellGames(
   return sided
     .sort(
       (x, y) =>
+        y.game.eventStartDate.localeCompare(x.game.eventStartDate) ||
         x.game.eventName.localeCompare(y.game.eventName) ||
         x.game.round - y.game.round ||
         (x.game.tableNo ?? 0) - (y.game.tableNo ?? 0),

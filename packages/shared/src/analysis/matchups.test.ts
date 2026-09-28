@@ -30,10 +30,12 @@ const game = (
   pb: number | null,
   result: MatchupGame['result'],
   eventId = 'E1',
+  eventStartDate = '2026-01-01T00:00:00.000Z',
 ): MatchupGame => ({
   id: `G${(n += 1)}`,
   eventId,
   eventName: `Event ${eventId}`,
+  eventStartDate,
   round: 1,
   tableNo: n,
   a,
@@ -217,6 +219,19 @@ describe('scalesAgree', () => {
 });
 
 describe('cellGames', () => {
+  it('lists the newest event’s games first, whatever the events are called', () => {
+    const orks = side('1', 'Orks');
+    const necrons = side('2', 'Necrons');
+    const games = [
+      game(orks, necrons, 15, 5, 'a_win', 'A-OLD', '2026-03-01T00:00:00.000Z'),
+      game(orks, necrons, 15, 5, 'a_win', 'Z-NEW', '2026-06-01T00:00:00.000Z'),
+    ];
+    expect(cellGames(games, 'Orks', 'Necrons', noFilter).map((g) => g.eventId)).toEqual([
+      'Z-NEW',
+      'A-OLD',
+    ]);
+  });
+
   it("lists a cell's games from the row side, in event, round and table order", () => {
     const games = [
       game(side('1', 'Orks'), side('2', 'Necrons'), 15, 5, 'a_win'),
