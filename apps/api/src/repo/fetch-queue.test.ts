@@ -355,7 +355,7 @@ describe('pairings jobs', () => {
   describe('rounds fetched while the event ran', () => {
     const day = (iso: string) => new Date(`${iso}T12:00:00Z`);
     beforeEach(async () => {
-      // Ran 26–27 Sep; counts as finished by date a day after its last day.
+      // Ran 26–27 Sep (listed end 27 Sep 12:00); finished by date 6 hours after that.
       await db
         .update(events)
         .set({

@@ -74,14 +74,13 @@ export function estimateCatalogRequests(range: DateRange): number {
 
 export type EventPhase = 'upcoming' | 'running' | 'finished';
 
-/** Grace after the last day before a not-closed event counts as finished (timezones, late results). */
-export const FINISHED_GRACE_MS = 24 * 3_600_000;
-
 /**
- * Finished when BCP says it ended, or its last day (end date, else start date) is more than a
- * day behind us — organisers often forget to close events in BCP. Upcoming before it starts.
+ * Grace after the listed end before a not-closed event counts as finished (late results). BCP's
+ * end date carries the end time, so a few hours are enough.
  */
-/** When a not-closed event counts as finished by its dates: its last day plus the grace. */
+export const FINISHED_GRACE_MS = 6 * 3_600_000;
+
+/** When a not-closed event counts as finished by its dates: its listed end plus the grace. */
 export function eventFinishedBy(event: {
   startDate: string | Date;
   endDate: string | Date | null;
@@ -89,6 +88,10 @@ export function eventFinishedBy(event: {
   return new Date(new Date(event.endDate ?? event.startDate).getTime() + FINISHED_GRACE_MS);
 }
 
+/**
+ * Finished when BCP says it ended, or its listed end (end date, else start date) is more than
+ * the grace behind us — organisers often forget to close events in BCP. Upcoming before it starts.
+ */
 export function eventPhase(
   event: { startDate: string | Date; endDate: string | Date | null; ended: boolean },
   now: Date,

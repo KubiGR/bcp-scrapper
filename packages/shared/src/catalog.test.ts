@@ -118,7 +118,7 @@ describe('eventPhase', () => {
     );
   });
 
-  it('is finished when the last day is more than a day behind now, even if not ended (the Studs case)', () => {
+  it('is finished when the listed end is well behind now, even if not ended (the Studs case)', () => {
     expect(
       eventPhase(
         { startDate: '2026-09-19T09:00:00Z', endDate: '2026-09-20T23:00:00Z', ended: false },
@@ -127,11 +127,12 @@ describe('eventPhase', () => {
     ).toBe('finished');
   });
 
-  it('is still running within the grace period after the last day', () => {
-    const endDate = new Date(now.getTime() - 12 * 3_600_000).toISOString();
-    expect(eventPhase({ startDate: '2026-09-20T09:00:00Z', endDate, ended: false }, now)).toBe(
-      'running',
-    );
+  it('is finished 6 hours after its listed end time, even if never closed on BCP', () => {
+    const hoursAgo = (hours: number) => new Date(now.getTime() - hours * 3_600_000).toISOString();
+    const phase = (endDate: string) =>
+      eventPhase({ startDate: '2026-09-20T09:00:00Z', endDate, ended: false }, now);
+    expect(phase(hoursAgo(7))).toBe('finished');
+    expect(phase(hoursAgo(5))).toBe('running');
   });
 
   it('falls back to startDate as the last day when there is no endDate', () => {
