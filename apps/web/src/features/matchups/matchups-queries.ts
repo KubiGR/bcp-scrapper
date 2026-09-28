@@ -99,8 +99,10 @@ export const crossMatchupsQuery = (search: CrossSearch) =>
   queryOptions({
     queryKey: ['matchups', crossParams(search)],
     queryFn: () => apiGet(`/api/matchups?${crossParams(search)}`, CrossEventMatchupsResponseSchema),
+    // The matrix is recomputed over every event's games: while some sync, a slow refresh is
+    // enough (rounds arrive one every few seconds at best).
     refetchInterval: (query) =>
-      query.state.data?.events.some((e) => e.pairings === 'fetching') ? 5000 : false,
+      query.state.data?.events.some((e) => e.pairings === 'fetching') ? 30_000 : false,
     placeholderData: keepPreviousData,
   });
 

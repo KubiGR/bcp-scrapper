@@ -32,4 +32,13 @@ describe('crossMatchupsQuery', () => {
     expect(calls[0]).toContain('detachments=War+Horde');
     expect(calls[0]).toContain('side=both');
   });
+
+  it('refreshes every 30 s while any event syncs (the matrix covers every event), else never', () => {
+    const { refetchInterval } = crossMatchupsQuery({});
+    if (typeof refetchInterval !== 'function') throw new Error('expected a function');
+    const withEvents = (pairings: string[]) =>
+      ({ state: { data: { events: pairings.map((p) => ({ pairings: p })) } } }) as never;
+    expect(refetchInterval(withEvents(['synced', 'fetching']))).toBe(30_000);
+    expect(refetchInterval(withEvents(['synced']))).toBe(false);
+  });
 });
