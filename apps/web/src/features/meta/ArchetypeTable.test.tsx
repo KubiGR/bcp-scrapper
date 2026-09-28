@@ -80,7 +80,7 @@ describe('ArchetypeTable', () => {
     renderWithProviders(<ArchetypeTable {...props} />);
     expect(screen.getAllByRole('row')).toHaveLength(4);
     expect(
-      screen.getByText('8 players without a known detachment aren’t shown.'),
+      screen.getByText('8 players without a known detachment in English aren’t shown.'),
     ).toBeInTheDocument();
   });
 

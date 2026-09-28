@@ -12,7 +12,7 @@ import { FOUND_PLAYER_SORT } from '../top-lists/player-sort';
 import { ListDrawer } from '../event/ListDrawer';
 import { formatRecord } from '../event/players-filter';
 import { topListsQuery } from '../top-lists/top-lists-queries';
-import type { PlayersFilter } from './FactionTable';
+import { UNKNOWN_DETACHMENT, type PlayersFilter } from './FactionTable';
 import type { MetaSearch } from './meta-queries';
 
 interface MetaPlayersDrawerProps {
@@ -27,7 +27,7 @@ const titleOf = (filter: PlayersFilter) =>
     filter.detachments === undefined
       ? null
       : filter.detachments === null
-        ? 'Detachment unknown'
+        ? UNKNOWN_DETACHMENT
         : filter.detachments.join(' + '),
   ]
     .filter(Boolean)

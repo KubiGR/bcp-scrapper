@@ -102,7 +102,7 @@ describe('FactionTable', () => {
     expect(onToggle).toHaveBeenCalledWith('Orks');
     rerender(<FactionTable {...props} expanded={['Orks']} />);
     expect(screen.getByText('Kult of Speed + Wreckas')).toBeInTheDocument();
-    expect(screen.getByText('Detachment unknown')).toBeInTheDocument();
+    expect(screen.getByText('Detachment unknown or not in English')).toBeInTheDocument();
   });
 
   it('opens the players behind a row', () => {
@@ -112,7 +112,9 @@ describe('FactionTable', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: '20 Orks players' }));
     expect(onOpenPlayers).toHaveBeenCalledWith({ faction: 'Orks', detachments: undefined });
-    fireEvent.click(screen.getByRole('button', { name: '8 Orks · Detachment unknown players' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: '8 Orks · Detachment unknown or not in English players' }),
+    );
     expect(onOpenPlayers).toHaveBeenCalledWith({ faction: 'Orks', detachments: null });
   });
 
@@ -163,7 +165,7 @@ describe('FactionTable', () => {
       .getAllByRole('row')
       .slice(2)
       .map((r) => r.querySelector('td')?.textContent);
-    expect(names).toEqual(['B', 'A', 'C', 'Detachment unknown']);
+    expect(names).toEqual(['B', 'A', 'C', 'Detachment unknown or not in English']);
     expect(rowOf('C')).toHaveAttribute('data-dimmed', 'true');
   });
 

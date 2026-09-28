@@ -3,7 +3,7 @@ import { ActionIcon, Table, Text } from '@mantine/core';
 import { Fragment, useState } from 'react';
 import { plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
-import { factionKey } from './FactionTable';
+import { factionKey, UNKNOWN_DETACHMENT } from './FactionTable';
 import { percent } from './meta-queries';
 
 /** Percentage points to one decimal; a difference that rounds to 0 is neutral. */
@@ -127,7 +127,7 @@ export function TeamMeta({
                       .map((archetype) => {
                         const label =
                           archetype.detachments === null
-                            ? 'Detachment unknown'
+                            ? UNKNOWN_DETACHMENT
                             : archetype.detachments.join(' + ');
                         const small = archetype.allSlots < minPlayers;
                         return (

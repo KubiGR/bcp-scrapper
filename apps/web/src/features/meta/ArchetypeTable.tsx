@@ -65,7 +65,7 @@ const nameOf = (archetype: Archetype) =>
 /**
  * Every faction + detachments combination in one table (the Meta page's default view): players,
  * share of all players, win rate and X-1. Archetypes under the minimum players, and the Unknown
- * faction's, are dimmed and sorted last; players without a known detachment can't be shown.
+ * faction's, are dimmed and sorted last; players without a known detachment in English can't be shown.
  */
 export function ArchetypeTable({
   rows,
@@ -218,7 +218,7 @@ export function ArchetypeTable({
       </Table.ScrollContainer>
       {withoutDetachment > 0 && (
         <Text size="xs" c="dimmed">
-          {plural(withoutDetachment, 'player')} without a known detachment aren’t shown.
+          {plural(withoutDetachment, 'player')} without a known detachment in English aren’t shown.
         </Text>
       )}
     </Stack>

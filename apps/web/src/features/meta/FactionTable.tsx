@@ -12,8 +12,10 @@ export interface PlayersFilter {
 
 export const factionKey = (faction: string | null) => faction ?? '(unknown)';
 export const factionName = (faction: string | null) => faction ?? 'Unknown faction';
+/** Players whose list names no detachment, or one that isn't English (Meta can't tell those apart). */
+export const UNKNOWN_DETACHMENT = 'Detachment unknown or not in English';
 const archetypeName = (detachments: string[] | null) =>
-  detachments === null ? 'Detachment unknown' : detachments.join(' + ');
+  detachments === null ? UNKNOWN_DETACHMENT : detachments.join(' + ');
 
 const TONE_COLOR = { good: 'green.5', bad: 'red.5', even: undefined } as const;
 
