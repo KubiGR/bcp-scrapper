@@ -75,6 +75,24 @@ describe('TopListsPage', () => {
     expect(await screen.findByText('Orks list text')).toBeInTheDocument();
   });
 
+  it('opens a list from anywhere on its row', async () => {
+    stubFetchRoutes({
+      'GET /api/players/search': response(),
+      'GET /api/players/PL-ADA/list': {
+        playerId: 'PL-ADA',
+        playerName: 'Ada Archer',
+        teamName: null,
+        faction: 'Orks',
+        listId: 'LS-ADA',
+        text: 'Orks list text',
+        fetchedAt: '2026-09-23T10:00:00.000Z',
+      },
+    });
+    renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
+    fireEvent.click(await screen.findByText('4-1-0'));
+    expect(await screen.findByText('Orks list text')).toBeInTheDocument();
+  });
+
   it('shows the queued state after "Fetch this list", from the refreshed results', async () => {
     let status: 'available' | 'queued' = 'available';
     const base = response();

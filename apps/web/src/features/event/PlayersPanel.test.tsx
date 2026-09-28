@@ -50,6 +50,35 @@ describe('PlayersPanel', () => {
     expect(await screen.findByText(/Gladius Task Force/)).toBeInTheDocument();
   });
 
+  it('opens the list the address names, and reports the player opened', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [aPlayer(), aPlayer({ bcpId: 'PL-BEN', name: 'Ben Brass', listStatus: 'none' })],
+      },
+      'GET /api/players/PL-ADA/list': {
+        playerId: 'PL-ADA',
+        playerName: 'Ada Archer',
+        teamName: null,
+        faction: 'Space Marines',
+        listId: 'LS-ADA',
+        text: 'Shared list text',
+        fetchedAt: '2026-09-23T10:00:00.000Z',
+      },
+    });
+    const onOpenPlayer = vi.fn();
+    renderWithRouter(
+      <PlayersPanel
+        event={anEventDetail()}
+        loadingFromBcp={false}
+        openPlayerId="PL-ADA"
+        onOpenPlayer={onOpenPlayer}
+      />,
+    );
+    expect(await screen.findByText('Shared list text')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ben Brass' }));
+    expect(onOpenPlayer).toHaveBeenCalledWith('PL-BEN');
+  });
+
   it('names faction, detachments and record under the player too, for phones', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': {

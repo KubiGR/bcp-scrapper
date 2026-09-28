@@ -1,17 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { z } from 'zod';
-import { EVENT_TABS, EventPage, type EventTab } from '../features/event/EventPage';
-
-const tabValues = EVENT_TABS.map((tab) => tab.value) as [EventTab, ...EventTab[]];
+import { EventPage } from '../features/event/EventPage';
+import { EventSearchSchema } from '../features/event/event-search';
 
 export const Route = createFileRoute('/events/$eventId')({
-  validateSearch: z.object({ tab: z.enum(tabValues).catch('players') }),
+  validateSearch: EventSearchSchema,
   component: EventRoute,
 });
 
 function EventRoute() {
   const { eventId } = Route.useParams();
-  const { tab } = Route.useSearch();
+  const { tab, list } = Route.useSearch();
   const navigate = Route.useNavigate();
   // A new key per event resets filters, the open drawer and sync progress when switching events.
   return (
@@ -21,6 +19,14 @@ function EventRoute() {
       tab={tab}
       onTabChange={(next) => {
         void navigate({ search: { tab: next }, replace: true });
+      }}
+      openListId={list ?? null}
+      onOpenList={(playerId) => {
+        // Opening a list is a step Back undoes; closing it just tidies the address.
+        void navigate({
+          search: { tab, list: playerId ?? undefined },
+          replace: playerId === null,
+        });
       }}
     />
   );

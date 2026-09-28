@@ -3,6 +3,7 @@ import { Button, Drawer, Skeleton, Stack, Table, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
+import rowClasses from '../../components/ClickableRow.module.css';
 import { ErrorState } from '../../components/ErrorState';
 import { PlayerLine } from '../../components/PlayerLine';
 import { formatIsoDay } from '../../lib/format';
@@ -80,7 +81,15 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
           <Table verticalSpacing="xs">
             <Table.Tbody>
               {found.map((player) => (
-                <Table.Tr key={`${player.eventId}:${player.bcpId}`}>
+                <Table.Tr
+                  key={`${player.eventId}:${player.bcpId}`}
+                  className={rowClasses.row}
+                  onClick={(e) => {
+                    // Links and buttons in the row do their own thing.
+                    if (e.target instanceof Element && e.target.closest('a, button')) return;
+                    setOpenKey({ eventId: player.eventId, bcpId: player.bcpId });
+                  }}
+                >
                   <Table.Td>
                     <Text size="sm">{player.name}</Text>
                     <Text size="xs" c="dimmed">
@@ -104,8 +113,8 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
                   </Table.Td>
                   <Table.Td ta="right">
                     <Button
-                      size="compact-xs"
-                      variant="subtle"
+                      size="xs"
+                      variant="light"
                       onClick={() => {
                         setOpenKey({ eventId: player.eventId, bcpId: player.bcpId });
                       }}

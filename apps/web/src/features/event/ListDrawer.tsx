@@ -24,6 +24,48 @@ interface ListDrawerProps {
   onClose: () => void;
 }
 
+/** Where a list can be opened from a shared link: its event's players, with the list open. */
+export const listLink = (eventId: string, playerId: string) =>
+  `${window.location.origin}/events/${encodeURIComponent(eventId)}?tab=players&list=${encodeURIComponent(playerId)}`;
+
+/**
+ * Shares the list's link: the phone's share sheet when there is one, otherwise the clipboard.
+ */
+function ShareListButton({ eventId, player }: { eventId: string; player: EventPlayer }) {
+  const [copied, setCopied] = useState(false);
+  const url = listLink(eventId, player.bcpId);
+  return (
+    <Group gap="xs" wrap="nowrap">
+      <Button
+        size="xs"
+        variant="light"
+        onClick={() => {
+          // Feature check: browsers without a share sheet leave `share` undefined.
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          if (navigator.share) {
+            // A dismissed share sheet rejects; nothing to do then.
+            navigator.share({ title: `${player.name}’s list`, url }).catch(() => undefined);
+            return;
+          }
+          navigator.clipboard.writeText(url).then(
+            () => {
+              setCopied(true);
+            },
+            () => undefined,
+          );
+        }}
+      >
+        Share list
+      </Button>
+      {copied && (
+        <Text size="xs" c="dimmed" aria-live="polite">
+          Link copied
+        </Text>
+      )}
+    </Group>
+  );
+}
+
 export function ListDrawer({ eventId, player, onClose }: ListDrawerProps) {
   return (
     <Drawer
@@ -33,7 +75,12 @@ export function ListDrawer({ eventId, player, onClose }: ListDrawerProps) {
       size="lg"
       title={player?.name}
     >
-      {player && <ListContent eventId={eventId} player={player} />}
+      {player && (
+        <Stack gap="md">
+          <ShareListButton eventId={eventId} player={player} />
+          <ListContent eventId={eventId} player={player} />
+        </Stack>
+      )}
     </Drawer>
   );
 }

@@ -75,10 +75,22 @@ describe('MetaPage', () => {
         eventsInRange: 1,
         eventsLoaded: 1,
       },
+      'GET /api/players/PL-ADA/list': {
+        playerId: 'PL-ADA',
+        playerName: 'Ada Archer',
+        teamName: null,
+        faction: 'Orks',
+        listId: 'LS-ADA',
+        text: 'Orks list text',
+        fetchedAt: '2026-09-23T10:00:00.000Z',
+      },
     });
     renderWithRouter(<MetaPage search={{}} onSearchChange={vi.fn()} />);
     fireEvent.click(await screen.findByRole('button', { name: '20 Orks players' }));
     expect(await screen.findByText('Ada Archer')).toBeInTheDocument();
+    // Anywhere on the player's row opens the list.
+    fireEvent.click(screen.getByText('Ada Archer'));
+    expect(await screen.findByText('Orks list text')).toBeInTheDocument();
     const searchUrl = fetchMock.mock.calls
       .map(([input]) => (typeof input === 'string' ? input : ''))
       .find((url) => url.startsWith('/api/players/search'));

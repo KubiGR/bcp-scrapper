@@ -21,6 +21,7 @@ import { DispositionText } from '../../components/DispositionText';
 import { ErrorState } from '../../components/ErrorState';
 import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
+import rowClasses from '../../components/ClickableRow.module.css';
 import { PlayerLine } from '../../components/PlayerLine';
 import { formatIsoDay, plural } from '../../lib/format';
 import { useDraftRange } from '../../lib/use-draft-range';
@@ -167,7 +168,16 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                     </Table.Thead>
                     <Table.Tbody>
                       {found.map((player) => (
-                        <Table.Tr key={`${player.eventId}:${player.bcpId}`}>
+                        <Table.Tr
+                          key={`${player.eventId}:${player.bcpId}`}
+                          className={rowClasses.row}
+                          onClick={(e) => {
+                            // Links and buttons in the row do their own thing.
+                            if (e.target instanceof Element && e.target.closest('a, button'))
+                              return;
+                            setOpenKey({ eventId: player.eventId, bcpId: player.bcpId });
+                          }}
+                        >
                           <Table.Td>
                             <Text size="sm">{player.name}</Text>
                             {player.teamName && (
@@ -198,8 +208,8 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                           </Table.Td>
                           <Table.Td ta="right">
                             <Button
-                              size="compact-xs"
-                              variant="subtle"
+                              size="xs"
+                              variant="light"
                               onClick={() => {
                                 setOpenKey({ eventId: player.eventId, bcpId: player.bcpId });
                               }}

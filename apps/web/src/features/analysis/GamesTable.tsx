@@ -54,8 +54,8 @@ export function GamesTable({ games, onShowList, knownPlayerIds }: GamesTableProp
                   </div>
                   {showListButton(game.playerA.id) && (
                     <Button
-                      size="compact-xs"
-                      variant="subtle"
+                      size="xs"
+                      variant="light"
                       aria-label={`Show ${game.playerA.name}'s list`}
                       onClick={() => onShowList?.(game.playerA.id)}
                     >
@@ -93,8 +93,8 @@ export function GamesTable({ games, onShowList, knownPlayerIds }: GamesTableProp
                         </div>
                         {showListButton(playerB.id) && (
                           <Button
-                            size="compact-xs"
-                            variant="subtle"
+                            size="xs"
+                            variant="light"
                             aria-label={`Show ${playerB.name}'s list`}
                             onClick={() => onShowList?.(playerB.id)}
                           >

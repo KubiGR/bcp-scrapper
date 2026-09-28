@@ -34,9 +34,12 @@ interface EventPageProps {
   eventId: string;
   tab: EventTab;
   onTabChange: (tab: EventTab) => void;
+  /** The player whose list is open on the players tab (from the address, so it can be shared). */
+  openListId?: string | null;
+  onOpenList?: (playerId: string | null) => void;
 }
 
-export function EventPage({ eventId, tab, onTabChange }: EventPageProps) {
+export function EventPage({ eventId, tab, onTabChange, openListId, onOpenList }: EventPageProps) {
   const event = useQuery(eventQuery(eventId));
   const { start, follow, isSyncing } = useSync({
     label: 'Event sync',
@@ -115,7 +118,12 @@ export function EventPage({ eventId, tab, onTabChange }: EventPageProps) {
           ))}
         </Tabs.List>
         <Tabs.Panel value="players" pt="md">
-          <PlayersPanel event={detail} loadingFromBcp={syncing && detail.lastSyncedAt === null} />
+          <PlayersPanel
+            event={detail}
+            loadingFromBcp={syncing && detail.lastSyncedAt === null}
+            openPlayerId={openListId}
+            onOpenPlayer={onOpenList}
+          />
         </Tabs.Panel>
         <Tabs.Panel value="rounds" pt="md">
           <PairingsGate event={detail}>

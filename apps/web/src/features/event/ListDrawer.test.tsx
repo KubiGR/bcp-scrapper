@@ -47,6 +47,35 @@ describe('ListDrawer', () => {
     expect(screen.getByRole('button', { name: 'Copy list' })).toBeInTheDocument();
   });
 
+  it('copies a link that opens this list on its event page', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    stubFetchRoutes({});
+    renderWithProviders(
+      <ListDrawer eventId="EVT1" player={aPlayer({ listStatus: 'none' })} onClose={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Share list' }));
+    expect(writeText).toHaveBeenCalledWith(
+      `${window.location.origin}/events/EVT1?tab=players&list=PL-ADA`,
+    );
+    expect(await screen.findByText('Link copied')).toBeInTheDocument();
+  });
+
+  it('shares the link through the phone’s share sheet when there is one', () => {
+    const share = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+    stubFetchRoutes({});
+    renderWithProviders(
+      <ListDrawer eventId="EVT1" player={aPlayer({ listStatus: 'none' })} onClose={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Share list' }));
+    expect(share).toHaveBeenCalledWith({
+      title: 'Ada Archer’s list',
+      url: `${window.location.origin}/events/EVT1?tab=players&list=PL-ADA`,
+    });
+    Reflect.deleteProperty(navigator, 'share');
+  });
+
   it('copies the list and opens 40kCompactor in a new tab', async () => {
     const writeText = vi.fn(() => Promise.resolve());
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });

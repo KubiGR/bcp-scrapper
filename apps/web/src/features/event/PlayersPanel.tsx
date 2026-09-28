@@ -12,6 +12,7 @@ import {
   TextInput,
   UnstyledButton,
 } from '@mantine/core';
+import { useUncontrolled } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
 import type { MantineTheme } from '@mantine/core';
 import { DataTable, type DataTableColumn } from 'mantine-datatable';
@@ -153,16 +154,28 @@ interface PlayersPanelProps {
   event: EventDetail;
   /** True while a first-ever event sync is loading the players. */
   loadingFromBcp: boolean;
+  /** The player whose list is open (from the address, so it can be shared); omitted: kept here. */
+  openPlayerId?: string | null;
+  onOpenPlayer?: (playerId: string | null) => void;
 }
 
-export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
+export function PlayersPanel({
+  event,
+  loadingFromBcp,
+  openPlayerId: openPlayerIdProp,
+  onOpenPlayer,
+}: PlayersPanelProps) {
   const players = useQuery(playersQuery(event.bcpId));
   const [query, setQuery] = useState('');
   const [factions, setFactions] = useState<string[]>([]);
   const [dispositions, setDispositions] = useState<string[]>([]);
   const [detachments, setDetachments] = useState<string[]>([]);
   const [maxLosses, setMaxLosses] = useState<number | null>(null);
-  const [openPlayerId, setOpenPlayerId] = useState<string | null>(null);
+  const [openPlayerId, setOpenPlayerId] = useUncontrolled<string | null>({
+    value: openPlayerIdProp,
+    defaultValue: null,
+    onChange: onOpenPlayer,
+  });
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   // Ticked teams, by id, so they survive the players refetching while lists arrive.
   const [selectedTeams, setSelectedTeams] = useState<Set<string>>(new Set());

@@ -1,0 +1,8 @@
+/* A table row that opens something wherever it's clicked or tapped. */
+.row {
+  cursor: pointer;
+}
+
+.row:hover {
+  background: rgb(255 255 255 / 0.03);
+}
