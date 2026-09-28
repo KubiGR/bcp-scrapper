@@ -100,6 +100,12 @@ describe('FactionTable', () => {
     expect(within(rowOf('Necrons')).getByText('40%')).toHaveAttribute('data-tone', 'bad');
   });
 
+  it('colours the reliable win rate the same way', () => {
+    renderWithProviders(<FactionTable {...props} />);
+    expect(within(rowOf('Orks')).getByText('50%')).toHaveAttribute('data-tone', 'even');
+    expect(within(rowOf('Necrons')).getByText('32%')).toHaveAttribute('data-tone', 'bad');
+  });
+
   it('sorts on a column header and expands a faction into its archetypes', () => {
     const onSortChange = vi.fn();
     const onToggle = vi.fn();

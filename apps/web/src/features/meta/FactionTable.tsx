@@ -64,6 +64,16 @@ function ChangeText({ change }: { change: number | null }) {
   );
 }
 
+/** A win rate coloured by the win-rate tone: blue above 55 %, orange below 45 %. */
+function WinRateText({ rate }: { rate: number }) {
+  const tone = winRateTone(rate);
+  return (
+    <Text size="sm" className="numeric" c={TONE_COLOR[tone]} data-tone={tone} component="span">
+      {percent(rate)}
+    </Text>
+  );
+}
+
 export function Figures({
   row,
   weeks,
@@ -79,7 +89,6 @@ export function Figures({
   label: string;
   onOpen: () => void;
 }) {
-  const tone = winRateTone(row.winRate);
   return (
     <>
       <Table.Td ta="right">
@@ -100,12 +109,10 @@ export function Figures({
         <Sparkline values={row.trend} weeks={weeks} />
       </Table.Td>
       <Table.Td ta="right">
-        <Text size="sm" className="numeric" c={TONE_COLOR[tone]} data-tone={tone} component="span">
-          {percent(row.winRate)}
-        </Text>
+        <WinRateText rate={row.winRate} />
       </Table.Td>
-      <Table.Td ta="right" className="numeric">
-        {percent(row.reliableWinRate)}
+      <Table.Td ta="right">
+        <WinRateText rate={row.reliableWinRate} />
       </Table.Td>
       <Table.Td ta="right" visibleFrom="sm">
         <ChangeText change={changeOf(row)} />
