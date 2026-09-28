@@ -49,6 +49,17 @@ describe('event upserts', () => {
     expect(row?.lastSyncedAt).toBeInstanceOf(Date);
   });
 
+  it('keeps the pairings-complete time when the event is saved again', async () => {
+    const at = new Date('2026-09-21T10:00:00Z');
+    await db.update(events).set({ pairingsSyncedAt: at }).where(eq(events.id, 'EVTTEAM0001'));
+    await upsertEventDetail(db, await source.getEvent('EVTTEAM0001'));
+    await upsertEventSummaries(
+      db,
+      (await source.listEvents({ from: '2026-01-01', to: '2026-12-31' }, null)).items,
+    );
+    expect((await findEvent(db, 'EVTTEAM0001'))?.pairingsSyncedAt).toEqual(at);
+  });
+
   it("fills city and team count from search results when detail hasn't set them", async () => {
     // beforeEach already synced the catalogue once (without detail); city/teamCount come from
     // the search fixture's totalTeamPlayers/city.

@@ -50,6 +50,8 @@ export async function upsertEventSummaries(db: Db, list: Fetched<EventSummary>[]
           'teamCount',
           'rawDetail',
           'lastSyncedAt',
+          // Our own bookkeeping, not BCP's: a re-save must not reset it.
+          'pairingsSyncedAt',
         ]),
         city: sql`coalesce(${events.city}, excluded.city)`,
         teamCount: sql`coalesce(${events.teamCount}, excluded.team_count)`,
@@ -63,7 +65,13 @@ export async function upsertEventDetail(db: Db, event: Fetched<EventSummary>): P
     .values({ ...toRow(event), rawDetail: event.raw })
     .onConflictDoUpdate({
       target: events.id,
-      set: excludedColumns(events, ['id', 'createdAt', 'rawSummary', 'lastSyncedAt']),
+      set: excludedColumns(events, [
+        'id',
+        'createdAt',
+        'rawSummary',
+        'lastSyncedAt',
+        'pairingsSyncedAt',
+      ]),
     });
 }
 
