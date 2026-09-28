@@ -1,7 +1,7 @@
 import { canonicalArmy } from './factions';
 
 /** Bump when the parser changes: stored lists with an older version are re-read on startup. */
-export const PARSER_VERSION = 4;
+export const PARSER_VERSION = 5;
 
 /** What a list says about the army; only these three things are ever read from list text. */
 export interface ParsedList {
@@ -32,8 +32,8 @@ const UNKNOWN: ParsedList = { army: null, detachments: [], disposition: null, fo
 
 /** `Name (3 Detachment Points)` / `(3 puntos de destacamento)`: a small number, then words. */
 const DETACHMENT_LINE = /^(.+?)\s*\((\d{1,2})\s+([^\d()]+)\)\s*$/;
-/** A unit's cost, `(45 pts)`: never a detachment line. */
-const UNIT_POINTS = /^(?:pts|points?|punkte|puntos|pkt)\.?$/i;
+/** A unit's cost, `(45 pts)`, or a stratagem's, `(2 CP)`: never a detachment line. */
+const UNIT_POINTS = /^(?:pts|points?|punkte|puntos|pkt|cp|command points?)\.?$/i;
 /** A title or battle-size line: `(2000 points)`, `(2,000 Points)`, `(2.000 puntos)` (1000+). */
 const POINTS_LINE = /\(\s*\d[.,]?\d{3}\s*[^\d()]*\)\s*$/;
 
@@ -76,10 +76,11 @@ function gwApp(lines: string[]): ParsedList | null {
   // isn't the GW-app header.
   if (block.some((line) => line.includes('(') || line.endsWith(':'))) return null;
   const [first = '', second] = block;
+  // Two lines are army + sub-army, or a title without points + army: take the known faction.
   const army =
     first === 'Space Marines' && second !== undefined && OWN_FACTION_CHAPTERS.has(second)
       ? second
-      : first;
+      : (block.find((line) => cleanArmy(line) !== null) ?? first);
   const detachment = DETACHMENT_LINE.exec(lines[at] ?? '')?.[1]?.trim() ?? '';
   const next = lines[at + 1]?.trim() ?? '';
   return {
@@ -98,10 +99,16 @@ function field(lines: string[], pattern: RegExp): string | null {
   return null;
 }
 
-/** `A, B (enhancements…)` → ['A', 'B']. */
+/** Every bracketed part, nested ones included: `A (x (y)), B (z)` → `A, B`. */
+function withoutBrackets(value: string): string {
+  let text = value;
+  while (/\([^()]*\)/.test(text)) text = text.replace(/\s*\([^()]*\)/g, '');
+  return text;
+}
+
+/** `A (enhancements…), B` → ['A', 'B']. */
 const commaList = (value: string | null) =>
-  (value ?? '')
-    .replace(/\s*\([^)]*\)\s*$/, '')
+  withoutBrackets(value ?? '')
     .split(',')
     .map(cleanDetachmentName)
     .filter(Boolean);

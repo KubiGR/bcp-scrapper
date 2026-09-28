@@ -266,6 +266,41 @@ Strike Force (2000 points)`,
     expect(parseArmyList(text)).toEqual(expected);
   });
 
+  it('takes the faction line as the army when a title without points sits right above it', () => {
+    const text = `Anna's Custodes
+Adeptus Custodes
+Lions of the Emperor (3 Detachment Points)
+Take and Hold
+Strike Force (2000 points)`;
+    expect(parseArmyList(text)).toMatchObject({
+      army: 'Adeptus Custodes',
+      detachments: ['Lions of the Emperor'],
+      format: 'gw-app',
+    });
+  });
+
+  it('never takes a "(2 CP)" line for the detachment', () => {
+    const text = `Orks
+Waaagh Stratagem (2 CP)
+Strike Force (2000 points)`;
+    expect(parseArmyList(text).format).not.toBe('gw-app');
+  });
+
+  it('drops nested brackets after each detachment in a header line', () => {
+    const text = `+ FACTION KEYWORD: Xenos - Orks
++ DETACHMENT: War Horde (Enhancements: Follow Me Ladz (+25 pts)), Kult of Speed (x)`;
+    expect(parseArmyList(text).detachments).toEqual(['War Horde', 'Kult of Speed']);
+  });
+
+  it('straightens curly apostrophes in a template list', () => {
+    const text = `Factions used: Emperor’s Children
+Detachment: Carnival of Excess`;
+    expect(parseArmyList(text)).toMatchObject({
+      army: "Emperor's Children",
+      detachments: ['Carnival of Excess'],
+    });
+  });
+
   it('reads Windows line endings', () => {
     expect(parseArmyList(GW_EN.replace(/\n/g, '\r\n')).army).toBe('Thousand Sons');
   });
