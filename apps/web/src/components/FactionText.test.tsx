@@ -12,7 +12,8 @@ describe('FactionText', () => {
 
   it('marks a guessed army with a focusable warning that explains itself', async () => {
     renderWithProviders(<FactionText faction="Necrons" guessed />);
-    const icon = screen.getByLabelText('Guessed from the list');
+    // An image with a name, so screen readers announce it.
+    const icon = screen.getByRole('img', { name: 'Guessed from the list' });
     expect(icon).toHaveAttribute('tabindex', '0');
     fireEvent.focus(icon);
     expect(

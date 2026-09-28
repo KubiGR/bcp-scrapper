@@ -22,6 +22,7 @@ export function FactionText({ faction, guessed }: { faction: string | null; gues
             c="yellow.5"
             ml={4}
             tabIndex={0}
+            role="img"
             aria-label="Guessed from the list"
           >
             ⚠
