@@ -1,4 +1,4 @@
-import type { MetaResponse } from '@bcp/shared';
+import { addDays, type MetaResponse } from '@bcp/shared';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import type { Db } from '../db/client';
@@ -46,16 +46,20 @@ describe('GET /api/meta', () => {
     expect(body.eventsLoaded).toBe(1);
   });
 
-  it('adds weekly trends, and the reliable win rate of the same length of time before', async () => {
+  it('adds weekly trends, and the change over the last 30 days against the 30 before', async () => {
     await syncEvent({ db, source: sampleSource() }, 'EVTBRACKET01'); // 9 May
-    // 20 Apr–31 May; the 42 days before (9 Mar–19 Apr) hold EVTTEAM0001 (28 Mar).
+    // Last 30 days 21 Apr–20 May hold EVTBRACKET01; the 30 before (22 Mar–20 Apr) EVTTEAM0001.
     const body = (await (
-      await app.request('/api/meta?from=2026-04-20&to=2026-05-31')
+      await app.request('/api/meta?from=2026-03-01&to=2026-05-20')
     ).json()) as MetaResponse;
-    expect(body.eventsLoaded).toBe(1);
-    expect(body.weeks).toEqual(['2026-05-04']);
-    expect(body.factions.every((f) => f.trend.length === 1)).toBe(true);
-    expect(body.factions.some((f) => f.reliableBefore !== null)).toBe(true);
+    // From the first event's week to the last one's.
+    expect(body.weeks).toEqual(Array.from({ length: 7 }, (_, i) => addDays('2026-03-23', i * 7)));
+    expect(body.factions.some((f) => f.change !== null)).toBe(true);
+    // A short range still compares the two 30-day spans ending on its last day.
+    const shortRange = (await (
+      await app.request('/api/meta?from=2026-05-01&to=2026-05-20')
+    ).json()) as MetaResponse;
+    expect(shortRange.factions.some((f) => f.change !== null)).toBe(true);
   });
 
   it('has no team section for singles only', async () => {

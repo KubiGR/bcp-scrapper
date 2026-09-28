@@ -144,7 +144,7 @@ export function ArchetypeTable({
                 onSort={onSort}
                 ta="right"
                 visibleFrom="sm"
-                title="Reliable win rate now minus in the same length of time before; new = not played then."
+                title="Reliable win rate in the last 30 days minus the 30 days before them; new = not played in both."
               >
                 Change
               </SortableTh>

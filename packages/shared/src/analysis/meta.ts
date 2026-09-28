@@ -145,8 +145,8 @@ const figures = (tally: Tally, total: number) => ({
  */
 export function computeMeta(
   rows: MetaPlayerRow[],
-  /** The same length of time just before, for each row's reliable win rate then. */
-  previous: MetaPlayerRow[] = [],
+  /** The last 30 days and the 30 before them, for each row's change in reliable win rate. */
+  compare: { recent: MetaPlayerRow[]; prior: MetaPlayerRow[] } = { recent: [], prior: [] },
 ): {
   factions: MetaRow[];
   totals: { players: number; games: number };
@@ -155,11 +155,14 @@ export function computeMeta(
   const counted = rows.filter((row) => gamesOf(row) > 0);
   const total = counted.length;
   const groups = groupRows<Tally>(counted, emptyTally, addToTally);
-  const before = groupRows<Tally>(
-    previous.filter((row) => gamesOf(row) > 0),
-    emptyTally,
-    addToTally,
-  );
+  const grouped = (players: MetaPlayerRow[]) =>
+    groupRows<Tally>(
+      players.filter((row) => gamesOf(row) > 0),
+      emptyTally,
+      addToTally,
+    );
+  const recent = grouped(compare.recent);
+  const prior = grouped(compare.prior);
   const weeks = weeksSpanned(counted);
   const weekTotals = new Map<string, number>();
   for (const row of counted) countIn(weekTotals, weekOf(row.eventStart));
@@ -169,23 +172,30 @@ export function computeMeta(
       const all = weekTotals.get(week) ?? 0;
       return all === 0 ? null : (tally.weeks.get(week) ?? 0) / all;
     });
-  const reliableThen = (tally: Tally | undefined) =>
+  const reliableOf = (tally: Tally | undefined) =>
     tally === undefined || tally.games === 0 ? null : reliableWinRate(tally.points, tally.games);
+  // Null unless played in both 30-day spans.
+  const change = (now: Tally | undefined, then: Tally | undefined) => {
+    const a = reliableOf(now);
+    const b = reliableOf(then);
+    return a === null || b === null ? null : a - b;
+  };
 
   const factions: MetaRow[] = [...groups.entries()]
     .map(([faction, group]) => {
-      const then = before.get(faction);
+      const now = recent.get(faction);
+      const then = prior.get(faction);
       return {
         faction,
         ...figures(group.tally, total),
         trend: trend(group.tally),
-        reliableBefore: reliableThen(then?.tally),
+        change: change(now?.tally, then?.tally),
         archetypes: [...group.archetypes.entries()]
           .map(([key, a]): ArchetypeRow => ({
             detachments: a.detachments,
             ...figures(a.tally, total),
             trend: trend(a.tally),
-            reliableBefore: reliableThen(then?.archetypes.get(key)?.tally),
+            change: change(now?.archetypes.get(key)?.tally, then?.archetypes.get(key)?.tally),
             dispositions: dispositionList(a.tally.dispositions),
           }))
           .sort(

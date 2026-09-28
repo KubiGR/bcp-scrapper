@@ -13,7 +13,7 @@ const greyKnights: MetaRow = {
   winRate: 0.9,
   reliableWinRate: 0.82,
   trend: [],
-  reliableBefore: null,
+  change: null,
   x1: 2,
   x1Share: 1,
   archetypes: [
@@ -26,7 +26,7 @@ const greyKnights: MetaRow = {
       winRate: 0.9,
       reliableWinRate: 0.82,
       trend: [],
-      reliableBefore: null,
+      change: null,
       x1: 2,
       x1Share: 1,
     },
@@ -48,7 +48,7 @@ const single = (
     winRate,
     reliableWinRate,
     trend: [],
-    reliableBefore: null,
+    change: null,
     x1: 0,
     x1Share: 0,
   };

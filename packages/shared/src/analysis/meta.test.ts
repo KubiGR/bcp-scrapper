@@ -92,16 +92,17 @@ describe('computeMeta', () => {
     expect(weekly.factions.find((f) => f.faction === 'Necrons')?.trend).toEqual([0.5, null, 0]);
   });
 
-  it('gives the reliable win rate of the period before, or null for what wasn’t played then', () => {
-    const before = [row({ detachments: ['War Horde'], wins: 1, losses: 4, draws: 0 })];
-    const compared = computeMeta(
-      [row({ detachments: ['War Horde'] }), row({ faction: 'Necrons' })],
-      before,
-    );
+  it('gives the change in reliable win rate: the last 30 days against the 30 before', () => {
+    const recent = [row({ detachments: ['War Horde'] }), row({ faction: 'Necrons' })];
+    const prior = [row({ detachments: ['War Horde'], wins: 1, losses: 4, draws: 0 })];
+    const compared = computeMeta([...recent, ...prior], { recent, prior });
     const orks = compared.factions.find((f) => f.faction === 'Orks');
-    expect(orks?.reliableBefore).toBeCloseTo(reliableWinRate(1, 5), 6);
-    expect(orks?.archetypes[0]?.reliableBefore).toBeCloseTo(reliableWinRate(1, 5), 6);
-    expect(compared.factions.find((f) => f.faction === 'Necrons')?.reliableBefore).toBeNull();
+    const expected = reliableWinRate(3.5, 5) - reliableWinRate(1, 5);
+    expect(orks?.archetypes[0]?.change).toBeCloseTo(expected, 6);
+    // Orks as a whole: the same two players.
+    expect(orks?.change).toBeCloseTo(expected, 6);
+    // Necrons weren't played in the 30 days before: no change to show.
+    expect(compared.factions.find((f) => f.faction === 'Necrons')?.change).toBeNull();
   });
 
   it('treats the same detachments in another order as one archetype', () => {

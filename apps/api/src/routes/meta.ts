@@ -1,7 +1,6 @@
 import {
   addDays,
   computeMeta,
-  daysIn,
   computeTeamMeta,
   MetaQuerySchema,
   type EventSizeRule,
@@ -18,19 +17,17 @@ export function metaRoutes(deps: { db: Db; eventRule: EventSizeRule; now: () => 
     const query = parseInput(MetaQuerySchema, c.req.query());
     const today = deps.now();
     const { from, to } = metaRange(query, today);
-    // The same length of time just before, for each row's change in reliable win rate.
-    const length = daysIn({ from, to });
-    const [current, previous] = await Promise.all([
+    // The change column compares the range's last 30 days with the 30 days before them.
+    const [current, lastSixty] = await Promise.all([
       loadMetaRows(deps.db, { ...query, from, to }, deps.eventRule, today),
-      loadMetaRows(
-        deps.db,
-        { ...query, from: addDays(from, -length), to: addDays(from, -1) },
-        deps.eventRule,
-        today,
-      ),
+      loadMetaRows(deps.db, { ...query, from: addDays(to, -59), to }, deps.eventRule, today),
     ]);
+    const recentFrom = addDays(to, -29);
     const { rows, eventsInRange, eventsLoaded } = current;
-    const { factions, totals, weeks } = computeMeta(rows, previous.rows);
+    const { factions, totals, weeks } = computeMeta(rows, {
+      recent: lastSixty.rows.filter((row) => row.eventStart >= recentFrom),
+      prior: lastSixty.rows.filter((row) => row.eventStart < recentFrom),
+    });
     const teams = computeTeamMeta(rows);
     const body: MetaResponse = {
       factions,

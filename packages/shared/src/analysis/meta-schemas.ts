@@ -14,8 +14,11 @@ const figures = {
   reliableWinRate: ratio,
   /** Share of each week's players (see MetaResponse.weeks); null for a week without events. */
   trend: z.array(ratio.nullable()),
-  /** The reliable win rate in the same length of time just before; null if not played then. */
-  reliableBefore: ratio.nullable(),
+  /**
+   * Reliable win rate in the range's last 30 days minus in the 30 days before them; null unless
+   * played in both.
+   */
+  change: z.number().min(-1).max(1).nullable(),
   /** Players who went X-1 or better. */
   x1: count,
   x1Share: ratio,

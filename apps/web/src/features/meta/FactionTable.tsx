@@ -36,9 +36,8 @@ interface FactionTableProps {
   onOpenPlayers: (filter: PlayersFilter) => void;
 }
 
-/** Reliable win rate now minus in the period before; null when not played then. */
-export const changeOf = (row: Pick<MetaRow, 'reliableWinRate' | 'reliableBefore'>) =>
-  row.reliableBefore === null ? null : row.reliableWinRate - row.reliableBefore;
+/** Reliable win rate in the range's last 30 days minus the 30 before; null unless in both. */
+export const changeOf = (row: Pick<MetaRow, 'change'>) => row.change;
 
 /** "+4.2 pp" / "−3.0 pp"; a change that rounds to 0 is neutral. */
 function ChangeText({ change }: { change: number | null }) {
@@ -68,14 +67,7 @@ export function Figures({
 }: {
   row: Pick<
     MetaRow,
-    | 'players'
-    | 'share'
-    | 'winRate'
-    | 'reliableWinRate'
-    | 'reliableBefore'
-    | 'trend'
-    | 'x1'
-    | 'x1Share'
+    'players' | 'share' | 'winRate' | 'reliableWinRate' | 'change' | 'trend' | 'x1' | 'x1Share'
   >;
   /** The weeks `row.trend` follows. */
   weeks: string[];
@@ -139,10 +131,7 @@ export function FactionTable({
   const tableMinWidth = useMatches({ base: 0, sm: 560 });
   const sign = dir === 'asc' ? 1 : -1;
   const dimmed = (row: MetaRow) => row.faction === null || row.players < minPlayers;
-  type Measured = Pick<
-    MetaRow,
-    'players' | 'winRate' | 'reliableWinRate' | 'reliableBefore' | 'x1Share'
-  >;
+  type Measured = Pick<MetaRow, 'players' | 'winRate' | 'reliableWinRate' | 'change' | 'x1Share'>;
   const metric = (row: Measured) =>
     sort === 'winRate'
       ? row.winRate
@@ -226,7 +215,7 @@ export function FactionTable({
               onSort={onSort}
               ta="right"
               visibleFrom="sm"
-              title="Reliable win rate now minus in the same length of time before; new = not played then."
+              title="Reliable win rate in the last 30 days minus the 30 days before them; new = not played in both."
             >
               Change
             </SortableTh>
