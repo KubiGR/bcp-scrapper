@@ -2,6 +2,7 @@ import {
   ALLEGIANCE_NAMES,
   cleanDetachmentName,
   looksForeign,
+  SPACE_MARINES,
   type DetachmentNamesResponse,
 } from '@bcp/shared';
 import { eq, sql } from 'drizzle-orm';
@@ -42,10 +43,13 @@ export async function foreignDetachmentCheck(db: Db): Promise<(name: string) => 
  * made so far.
  */
 /**
- * The player's army as the rest of the app counts it: BCP's faction, or the army read from the
- * list when BCP only names an allegiance ("Forces of the Hive Mind"); null when neither says.
+ * The army a list's detachments belong to: the list's own army, since BCP's faction can be wrong
+ * (a Space Wolves list registered as Necrons); BCP's when the list names none, or only Space
+ * Marines while BCP names the chapter; never an allegiance like "Forces of the Hive Mind".
  */
 const armyOf = sql<string | null>`case
+  when ${armyLists.parsedArmy} is not null and ${armyLists.parsedArmy} <> ${SPACE_MARINES}
+  then ${armyLists.parsedArmy}
   when ${players.faction} is null or lower(${players.faction}) in (${sql.join(
     ALLEGIANCE_NAMES.map((name) => sql`${name}`),
     sql`, `,

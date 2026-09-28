@@ -79,6 +79,22 @@ describe('detachment names', () => {
     ]);
   });
 
+  it('groups a name by the list’s own army when BCP names another faction', async () => {
+    // Registered as Necrons on BCP, but the list is Space Wolves.
+    await db.update(players).set({ faction: 'Necrons' }).where(eq(players.id, 'PL-EVE'));
+    await storeList(db, 'PL-EVE', gwList('Space Wolves', 'Legends of Saga and Song'));
+    // A chapter's list names the army as Space Marines: BCP's chapter is the more exact one.
+    await db.update(players).set({ faction: 'Dark Angels' }).where(eq(players.id, 'PL-FINN'));
+    await storeList(db, 'PL-FINN', gwList('Space Marines', 'Unforgiven Task Force'));
+    const names = await detachmentNames(db);
+    expect(names.unsure.find((u) => u.name === 'Legends of Saga and Song')?.factions).toEqual([
+      'Space Wolves',
+    ]);
+    expect(names.unsure.find((u) => u.name === 'Unforgiven Task Force')?.factions).toEqual([
+      'Dark Angels',
+    ]);
+  });
+
   it('sets apart the names that look foreign', async () => {
     expect((await detachmentNames(db)).foreign).toEqual([
       { name: 'Cabalgata del Caos', lists: 2, factions: ['Chaos Daemons'], marked: false },

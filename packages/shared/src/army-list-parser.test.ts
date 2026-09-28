@@ -292,6 +292,15 @@ Strike Force (2000 points)`;
     expect(parseArmyList(text).detachments).toEqual(['War Horde', 'Kult of Speed']);
   });
 
+  it('reads a header line that has the disposition after the detachment', () => {
+    const text = `+ FACTION KEYWORD: Xenos - Necrons
++ DETACHMENT: Awakened Dynasty + FORCE DISPOSITION: TAKE AND HOLD`;
+    expect(parseArmyList(text)).toMatchObject({
+      detachments: ['Awakened Dynasty'],
+      disposition: 'Take and Hold',
+    });
+  });
+
   it('straightens curly apostrophes in a template list', () => {
     const text = `Factions used: Emperor’s Children
 Detachment: Carnival of Excess`;
@@ -315,6 +324,20 @@ describe('splitDetachments', () => {
       'Wreckas',
     ]);
     expect(splitDetachments(['A y B'], new Set(['A', 'B']))).toEqual(['A', 'B']);
+  });
+
+  it('splits on "&" and "+" like on "and"', () => {
+    const known = new Set(['Cursed Legion', 'Skyshroud Spearhead', 'Awakened Dynasty']);
+    expect(splitDetachments(['Cursed Legion & Skyshroud Spearhead'], known)).toEqual([
+      'Cursed Legion',
+      'Skyshroud Spearhead',
+    ]);
+    expect(splitDetachments(['Awakened Dynasty + Cursed Legion'], known)).toEqual([
+      'Awakened Dynasty',
+      'Cursed Legion',
+    ]);
+    // Only where that gives known names.
+    expect(splitDetachments(['Salt & Iron'], known)).toEqual(['Salt & Iron']);
   });
 
   it('splits when at least one part is a known detachment', () => {

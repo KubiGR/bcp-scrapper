@@ -76,7 +76,8 @@ export const BCP_FACTIONS = [
   'World Eaters',
 ] as const;
 
-const SPACE_MARINES = 'Space Marines (Astartes)';
+/** BCP's Space Marines faction; a chapter's list names its army this way too. */
+export const SPACE_MARINES = 'Space Marines (Astartes)';
 
 /**
  * Other names armies go by in lists: GW-app wording, chapters BCP counts as Space Marines, and

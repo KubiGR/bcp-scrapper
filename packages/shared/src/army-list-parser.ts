@@ -1,7 +1,7 @@
 import { canonicalArmy } from './factions';
 
 /** Bump when the parser changes: stored lists with an older version are re-read on startup. */
-export const PARSER_VERSION = 5;
+export const PARSER_VERSION = 6;
 
 /** What a list says about the army; only these three things are ever read from list text. */
 export interface ParsedList {
@@ -139,8 +139,11 @@ function header(lines: string[]): ParsedList | null {
   const army = keyword.split(' - ').at(-1)?.trim() ?? '';
   return {
     army: army === '' ? null : cleanArmy(army),
-    detachments: commaList(field(lines, /^\+\s*DETACHMENT:\s*(.+)$/i)),
-    disposition: knownDisposition(field(lines, /^\+\s*FORCE DISPOSITION:\s*(.+)$/i)),
+    // Some lists put the disposition on the detachment's line: `+ DETACHMENT: A + FORCE DISPOSITION: B`.
+    detachments: commaList(
+      field(lines, /^\+\s*DETACHMENT:\s*(.+?)(?:\s*\+\s*FORCE DISPOSITION:.*)?$/i),
+    ),
+    disposition: knownDisposition(field(lines, /^\+.*?FORCE DISPOSITION:\s*(.+)$/i)),
     format: 'header',
   };
 }
@@ -172,8 +175,8 @@ export function parseArmyList(text: string | null): ParsedList {
 
 /** Commas always separate detachments (no name has one), also before a last "and". */
 const COMMA = /\s*,\s*(?:(?:and|y|und|et|e)\s+)?/;
-/** Words that join detachments on a GW-app line, but can also be part of one name. */
-const WORD_JOINER = /(\s+(?:and|y|und|et|e)\s+)/;
+/** Words (and "&", "+") that join detachments on a line, but can also be part of one name. */
+const WORD_JOINER = /(\s+(?:and|y|und|et|e|&|\+)\s+)/;
 
 /** A detachment name with every kind of space collapsed and straight apostrophes. */
 export function cleanDetachmentName(name: string): string {
