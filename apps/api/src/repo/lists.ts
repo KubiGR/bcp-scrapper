@@ -228,13 +228,18 @@ export async function tidyDetachments(db: Db): Promise<number> {
   return changed;
 }
 
+/**
+ * Stores a player's list. `listId`: the id it was asked for (the player's), which is what marks
+ * it as their current list; BCP could answer under another.
+ */
 export async function saveArmyList(
   db: Db,
   playerId: string,
   list: Fetched<ArmyList>,
+  listId: string = list.bcpId,
 ): Promise<void> {
   const values = {
-    listId: list.bcpId,
+    listId,
     text: list.text,
     raw: list.raw,
     fetchedAt: new Date(),

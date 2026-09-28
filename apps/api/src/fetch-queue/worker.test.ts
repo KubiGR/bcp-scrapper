@@ -17,7 +17,7 @@ import {
   SINGLE_LIST_PRIORITY,
   USER_WAITING_PRIORITY,
 } from '../repo/fetch-queue';
-import { findPlayerList } from '../repo/lists';
+import { findPlayerList, findPlayersMissingLists } from '../repo/lists';
 import { storedPairingsSummary } from '../repo/pairings';
 import { upsertPlayers } from '../repo/participants';
 import { drainQueue, sampleSource, silentLogger } from '../test/helpers';
@@ -285,6 +285,19 @@ describe('FetchQueueWorker', () => {
     expect(await w.estimateSecondsFor()).toBe(10);
     expect(await w.estimateSecondsFor(EVENT)).toBe(10);
     expect(await w.estimateSecondsFor('OTHER')).toBeNull();
+  });
+
+  it('stores a list under the id asked for, even when BCP answers with another', async () => {
+    const renamed = withGetList(async (listId) => {
+      const list = await source.getList(listId);
+      return list === null ? null : { ...list, bcpId: `${listId}-NEW` };
+    });
+    await enqueueLists(db, EVENT, [ada], 0);
+    await drainQueue(worker(renamed));
+    // Otherwise the player's list would count as missing, and be fetched again every pass.
+    expect((await findPlayersMissingLists(db, EVENT)).map((p) => p.playerId)).not.toContain(
+      'PL-ADA',
+    );
   });
 
   it('counts the rounds an event load will queue in that event’s estimate', async () => {

@@ -255,7 +255,7 @@ export class FetchQueueWorker {
       await markJobFailed(db, job.id, 'No list on BCP', NO_LIST_CODE);
       return 'failed';
     }
-    await saveArmyList(db, job.playerId, list);
+    await saveArmyList(db, job.playerId, list, job.listId);
     await markJobDone(db, job.id);
     return 'fetched';
   }
