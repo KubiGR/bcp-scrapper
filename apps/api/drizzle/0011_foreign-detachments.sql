@@ -1,0 +1,1 @@
+ALTER TABLE "detachment_links" ADD COLUMN "foreign" boolean DEFAULT false NOT NULL;

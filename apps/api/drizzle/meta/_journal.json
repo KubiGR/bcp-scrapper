@@ -78,6 +78,13 @@
       "when": 1790545390713,
       "tag": "0010_detachment-links",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790579046825,
+      "tag": "0011_foreign-detachments",
+      "breakpoints": true
     }
   ]
 }

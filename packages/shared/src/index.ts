@@ -3,6 +3,7 @@ export * from './api';
 export * from './army-list-parser';
 export * from './auth';
 export * from './catalog';
+export * from './detachment-language';
 export * from './domain';
 export * from './error-code';
 export * from './factions';

@@ -91,7 +91,9 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
   teams with all teams.
 - **Settings → Detachment names** lists detachment names used in lists that BCP never uses
   (translations, misspellings): link each to the detachment it means, or mark it as its own. Links
-  apply to every stored list at once and win over translations learned from BCP.
+  apply to every stored list at once and win over translations learned from BCP. Names that
+  aren't English (accents, other alphabets, words like "de" or "und" — or marked **Not English**
+  by hand) stay in the lists, but Meta counts their players as "detachment unknown".
 - **Top lists** (header) searches every loaded big event in a date range for players of chosen
   factions who went X-n or better (default X-1, last 90 days), with their lists one click away.
 - No Docker? `DATABASE_URL=pglite://memory pnpm dev` runs everything in memory (lost on restart).

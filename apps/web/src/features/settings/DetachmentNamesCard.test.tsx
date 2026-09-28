@@ -11,6 +11,10 @@ const names = (overrides: Partial<DetachmentNamesResponse> = {}): DetachmentName
     { name: 'Horda de Guerra', lists: 4, factions: ['Orks'] },
     { name: 'Legion de Sangre', lists: 2, factions: ['Chaos Daemons'] },
   ],
+  foreign: [
+    { name: 'Legión Sangrienta', lists: 3, factions: ['Chaos Daemons'], marked: false },
+    { name: 'Arrazadorez', lists: 1, factions: ['Orks'], marked: true },
+  ],
   targets: [
     { name: 'Blood Legion', factions: ['Chaos Daemons'] },
     { name: 'Shadow Legion', factions: ['Chaos Daemons'] },
@@ -105,6 +109,7 @@ describe('DetachmentNamesCard', () => {
     expect(JSON.parse(post?.[1]?.body as string)).toEqual({
       name: 'Cabalgata del Caos',
       target: 'Blood Legion',
+      foreign: false,
     });
   });
 
@@ -126,6 +131,68 @@ describe('DetachmentNamesCard', () => {
     expect(JSON.parse(post?.[1]?.body as string)).toEqual({
       name: 'Cabalgata del Caos',
       target: null,
+      foreign: false,
+    });
+  });
+
+  it('marks a name as not English', async () => {
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/detachments': names(),
+      'POST /api/detachments/links': names(),
+    });
+    renderWithProviders(<DetachmentNamesCard />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Cabalgata del Caos is not in English' }),
+    );
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true);
+    });
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(JSON.parse(post?.[1]?.body as string)).toEqual({
+      name: 'Cabalgata del Caos',
+      target: null,
+      foreign: true,
+    });
+  });
+
+  it('lists the faction’s names that aren’t English apart, and can say one is English', async () => {
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/detachments': names(),
+      'POST /api/detachments/links': names(),
+    });
+    renderWithProviders(<DetachmentNamesCard />);
+    const section = within(await screen.findByRole('region', { name: 'Not in English' }));
+    expect(section.queryByText('Arrazadorez')).not.toBeInTheDocument();
+    const row = within(rowOf('Legión Sangrienta'));
+    expect(row.queryByRole('button', { name: /Undo/ })).not.toBeInTheDocument();
+    fireEvent.click(row.getByRole('button', { name: 'Legión Sangrienta is English' }));
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true);
+    });
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(JSON.parse(post?.[1]?.body as string)).toEqual({
+      name: 'Legión Sangrienta',
+      target: null,
+      foreign: false,
+    });
+  });
+
+  it('undoes a name marked as not English', async () => {
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/detachments': names(),
+      'DELETE /api/detachments/links/': names(),
+    });
+    renderWithProviders(<DetachmentNamesCard />);
+    fireEvent.click(await screen.findByRole('combobox', { name: 'Faction' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Orks (1)' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Undo Not English for Arrazadorez' }),
+    );
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(true);
     });
   });
 

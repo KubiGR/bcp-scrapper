@@ -13,6 +13,7 @@ import { and, desc, gt, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { armyLists, events, players, teams } from '../db/schema';
 import { latestQueueRowsByPlayer } from './fetch-queue';
+import { foreignDetachmentCheck } from './detachment-links';
 import { storedCurrentList } from './lists';
 import { listStateOf } from './participants';
 
@@ -21,12 +22,20 @@ const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 /**
  * Whether a player's detachments pass the filter: any listed one, or (`exact`) exactly the listed
- * set, as an archetype row counts them; `(unknown)` matches a player without detachments.
+ * set, as an archetype row counts them; `(unknown)` matches a player without detachments or with
+ * one that isn't English, as Meta counts them.
  */
-function detachmentsMatch(query: PlayerSearchQuery, detachments: string[]): boolean {
+function detachmentsMatch(
+  query: PlayerSearchQuery,
+  detachments: string[],
+  foreign: (name: string) => boolean,
+): boolean {
   const wanted = query.detachments;
   if (wanted.length === 0) return true;
-  if (detachments.length === 0) return wanted.includes(UNKNOWN_FILTER);
+  if (detachments.length === 0 || detachments.some(foreign)) {
+    if (wanted.includes(UNKNOWN_FILTER)) return true;
+  }
+  if (detachments.length === 0) return false;
   if (query.detachmentsMatch === 'exact') {
     const key = (list: string[]) => [...list].sort().join('\u0000');
     return key(detachments) === key(wanted);
@@ -90,7 +99,7 @@ export async function searchTopLists(
     };
   }
 
-  const [loaded, rows] = await Promise.all([
+  const [loaded, rows, foreign] = await Promise.all([
     db
       .selectDistinct({ eventId: players.eventId })
       .from(players)
@@ -140,6 +149,9 @@ export async function searchTopLists(
         desc(events.startDate),
         players.name,
       ),
+    query.detachments.includes(UNKNOWN_FILTER)
+      ? foreignDetachmentCheck(db)
+      : (_name: string) => false,
   ]);
 
   const qualifying = rows.map((row) => ({
@@ -152,7 +164,7 @@ export async function searchTopLists(
     (player) =>
       anyOf(query.factions, player.faction) &&
       anyOf(query.dispositions, player.disposition) &&
-      detachmentsMatch(query, player.detachments),
+      detachmentsMatch(query, player.detachments, foreign),
   );
   const page = matching.slice(0, TOP_LISTS_LIMIT);
 

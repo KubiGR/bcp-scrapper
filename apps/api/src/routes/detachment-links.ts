@@ -19,11 +19,11 @@ export function detachmentLinkRoutes(deps: { db: Db; authRequired: boolean }) {
     .get('/detachments', async (c) => c.json(await detachmentNames(db)))
     .post('/detachments/links', requireJson, async (c) => {
       adminOnly(c.get('user'));
-      const { name, target } = parseInput(
+      const { name, target, foreign } = parseInput(
         DetachmentLinkRequestSchema,
         await c.req.json<unknown>().catch(() => null),
       );
-      await linkDetachment(db, name, target);
+      await linkDetachment(db, name, target, foreign);
       return c.json(await detachmentNames(db));
     })
     .delete('/detachments/links/:name', async (c) => {

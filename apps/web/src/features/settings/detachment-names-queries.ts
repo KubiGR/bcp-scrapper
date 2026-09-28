@@ -7,8 +7,9 @@ export const detachmentNamesQuery = queryOptions({
   queryFn: () => apiGet('/api/detachments', DetachmentNamesResponseSchema),
 });
 
-export const linkDetachment = (name: string, target: string | null) =>
-  apiPost('/api/detachments/links', { name, target }, DetachmentNamesResponseSchema);
+/** Links `name` to `target` (null: its own detachment; with `foreign`, not English). */
+export const linkDetachment = (name: string, target: string | null, foreign = false) =>
+  apiPost('/api/detachments/links', { name, target, foreign }, DetachmentNamesResponseSchema);
 
 export const unlinkDetachment = (name: string) =>
   apiDelete(`/api/detachments/links/${encodeURIComponent(name)}`, DetachmentNamesResponseSchema);

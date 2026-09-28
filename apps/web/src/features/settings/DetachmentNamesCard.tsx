@@ -9,7 +9,13 @@ import classes from './DetachmentNamesCard.module.css';
 import { detachmentNamesQuery, linkDetachment, unlinkDetachment } from './detachment-names-queries';
 
 type Unsure = DetachmentNamesResponse['unsure'][number];
+type Foreign = DetachmentNamesResponse['foreign'][number];
 type Target = DetachmentNamesResponse['targets'][number];
+interface LinkRequest {
+  name: string;
+  target: string | null;
+  foreign: boolean;
+}
 
 const ALL = '';
 
@@ -25,11 +31,12 @@ function targetOptions(unsure: Unsure, targets: Target[], faction: string): stri
   return [...own, ...rest].map((t) => t.name);
 }
 
-/** Factions with unsure or linked names, most unsure names first, as picker options. */
+/** Factions with unsure, foreign or linked names, most unsure names first, as picker options. */
 function factionOptions(data: DetachmentNamesResponse) {
   const counts = new Map<string, number>();
-  for (const linked of data.links)
-    for (const f of linked.factions) counts.set(f, counts.get(f) ?? 0);
+  for (const named of [...data.links, ...data.foreign]) {
+    for (const f of named.factions) counts.set(f, counts.get(f) ?? 0);
+  }
   for (const unsure of data.unsure) {
     for (const f of unsure.factions) counts.set(f, (counts.get(f) ?? 0) + 1);
   }
@@ -38,42 +45,51 @@ function factionOptions(data: DetachmentNamesResponse) {
     .map(([faction, count]) => ({ value: faction, label: `${faction} (${String(count)})` }));
 }
 
-function UnsureRow({
-  unsure,
-  targets,
-  faction,
-  readOnly,
-  onLink,
-  pending,
-}: {
-  unsure: Unsure;
+interface RowProps {
   targets: Target[];
   /** The picked faction, or ALL (then the row also says which factions play the name). */
   faction: string;
   readOnly: boolean;
-  onLink: (target: string | null) => void;
-  pending: boolean;
-}) {
+  /** The name being saved, if any. */
+  saving: string | null;
+  onLink: (request: LinkRequest) => void;
+  onUndo: (name: string) => void;
+}
+
+/** One name: link it, or say it's its own detachment / not English (or, if foreign, English). */
+function NameRow({
+  entry,
+  foreign,
+  targets,
+  faction,
+  readOnly,
+  saving,
+  onLink,
+  onUndo,
+}: RowProps & { entry: Unsure; foreign?: Foreign }) {
   const [target, setTarget] = useState<string | null>(null);
+  const link = (request: Omit<LinkRequest, 'name'>) => {
+    onLink({ name: entry.name, ...request });
+  };
   return (
     <Table.Tr>
-      <Table.Td>{unsure.name}</Table.Td>
+      <Table.Td>{entry.name}</Table.Td>
       <Table.Td ta="right" className="numeric">
-        {unsure.lists}
+        {entry.lists}
       </Table.Td>
       {faction === ALL && (
         <Table.Td>
           <Text size="sm" c="dimmed">
-            {unsure.factions.join(', ')}
+            {entry.factions.join(', ')}
           </Text>
         </Table.Td>
       )}
       <Table.Td>
         <Group gap="xs">
           <Select
-            aria-label={`Link ${unsure.name} to`}
+            aria-label={`Link ${entry.name} to`}
             placeholder="Pick a detachment"
-            data={targetOptions(unsure, targets, faction)}
+            data={targetOptions(entry, targets, faction)}
             value={target}
             onChange={setTarget}
             searchable
@@ -83,33 +99,110 @@ function UnsureRow({
           <Button
             size="xs"
             disabled={readOnly || target === null}
-            loading={pending}
+            loading={saving === entry.name}
             onClick={() => {
-              onLink(target);
+              link({ target, foreign: false });
             }}
           >
             Link
           </Button>
-          <Button
-            size="xs"
-            variant="subtle"
-            disabled={readOnly}
-            aria-label={`${unsure.name} is its own detachment`}
-            onClick={() => {
-              onLink(null);
-            }}
-          >
-            Own detachment
-          </Button>
+          {foreign === undefined ? (
+            <>
+              <Button
+                size="xs"
+                variant="subtle"
+                disabled={readOnly}
+                aria-label={`${entry.name} is its own detachment`}
+                onClick={() => {
+                  link({ target: null, foreign: false });
+                }}
+              >
+                Own detachment
+              </Button>
+              <Button
+                size="xs"
+                variant="subtle"
+                color="gray"
+                disabled={readOnly}
+                aria-label={`${entry.name} is not in English`}
+                onClick={() => {
+                  link({ target: null, foreign: true });
+                }}
+              >
+                Not English
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                size="xs"
+                variant="subtle"
+                disabled={readOnly}
+                aria-label={`${entry.name} is English`}
+                onClick={() => {
+                  link({ target: null, foreign: false });
+                }}
+              >
+                It’s English
+              </Button>
+              {foreign.marked && (
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  color="gray"
+                  disabled={readOnly}
+                  aria-label={`Undo Not English for ${entry.name}`}
+                  onClick={() => {
+                    onUndo(entry.name);
+                  }}
+                >
+                  Undo
+                </Button>
+              )}
+            </>
+          )}
         </Group>
       </Table.Td>
     </Table.Tr>
   );
 }
 
+/** A table of names, each with its link controls. */
+function NamesTable({
+  entries,
+  foreign = false,
+  ...rowProps
+}: RowProps & { entries: (Unsure | Foreign)[]; foreign?: boolean }) {
+  return (
+    <Table.ScrollContainer minWidth={rowProps.faction === ALL ? 640 : 480}>
+      <Table verticalSpacing="xs">
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>Name in lists</Table.Th>
+            <Table.Th ta="right">Lists</Table.Th>
+            {rowProps.faction === ALL && <Table.Th>Factions</Table.Th>}
+            <Table.Th>Means</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {entries.map((entry) => (
+            <NameRow
+              key={entry.name}
+              entry={entry}
+              foreign={foreign && 'marked' in entry ? entry : undefined}
+              {...rowProps}
+            />
+          ))}
+        </Table.Tbody>
+      </Table>
+    </Table.ScrollContainer>
+  );
+}
+
 /**
  * Detachment names lists use but BCP never does (translations, misspellings): link each to the
- * detachment it means, or mark it as its own; links apply to every stored list at once.
+ * detachment it means, mark it as its own, or as not English (Meta then counts it as detachment
+ * unknown); links apply to every stored list at once.
  */
 export function DetachmentNamesCard() {
   const names = useQuery(detachmentNamesQuery);
@@ -124,8 +217,7 @@ export function DetachmentNamesCard() {
     });
   };
   const link = useMutation({
-    mutationFn: ({ name, target }: { name: string; target: string | null }) =>
-      linkDetachment(name, target),
+    mutationFn: ({ name, target, foreign }: LinkRequest) => linkDetachment(name, target, foreign),
     onSuccess: saved,
   });
   const unlink = useMutation({ mutationFn: unlinkDetachment, onSuccess: saved });
@@ -140,8 +232,21 @@ export function DetachmentNamesCard() {
   const inFaction = (list: { factions: string[] }) =>
     faction === ALL || list.factions.includes(faction);
   const unsure = names.data?.unsure.filter(inFaction) ?? [];
+  const foreign = names.data?.foreign.filter(inFaction) ?? [];
   const links = names.data?.links.filter(inFaction) ?? [];
   const known = names.data?.targets.filter((t) => t.factions.includes(faction)) ?? [];
+  const rowProps: RowProps = {
+    targets: names.data?.targets ?? [],
+    faction,
+    readOnly,
+    saving: link.isPending ? link.variables.name : null,
+    onLink: (request) => {
+      link.mutate(request);
+    },
+    onUndo: (name) => {
+      unlink.mutate(name);
+    },
+  };
 
   return (
     <Panel title="Detachment names">
@@ -176,59 +281,43 @@ export function DetachmentNamesCard() {
               w={{ base: '100%', xs: 280 }}
             />
           )}
+          {faction !== ALL && known.length > 0 && (
+            <Stack gap={4}>
+              <Text size="sm" fw={600}>
+                Known {faction} detachments
+              </Text>
+              <Group
+                component="ul"
+                aria-label={`Known ${faction} detachments`}
+                gap={6}
+                className={classes.known}
+              >
+                {known.map((target) => (
+                  <Badge component="li" key={target.name} variant="light" color="gray">
+                    {target.name}
+                  </Badge>
+                ))}
+              </Group>
+            </Stack>
+          )}
           {names.data.unsure.length === 0 ? (
             <Text size="sm" c="dimmed">
               Every detachment name is known.
             </Text>
           ) : (
-            <>
-              {faction !== ALL && (
-                <Stack gap={4}>
-                  <Text size="sm" fw={600}>
-                    Known {faction} detachments
-                  </Text>
-                  <Group
-                    component="ul"
-                    aria-label={`Known ${faction} detachments`}
-                    gap={6}
-                    className={classes.known}
-                  >
-                    {known.map((target) => (
-                      <Badge component="li" key={target.name} variant="light" color="gray">
-                        {target.name}
-                      </Badge>
-                    ))}
-                  </Group>
-                </Stack>
-              )}
-              <Table.ScrollContainer minWidth={faction === ALL ? 640 : 480}>
-                <Table verticalSpacing="xs">
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>Name in lists</Table.Th>
-                      <Table.Th ta="right">Lists</Table.Th>
-                      {faction === ALL && <Table.Th>Factions</Table.Th>}
-                      <Table.Th>Means</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {unsure.map((unsure) => (
-                      <UnsureRow
-                        key={unsure.name}
-                        unsure={unsure}
-                        targets={names.data.targets}
-                        faction={faction}
-                        readOnly={readOnly}
-                        pending={link.isPending && link.variables.name === unsure.name}
-                        onLink={(target) => {
-                          link.mutate({ name: unsure.name, target });
-                        }}
-                      />
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Table.ScrollContainer>
-            </>
+            unsure.length > 0 && <NamesTable entries={unsure} {...rowProps} />
+          )}
+          {foreign.length > 0 && (
+            <Stack component="section" aria-label="Not in English" gap={4}>
+              <Text size="sm" fw={600}>
+                Not in English
+              </Text>
+              <Text size="xs" c="dimmed">
+                Lists keep these names, but Meta counts them as detachment unknown. Link one to the
+                detachment it means to count it.
+              </Text>
+              <NamesTable entries={foreign} foreign {...rowProps} />
+            </Stack>
           )}
           {links.length > 0 && (
             <Stack gap={4}>

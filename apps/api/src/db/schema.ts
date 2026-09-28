@@ -331,5 +331,7 @@ export const detachmentLinks = pgTable('detachment_links', {
   nameKey: text('name_key').primaryKey(),
   name: text('name').notNull(),
   target: text('target'),
+  /** Marked as not English (target null): left as it is, but out of Meta's detachment rows. */
+  foreign: boolean('foreign').notNull().default(false),
   createdAt: timestamptz('created_at').notNull().defaultNow(),
 });

@@ -6,7 +6,12 @@ import { createTestDb, resetDb } from '../db/test-db';
 import { sampleSource } from '../test/helpers';
 import { gwList, storeList } from '../test/lists';
 import { upsertEventDetail } from './events';
-import { detachmentNames, linkDetachment, unlinkDetachment } from './detachment-links';
+import {
+  detachmentNames,
+  foreignDetachmentCheck,
+  linkDetachment,
+  unlinkDetachment,
+} from './detachment-links';
 import { replaceEventPlayers, replaceEventTeams } from './participants';
 
 let db: Db;
@@ -35,10 +40,9 @@ const detachmentsOf = async (playerId: string) =>
 
 describe('detachment names', () => {
   it('lists the names BCP doesn’t use, most used first, with their factions', async () => {
+    await storeList(db, 'PL-EVE', gwList('Chaos Daemons', 'Wreckas'));
     const names = await detachmentNames(db);
-    expect(names.unsure).toEqual([
-      { name: 'Cabalgata del Caos', lists: 2, factions: ['Chaos Daemons'] },
-    ]);
+    expect(names.unsure).toEqual([{ name: 'Wreckas', lists: 1, factions: ['Chaos Daemons'] }]);
     expect(names.targets).toEqual([
       { name: 'Blood Legion', factions: ['Chaos Daemons'] },
       { name: 'Shadow Legion', factions: ['Chaos Daemons'] },
@@ -46,18 +50,51 @@ describe('detachment names', () => {
     expect(names.links).toEqual([]);
   });
 
+  it('sets apart the names that look foreign', async () => {
+    expect((await detachmentNames(db)).foreign).toEqual([
+      { name: 'Cabalgata del Caos', lists: 2, factions: ['Chaos Daemons'], marked: false },
+    ]);
+  });
+
+  it('marks a name as not English by hand, and can undo it', async () => {
+    await storeList(db, 'PL-EVE', gwList('Chaos Daemons', 'Arrazadorez'));
+    await linkDetachment(db, 'Arrazadorez', null, true);
+    const marked = await detachmentNames(db);
+    expect(marked.unsure).toEqual([]);
+    expect(marked.foreign.map((f) => [f.name, f.marked])).toEqual([
+      ['Cabalgata del Caos', false],
+      ['Arrazadorez', true],
+    ]);
+    expect(marked.links).toEqual([]);
+    expect(await detachmentsOf('PL-EVE')).toEqual(['Arrazadorez']);
+
+    await unlinkDetachment(db, 'Arrazadorez');
+    expect((await detachmentNames(db)).unsure.map((u) => u.name)).toEqual(['Arrazadorez']);
+  });
+
+  it('tells Meta which names are foreign: detected or marked, unless BCP uses them or they’re own', async () => {
+    await linkDetachment(db, 'Arrazadorez', null, true);
+    await linkDetachment(db, 'Del Rio Raiders', null);
+    const foreign = await foreignDetachmentCheck(db);
+    expect(foreign('Cabalgata del Caos')).toBe(true);
+    expect(foreign('arrazadorez')).toBe(true);
+    expect(foreign('Del Rio Raiders')).toBe(false);
+    expect(foreign('Blood Legion')).toBe(false);
+    expect(foreign('Wreckas')).toBe(false);
+  });
+
   it('links a name to a detachment everywhere, and can undo it', async () => {
     await linkDetachment(db, 'Cabalgata del Caos', 'Shadow Legion');
     expect(await detachmentsOf('PL-ADA')).toEqual(['Shadow Legion']);
     const linked = await detachmentNames(db);
-    expect(linked.unsure).toEqual([]);
+    expect(linked.foreign).toEqual([]);
     expect(linked.links).toEqual([
       { name: 'Cabalgata del Caos', target: 'Shadow Legion', factions: ['Chaos Daemons'] },
     ]);
 
     await unlinkDetachment(db, 'cabalgata del caos');
     expect(await detachmentsOf('PL-ADA')).toEqual(['Cabalgata del Caos']);
-    expect((await detachmentNames(db)).unsure.map((u) => u.name)).toEqual(['Cabalgata del Caos']);
+    expect((await detachmentNames(db)).foreign.map((u) => u.name)).toEqual(['Cabalgata del Caos']);
   });
 
   it('marks a name as its own detachment', async () => {
@@ -65,6 +102,7 @@ describe('detachment names', () => {
     expect(await detachmentsOf('PL-ADA')).toEqual(['Cabalgata del Caos']);
     const names = await detachmentNames(db);
     expect(names.unsure).toEqual([]);
+    expect(names.foreign).toEqual([]);
     expect(names.links).toEqual([
       { name: 'Cabalgata del Caos', target: null, factions: ['Chaos Daemons'] },
     ]);

@@ -54,6 +54,15 @@ describe('loadMetaRows', () => {
     expect(rows.every((r) => r.wins + r.losses + r.draws > 0)).toBe(true);
   });
 
+  it('counts a player whose list names a detachment that isn’t English as detachment unknown', async () => {
+    await record('PL-ADA', 3, 1);
+    await db.update(players).set({ faction: 'Orks' }).where(eq(players.id, 'PL-ADA'));
+    await storeList(db, 'PL-ADA', gwList('Orks', 'Horda de Guerra'));
+    const { rows } = await loadMetaRows(db, { ...RANGE, type: 'all' }, ALL_EVENTS, TODAY);
+    const ada = rows.find((r) => r.wins === 3 && r.losses === 1);
+    expect(ada).toMatchObject({ faction: 'Orks', detachments: [] });
+  });
+
   it('ignores a list the player has since replaced, and counts an allegiance without a list as unknown', async () => {
     await record('PL-ADA', 3, 1);
     await storeList(db, 'PL-ADA', gwList('Orks', 'War Horde'));

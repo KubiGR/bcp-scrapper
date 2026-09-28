@@ -208,6 +208,20 @@ describe('searchTopLists', () => {
     expect(noDetachments.players.every((p) => p.detachments.length === 0)).toBe(true);
   });
 
+  it('counts a detachment that isn’t English as unknown, as Meta does, and still shows it', async () => {
+    await record('PL-ADA', 3, 0, 0);
+    await storeList(db, 'PL-ADA', gwList('Orks', 'Horda de Guerra'));
+    const unknown = await searchTopLists(
+      db,
+      query({ detachments: ['(unknown)'], maxLosses: 5 }),
+      ALL_EVENTS,
+      TODAY,
+    );
+    expect(unknown.players.find((p) => p.bcpId === 'PL-ADA')?.detachments).toEqual([
+      'Horda de Guerra',
+    ]);
+  });
+
   it('matches the exact set of detachments when asked to', async () => {
     for (const id of ['PL-ADA', 'PL-BEN', 'PL-CARA']) await record(id, 3, 0, 0);
     await storeList(db, 'PL-ADA', gwList('Orks', 'Kult of Speed'));

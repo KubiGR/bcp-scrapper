@@ -36,7 +36,7 @@ afterAll(() => close());
 beforeEach(async () => {
   await resetDb(db);
   await syncEvent({ db, source }, 'EVTTEAM0001');
-  await storeList(db, 'PL-ADA', gwList('Chaos Daemons', 'Cabalgata del Caos'));
+  await storeList(db, 'PL-ADA', gwList('Chaos Daemons', 'Hellrider Cavalcade'));
   await storeList(db, 'PL-BEN', gwList('Chaos Daemons', 'Shadow Legion'), 'Shadow Legion');
 });
 
@@ -57,24 +57,35 @@ describe('/api/detachments', () => {
     const before = (await (
       await app.request('/api/detachments')
     ).json()) as DetachmentNamesResponse;
-    expect(before.unsure.map((u) => u.name)).toEqual(['Cabalgata del Caos']);
-    const response = await post(app, { name: 'Cabalgata del Caos', target: 'Shadow Legion' });
+    expect(before.unsure.map((u) => u.name)).toEqual(['Hellrider Cavalcade']);
+    const response = await post(app, { name: 'Hellrider Cavalcade', target: 'Shadow Legion' });
     expect(response.status).toBe(200);
     const after = (await response.json()) as DetachmentNamesResponse;
     expect(after.unsure).toEqual([]);
     const undo = await app.request(
-      `/api/detachments/links/${encodeURIComponent('Cabalgata del Caos')}`,
+      `/api/detachments/links/${encodeURIComponent('Hellrider Cavalcade')}`,
       { method: 'DELETE' },
     );
     expect(((await undo.json()) as DetachmentNamesResponse).unsure.map((u) => u.name)).toEqual([
-      'Cabalgata del Caos',
+      'Hellrider Cavalcade',
     ]);
+  });
+
+  it('marks a name as not English', async () => {
+    const app = createApp(deps());
+    const response = await post(app, { name: 'Hellrider Cavalcade', target: null, foreign: true });
+    expect(response.status).toBe(200);
+    const after = (await response.json()) as DetachmentNamesResponse;
+    expect(after.unsure).toEqual([]);
+    expect(after.foreign.map((f) => [f.name, f.marked])).toEqual([['Hellrider Cavalcade', true]]);
   });
 
   it('validates the request', async () => {
     const app = createApp(deps());
     expect((await post(app, { name: '', target: null })).status).toBe(400);
     expect((await post(app, { name: 'X' })).status).toBe(400);
+    // A name that isn't English is left as it is: it can't also mean another detachment.
+    expect((await post(app, { name: 'X', target: 'Y', foreign: true })).status).toBe(400);
   });
 
   it('with logins on, only admins can link', async () => {
@@ -88,7 +99,7 @@ describe('/api/detachments', () => {
     const { token } = await createSession(db, secret, member.id, new Date());
     const response = await post(
       app,
-      { name: 'Cabalgata del Caos', target: null },
+      { name: 'Hellrider Cavalcade', target: null },
       { cookie: `bcp_session=${token}`, host: 'localhost', origin: 'http://localhost' },
     );
     expect(response.status).toBe(403);

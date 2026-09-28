@@ -9,6 +9,7 @@ import {
 import { and, gt, gte, inArray, lt, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { armyLists, events, players, teams } from '../db/schema';
+import { foreignDetachmentCheck } from './detachment-links';
 import { storedCurrentList } from './lists';
 
 const DAY_MS = 86_400_000;
@@ -16,8 +17,9 @@ const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 /**
  * The counted players (at least one game) of big events starting in the range (default: the last
- * 90 days), with resolved faction, their current list's detachments, team and team placing. One
- * query; the aggregation happens in computeMeta / computeTeamMeta.
+ * 90 days), with resolved faction, their current list's detachments (none when one isn't
+ * English), team and team placing. One query; the aggregation happens in computeMeta /
+ * computeTeamMeta.
  */
 export async function loadMetaRows(
   db: Db,
@@ -56,7 +58,7 @@ export async function loadMetaRows(
     inRange.filter((event) => eventPhase(event, today) === 'finished').map((event) => event.id),
   );
 
-  const [loaded, found] = await Promise.all([
+  const [loaded, found, foreign] = await Promise.all([
     db
       .selectDistinct({ eventId: players.eventId })
       .from(players)
@@ -82,6 +84,7 @@ export async function loadMetaRows(
           gt(sql`${players.wins} + ${players.losses} + ${players.draws}`, 0),
         ),
       ),
+    foreignDetachmentCheck(db),
   ]);
 
   const rows = found.map((row) => {
@@ -93,7 +96,8 @@ export async function loadMetaRows(
       teamId: row.teamId,
       teamPlacing: row.teamPlacing,
       faction,
-      detachments: row.detachments ?? [],
+      // A detachment that isn't English can't be told apart from others: detachment unknown.
+      detachments: row.detachments?.some(foreign) === true ? [] : (row.detachments ?? []),
       wins: row.wins,
       losses: row.losses,
       draws: row.draws,

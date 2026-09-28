@@ -364,6 +364,18 @@ export const DetachmentNamesResponseSchema = z.object({
       factions: z.array(z.string()),
     }),
   ),
+  /**
+   * Names that aren't English — detected, or `marked` by hand. Lists keep them, but Meta counts
+   * their players as "detachment unknown".
+   */
+  foreign: z.array(
+    z.object({
+      name: z.string(),
+      lists: z.number().int().nonnegative(),
+      factions: z.array(z.string()),
+      marked: z.boolean(),
+    }),
+  ),
   /** BCP's detachment names, with the factions they're played in. */
   targets: z.array(z.object({ name: z.string(), factions: z.array(z.string()) })),
   /** `target` null = marked as its own detachment; `factions`: where the name is played. */
@@ -373,9 +385,16 @@ export const DetachmentNamesResponseSchema = z.object({
 });
 export type DetachmentNamesResponse = z.infer<typeof DetachmentNamesResponseSchema>;
 
-export const DetachmentLinkRequestSchema = z.object({
-  name: z.string().trim().min(1).max(200),
-  /** The detachment `name` means, or null: `name` is its own detachment. */
-  target: z.string().trim().min(1).max(200).nullable(),
-});
+export const DetachmentLinkRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    /** The detachment `name` means, or null: `name` is its own detachment. */
+    target: z.string().trim().min(1).max(200).nullable(),
+    /** `name` isn't English (target must be null). */
+    foreign: z.boolean().default(false),
+  })
+  .refine((request) => !request.foreign || request.target === null, {
+    message: 'A name that isn’t English can’t link to a detachment',
+    path: ['target'],
+  });
 export type DetachmentLinkRequest = z.infer<typeof DetachmentLinkRequestSchema>;
