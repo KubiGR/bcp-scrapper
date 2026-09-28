@@ -10,6 +10,10 @@ export interface MetaSearch {
   to?: string;
   type?: 'all' | 'singles' | 'teams';
   minPlayers?: number;
+  /** The main table: `archetypes` (faction + detachments, the default) or `armies` (factions). */
+  view?: 'archetypes' | 'armies';
+  /** The archetype view's factions, `|`-separated ("(unknown)" for none); unset = all. */
+  factions?: string;
   sort?: MetaSort;
   /** Sort direction; default high to low (A→Z for faction). */
   dir?: 'asc' | 'desc';
@@ -51,3 +55,7 @@ export function winRateTone(rate: number): 'good' | 'bad' | 'even' {
 }
 
 export const percent = (ratio: number) => `${Math.round(ratio * 100)}%`;
+
+/** A share of all players: one decimal under 10 %, so rare archetypes don't all read 0 %. */
+export const sharePercent = (ratio: number) =>
+  ratio < 0.1 ? `${(ratio * 100).toFixed(1)}%` : percent(ratio);

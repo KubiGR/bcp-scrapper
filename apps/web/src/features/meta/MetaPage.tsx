@@ -15,8 +15,15 @@ import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { plural } from '../../lib/format';
 import { useDraftRange } from '../../lib/use-draft-range';
+import { ArchetypeTable } from './ArchetypeTable';
 import { FactionTable, type PlayersFilter } from './FactionTable';
-import { DEFAULT_MIN_PLAYERS, metaQuery, metaWindow, type MetaSearch } from './meta-queries';
+import {
+  DEFAULT_MIN_PLAYERS,
+  metaQuery,
+  metaWindow,
+  type MetaSearch,
+  type MetaSort,
+} from './meta-queries';
 import { MetaPlayersDrawer } from './MetaPlayersDrawer';
 import { TeamMeta } from './TeamMeta';
 
@@ -24,6 +31,11 @@ interface MetaPageProps {
   search: MetaSearch;
   onSearchChange: (next: MetaSearch) => void;
 }
+
+const VIEWS = [
+  { label: 'Archetypes', value: 'archetypes' },
+  { label: 'Armies', value: 'armies' },
+];
 
 const EVENT_TYPES = [
   { label: 'All', value: 'all' },
@@ -40,12 +52,27 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
   });
   const minPlayers = search.minPlayers ?? DEFAULT_MIN_PLAYERS;
   const expanded = search.expanded?.split('|').filter(Boolean) ?? [];
+  const view = search.view ?? 'archetypes';
+  const factions = search.factions?.split('|').filter(Boolean) ?? [];
+  const sort = search.sort ?? 'winRate';
+  const dir = search.dir ?? (sort === 'faction' ? 'asc' : 'desc');
+  const onSortChange = (next: { sort: MetaSort; dir: 'asc' | 'desc' } | null) => {
+    onSearchChange({ ...search, sort: next?.sort, dir: next?.dir });
+  };
   const notLoaded = meta.data ? meta.data.eventsInRange - meta.data.eventsLoaded : 0;
 
   return (
     <Stack gap="lg">
       <Title order={1}>Meta</Title>
       <Group gap="md" align="flex-end" wrap="wrap">
+        <SegmentedControl
+          aria-label="View"
+          data={VIEWS}
+          value={view}
+          onChange={(value) => {
+            onSearchChange({ ...search, view: value === 'armies' ? 'armies' : undefined });
+          }}
+        />
         <DatePickerInput
           type="range"
           label="Dates"
@@ -104,26 +131,42 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
               <Panel
                 title={`${plural(meta.data.totals.players, 'player')} · ${plural(meta.data.totals.games, 'game')}`}
               >
-                <FactionTable
-                  rows={meta.data.factions}
-                  minPlayers={minPlayers}
-                  sort={search.sort ?? 'winRate'}
-                  dir={search.dir ?? (search.sort === 'faction' ? 'asc' : 'desc')}
-                  expanded={expanded}
-                  onSortChange={(next) => {
-                    onSearchChange({ ...search, sort: next?.sort, dir: next?.dir });
-                  }}
-                  onToggle={(key) => {
-                    const next = expanded.includes(key)
-                      ? expanded.filter((k) => k !== key)
-                      : [...expanded, key];
-                    onSearchChange({
-                      ...search,
-                      expanded: next.length > 0 ? next.join('|') : undefined,
-                    });
-                  }}
-                  onOpenPlayers={setPlayers}
-                />
+                {view === 'archetypes' ? (
+                  <ArchetypeTable
+                    rows={meta.data.factions}
+                    minPlayers={minPlayers}
+                    sort={sort}
+                    dir={dir}
+                    factions={factions}
+                    onSortChange={onSortChange}
+                    onFactionsChange={(next) => {
+                      onSearchChange({
+                        ...search,
+                        factions: next.length > 0 ? next.join('|') : undefined,
+                      });
+                    }}
+                    onOpenPlayers={setPlayers}
+                  />
+                ) : (
+                  <FactionTable
+                    rows={meta.data.factions}
+                    minPlayers={minPlayers}
+                    sort={sort}
+                    dir={dir}
+                    expanded={expanded}
+                    onSortChange={onSortChange}
+                    onToggle={(key) => {
+                      const next = expanded.includes(key)
+                        ? expanded.filter((k) => k !== key)
+                        : [...expanded, key];
+                      onSearchChange({
+                        ...search,
+                        expanded: next.length > 0 ? next.join('|') : undefined,
+                      });
+                    }}
+                    onOpenPlayers={setPlayers}
+                  />
+                )}
               </Panel>
             )}
             {meta.data.teams !== null && (

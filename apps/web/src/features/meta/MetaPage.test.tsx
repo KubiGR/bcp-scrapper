@@ -15,9 +15,27 @@ describe('metaParams', () => {
 });
 
 describe('MetaPage', () => {
+  it('shows archetypes by default, and switches to armies', async () => {
+    stubFetchRoutes({ 'GET /api/meta': metaResponse() });
+    const onSearchChange = vi.fn();
+    renderWithRouter(<MetaPage search={{}} onSearchChange={onSearchChange} />);
+    expect(await screen.findByText('Kult of Speed + Wreckas')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Show Orks detachments' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: 'Armies' }));
+    expect(onSearchChange).toHaveBeenCalledWith({ view: 'armies' });
+  });
+
+  it('keeps the archetype view’s factions in the search', async () => {
+    stubFetchRoutes({ 'GET /api/meta': metaResponse() });
+    const onSearchChange = vi.fn();
+    renderWithRouter(<MetaPage search={{ factions: 'Necrons' }} onSearchChange={onSearchChange} />);
+    expect(await screen.findByText('Hypercrypt Legion')).toBeInTheDocument();
+    expect(screen.queryByText('Kult of Speed + Wreckas')).not.toBeInTheDocument();
+  });
+
   it('shows the faction table, the unloaded-events notice and what top teams bring', async () => {
     stubFetchRoutes({ 'GET /api/meta': metaResponse() });
-    renderWithRouter(<MetaPage search={{}} onSearchChange={vi.fn()} />);
+    renderWithRouter(<MetaPage search={{ view: 'armies' }} onSearchChange={vi.fn()} />);
     expect(await screen.findByText('Orks')).toBeInTheDocument();
     expect(screen.getByText(/2 big events in this range aren’t loaded yet/)).toBeInTheDocument();
     expect(screen.getByText('What top teams bring')).toBeInTheDocument();
@@ -27,7 +45,7 @@ describe('MetaPage', () => {
 
   it('has no team section without team data', async () => {
     stubFetchRoutes({ 'GET /api/meta': metaResponse({ teams: null, teamEventsCounted: 0 }) });
-    renderWithRouter(<MetaPage search={{}} onSearchChange={vi.fn()} />);
+    renderWithRouter(<MetaPage search={{ view: 'armies' }} onSearchChange={vi.fn()} />);
     await screen.findByText('Orks');
     expect(screen.queryByText('What top teams bring')).not.toBeInTheDocument();
   });
@@ -42,13 +60,13 @@ describe('MetaPage', () => {
         totals: { players: 0, games: 0 },
       }),
     });
-    renderWithRouter(<MetaPage search={{}} onSearchChange={vi.fn()} />);
+    renderWithRouter(<MetaPage search={{ view: 'armies' }} onSearchChange={vi.fn()} />);
     expect(await screen.findByText('No big events in this range.')).toBeInTheDocument();
   });
 
   it('sorts by win rate unless another column is chosen', async () => {
     stubFetchRoutes({ 'GET /api/meta': metaResponse() });
-    renderWithRouter(<MetaPage search={{}} onSearchChange={vi.fn()} />);
+    renderWithRouter(<MetaPage search={{ view: 'armies' }} onSearchChange={vi.fn()} />);
     await screen.findByText('Orks');
     expect(screen.getByRole('columnheader', { name: 'Win rate' })).toHaveAttribute(
       'aria-sort',
@@ -59,12 +77,23 @@ describe('MetaPage', () => {
   it('keeps sort and expanded factions in the search', async () => {
     stubFetchRoutes({ 'GET /api/meta': metaResponse() });
     const onSearchChange = vi.fn();
-    renderWithRouter(<MetaPage search={{ type: 'teams' }} onSearchChange={onSearchChange} />);
+    renderWithRouter(
+      <MetaPage search={{ type: 'teams', view: 'armies' }} onSearchChange={onSearchChange} />,
+    );
     await screen.findByText('Orks');
     fireEvent.click(screen.getByRole('button', { name: 'Players' }));
-    expect(onSearchChange).toHaveBeenCalledWith({ type: 'teams', sort: 'players', dir: 'desc' });
+    expect(onSearchChange).toHaveBeenCalledWith({
+      type: 'teams',
+      view: 'armies',
+      sort: 'players',
+      dir: 'desc',
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Show Orks detachments' }));
-    expect(onSearchChange).toHaveBeenCalledWith({ type: 'teams', expanded: 'Orks' });
+    expect(onSearchChange).toHaveBeenCalledWith({
+      type: 'teams',
+      view: 'armies',
+      expanded: 'Orks',
+    });
   });
 
   it('opens the players of a row, with their lists', async () => {
@@ -95,7 +124,7 @@ describe('MetaPage', () => {
         fetchedAt: '2026-09-23T10:00:00.000Z',
       },
     });
-    renderWithRouter(<MetaPage search={{}} onSearchChange={vi.fn()} />);
+    renderWithRouter(<MetaPage search={{ view: 'armies' }} onSearchChange={vi.fn()} />);
     fireEvent.click(await screen.findByRole('button', { name: '20 Orks players' }));
     expect(await screen.findByText('Ada Archer')).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'W-L-D' })).toHaveAttribute(
@@ -127,19 +156,19 @@ describe('MetaPage', () => {
           { status: 500 },
         ),
     });
-    renderWithRouter(<MetaPage search={{}} onSearchChange={vi.fn()} />);
+    renderWithRouter(<MetaPage search={{ view: 'armies' }} onSearchChange={vi.fn()} />);
     expect(await screen.findByRole('button', { name: 'Retry' })).toBeInTheDocument();
   });
 
   it('keeps Min players between 1 and 50', async () => {
     stubFetchRoutes({ 'GET /api/meta': metaResponse() });
     const onSearchChange = vi.fn();
-    renderWithRouter(<MetaPage search={{}} onSearchChange={onSearchChange} />);
+    renderWithRouter(<MetaPage search={{ view: 'armies' }} onSearchChange={onSearchChange} />);
     await screen.findByText('Orks');
     fireEvent.change(screen.getByLabelText('Min players'), { target: { value: '0' } });
-    expect(onSearchChange).not.toHaveBeenCalledWith({ minPlayers: 0 });
+    expect(onSearchChange).not.toHaveBeenCalledWith({ view: 'armies', minPlayers: 0 });
     fireEvent.change(screen.getByLabelText('Min players'), { target: { value: '12' } });
-    expect(onSearchChange).toHaveBeenCalledWith({ minPlayers: 12 });
+    expect(onSearchChange).toHaveBeenCalledWith({ view: 'armies', minPlayers: 12 });
   });
 
   it('shows the new row’s players, not the previous row’s, while they load', async () => {
@@ -163,7 +192,7 @@ describe('MetaPage', () => {
             })
           : new Promise<Response>(() => undefined), // Necrons never arrive
     });
-    renderWithRouter(<MetaPage search={{}} onSearchChange={vi.fn()} />);
+    renderWithRouter(<MetaPage search={{ view: 'armies' }} onSearchChange={vi.fn()} />);
     fireEvent.click(await screen.findByRole('button', { name: '20 Orks players' }));
     expect(await screen.findByText('Ada Archer')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '10 Necrons players' }));

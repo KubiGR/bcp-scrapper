@@ -1,8 +1,8 @@
 import type { MetaRow } from '@bcp/shared';
-import { ActionIcon, Table, Text, UnstyledButton } from '@mantine/core';
+import { ActionIcon, Table, Text, UnstyledButton, useMatches } from '@mantine/core';
 import { Fragment } from 'react';
 import { SortableTh, type SortDir } from '../../lib/table-sort';
-import { percent, winRateTone, type MetaSort } from './meta-queries';
+import { percent, sharePercent, winRateTone, type MetaSort } from './meta-queries';
 
 /** A row's players, for the drill-down: `detachments` undefined = the whole faction. */
 export interface PlayersFilter {
@@ -11,7 +11,7 @@ export interface PlayersFilter {
 }
 
 export const factionKey = (faction: string | null) => faction ?? '(unknown)';
-const factionName = (faction: string | null) => faction ?? 'Unknown faction';
+export const factionName = (faction: string | null) => faction ?? 'Unknown faction';
 const archetypeName = (detachments: string[] | null) =>
   detachments === null ? 'Detachment unknown' : detachments.join(' + ');
 
@@ -29,7 +29,7 @@ interface FactionTableProps {
   onOpenPlayers: (filter: PlayersFilter) => void;
 }
 
-function Figures({
+export function Figures({
   row,
   label,
   onOpen,
@@ -52,15 +52,15 @@ function Figures({
           </Text>
         </UnstyledButton>
       </Table.Td>
-      <Table.Td ta="right" className="numeric">
-        {percent(row.share)}
+      <Table.Td ta="right" className="numeric" visibleFrom="sm">
+        {sharePercent(row.share)}
       </Table.Td>
       <Table.Td ta="right">
         <Text size="sm" className="numeric" c={TONE_COLOR[tone]} data-tone={tone} component="span">
           {percent(row.winRate)}
         </Text>
       </Table.Td>
-      <Table.Td ta="right" className="numeric">
+      <Table.Td ta="right" className="numeric" visibleFrom="sm">
         {`${row.x1} · ${percent(row.x1Share)}`}
       </Table.Td>
     </>
@@ -81,6 +81,8 @@ export function FactionTable({
   onToggle,
   onOpenPlayers,
 }: FactionTableProps) {
+  // Phones drop Share and X-1 (see the cells), so the rest fits without scrolling.
+  const tableMinWidth = useMatches({ base: 0, sm: 560 });
   const sign = dir === 'asc' ? 1 : -1;
   const dimmed = (row: MetaRow) => row.faction === null || row.players < minPlayers;
   const metric = (row: Pick<MetaRow, 'players' | 'winRate' | 'x1Share'>) =>
@@ -119,7 +121,7 @@ export function FactionTable({
   const state = { key: sort, dir };
 
   return (
-    <Table.ScrollContainer minWidth={560}>
+    <Table.ScrollContainer minWidth={tableMinWidth}>
       <Table verticalSpacing="xs">
         <Table.Thead>
           <Table.Tr>
@@ -129,11 +131,13 @@ export function FactionTable({
             <SortableTh column="players" sort={state} onSort={onSort} ta="right">
               Players
             </SortableTh>
-            <Table.Th ta="right">Share</Table.Th>
+            <Table.Th ta="right" visibleFrom="sm">
+              Share
+            </Table.Th>
             <SortableTh column="winRate" sort={state} onSort={onSort} ta="right">
               Win rate
             </SortableTh>
-            <SortableTh column="x1" sort={state} onSort={onSort} ta="right">
+            <SortableTh column="x1" sort={state} onSort={onSort} ta="right" visibleFrom="sm">
               X-1 or better
             </SortableTh>
           </Table.Tr>
