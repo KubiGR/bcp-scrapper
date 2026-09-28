@@ -82,7 +82,7 @@ describe('FactionTable', () => {
     expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'faction', dir: 'asc' });
   });
 
-  it('colours win rates: green above 55%, red below 45%', () => {
+  it('colours win rates: blue above 55%, orange below 45%', () => {
     renderWithProviders(<FactionTable {...props} />);
     expect(within(rowOf('Orks')).getByText('58%')).toHaveAttribute('data-tone', 'good');
     expect(within(rowOf('Necrons')).getByText('40%')).toHaveAttribute('data-tone', 'bad');

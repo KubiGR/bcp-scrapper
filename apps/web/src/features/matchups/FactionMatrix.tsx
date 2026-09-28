@@ -1,5 +1,5 @@
 import type { FactionMatrix as FactionMatrixData, MatrixCell } from '@bcp/shared';
-import { Stack, Table, Text, UnstyledButton } from '@mantine/core';
+import { Group, Stack, Table, Text, UnstyledButton } from '@mantine/core';
 import type { CSSProperties } from 'react';
 import classes from './FactionMatrix.module.css';
 import { cellView, type CellTone, type MatrixSettings } from './matrix-view';
@@ -10,6 +10,13 @@ interface FactionMatrixProps {
   settings: MatrixSettings;
   onCell: (cell: { row: string; col: string }) => void;
 }
+
+/** The colours in words too, so they never carry meaning alone. */
+const LEGEND = [
+  { label: 'Row does worse (orange)', swatch: classes.swatchBad ?? '' },
+  { label: 'Even (grey)', swatch: classes.swatchEven ?? '' },
+  { label: 'Row does better (blue)', swatch: classes.swatchGood ?? '' },
+];
 
 const toneClass: Record<CellTone, string> = {
   good: classes.good ?? '',
@@ -37,6 +44,14 @@ export function FactionMatrix({ matrix, scoring, settings, onCell }: FactionMatr
       <Text size="xs" c="dimmed">
         Rows: faction · Columns: opponent · Cell: row faction&apos;s result
       </Text>
+      <Group component="ul" aria-label="Colour key" gap="md" className={classes.legend}>
+        {LEGEND.map((entry) => (
+          <Text component="li" size="xs" c="dimmed" key={entry.label}>
+            <span className={`${classes.swatch} ${entry.swatch}`} aria-hidden />
+            {entry.label}
+          </Text>
+        ))}
+      </Group>
       <div className={classes.scrollArea}>
         <Table className={classes.table}>
           <Table.Thead>

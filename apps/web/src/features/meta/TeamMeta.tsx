@@ -14,7 +14,8 @@ function difference(value: number): { text: string; tone: 'good' | 'bad' | 'even
     ? { text: `+${points.toFixed(1)} pp`, tone: 'good' }
     : { text: `−${Math.abs(points).toFixed(1)} pp`, tone: 'bad' };
 }
-const TONE_COLOR = { good: 'green.5', bad: 'red.5', even: undefined } as const;
+// Blue and orange, like the Matchups colours: apart for colour-blind readers too.
+const TONE_COLOR = { good: 'blue.4', bad: 'orange.5', even: undefined } as const;
 
 function Slots({ row }: { row: Omit<TeamMetaRow, 'faction' | 'archetypes'> }) {
   return (

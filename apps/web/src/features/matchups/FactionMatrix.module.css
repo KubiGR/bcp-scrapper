@@ -84,10 +84,14 @@
   --strength: 0;
 }
 
+/*
+ * Blue for better, orange for worse: a pair that stays apart for red–green and blue–yellow colour
+ * blindness (cyan/magenta blur together for the commonest kinds). Every cell also shows its number.
+ */
 .good {
   background-color: color-mix(
     in srgb,
-    var(--mantine-color-neon-7) calc(5% + var(--strength) * 55%),
+    var(--mantine-color-blue-6) calc(12% + var(--strength) * 68%),
     var(--mantine-color-dark-6)
   );
 }
@@ -95,7 +99,7 @@
 .bad {
   background-color: color-mix(
     in srgb,
-    var(--mantine-color-plasma-7) calc(5% + var(--strength) * 55%),
+    var(--mantine-color-orange-6) calc(12% + var(--strength) * 68%),
     var(--mantine-color-dark-6)
   );
 }
@@ -117,4 +121,31 @@
 .hidden {
   opacity: 0.45;
   text-align: center;
+}
+
+.legend {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  border-radius: 2px;
+}
+
+.swatchGood {
+  background: var(--mantine-color-blue-6);
+}
+
+.swatchBad {
+  background: var(--mantine-color-orange-6);
+}
+
+.swatchEven {
+  background: var(--mantine-color-dark-4);
 }

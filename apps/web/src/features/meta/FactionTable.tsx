@@ -17,7 +17,8 @@ export const UNKNOWN_DETACHMENT = 'Detachment unknown or not in English';
 const archetypeName = (detachments: string[] | null) =>
   detachments === null ? UNKNOWN_DETACHMENT : detachments.join(' + ');
 
-const TONE_COLOR = { good: 'green.5', bad: 'red.5', even: undefined } as const;
+// Blue and orange, like the Matchups colours: apart for colour-blind readers too.
+const TONE_COLOR = { good: 'blue.4', bad: 'orange.5', even: undefined } as const;
 
 interface FactionTableProps {
   rows: MetaRow[];

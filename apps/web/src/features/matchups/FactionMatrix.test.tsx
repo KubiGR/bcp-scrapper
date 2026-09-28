@@ -109,6 +109,19 @@ describe('FactionMatrix', () => {
     ).toBeInTheDocument();
   });
 
+  it('has a colour legend that names each colour, so colour never carries meaning alone', () => {
+    renderWithProviders(
+      <FactionMatrix
+        matrix={matrix()}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 1 }}
+        onCell={vi.fn()}
+      />,
+    );
+    const legend = screen.getByRole('list', { name: 'Colour key' });
+    expect(legend.textContent).toBe('Row does worse (orange)Even (grey)Row does better (blue)');
+  });
+
   it('gives a cell an aria-label without duplicating the value and game count', () => {
     renderWithProviders(
       <FactionMatrix

@@ -147,21 +147,21 @@ describe('cellView strength (graded colour by win rate/points)', () => {
     expect(view.tone).toBe('even');
   });
 
-  it('is 1 (fully good) at 85% win rate', () => {
-    const view = cellView(cell({ games: 13, winRate: 0.85 }), settings(), null);
+  it('is 1 (fully good) at 75% win rate', () => {
+    const view = cellView(cell({ games: 13, winRate: 0.75 }), settings(), null);
     expect(view.strength).toBeCloseTo(1, 5);
     expect(view.tone).toBe('good');
   });
 
-  it('is 1 (fully bad) at 15% win rate', () => {
-    const view = cellView(cell({ games: 13, winRate: 0.15 }), settings(), null);
+  it('is 1 (fully bad) at 25% win rate', () => {
+    const view = cellView(cell({ games: 13, winRate: 0.25 }), settings(), null);
     expect(view.strength).toBeCloseTo(1, 5);
     expect(view.tone).toBe('bad');
   });
 
-  it('is ~0.34 (good) at 62% win rate', () => {
+  it('is ~0.48 (good) at 62% win rate', () => {
     const view = cellView(cell({ games: 13, winRate: 0.62 }), settings(), null);
-    expect(view.strength).toBeCloseTo(0.342857, 5);
+    expect(view.strength).toBeCloseTo(0.48, 5);
     expect(view.tone).toBe('good');
   });
 
