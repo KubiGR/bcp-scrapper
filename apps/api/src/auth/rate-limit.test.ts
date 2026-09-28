@@ -51,4 +51,14 @@ describe('LoginLimiter', () => {
     l.release('k');
     expect(l.check('k').allowed).toBe(true);
   });
+
+  it('keeps at most maxKeys addresses in memory, dropping the oldest first', () => {
+    const l = new LoginLimiter({ limit: 1, windowMs: 15 * MINUTE, maxKeys: 2 });
+    l.fail('a');
+    l.fail('b');
+    l.fail('c');
+    expect(l.size).toBe(2);
+    expect(l.check('a').allowed).toBe(true);
+    expect(l.check('c').allowed).toBe(false);
+  });
 });

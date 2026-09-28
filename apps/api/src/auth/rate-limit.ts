@@ -8,12 +8,20 @@ export class LoginLimiter {
   readonly #limit: number;
   readonly #windowMs: number;
   readonly #now: () => Date;
+  readonly #maxKeys: number;
   readonly #entries = new Map<string, Entry>();
 
-  constructor(options: { limit: number; windowMs: number; now?: () => Date }) {
+  /** `maxKeys`: a hard cap on remembered keys, so a flood of addresses can't grow memory. */
+  constructor(options: { limit: number; windowMs: number; now?: () => Date; maxKeys?: number }) {
     this.#limit = options.limit;
     this.#windowMs = options.windowMs;
     this.#now = options.now ?? (() => new Date());
+    this.#maxKeys = options.maxKeys ?? 10_000;
+  }
+
+  /** How many keys are remembered. */
+  get size(): number {
+    return this.#entries.size;
   }
 
   #current(key: string, now: number): Entry | undefined {
@@ -39,7 +47,12 @@ export class LoginLimiter {
     const now = this.#now().getTime();
     const entry = this.#current(key, now);
     if (entry === undefined) {
-      if (this.#entries.size >= 10_000) this.#prune(now);
+      if (this.#entries.size >= this.#maxKeys) this.#prune(now);
+      // Still full of live entries: forget the oldest (a Map keeps insertion order).
+      for (const oldest of this.#entries.keys()) {
+        if (this.#entries.size < this.#maxKeys) break;
+        this.#entries.delete(oldest);
+      }
       this.#entries.set(key, { failures: 1, windowStart: now });
     } else {
       entry.failures += 1;

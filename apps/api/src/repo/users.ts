@@ -59,13 +59,40 @@ export async function countOtherActiveAdmins(db: Db, exceptId: number): Promise<
   return row?.count ?? 0;
 }
 
+/** Postgres' unique-violation code, on the error or (drizzle wraps it) its cause. */
+function isUniqueViolation(error: unknown): boolean {
+  const codeOf = (value: unknown) =>
+    typeof value === 'object' && value !== null && 'code' in value ? value.code : undefined;
+  const cause = error instanceof Error ? error.cause : undefined;
+  return codeOf(error) === '23505' || codeOf(cause) === '23505';
+}
+
+/** Adds a user; null when the username is taken (checked by the database, so races lose too). */
 export async function insertUser(
   db: Db,
   values: { username: string; passwordHash: string; role: UserRole; mustChangePassword: boolean },
-): Promise<User> {
-  const [row] = await db.insert(users).values(values).returning(userColumns);
-  if (row === undefined) throw new Error('Insert returned no user');
-  return row;
+): Promise<User | null> {
+  try {
+    const [row] = await db.insert(users).values(values).returning(userColumns);
+    if (row === undefined) throw new Error('Insert returned no user');
+    return row;
+  } catch (error) {
+    if (isUniqueViolation(error)) return null;
+    throw error;
+  }
+}
+
+/**
+ * Runs `work` with every enabled admin row locked, so checks like "another admin remains" and
+ * the change they guard can't interleave with another request's.
+ */
+export async function withAdminsLocked<T>(db: Db, work: (tx: Db) => Promise<T>): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select ${users.id} from ${users} where ${users.role} = 'admin' and not ${users.disabled} for update`,
+    );
+    return work(tx);
+  });
 }
 
 export async function updateUser(

@@ -33,10 +33,6 @@ exists, but not wanted for now.
 
 ## Robustness and hygiene
 
-- Accounts: expired sessions are never purged; password change has no limit on wrong current
-  passwords; logging in as someone else in the same browser leaves the first session valid; two
-  admins demoting each other at the same moment can leave no admin; a duplicate-username race
-  returns 500 instead of "taken"; the login limiter map has no hard size cap.
 - Hosting: the `cloudflared` image is `:latest`, not pinned.
 - List reader: a GW-app title line without "(N points)" and no blank line can be taken as the
   army ("(2 CP)" lines aren't excluded); nested parentheses in a header `DETACHMENT:` line produce

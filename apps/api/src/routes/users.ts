@@ -21,6 +21,7 @@ import {
   listUsers,
   updateUser,
   usernameTaken,
+  withAdminsLocked,
 } from '../repo/users';
 import { parseInput } from '../validation';
 import { requireJson } from './require-json';
@@ -45,15 +46,15 @@ export function userRoutes(deps: { db: Db }) {
   app.use('/users', requireAdmin);
   app.use('/users/*', requireAdmin);
 
-  async function target(idText: string) {
-    const user = await findUserById(db, parseInput(IdSchema, idText));
+  async function target(idText: string, from: Db = db) {
+    const user = await findUserById(from, parseInput(IdSchema, idText));
     if (user === null) throw new NotFoundError('No such user');
     return user;
   }
 
-  /** Refuses changes that would leave no enabled admin. */
-  async function keepAnAdmin(userId: number): Promise<void> {
-    if ((await countOtherActiveAdmins(db, userId)) === 0)
+  /** Refuses changes that would leave no enabled admin (call with the admins locked). */
+  async function keepAnAdmin(tx: Db, userId: number): Promise<void> {
+    if ((await countOtherActiveAdmins(tx, userId)) === 0)
       refuse('The app needs at least one admin');
   }
 
@@ -67,9 +68,9 @@ export function userRoutes(deps: { db: Db }) {
       CreateUserRequestSchema,
       await c.req.json<unknown>().catch(() => null),
     );
-    if (await usernameTaken(db, username)) {
-      throw new ValidationError([{ path: 'username', message: 'Taken' }], 'That username is taken');
-    }
+    const taken = () =>
+      new ValidationError([{ path: 'username', message: 'Taken' }], 'That username is taken');
+    if (await usernameTaken(db, username)) throw taken();
     const temporaryPassword = generateTemporaryPassword();
     const user = await insertUser(db, {
       username,
@@ -77,6 +78,8 @@ export function userRoutes(deps: { db: Db }) {
       passwordHash: await hashPassword(temporaryPassword),
       mustChangePassword: true,
     });
+    // Someone else took it in the meantime.
+    if (user === null) throw taken();
     const body: CreateUserResponse = { user, temporaryPassword };
     return c.json(body);
   });
@@ -95,30 +98,36 @@ export function userRoutes(deps: { db: Db }) {
   });
 
   app.patch('/users/:id', requireJson, async (c) => {
-    const user = await target(c.req.param('id'));
     const change = parseInput(
       UpdateUserRequestSchema,
       await c.req.json<unknown>().catch(() => null),
     );
-    const self = user.id === c.get('user')?.id;
-    if (self && change.disabled === true) refuse('You can’t disable yourself');
-    if (self && change.role === 'member') refuse('You can’t demote yourself');
-    const losesAdmin =
-      user.role === 'admin' &&
-      !user.disabled &&
-      (change.role === 'member' || change.disabled === true);
-    if (losesAdmin) await keepAnAdmin(user.id);
-    const updated = await updateUser(db, user.id, change);
-    if (change.disabled === true) await deleteUserSessions(db, user.id);
+    // Read, check and change with the admins locked: two admins demoting each other at once
+    // can't both pass "another admin remains".
+    const updated = await withAdminsLocked(db, async (tx) => {
+      const user = await target(c.req.param('id'), tx);
+      const self = user.id === c.get('user')?.id;
+      if (self && change.disabled === true) refuse('You can’t disable yourself');
+      if (self && change.role === 'member') refuse('You can’t demote yourself');
+      const losesAdmin =
+        user.role === 'admin' &&
+        !user.disabled &&
+        (change.role === 'member' || change.disabled === true);
+      if (losesAdmin) await keepAnAdmin(tx, user.id);
+      return updateUser(tx, user.id, change);
+    });
+    if (change.disabled === true && updated !== null) await deleteUserSessions(db, updated.id);
     return c.json({ user: updated });
   });
 
   app.delete('/users/:id', async (c) => {
-    const user = await target(c.req.param('id'));
-    if (user.id === c.get('user')?.id) refuse('You can’t remove yourself');
-    if (user.role === 'admin' && !user.disabled) await keepAnAdmin(user.id);
-    // Sessions go with the user (on delete cascade).
-    await deleteUser(db, user.id);
+    await withAdminsLocked(db, async (tx) => {
+      const user = await target(c.req.param('id'), tx);
+      if (user.id === c.get('user')?.id) refuse('You can’t remove yourself');
+      if (user.role === 'admin' && !user.disabled) await keepAnAdmin(tx, user.id);
+      // Sessions go with the user (on delete cascade).
+      await deleteUser(tx, user.id);
+    });
     return c.json({ ok: true });
   });
 

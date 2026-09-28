@@ -13,6 +13,7 @@ import {
   createSession,
   deleteSession,
   deleteUserSessions,
+  purgeExpiredSessions,
   SESSION_ABSOLUTE_MS,
 } from '../auth/sessions';
 import type { Db } from '../db/client';
@@ -73,6 +74,10 @@ export function authRoutes(deps: {
     limiters.perUser.succeed(userKey);
     limiters.perIp.release(ip);
 
+    // The browser's previous session (perhaps someone else's) ends, and so do expired ones.
+    const previous = getCookie(c, SESSION_COOKIE);
+    if (previous !== undefined) await deleteSession(db, options.secret, previous);
+    await purgeExpiredSessions(db, now());
     const { token } = await createSession(db, options.secret, user.id, now());
     setCookie(c, SESSION_COOKIE, token, {
       httpOnly: true,
@@ -107,6 +112,12 @@ export function authRoutes(deps: {
       ChangePasswordRequestSchema,
       await c.req.json<unknown>().catch(() => null),
     );
+    // Guessing the current password from a stolen session is capped like logins are; the
+    // attempt counts before the check, so parallel guesses can't slip past it.
+    const key = `password:${String(user.id)}`;
+    const allowance = limiters.perUser.check(key);
+    if (!allowance.allowed) throw new LoginRateLimitedError(allowance.retryAfterSeconds);
+    limiters.perUser.fail(key);
     const stored = await passwordHashOf(db, user.id);
     if (stored === null || !(await verifyPassword(current, stored))) {
       throw new ValidationError(
@@ -114,6 +125,7 @@ export function authRoutes(deps: {
         'Current password is wrong',
       );
     }
+    limiters.perUser.succeed(key);
     if (next === current) {
       throw new ValidationError(
         [{ path: 'next', message: 'Choose a new password' }],

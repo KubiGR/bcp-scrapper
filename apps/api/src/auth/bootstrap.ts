@@ -24,5 +24,7 @@ export async function ensureAdmin(db: Db, config: Config, logger: Logger): Promi
     role: 'admin',
     mustChangePassword: false,
   });
+  // Taken: another process created it first; nothing to do.
+  if (user === null) return;
   logger.info({ username: user.username }, 'Admin created — remove ADMIN_PASSWORD from the stack');
 }

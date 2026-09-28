@@ -190,6 +190,26 @@ describe('login', () => {
     expect(statuses.filter((status) => status === 429)).toHaveLength(5);
   });
 
+  it('ends the session the browser already had when someone else logs in', async () => {
+    const app = makeApp();
+    const first = await login(app, 'ana', MEMBER_PASSWORD);
+    const response = await send(app, 'POST', '/api/auth/login', {
+      cookie: first,
+      body: { username: 'Admin', password: ADMIN_PASSWORD },
+    });
+    expect(response.status).toBe(200);
+    expect((await send(app, 'GET', '/api/events', { cookie: first })).status).toBe(401);
+  });
+
+  it('clears out expired sessions when someone logs in', async () => {
+    const app = makeApp();
+    await login(app, 'ana', MEMBER_PASSWORD);
+    now = new Date(now.getTime() + 31 * 86_400_000);
+    await login(app, 'Admin', ADMIN_PASSWORD);
+    const left = await db.select().from(sessions);
+    expect(left.map((row) => row.userId)).toEqual([adminId]);
+  });
+
   it('a successful login does not use up the address’s allowance', async () => {
     const app = makeApp();
     for (let i = 0; i < 60; i += 1) await login(app, 'ana', MEMBER_PASSWORD);
@@ -322,6 +342,18 @@ describe('passwords', () => {
     await login(app, 'ana', MEMBER_PASSWORD);
   });
 
+  it('blocks the 6th wrong current password, even a right one after', async () => {
+    const app = makeApp();
+    const cookie = await login(app, 'ana', MEMBER_PASSWORD);
+    const change = (current: string) =>
+      send(app, 'POST', '/api/auth/password', {
+        cookie,
+        body: { current, next: 'a brand new password' },
+      });
+    for (let i = 0; i < 5; i += 1) expect((await change('not my password')).status).toBe(400);
+    expect((await change(MEMBER_PASSWORD)).status).toBe(429);
+  });
+
   it('changing the password ends the user’s other sessions but keeps this one', async () => {
     const app = makeApp();
     const other = await login(app, 'ana', MEMBER_PASSWORD);
@@ -417,6 +449,32 @@ describe('user admin', () => {
       200,
     );
     expect(await db.select().from(users)).toHaveLength(1);
+  });
+
+  it('keeps an admin when two admins demote each other at the same moment', async () => {
+    const app = makeApp();
+    const cookie = await login(app, 'Admin', ADMIN_PASSWORD);
+    await send(app, 'PATCH', `/api/users/${memberId}`, { cookie, body: { role: 'admin' } });
+    const anaCookie = await login(app, 'ana', MEMBER_PASSWORD);
+    const results = await Promise.all([
+      send(app, 'PATCH', `/api/users/${memberId}`, { cookie, body: { role: 'member' } }),
+      send(app, 'PATCH', `/api/users/${adminId}`, { cookie: anaCookie, body: { role: 'member' } }),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 400]);
+    const admins = await db.select().from(users).where(eq(users.role, 'admin'));
+    expect(admins).toHaveLength(1);
+  });
+
+  it('says a username is taken when two admins create it at the same moment', async () => {
+    const app = makeApp();
+    const cookie = await login(app, 'Admin', ADMIN_PASSWORD);
+    const results = await Promise.all([
+      send(app, 'POST', '/api/users', { cookie, body: { username: 'bo' } }),
+      send(app, 'POST', '/api/users', { cookie, body: { username: 'Bo' } }),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 400]);
+    const refused = results.find((r) => r.status === 400);
+    expect(((await refused?.json()) as ApiErrorBody).error.message).toBe('That username is taken');
   });
 
   it('removes a user and their sessions', async () => {

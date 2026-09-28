@@ -1,5 +1,5 @@
 import { createHmac, randomBytes } from 'node:crypto';
-import { and, eq, gt, ne } from 'drizzle-orm';
+import { and, eq, gt, lte, ne } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { sessions, users } from '../db/schema';
 
@@ -93,4 +93,9 @@ export async function deleteUserSessions(db: Db, userId: number, keepHash?: stri
   await db
     .delete(sessions)
     .where(keepHash === undefined ? own : and(own, ne(sessions.idHash, keepHash)));
+}
+
+/** Deletes sessions past their expiry (they no longer open anything, but would pile up). */
+export async function purgeExpiredSessions(db: Db, now: Date): Promise<void> {
+  await db.delete(sessions).where(lte(sessions.expiresAt, now));
 }
