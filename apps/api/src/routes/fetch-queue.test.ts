@@ -316,7 +316,8 @@ describe('pairings queue route', () => {
     const queued = await json<QueuePairingsResult>(
       await send('POST', `/api/events/${BRACKET}/pairings/queue`, {}),
     );
-    expect(queued).toEqual({ eventQueued: true, queuedRounds: 0, estimatedSeconds: 5 });
+    // The load (5 s) plus the 3 rounds it will queue (15 s).
+    expect(queued).toEqual({ eventQueued: true, queuedRounds: 0, estimatedSeconds: 20 });
 
     await drainQueue(fetchQueue);
     const detail = await json<EventDetail>(await app.request(`/api/events/${BRACKET}`));
