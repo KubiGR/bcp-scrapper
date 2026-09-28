@@ -91,7 +91,7 @@
 .good {
   background-color: color-mix(
     in srgb,
-    var(--mantine-color-blue-6) calc(12% + var(--strength) * 68%),
+    var(--mantine-color-blue-8) calc(12% + var(--strength) * 68%),
     var(--mantine-color-dark-6)
   );
 }
@@ -99,7 +99,7 @@
 .bad {
   background-color: color-mix(
     in srgb,
-    var(--mantine-color-orange-6) calc(12% + var(--strength) * 68%),
+    var(--mantine-color-orange-9) calc(12% + var(--strength) * 68%),
     var(--mantine-color-dark-6)
   );
 }
@@ -139,11 +139,11 @@
 }
 
 .swatchGood {
-  background: var(--mantine-color-blue-6);
+  background: var(--mantine-color-blue-8);
 }
 
 .swatchBad {
-  background: var(--mantine-color-orange-6);
+  background: var(--mantine-color-orange-9);
 }
 
 .swatchEven {
