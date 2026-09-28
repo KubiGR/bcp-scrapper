@@ -5,6 +5,7 @@ import {
   cleanDetachmentName,
   DETACHMENT_TRANSLATIONS,
   detachmentParts,
+  resolveFaction,
   splitDetachments,
   type ArmyList,
   type PlayerList,
@@ -255,14 +256,19 @@ export interface ExportedList {
   text: string | null;
 }
 
-/** Every stored list of an event, best placing first (unplaced players last, by name). */
+/**
+ * Every stored list of an event, best placing first (unplaced players last, by name). The faction
+ * is the one the player table shows: the army read from the list when BCP only names an
+ * allegiance.
+ */
 export async function listEventArmyLists(db: Db, eventId: string): Promise<ExportedList[]> {
-  return db
+  const rows = await db
     .select({
       placing: players.placing,
       player: players.name,
       team: teams.name,
-      faction: players.faction,
+      bcpFaction: players.faction,
+      parsedArmy: armyLists.parsedArmy,
       listId: armyLists.listId,
       text: armyLists.text,
     })
@@ -271,6 +277,10 @@ export async function listEventArmyLists(db: Db, eventId: string): Promise<Expor
     .leftJoin(teams, eq(teams.id, players.teamId))
     .where(eq(players.eventId, eventId))
     .orderBy(sql`${players.placing} asc nulls last`, players.name);
+  return rows.map(({ bcpFaction, parsedArmy, ...row }) => ({
+    ...row,
+    faction: resolveFaction(bcpFaction, parsedArmy).faction,
+  }));
 }
 
 /** A player an export has no list for, and why. */

@@ -1,7 +1,9 @@
 import type { BcpStatus, EventDetail, EventPlayersResponse } from '@bcp/shared';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import type { Db } from '../db/client';
+import { armyLists, players } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import type { FetchQueueWorker } from '../fetch-queue/worker';
 import { SyncRunner } from '../sync/runner';
@@ -181,5 +183,14 @@ describe('event routes', () => {
 
     expect((await app.request(`/api/events/${EVENT}/lists/export?format=pdf`)).status).toBe(400);
     expect((await app.request('/api/events/NOPE/lists/export')).status).toBe(404);
+  });
+
+  it('exports the army read from the list when BCP only names an allegiance', async () => {
+    await fetchAllLists();
+    await db.update(players).set({ faction: 'Xenos' }).where(eq(players.name, 'Finn Ford'));
+    // As if the reader had found the army in the list (the short sample list names none).
+    await db.update(armyLists).set({ parsedArmy: 'Orks' }).where(eq(armyLists.listId, 'LS-FINN'));
+    const text = await (await app.request(`/api/events/${EVENT}/lists/export`)).text();
+    expect(text).toContain('#1 · Finn Ford · Charlie Wing · Orks');
   });
 });
