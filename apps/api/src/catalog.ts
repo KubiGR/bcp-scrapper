@@ -42,7 +42,7 @@ export async function getCoverage(db: Db): Promise<CatalogCoverage> {
 
 /**
  * Keeps the finder's default view current: syncs the latest window unless a covering sync
- * finished under 6 hours ago. If another catalogue run is active, that run is returned instead.
+ * finished under 50 minutes ago. If another catalogue run is active, that run is returned instead.
  */
 export async function refreshLatest(
   deps: { db: Db; runner: SyncRunner },

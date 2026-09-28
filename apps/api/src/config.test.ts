@@ -92,7 +92,7 @@ describe('loadConfig', () => {
       AUTO_FETCH_ENABLED: true,
       AUTO_FETCH_INTERVAL_MS: 600_000,
       AUTO_FETCH_DAYS: 60,
-      AUTO_CATALOG_INTERVAL_MS: 21_600_000,
+      AUTO_CATALOG_INTERVAL_MS: 3_600_000,
     });
     expect(
       loadConfig({

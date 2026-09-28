@@ -6,16 +6,17 @@ const hoursAgo = (hours: number) => new Date(now.getTime() - hours * 3_600_000);
 const window = { from: '2026-08-24', to: '2026-09-30' };
 
 describe('isLatestFresh', () => {
-  it('is fresh when one run covering the whole window finished under 6 hours ago', () => {
-    expect(isLatestFresh(window, [{ ...window, finishedAt: hoursAgo(5) }], now)).toBe(true);
+  it('is fresh when one run covering the whole window finished under 50 minutes ago', () => {
+    expect(isLatestFresh(window, [{ ...window, finishedAt: hoursAgo(0.8) }], now)).toBe(true);
   });
 
-  it('is stale when the covering run is 6+ hours old or does not cover the whole window', () => {
-    expect(isLatestFresh(window, [{ ...window, finishedAt: hoursAgo(6) }], now)).toBe(false);
+  it('is stale when the covering run is 50+ minutes old or does not cover the whole window', () => {
+    // Under the hourly refresh, so each hourly tick finds the last run stale and refreshes.
+    expect(isLatestFresh(window, [{ ...window, finishedAt: hoursAgo(50 / 60) }], now)).toBe(false);
     expect(
       isLatestFresh(
         window,
-        [{ from: '2026-08-25', to: '2026-09-30', finishedAt: hoursAgo(1) }],
+        [{ from: '2026-08-25', to: '2026-09-30', finishedAt: hoursAgo(0.5) }],
         now,
       ),
     ).toBe(false);

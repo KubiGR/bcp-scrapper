@@ -97,6 +97,24 @@ export async function enqueueLists(
 }
 
 /**
+ * Queues a load of the event (details, teams, players and their list ids) with nothing to follow;
+ * no-op while a load of it is open (one with pairings to follow stays as it is). Returns whether
+ * it queued one.
+ */
+export async function enqueueEventLoad(
+  db: Db,
+  eventId: string,
+  { priority, origin = 'user' }: { priority: number; origin?: JobOrigin },
+): Promise<boolean> {
+  const inserted = await db
+    .insert(fetchQueue)
+    .values({ kind: 'event', eventId, priority, origin })
+    .onConflictDoNothing()
+    .returning({ id: fetchQueue.id });
+  return inserted.length > 0;
+}
+
+/**
  * Queues an event's pairings. With rounds, one pairings-round job per round (rounds with an open
  * job are skipped). With `rounds: null` (the event was never synced, so its round count is
  * unknown) one event job whose follow-up queues the rounds when it is done. At the user-waiting

@@ -16,7 +16,7 @@ describe('AutoFetchCard', () => {
   it('shows the switch and how many events are left', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/auto-fetch': state(true, 42) });
     renderWithProviders(<AutoFetchCard />);
-    expect(await screen.findByRole('switch', { name: /Fetch big finished events/ })).toBeChecked();
+    expect(await screen.findByRole('switch', { name: /Fetch big events/ })).toBeChecked();
     expect(screen.getByText(/42 events left/)).toBeInTheDocument();
     expect(screen.getByText(/of the last 45 days/)).toBeInTheDocument();
   });
@@ -27,7 +27,7 @@ describe('AutoFetchCard', () => {
       'GET /api/auto-fetch': { ...state(false), available: false, days: null },
     });
     renderWithProviders(<AutoFetchCard />);
-    const toggle = await screen.findByRole('switch', { name: /Fetch big finished events/ });
+    const toggle = await screen.findByRole('switch', { name: /Fetch big events/ });
     expect(toggle).not.toBeChecked();
     expect(toggle).toBeDisabled();
     expect(screen.getByText(/turned off on the server/)).toBeInTheDocument();
@@ -45,9 +45,9 @@ describe('AutoFetchCard', () => {
       'GET /api/fetch-queue': {},
     });
     renderWithProviders(<AutoFetchCard />);
-    fireEvent.click(await screen.findByRole('switch', { name: /Fetch big finished events/ }));
+    fireEvent.click(await screen.findByRole('switch', { name: /Fetch big events/ }));
     await waitFor(() => {
-      expect(screen.getByRole('switch', { name: /Fetch big finished events/ })).not.toBeChecked();
+      expect(screen.getByRole('switch', { name: /Fetch big events/ })).not.toBeChecked();
     });
     const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
     expect(JSON.parse(post?.[1]?.body as string)).toEqual({ enabled: false });
@@ -67,7 +67,7 @@ describe('AutoFetchCard', () => {
     renderWithProviders(<AutoFetchCard />);
     expect(await screen.findByText('Only admins can change this')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByRole('switch', { name: /Fetch big finished events/ })).toBeDisabled();
+      expect(screen.getByRole('switch', { name: /Fetch big events/ })).toBeDisabled();
     });
   });
 });

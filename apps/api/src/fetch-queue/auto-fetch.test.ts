@@ -179,18 +179,54 @@ describe('AutoFetchPlanner', () => {
     expect(await jobs()).toEqual([]);
   });
 
-  it('leaves out events outside the window, and running ones', async () => {
+  it('leaves out events outside the window, and small ones', async () => {
     now = new Date('2026-09-27T12:00:00Z');
     expect((await planner().planOnce()).jobs).toBe(0);
 
-    now = new Date('2026-04-12T15:00:00Z'); // EVTSMALL001 is on today
-    await planner().planOnce();
+    now = new Date('2026-04-12T15:00:00Z'); // EVTSMALL001 is on today, but small
+    await planner(BIG).planOnce();
     expect((await jobs()).some((j) => j.eventId === 'EVTSMALL001')).toBe(false);
 
     await db.delete(fetchQueue);
     now = new Date('2026-04-20T12:00:00Z');
     await planner(ALL_EVENTS, 5).planOnce(); // only events of the last 5 days: none
     expect((await jobs()).some((j) => j.eventId === 'EVTSINGLE01')).toBe(false);
+  });
+
+  describe('a running event (EVTTEAM0001 runs 28–29 Mar)', () => {
+    const running = new Date('2026-03-28T15:00:00Z');
+    const team = async () => (await jobs()).filter((j) => j.eventId === 'EVTTEAM0001');
+    const loadedAt = (at: Date) =>
+      db.update(events).set({ lastSyncedAt: at, ended: false }).where(eq(events.id, 'EVTTEAM0001'));
+
+    beforeEach(async () => {
+      now = running;
+      // The sample marks it ended; this one hasn't yet.
+      await db.update(events).set({ ended: false }).where(eq(events.id, 'EVTTEAM0001'));
+    });
+
+    it('is loaded without its pairings (rounds keep coming until it ends)', async () => {
+      await planner().planOnce();
+      const queued = await team();
+      expect(queued.map((j) => [j.kind, j.followUp])).toEqual([['event', null]]);
+    });
+
+    it('gets its missing lists queued once loaded, but no pairings', async () => {
+      await syncEvent({ db, source }, 'EVTTEAM0001');
+      await loadedAt(new Date('2026-03-28T14:30:00Z'));
+      await planner().planOnce();
+      const queued = await team();
+      expect(queued.filter((j) => j.kind === 'list')).toHaveLength(7);
+      expect(queued.some((j) => j.kind !== 'list')).toBe(false);
+    });
+
+    it('is loaded again once its last load is an hour old, for lists added since', async () => {
+      await syncEvent({ db, source }, 'EVTTEAM0001');
+      await loadedAt(new Date('2026-03-28T13:30:00Z'));
+      await planner().planOnce();
+      const loads = (await team()).filter((j) => j.kind === 'event');
+      expect(loads.map((j) => j.followUp)).toEqual([null]);
+    });
   });
 
   it('plans newest events first', async () => {

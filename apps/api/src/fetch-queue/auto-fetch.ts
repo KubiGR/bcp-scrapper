@@ -7,6 +7,7 @@ import type { Logger } from '../logger';
 import { getAutoFetchEnabled } from '../repo/app-settings';
 import {
   AUTO_PRIORITY,
+  enqueueEventLoad,
   enqueueEventPairings,
   enqueueLists,
   eventPairingsJobs,
@@ -19,6 +20,7 @@ import { findPlayersMissingLists, tidyDetachments } from '../repo/lists';
 import type { SyncRunner } from '../sync/runner';
 
 const DAY_MS = 86_400_000;
+const HOUR_MS = 3_600_000;
 
 export interface AutoFetchPlannerOptions {
   db: Db;
@@ -35,7 +37,8 @@ export interface AutoFetchPlannerOptions {
 }
 
 /**
- * Keeps big finished events of the last `days` fully loaded: every `intervalMs` it queues, at the
+ * Keeps big events of the last `days` loaded (running ones: players and lists; finished ones: also
+ * their pairings): every `intervalMs` it queues, at the
  * lowest priority and marked automatic, whatever an event is missing (the event itself, its
  * pairings, its lists), newest event first. It only queues work; the fetch queue does it at its
  * usual pace. Failed work is left for the user's Retry, and fetched rounds aren't fetched again.
@@ -125,10 +128,12 @@ export class AutoFetchPlanner {
     let planned = 0;
     let jobs = 0;
     for (const event of candidates) {
-      if (!isBigEvent(event, eventRule) || eventPhase(event, now) !== 'finished') continue;
+      const phase = eventPhase(event, now);
+      if (!isBigEvent(event, eventRule) || phase === 'upcoming') continue;
       // Switched off mid-pass: stop adding work.
       if (!(await getAutoFetchEnabled(db))) break;
-      const queued = await this.#planEvent(event);
+      const queued =
+        phase === 'running' ? await this.#planRunning(event, now) : await this.#planEvent(event);
       if (queued > 0) planned += 1;
       jobs += queued;
     }
@@ -136,6 +141,33 @@ export class AutoFetchPlanner {
     if (jobs > 0)
       this.#options.logger.info({ events: planned, jobs }, 'Automatic fetching queued work');
     return { events: planned, jobs };
+  }
+
+  /**
+   * A running event: its players and their lists, from the start (lists are up by then), loading
+   * it again hourly for lists added or changed since; its pairings wait until it's over.
+   */
+  async #planRunning(event: typeof events.$inferSelect, now: Date): Promise<number> {
+    const { db } = this.#options;
+    const failed = await failedTargets(db, event.id);
+    // A load that failed waits for the user's Retry, as for finished events.
+    if (failed.event) return 0;
+    let queued = 0;
+    const stale =
+      event.lastSyncedAt === null || now.getTime() - event.lastSyncedAt.getTime() >= HOUR_MS;
+    if (
+      stale &&
+      (await enqueueEventLoad(db, event.id, { priority: AUTO_PRIORITY, origin: 'auto' }))
+    ) {
+      queued += 1;
+    }
+    if (event.lastSyncedAt !== null) {
+      const missing = (await findPlayersMissingLists(db, event.id)).filter(
+        (item) => !failed.players.has(item.playerId),
+      );
+      queued += await enqueueLists(db, event.id, missing, AUTO_PRIORITY, 'auto');
+    }
+    return queued;
   }
 
   async #planEvent(event: typeof events.$inferSelect): Promise<number> {

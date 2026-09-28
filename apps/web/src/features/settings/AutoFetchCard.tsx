@@ -28,7 +28,7 @@ export function AutoFetchCard() {
       {auto.data && (
         <Stack gap="xs">
           <Switch
-            label={`Fetch big finished events${auto.data.days === null ? '' : ` of the last ${String(auto.data.days)} days`} in the background`}
+            label={`Fetch big events${auto.data.days === null ? '' : ` of the last ${String(auto.data.days)} days`} in the background`}
             checked={auto.data.enabled}
             disabled={readOnly || !auto.data.available || toggle.isPending}
             onChange={(event) => {
@@ -36,8 +36,8 @@ export function AutoFetchCard() {
             }}
           />
           <Text size="sm" c="dimmed">
-            Events, pairings and army lists are queued behind anything you ask for, and fetched at
-            the queue's usual pace.
+            Lists as soon as an event starts, pairings once it's over. Everything is queued behind
+            anything you ask for, and fetched at the queue's usual pace.
           </Text>
           {auto.data.enabled && (
             <Text size="sm" c="dimmed">

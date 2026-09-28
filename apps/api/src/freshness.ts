@@ -1,7 +1,8 @@
 import { eventPhase, type DateRange } from '@bcp/shared';
 
 /** The latest window counts as fresh this long after a covering catalogue sync (spec §7). */
-export const CATALOG_MAX_AGE_MS = 6 * 3_600_000;
+/** Under the hourly refresh, so each hourly tick finds the last run stale. */
+export const CATALOG_MAX_AGE_MS = 50 * 60_000;
 /** A running event's data counts as fresh this long after its last sync (spec §7). */
 export const RUNNING_EVENT_MAX_AGE_MS = 10 * 60_000;
 
@@ -9,7 +10,7 @@ export interface FinishedRange extends DateRange {
   finishedAt: Date;
 }
 
-/** True when one succeeded catalogue run covers the whole window and finished under 6 hours ago. */
+/** True when one succeeded catalogue run covers the whole window and finished under 50 minutes ago. */
 export function isLatestFresh(window: DateRange, runs: FinishedRange[], now: Date): boolean {
   return runs.some(
     (run) =>
