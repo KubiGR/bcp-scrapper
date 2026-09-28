@@ -65,7 +65,7 @@ export function fetchQueueRoutes(deps: {
           const { state } = await deps.bcpStatus();
           if (state === 'rejected' || state === 'missing') {
             throw new BcpAuthError(
-              'BCP still rejects the login. Put a fresh BCP_REFRESH_TOKEN in .env, restart the API, then resume.',
+              'BCP still rejects the login. Put a fresh BCP_REFRESH_TOKEN in .env (or the Portainer stack’s environment) and restart the app; it starts unpaused.',
             );
           }
         }

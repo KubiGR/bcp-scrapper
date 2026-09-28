@@ -51,7 +51,7 @@ describe('BcpStatusCard', () => {
     expect(await screen.findByText('Login expired')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'BCP rejected the saved login. Log in at bestcoastpairings.com, copy a fresh refresh token into BCP_REFRESH_TOKEN in .env, and restart the API.',
+        'BCP rejected the saved login. Log in at bestcoastpairings.com, put a fresh refresh token in BCP_REFRESH_TOKEN (.env, or the Portainer stack’s environment) and restart the app; fetching starts again by itself.',
       ),
     ).toBeInTheDocument();
   });

@@ -38,14 +38,14 @@ function describeStatus(status: BcpStatus): StatusView {
         label: 'Login expired',
         color: 'red',
         description:
-          'BCP rejected the saved login. Log in at bestcoastpairings.com, copy a fresh refresh token into BCP_REFRESH_TOKEN in .env, and restart the API.',
+          'BCP rejected the saved login. Log in at bestcoastpairings.com, put a fresh refresh token in BCP_REFRESH_TOKEN (.env, or the Portainer stack’s environment) and restart the app; fetching starts again by itself.',
       };
     case 'missing':
       return {
         label: 'Not connected',
         color: 'red',
         description:
-          'No valid BCP login. Add BCP_REFRESH_TOKEN to .env (see the README) and restart the API.',
+          'No valid BCP login. Set BCP_REFRESH_TOKEN (.env, or the Portainer stack’s environment; see the README) and restart the app.',
       };
   }
 }

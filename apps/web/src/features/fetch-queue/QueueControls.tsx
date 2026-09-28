@@ -14,7 +14,7 @@ function PausedNote({ state }: { state: FetchQueueState }) {
           <Anchor component={Link} to="/settings" inherit>
             Fix it in Settings
           </Anchor>
-          , then resume.
+          ; the app starts fetching again once restarted with a fresh login.
         </Text>
       );
     case 'rate-limited':
