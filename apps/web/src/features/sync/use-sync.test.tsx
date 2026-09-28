@@ -2,9 +2,10 @@ import { MantineProvider } from '@mantine/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { stubFetchRoutes } from '../../test/render';
 import { aSyncRun } from '../../test/sample-data';
+import { LostTrackError } from './follow-sync';
 import { useSync } from './use-sync';
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -32,5 +33,27 @@ describe('useSync', () => {
       expect(result.current.run?.status).toBe('succeeded');
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes the page’s data after losing track, so its buttons aren’t stuck on “syncing”', async () => {
+    const queryClient = new QueryClient();
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    const { result } = renderHook(
+      () => useSync({ label: 'Event sync', invalidate: [['event', 'EVT1']] }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <MantineProvider env="test">
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+          </MantineProvider>
+        ),
+      },
+    );
+    act(() => {
+      result.current.track(() => Promise.reject(new LostTrackError(new Error('offline'))));
+    });
+    await waitFor(() => {
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ['event', 'EVT1'] });
+    });
+    expect(result.current.isSyncing).toBe(false);
   });
 });

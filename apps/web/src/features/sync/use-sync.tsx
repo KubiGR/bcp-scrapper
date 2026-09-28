@@ -104,7 +104,13 @@ export function useSync({ label, invalidate, quiet }: UseSyncOptions) {
       if (quiet !== true || finished.status === 'failed') notifySyncFinished(label, finished);
     },
     onError: (error) => {
-      if (signal.aborted || quiet === true) return;
+      if (signal.aborted) return;
+      // The run may still be going (or be over): refresh what the page shows about it, so
+      // nothing stays stuck on "syncing" until some later refetch.
+      if (error instanceof LostTrackError) {
+        for (const queryKey of invalidate) void queryClient.invalidateQueries({ queryKey });
+      }
+      if (quiet === true) return;
       if (error instanceof LostTrackError) {
         notifications.show({ color: 'yellow', title: label, message: error.message });
         return;
