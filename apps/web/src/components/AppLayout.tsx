@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { to: '/analysis/matchups', label: 'Matchups' },
   { to: '/analysis/meta', label: 'Meta' },
   { to: '/analysis/top-lists', label: 'Top lists' },
+  { to: '/queue', label: 'Queue' },
   { to: '/settings', label: 'Settings' },
 ] as const;
 

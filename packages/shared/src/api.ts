@@ -420,3 +420,41 @@ export const DetachmentLinkRequestSchema = z
     path: ['target'],
   });
 export type DetachmentLinkRequest = z.infer<typeof DetachmentLinkRequestSchema>;
+
+const QueueJobSchema = z.object({
+  id: z.number().int(),
+  kind: FetchJobKindSchema,
+  eventId: z.string(),
+  eventName: z.string(),
+  playerName: z.string().nullable(),
+  round: z.number().int().nullable(),
+});
+
+/** GET /api/fetch-queue/details: failures by reason, and what runs next. */
+export const QueueDetailsSchema = z.object({
+  failures: z.array(
+    z.object({
+      /** The error code ("UNKNOWN" when none was recorded). */
+      code: z.string(),
+      /** Retrying can't help ("no list on BCP"). */
+      final: z.boolean(),
+      count: z.number().int().nonnegative(),
+      /** The newest failures of this kind (up to 50). */
+      jobs: z.array(
+        QueueJobSchema.extend({
+          error: z.string().nullable(),
+          attempts: z.number().int().nonnegative(),
+          failedAt: z.iso.datetime().nullable(),
+        }),
+      ),
+    }),
+  ),
+  /** The next jobs, in the order they run; the one being fetched first. */
+  next: z.array(
+    QueueJobSchema.extend({
+      status: z.enum(['queued', 'fetching']),
+      origin: z.enum(['user', 'auto']),
+    }),
+  ),
+});
+export type QueueDetails = z.infer<typeof QueueDetailsSchema>;

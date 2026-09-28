@@ -1,5 +1,6 @@
-import { Popover, UnstyledButton } from '@mantine/core';
+import { Anchor, Popover, Stack, UnstyledButton } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { formatDuration } from '../../lib/format';
 import { fetchQueueQuery } from './fetch-queue-queries';
 import { QueueControls } from './QueueControls';
@@ -43,7 +44,12 @@ export function QueueIndicator() {
         </UnstyledButton>
       </Popover.Target>
       <Popover.Dropdown>
-        <QueueControls state={state} />
+        <Stack gap="xs">
+          <QueueControls state={state} />
+          <Anchor component={Link} to="/queue" size="sm">
+            Details: failures and what’s next
+          </Anchor>
+        </Stack>
       </Popover.Dropdown>
     </Popover>
   );

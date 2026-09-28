@@ -1,4 +1,5 @@
 import type {
+  QueueDetails,
   BcpStatus,
   EventDetail,
   EventPlayersResponse,
@@ -240,6 +241,19 @@ describe('fetch queue routes', () => {
     expect((await playersOf()).find((p) => p.bcpId === 'PL-EVE')?.listStatus).toBe('failed');
     // ...but asking for that one list again does queue it.
     expect(await queue({ playerIds: ['PL-EVE'] })).toMatchObject({ queued: 1 });
+  });
+
+  it('shows the queue in detail, and retries one failure reason', async () => {
+    await queue({ playerIds: ['PL-ADA', 'PL-BEN'] });
+    const job = await claimNextJob(db, new Date(Date.now() + 60_000));
+    if (job === null) throw new Error('nothing claimed');
+    await markJobFailed(db, job.id, 'BCP down', 'BCP_UNAVAILABLE');
+    const details = await json<QueueDetails>(await app.request('/api/fetch-queue/details'));
+    expect(details.failures.map((f) => [f.code, f.count])).toEqual([['BCP_UNAVAILABLE', 1]]);
+    expect(details.next).toHaveLength(1);
+    expect(
+      await json(await send('POST', '/api/fetch-queue/retry-failed', { code: 'BCP_UNAVAILABLE' })),
+    ).toEqual({ requeued: 1 });
   });
 
   it('can retry just an event’s pairings', async () => {

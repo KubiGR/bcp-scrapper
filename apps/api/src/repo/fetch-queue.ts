@@ -1,3 +1,4 @@
+import type { QueueDetails } from '@bcp/shared';
 import { eventFinishedBy, eventPhase } from '@bcp/shared';
 import {
   and,
@@ -16,7 +17,7 @@ import {
 } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from '../db/client';
-import { events, fetchQueue } from '../db/schema';
+import { events, fetchQueue, players } from '../db/schema';
 import { storedPairingRounds } from './pairings';
 
 export type FetchJobKind = (typeof fetchQueue.$inferSelect)['kind'];
@@ -274,13 +275,36 @@ export async function cancelQueuedLists(db: Db, eventId: string): Promise<number
  * target's newest row is retried: a failure superseded by a newer request (open or done) stays
  * as history, so retrying never collides with an open row or refetches an older list.
  */
-/** `only`: just the event's pairings (event loads and rounds), leaving its failed lists. */
+/** No newer job for the same target `(kind, event, player, round)`: this one is its latest try. */
+function isNewestTry(db: Db) {
+  const newer = alias(fetchQueue, 'newer');
+  return notExists(
+    db
+      .select({ id: newer.id })
+      .from(newer)
+      .where(
+        and(
+          eq(newer.kind, fetchQueue.kind),
+          eq(newer.eventId, fetchQueue.eventId),
+          sql`${newer.playerId} is not distinct from ${fetchQueue.playerId}`,
+          sql`${newer.round} is not distinct from ${fetchQueue.round}`,
+          gt(newer.id, fetchQueue.id),
+        ),
+      ),
+  );
+}
+
+/**
+ * Queues failed jobs again (their newest try only; never "no list on BCP"). `eventId`: just that
+ * event's; `only: 'pairings'`: just its pairings, leaving its failed lists; `code`: just the
+ * failures with that error code.
+ */
 export async function retryFailedJobs(
   db: Db,
   eventId?: string,
   only?: 'pairings',
+  code?: string,
 ): Promise<number> {
-  const newer = alias(fetchQueue, 'newer');
   const rows = await db
     .update(fetchQueue)
     // A retry is the user asking: an automatic job becomes theirs (see claimForUser).
@@ -299,24 +323,85 @@ export async function retryFailedJobs(
         or(isNull(fetchQueue.errorCode), ne(fetchQueue.errorCode, NO_LIST_CODE)),
         eventId === undefined ? undefined : eq(fetchQueue.eventId, eventId),
         only === 'pairings' ? inArray(fetchQueue.kind, [...PAIRINGS_KINDS]) : undefined,
-        notExists(
-          db
-            .select({ id: newer.id })
-            .from(newer)
-            .where(
-              and(
-                eq(newer.kind, fetchQueue.kind),
-                eq(newer.eventId, fetchQueue.eventId),
-                sql`${newer.playerId} is not distinct from ${fetchQueue.playerId}`,
-                sql`${newer.round} is not distinct from ${fetchQueue.round}`,
-                gt(newer.id, fetchQueue.id),
-              ),
-            ),
-        ),
+        code === undefined ? undefined : eq(fetchQueue.errorCode, code),
+        isNewestTry(db),
       ),
     )
     .returning({ id: fetchQueue.id });
   return rows.length;
+}
+
+/** What a job is about, for the Queue page. */
+const jobColumns = {
+  id: fetchQueue.id,
+  kind: fetchQueue.kind,
+  eventId: fetchQueue.eventId,
+  eventName: events.name,
+  playerName: players.name,
+  round: fetchQueue.round,
+};
+
+/**
+ * The Queue page's detail: current failures (newest tries only) grouped by error code, the
+ * retryable ones first (most first) and the final "no list on BCP" last, each with up to
+ * `perReason` jobs, newest first; and the next `next` jobs in the order the worker takes them.
+ */
+export async function queueDetails(
+  db: Db,
+  { perReason = 50, next = 25 }: { perReason?: number; next?: number } = {},
+): Promise<QueueDetails> {
+  const [failed, upcoming] = await Promise.all([
+    db
+      .select({
+        ...jobColumns,
+        error: fetchQueue.error,
+        errorCode: fetchQueue.errorCode,
+        attempts: fetchQueue.attempts,
+        failedAt: fetchQueue.finishedAt,
+      })
+      .from(fetchQueue)
+      .innerJoin(events, eq(events.id, fetchQueue.eventId))
+      .leftJoin(players, eq(players.id, fetchQueue.playerId))
+      .where(and(eq(fetchQueue.status, 'failed'), isNewestTry(db)))
+      .orderBy(desc(fetchQueue.finishedAt), desc(fetchQueue.id)),
+    db
+      .select({ ...jobColumns, status: fetchQueue.status, origin: fetchQueue.origin })
+      .from(fetchQueue)
+      .innerJoin(events, eq(events.id, fetchQueue.eventId))
+      .leftJoin(players, eq(players.id, fetchQueue.playerId))
+      .where(inArray(fetchQueue.status, [...OPEN]))
+      // The one being fetched first, then the claim order (see claimNextJob).
+      .orderBy(
+        sql`${fetchQueue.status} = 'fetching' desc`,
+        desc(fetchQueue.priority),
+        fetchQueue.queuedAt,
+        fetchQueue.id,
+      )
+      .limit(next),
+  ]);
+  const groups = new Map<string, typeof failed>();
+  for (const row of failed) {
+    const code = row.errorCode ?? 'UNKNOWN';
+    groups.set(code, [...(groups.get(code) ?? []), row]);
+  }
+  const failures = [...groups]
+    .map(([code, rows]) => ({
+      code,
+      final: code === NO_LIST_CODE,
+      count: rows.length,
+      jobs: rows.slice(0, perReason).map(({ errorCode: _code, failedAt, ...job }) => ({
+        ...job,
+        failedAt: failedAt?.toISOString() ?? null,
+      })),
+    }))
+    .sort((a, b) => Number(a.final) - Number(b.final) || b.count - a.count);
+  return {
+    failures,
+    next: upcoming.map((job) => ({
+      ...job,
+      status: job.status === 'fetching' ? ('fetching' as const) : ('queued' as const),
+    })),
+  };
 }
 
 /**

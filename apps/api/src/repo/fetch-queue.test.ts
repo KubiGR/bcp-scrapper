@@ -21,6 +21,7 @@ import {
   markPairingsSyncedIfComplete,
   NO_LIST_CODE,
   queuedInOrder,
+  queueDetails,
   queueTotals,
   requeueInterrupted,
   retryFailedJobs,
@@ -52,6 +53,51 @@ const cara = { playerId: 'PL-CARA', listId: 'LS-CARA' };
 const soon = () => new Date(Date.now() + 60_000);
 
 describe('fetch queue repository', () => {
+  describe('queue details', () => {
+    const claim = async () => {
+      const job = await claimNextJob(db, soon());
+      if (!job) throw new Error('nothing claimed');
+      return job;
+    };
+    beforeEach(async () => {
+      await enqueueLists(db, EVENT, [ada, ben, cara], 0);
+      await markJobFailed(db, (await claim()).id, 'BCP down', 'BCP_UNAVAILABLE'); // Ada
+      await markJobFailed(db, (await claim()).id, 'No list on BCP', NO_LIST_CODE); // Ben
+    });
+
+    it('groups failures by reason, the final "no list" last, and names what failed', async () => {
+      const details = await queueDetails(db);
+      expect(details.failures.map((f) => [f.code, f.count, f.final])).toEqual([
+        ['BCP_UNAVAILABLE', 1, false],
+        [NO_LIST_CODE, 1, true],
+      ]);
+      expect(details.failures[0]?.jobs).toEqual([
+        expect.objectContaining({
+          kind: 'list',
+          eventId: EVENT,
+          eventName: 'Sample Team Open',
+          playerName: 'Ada Archer',
+          round: null,
+          error: 'BCP down',
+          attempts: 1,
+        }),
+      ]);
+    });
+
+    it('lists what runs next, in order', async () => {
+      const details = await queueDetails(db);
+      expect(details.next.map((j) => [j.kind, j.playerName, j.status])).toEqual([
+        ['list', 'Cara Cole', 'queued'],
+      ]);
+    });
+
+    it('counts a failure only while it is the newest try, and retries one reason at a time', async () => {
+      expect(await retryFailedJobs(db, undefined, undefined, 'BCP_UNAVAILABLE')).toBe(1);
+      const details = await queueDetails(db);
+      expect(details.failures.map((f) => f.code)).toEqual([NO_LIST_CODE]);
+    });
+  });
+
   it('queues each player at most once while open', async () => {
     expect(await enqueueLists(db, EVENT, [ada, ben], 0)).toBe(2);
     expect(await enqueueLists(db, EVENT, [ada, cara], 0)).toBe(1);

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as QueueRouteImport } from './routes/queue'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AnalysisMatchupsRouteImport } from './routes/analysis.matchups'
 import { Route as AnalysisMetaRouteImport } from './routes/analysis.meta'
@@ -26,6 +27,11 @@ const IndexRoute = IndexRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QueueRoute = QueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -63,6 +69,7 @@ const EventsEventIdTeamsTeamIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/analysis/matchups': typeof AnalysisMatchupsRoute
   '/analysis/meta': typeof AnalysisMetaRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/analysis/matchups': typeof AnalysisMatchupsRoute
   '/analysis/meta': typeof AnalysisMetaRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/analysis/matchups': typeof AnalysisMatchupsRoute
   '/analysis/meta': typeof AnalysisMetaRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/queue'
     | '/settings'
     | '/analysis/matchups'
     | '/analysis/meta'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/queue'
     | '/settings'
     | '/analysis/matchups'
     | '/analysis/meta'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/login'
+    | '/queue'
     | '/settings'
     | '/analysis/matchups'
     | '/analysis/meta'
@@ -127,6 +139,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  QueueRoute: typeof QueueRoute
   SettingsRoute: typeof SettingsRoute
   AnalysisMatchupsRoute: typeof AnalysisMatchupsRoute
   AnalysisMetaRoute: typeof AnalysisMetaRoute
@@ -149,6 +162,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/queue': {
+      id: '/queue'
+      path: '/queue'
+      fullPath: '/queue'
+      preLoaderRoute: typeof QueueRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -199,6 +219,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  QueueRoute: QueueRoute,
   SettingsRoute: SettingsRoute,
   AnalysisMatchupsRoute: AnalysisMatchupsRoute,
   AnalysisMetaRoute: AnalysisMetaRoute,

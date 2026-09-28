@@ -6,7 +6,12 @@ import { BcpAuthError } from '../errors';
 import { queueEventLists } from '../fetch-queue/queue-lists';
 import { queueEventPairings } from '../fetch-queue/queue-pairings';
 import type { FetchQueueWorker } from '../fetch-queue/worker';
-import { cancelQueuedLists, retryFailedJobs, USER_WAITING_PRIORITY } from '../repo/fetch-queue';
+import {
+  cancelQueuedLists,
+  queueDetails,
+  retryFailedJobs,
+  USER_WAITING_PRIORITY,
+} from '../repo/fetch-queue';
 import type { SyncRunner } from '../sync/runner';
 import { parseInput } from '../validation';
 import { requireEvent } from './require-event';
@@ -16,6 +21,8 @@ const RetryFailedSchema = z.object({
   eventId: z.string().min(1).optional(),
   /** `pairings`: just the event's pairings, leaving its failed lists. */
   only: z.enum(['pairings']).optional(),
+  /** Just the failures with this error code. */
+  code: z.string().min(1).max(64).optional(),
 });
 
 export function fetchQueueRoutes(deps: {
@@ -49,13 +56,14 @@ export function fetchQueueRoutes(deps: {
         return c.json(await queueEventPairings(deps, c.req.param('id'), USER_WAITING_PRIORITY));
       })
       .post('/fetch-queue/retry-failed', requireJson, async (c) => {
-        const { eventId, only } = parseInput(
+        const { eventId, only, code } = parseInput(
           RetryFailedSchema,
           await c.req.json<unknown>().catch(() => null),
         );
-        return c.json({ requeued: await retryFailedJobs(db, eventId, only) });
+        return c.json({ requeued: await retryFailedJobs(db, eventId, only, code) });
       })
       .get('/fetch-queue', async (c) => c.json(await fetchQueue.state()))
+      .get('/fetch-queue/details', async (c) => c.json(await queueDetails(db)))
       .post('/fetch-queue/pause', requireJson, async (c) => {
         fetchQueue.pause('user');
         return c.json(await fetchQueue.state());
