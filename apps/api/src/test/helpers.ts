@@ -21,6 +21,27 @@ export function sampleSource(): BcpSource {
 }
 
 /** Awaits a promise while fast-forwarding fake timers (e.g. retry backoff). Needs vi.useFakeTimers(). */
+/**
+ * A source forwarding every method to `inner` (bound, so a class instance works), with some
+ * replaced: a test's way to make one endpoint answer differently.
+ */
+export function sourceWith(
+  inner: TournamentSource,
+  overrides: Partial<TournamentSource> = {},
+): TournamentSource {
+  return {
+    listEvents: (range, cursor) => inner.listEvents(range, cursor),
+    getEvent: (id) => inner.getEvent(id),
+    getPlayers: (id) => inner.getPlayers(id),
+    getTeams: (id) => inner.getTeams(id),
+    getTeamMatchups: (id, round) => inner.getTeamMatchups(id, round),
+    getGames: (id, round) => inner.getGames(id, round),
+    getEventGames: (id, round) => inner.getEventGames(id, round),
+    getList: (listId) => inner.getList(listId),
+    ...overrides,
+  };
+}
+
 export async function settle<T>(promise: Promise<T>): Promise<T> {
   const settled = promise.then(
     (value) => ({ ok: true as const, value }),

@@ -1,12 +1,11 @@
 import { eq } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import { games, teamMatchups } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { upsertEventDetail } from '../repo/events';
-import { sampleSource, silentLogger } from '../test/helpers';
+import { sampleSource, silentLogger, sourceWith } from '../test/helpers';
 import { syncRoundPairings } from './round-pairings';
 
 let db: Db;
@@ -54,16 +53,10 @@ describe('syncRoundPairings', () => {
       { level: 'warn' },
       { write: (line: string) => messages.push((JSON.parse(line) as { msg: string }).msg) },
     );
-    const noGames: TournamentSource = {
-      listEvents: (range, cursor) => source.listEvents(range, cursor),
-      getEvent: (id) => source.getEvent(id),
-      getPlayers: (id) => source.getPlayers(id),
-      getTeams: (id) => source.getTeams(id),
-      getTeamMatchups: (id, round) => source.getTeamMatchups(id, round),
+    const noGames = sourceWith(source, {
       getGames: () => Promise.resolve([]),
       getEventGames: () => Promise.resolve([]),
-      getList: (listId) => source.getList(listId),
-    };
+    });
     const outcome = await syncRoundPairings(
       { db, source: noGames, logger },
       { id: 'EVTTEAM0001', isTeamEvent: true },

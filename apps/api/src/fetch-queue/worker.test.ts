@@ -20,7 +20,7 @@ import {
 import { findPlayerList, findPlayersMissingLists } from '../repo/lists';
 import { storedPairingsSummary } from '../repo/pairings';
 import { upsertPlayers } from '../repo/participants';
-import { drainQueue, sampleSource, silentLogger } from '../test/helpers';
+import { drainQueue, sampleSource, silentLogger, sourceWith } from '../test/helpers';
 import { FetchQueueWorker } from './worker';
 
 const EVENT = 'EVTTEAM0001';
@@ -38,23 +38,9 @@ beforeEach(async () => {
   await upsertPlayers(db, await source.getPlayers(EVENT));
 });
 
-/** A plain source forwarding every method to `inner`, so tests can replace some. */
-function delegate(inner: TournamentSource): TournamentSource {
-  return {
-    listEvents: (range, cursor) => inner.listEvents(range, cursor),
-    getEvent: (id) => inner.getEvent(id),
-    getPlayers: (id) => inner.getPlayers(id),
-    getTeams: (id) => inner.getTeams(id),
-    getTeamMatchups: (id, round) => inner.getTeamMatchups(id, round),
-    getGames: (id, round) => inner.getGames(id, round),
-    getEventGames: (id, round) => inner.getEventGames(id, round),
-    getList: (listId) => inner.getList(listId),
-  };
-}
-
 /** The sample source, with getList replaced. */
 function withGetList(getList: TournamentSource['getList']): TournamentSource {
-  return { ...delegate(source), getList };
+  return { ...sourceWith(source), getList };
 }
 
 function worker(
@@ -367,7 +353,7 @@ describe('pairings jobs', () => {
     await upsertEventDetail(db, await source.getEvent(BRACKET));
     await enqueueEventPairings(db, BRACKET, { rounds: [1], priority: 0 });
     const noGames: TournamentSource = {
-      ...delegate(source),
+      ...sourceWith(source),
       getEventGames: () => Promise.resolve([]),
     };
     expect(await worker(noGames).tick()).toBe('fetched');
@@ -378,7 +364,7 @@ describe('pairings jobs', () => {
     await upsertEventDetail(db, await source.getEvent(BRACKET));
     await enqueueEventPairings(db, BRACKET, { rounds: [1], priority: 0 });
     const failing: TournamentSource = {
-      ...delegate(source),
+      ...sourceWith(source),
       getTeamMatchups: () => Promise.reject(new BcpUnavailableError('BCP down')),
     };
     expect(await worker(failing).tick()).toBe('retry');

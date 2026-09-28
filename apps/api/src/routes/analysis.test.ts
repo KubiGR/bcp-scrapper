@@ -7,7 +7,13 @@ import { createTestDb, resetDb } from '../db/test-db';
 import { syncEvent } from '../sync/jobs';
 import { syncRoundPairings } from '../sync/round-pairings';
 import { SyncRunner } from '../sync/runner';
-import { ALL_EVENTS, sampleSource, silentLogger, testFetchQueue } from '../test/helpers';
+import {
+  ALL_EVENTS,
+  sampleSource,
+  silentLogger,
+  sourceWith,
+  testFetchQueue,
+} from '../test/helpers';
 
 const EVENT = 'EVTBRACKET01';
 let db: Db;
@@ -105,16 +111,10 @@ describe('analysis routes', () => {
 
   it('still shows rounds and standings when BCP served no individual games', async () => {
     const source = sampleSource();
-    const noGames: TournamentSource = {
-      listEvents: (range, cursor) => source.listEvents(range, cursor),
-      getEvent: (id) => source.getEvent(id),
-      getPlayers: (id) => source.getPlayers(id),
-      getTeams: (id) => source.getTeams(id),
-      getTeamMatchups: (id, round) => source.getTeamMatchups(id, round),
+    const noGames = sourceWith(source, {
       getGames: () => Promise.resolve([]),
       getEventGames: () => Promise.resolve([]),
-      getList: (listId) => source.getList(listId),
-    };
+    });
     await loadBracketEvent(noGames);
     const rounds = await get<RoundsResponse>(`/api/events/${EVENT}/rounds`);
     expect(rounds.body.gamesAvailable).toBe(false);

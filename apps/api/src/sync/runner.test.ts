@@ -8,7 +8,7 @@ import { events, players, teams } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { findEvent } from '../repo/events';
 import { getSyncRun } from '../repo/sync-runs';
-import { ALL_EVENTS, sampleSource, silentLogger } from '../test/helpers';
+import { ALL_EVENTS, sampleSource, silentLogger, sourceWith } from '../test/helpers';
 import { SyncRunner } from './runner';
 
 let db: Db;
@@ -36,17 +36,7 @@ const rowCount = async (table: PgTable) => (await db.select({ n: count() }).from
  * every method explicitly avoids relying on prototype inheritance from a class with private state.
  */
 function withOverrides(source: BcpSource, overrides: Partial<TournamentSource>): TournamentSource {
-  return {
-    listEvents: (range, cursor) => source.listEvents(range, cursor),
-    getEvent: (eventId) => source.getEvent(eventId),
-    getPlayers: (eventId) => source.getPlayers(eventId),
-    getTeams: (eventId) => source.getTeams(eventId),
-    getTeamMatchups: (eventId, round) => source.getTeamMatchups(eventId, round),
-    getGames: (eventId, round) => source.getGames(eventId, round),
-    getEventGames: (eventId, round) => source.getEventGames(eventId, round),
-    getList: (listId) => source.getList(listId),
-    ...overrides,
-  };
+  return sourceWith(source, overrides);
 }
 
 describe('SyncRunner', () => {

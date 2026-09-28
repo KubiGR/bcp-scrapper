@@ -23,6 +23,7 @@ import {
   sampleSource,
   silentLogger,
   testFetchQueue,
+  sourceWith,
 } from '../test/helpers';
 
 const EVENT = 'EVTTEAM0001';
@@ -207,16 +208,9 @@ describe('fetch queue routes', () => {
   it('treats "no list on BCP" as final: shown as failed, not counted, not requeued', async () => {
     const source = sampleSource();
     // Everything as the fixtures, except Eve's list is gone from BCP.
-    const noEveList: TournamentSource = {
-      listEvents: (range, cursor) => source.listEvents(range, cursor),
-      getEvent: (id) => source.getEvent(id),
-      getPlayers: (id) => source.getPlayers(id),
-      getTeams: (id) => source.getTeams(id),
-      getTeamMatchups: (id, round) => source.getTeamMatchups(id, round),
-      getGames: (id, round) => source.getGames(id, round),
-      getEventGames: (id, round) => source.getEventGames(id, round),
+    const noEveList = sourceWith(source, {
       getList: (listId) => (listId === 'LS-EVE' ? Promise.resolve(null) : source.getList(listId)),
-    };
+    });
     build(noEveList);
     await queue({ playerIds: ['PL-EVE'] });
     await drainQueue(fetchQueue);
