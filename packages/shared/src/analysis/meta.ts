@@ -115,6 +115,9 @@ const dispositionList = (counts: Map<string, number>) =>
     .map(([name, players]) => ({ name, players }))
     .sort((a, b) => b.players - a.players || a.name.localeCompare(b.name));
 
+/** The fewest games in each 30-day span for a change in win rate to be shown. */
+export const MIN_CHANGE_GAMES = 30;
+
 /**
  * A win rate that allows for sample size: the low end of its 95% Wilson score interval. Few games
  * pull it towards 0.5 and below; many keep it close to the plain win rate.
@@ -172,12 +175,12 @@ export function computeMeta(
       const all = weekTotals.get(week) ?? 0;
       return all === 0 ? null : (tally.weeks.get(week) ?? 0) / all;
     });
-  const reliableOf = (tally: Tally | undefined) =>
-    tally === undefined || tally.games === 0 ? null : reliableWinRate(tally.points, tally.games);
-  // Null unless played in both 30-day spans.
+  // Win rate now minus then; null unless both 30-day spans have enough games to say anything.
+  const winRateOf = (tally: Tally | undefined) =>
+    tally === undefined || tally.games < MIN_CHANGE_GAMES ? null : tally.points / tally.games;
   const change = (now: Tally | undefined, then: Tally | undefined) => {
-    const a = reliableOf(now);
-    const b = reliableOf(then);
+    const a = winRateOf(now);
+    const b = winRateOf(then);
     return a === null || b === null ? null : a - b;
   };
 

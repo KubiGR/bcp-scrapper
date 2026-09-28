@@ -1,7 +1,9 @@
 import { addDays, type MetaResponse } from '@bcp/shared';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import type { Db } from '../db/client';
+import { players } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { syncEvent } from '../sync/jobs';
 import { SyncRunner } from '../sync/runner';
@@ -48,18 +50,22 @@ describe('GET /api/meta', () => {
 
   it('adds weekly trends, and the change over the last 30 days against the 30 before', async () => {
     await syncEvent({ db, source: sampleSource() }, 'EVTBRACKET01'); // 9 May
+    // Enough games for a change: every sample player an Ork who played 10 (7-3 and 5-5).
+    await db.update(players).set({ faction: 'Orks', wins: 5, losses: 5, draws: 0 });
+    await db.update(players).set({ wins: 7, losses: 3 }).where(eq(players.eventId, 'EVTBRACKET01'));
     // Last 30 days 21 Apr–20 May hold EVTBRACKET01; the 30 before (22 Mar–20 Apr) EVTTEAM0001.
     const body = (await (
       await app.request('/api/meta?from=2026-03-01&to=2026-05-20')
     ).json()) as MetaResponse;
     // From the first event's week to the last one's.
     expect(body.weeks).toEqual(Array.from({ length: 7 }, (_, i) => addDays('2026-03-23', i * 7)));
-    expect(body.factions.some((f) => f.change !== null)).toBe(true);
+    // 70% in the last 30 days against 50% before.
+    expect(body.factions.find((f) => f.faction === 'Orks')?.change).toBeCloseTo(0.2, 6);
     // A short range still compares the two 30-day spans ending on its last day.
     const shortRange = (await (
       await app.request('/api/meta?from=2026-05-01&to=2026-05-20')
     ).json()) as MetaResponse;
-    expect(shortRange.factions.some((f) => f.change !== null)).toBe(true);
+    expect(shortRange.factions.find((f) => f.faction === 'Orks')?.change).toBeCloseTo(0.2, 6);
   });
 
   it('has no team section for singles only', async () => {

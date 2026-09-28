@@ -83,12 +83,15 @@ describe('FactionTable', () => {
     expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'faction', dir: 'asc' });
   });
 
-  it('shows the weekly trend and the change in reliable win rate since the period before', () => {
+  it('shows the weekly trend and the change in win rate over the last 30 days', () => {
     renderWithProviders(<FactionTable {...props} weeks={['2026-09-14', '2026-09-21']} />);
     const orksRow = within(rowOf('Orks'));
     expect(orksRow.getByText('+5.0 pp')).toHaveAttribute('data-tone', 'good');
     expect(orksRow.getByRole('img', { name: 'Share by week: 18.0% to 20.0%' })).toBeInTheDocument();
-    expect(within(rowOf('Necrons')).getByText('new')).toBeInTheDocument();
+    expect(within(rowOf('Necrons')).getByText('–')).toHaveAttribute(
+      'title',
+      'Fewer than 30 games in one of the two 30-day spans',
+    );
   });
 
   it('colours win rates: blue above 55%, orange below 45%', () => {

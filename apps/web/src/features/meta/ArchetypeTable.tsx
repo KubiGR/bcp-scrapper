@@ -79,7 +79,7 @@ export function ArchetypeTable({
   const sorted = [...archetypes].sort(
     (a, b) =>
       Number(dimmed(a)) - Number(dimmed(b)) ||
-      // Sorting by change, archetypes not played in the period before go last either way.
+      // Sorting by change, archetypes without one (too few games) go last either way.
       (sort === 'change' ? Number(changeOf(a) === null) - Number(changeOf(b) === null) : 0) ||
       sign * (sort === 'faction' ? nameOf(a).localeCompare(nameOf(b)) : metric(a) - metric(b)) ||
       b.players - a.players ||
@@ -144,7 +144,7 @@ export function ArchetypeTable({
                 onSort={onSort}
                 ta="right"
                 visibleFrom="sm"
-                title="Reliable win rate in the last 30 days minus the 30 days before them; new = not played in both."
+                title="Win rate in the last 30 days minus the 30 days before them, with 30+ games in each; – otherwise."
               >
                 Change
               </SortableTh>

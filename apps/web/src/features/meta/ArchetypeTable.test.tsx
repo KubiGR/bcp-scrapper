@@ -169,12 +169,12 @@ describe('ArchetypeTable', () => {
     fireEvent.click(screen.getByRole('button', { name: /Win rate/ }));
     expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'winRate', dir: 'desc' });
   });
-  it('sorts by change in reliable win rate, with new archetypes last either way', () => {
+  it('sorts by change in win rate, with rows without one last either way', () => {
     const onSortChange = vi.fn();
     const { rerender } = renderWithProviders(
       <ArchetypeTable {...props} sort="change" onSortChange={onSortChange} />,
     );
-    // Kult of Speed + Wreckas fell 3 points; the others are new.
+    // Kult of Speed + Wreckas fell 3 points; the others have too few games to tell.
     expect(within(rowOf('Kult of Speed + Wreckas')).getByText('−3.0 pp')).toHaveAttribute(
       'data-tone',
       'bad',

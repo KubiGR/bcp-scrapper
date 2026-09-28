@@ -15,8 +15,8 @@ const figures = {
   /** Share of each week's players (see MetaResponse.weeks); null for a week without events. */
   trend: z.array(ratio.nullable()),
   /**
-   * Reliable win rate in the range's last 30 days minus in the 30 days before them; null unless
-   * played in both.
+   * Win rate in the range's last 30 days minus in the 30 days before them; null unless both have
+   * at least MIN_CHANGE_GAMES games.
    */
   change: z.number().min(-1).max(1).nullable(),
   /** Players who went X-1 or better. */

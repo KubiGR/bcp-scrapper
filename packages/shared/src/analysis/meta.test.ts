@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeMeta, computeTeamMeta, reliableWinRate, type MetaPlayerRow } from './meta';
+import { computeMeta, computeTeamMeta, type MetaPlayerRow } from './meta';
 
 const row = (overrides: Partial<MetaPlayerRow> = {}): MetaPlayerRow => ({
   eventId: 'E1',
@@ -92,17 +92,25 @@ describe('computeMeta', () => {
     expect(weekly.factions.find((f) => f.faction === 'Necrons')?.trend).toEqual([0.5, null, 0]);
   });
 
-  it('gives the change in reliable win rate: the last 30 days against the 30 before', () => {
-    const recent = [row({ detachments: ['War Horde'] }), row({ faction: 'Necrons' })];
-    const prior = [row({ detachments: ['War Horde'], wins: 1, losses: 4, draws: 0 })];
+  it('gives the change in win rate: the last 30 days against the 30 before', () => {
+    // Six players of five games each: 30 games in each span, the least that counts.
+    const six = (overrides: Partial<MetaPlayerRow>) =>
+      Array.from({ length: 6 }, () => row({ detachments: ['War Horde'], ...overrides }));
+    const recent = [...six({ wins: 4, losses: 1, draws: 0 }), row({ faction: 'Necrons' })];
+    const prior = six({ wins: 2, losses: 3, draws: 0 });
     const compared = computeMeta([...recent, ...prior], { recent, prior });
     const orks = compared.factions.find((f) => f.faction === 'Orks');
-    const expected = reliableWinRate(3.5, 5) - reliableWinRate(1, 5);
-    expect(orks?.archetypes[0]?.change).toBeCloseTo(expected, 6);
-    // Orks as a whole: the same two players.
-    expect(orks?.change).toBeCloseTo(expected, 6);
-    // Necrons weren't played in the 30 days before: no change to show.
+    // 80% now against 40% before.
+    expect(orks?.change).toBeCloseTo(0.4, 6);
+    expect(orks?.archetypes[0]?.change).toBeCloseTo(0.4, 6);
+    // Necrons have 5 games in one span and none in the other: too few to say.
     expect(compared.factions.find((f) => f.faction === 'Necrons')?.change).toBeNull();
+  });
+
+  it('shows no change with under 30 games in either span', () => {
+    const recent = Array.from({ length: 6 }, () => row({ detachments: ['War Horde'] }));
+    const prior = Array.from({ length: 5 }, () => row({ detachments: ['War Horde'] }));
+    expect(computeMeta(recent, { recent, prior }).factions[0]?.change).toBeNull();
   });
 
   it('treats the same detachments in another order as one archetype', () => {

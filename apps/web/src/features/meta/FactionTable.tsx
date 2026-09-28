@@ -1,4 +1,4 @@
-import type { MetaRow } from '@bcp/shared';
+import { MIN_CHANGE_GAMES, type MetaRow } from '@bcp/shared';
 import { ActionIcon, Table, Text, UnstyledButton, useMatches } from '@mantine/core';
 import { Fragment } from 'react';
 import { SortableTh, type SortDir } from '../../lib/table-sort';
@@ -36,15 +36,20 @@ interface FactionTableProps {
   onOpenPlayers: (filter: PlayersFilter) => void;
 }
 
-/** Reliable win rate in the range's last 30 days minus the 30 before; null unless in both. */
+/** Win rate in the range's last 30 days minus the 30 before; null without enough games. */
 export const changeOf = (row: Pick<MetaRow, 'change'>) => row.change;
 
 /** "+4.2 pp" / "−3.0 pp"; a change that rounds to 0 is neutral. */
 function ChangeText({ change }: { change: number | null }) {
   if (change === null) {
     return (
-      <Text size="sm" c="dimmed" component="span">
-        new
+      <Text
+        size="sm"
+        c="dimmed"
+        component="span"
+        title={`Fewer than ${String(MIN_CHANGE_GAMES)} games in one of the two 30-day spans`}
+      >
+        –
       </Text>
     );
   }
@@ -142,7 +147,7 @@ export function FactionTable({
           : sort === 'x1'
             ? row.x1Share
             : row.players;
-  // Sorting by change, rows not played in the period before ("new") go last either way.
+  // Sorting by change, rows without one (too few games) go last either way.
   const newLast = (a: Measured, b: Measured) =>
     sort === 'change' ? Number(changeOf(a) === null) - Number(changeOf(b) === null) : 0;
   const byName = (a: MetaRow, b: MetaRow) =>
@@ -215,7 +220,7 @@ export function FactionTable({
               onSort={onSort}
               ta="right"
               visibleFrom="sm"
-              title="Reliable win rate in the last 30 days minus the 30 days before them; new = not played in both."
+              title="Win rate in the last 30 days minus the 30 days before them, with 30+ games in each; – otherwise."
             >
               Change
             </SortableTh>
