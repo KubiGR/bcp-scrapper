@@ -72,6 +72,16 @@ const playersOf = async () =>
   (await json<EventPlayersResponse>(await app.request(`/api/events/${EVENT}/players`))).items;
 
 describe('fetch queue routes', () => {
+  it('counts a player whose failed list BCP has since cleared as having no list, not fetched', async () => {
+    await queue({ playerIds: ['PL-ADA'] });
+    const job = await claimNextJob(db, new Date(Date.now() + 60_000));
+    if (job === null) throw new Error('nothing claimed');
+    await markJobFailed(db, job.id, 'BCP down', 'BCP_UNAVAILABLE');
+    await db.update(players).set({ listId: null }).where(eq(players.id, 'PL-ADA'));
+    const result = await queue({ playerIds: ['PL-ADA'] });
+    expect(result).toMatchObject({ queued: 0, alreadyFetched: 0, noListOnBcp: 1 });
+  });
+
   it('queues every missing list, loading the event first; queueing again is a no-op', async () => {
     expect(await queue({})).toEqual({
       queued: 7,

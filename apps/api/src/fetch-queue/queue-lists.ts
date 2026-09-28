@@ -86,8 +86,10 @@ export async function queueEventLists(
     const listId = missing.get(player.bcpId);
     if (open) counts.alreadyQueued += 1;
     if (listId === undefined) {
-      if (player.listStatus === 'none') counts.noListOnBcp += 1;
-      else if (!open) counts.alreadyFetched += 1;
+      // Not missing: either their list is stored, or BCP has none for them (now), whatever an
+      // older queue row says.
+      if (player.listStatus === 'fetched') counts.alreadyFetched += 1;
+      else if (!open) counts.noListOnBcp += 1;
       continue;
     }
     // BCP said it has no such list: final for bulk and team requests; a chosen player asks again.
