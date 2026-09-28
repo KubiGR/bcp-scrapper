@@ -54,6 +54,7 @@ const autoFetch = config.AUTO_FETCH_ENABLED
       days: config.AUTO_FETCH_DAYS,
       intervalMs: config.AUTO_FETCH_INTERVAL_MS,
       catalogIntervalMs: config.AUTO_CATALOG_INTERVAL_MS,
+      loginRejected: async () => (await fetchQueue.state()).pausedReason === 'login-rejected',
     })
   : undefined;
 autoFetch?.start();

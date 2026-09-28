@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '../db/client';
 import { events, fetchQueue } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
@@ -153,6 +153,24 @@ describe('AutoFetchPlanner', () => {
       );
       expect(await synced()).toBeInstanceOf(Date);
     });
+  });
+
+  it('skips the catalogue refresh while BCP rejects the login (the queue is paused for it)', async () => {
+    const runner = new SyncRunner({ db, source, logger: silentLogger, eventRule: ALL_EVENTS });
+    const start = vi.spyOn(runner, 'start');
+    const auto = new AutoFetchPlanner({
+      db,
+      runner,
+      logger: silentLogger,
+      eventRule: ALL_EVENTS,
+      days: 60,
+      intervalMs: 600_000,
+      catalogIntervalMs: 21_600_000,
+      now: () => now,
+      loginRejected: () => Promise.resolve(true),
+    });
+    await auto.refreshCatalogue();
+    expect(start).not.toHaveBeenCalled();
   });
 
   it('does nothing while switched off', async () => {

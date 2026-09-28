@@ -30,6 +30,8 @@ export interface AutoFetchPlannerOptions {
   intervalMs: number;
   catalogIntervalMs: number;
   now?: () => Date;
+  /** Whether BCP rejects the login (the queue is paused for it): the catalogue refresh waits. */
+  loginRejected?: () => Promise<boolean>;
 }
 
 /**
@@ -97,6 +99,8 @@ export class AutoFetchPlanner {
   /** The latest-window catalogue sync (skipped while fresh), so new events appear. */
   async refreshCatalogue(): Promise<void> {
     if (!(await getAutoFetchEnabled(this.#options.db))) return;
+    // It would only fail the same way; the next refresh after a fresh login catches up.
+    if ((await this.#options.loginRejected?.()) === true) return;
     await refreshLatest({ db: this.#options.db, runner: this.#options.runner }, this.#now());
   }
 
