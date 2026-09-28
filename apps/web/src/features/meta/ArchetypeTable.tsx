@@ -2,6 +2,7 @@ import type { ArchetypeRow, MetaRow } from '@bcp/shared';
 import { MultiSelect, Stack, Table, Text, useMatches } from '@mantine/core';
 import { plural } from '../../lib/format';
 import { SortableTh, type SortDir } from '../../lib/table-sort';
+import { DispositionBreakdown } from './DispositionBreakdown';
 import { factionKey, factionName, Figures, type PlayersFilter } from './FactionTable';
 import type { MetaSort } from './meta-queries';
 
@@ -146,6 +147,7 @@ export function ArchetypeTable({
                     <Text size="xs" c="dimmed">
                       {factionName(archetype.faction)}
                     </Text>
+                    <DispositionBreakdown archetype={archetype} />
                   </Table.Td>
                   <Figures
                     row={archetype}

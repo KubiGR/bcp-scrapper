@@ -63,6 +63,17 @@ describe('loadMetaRows', () => {
     expect(ada).toMatchObject({ faction: 'Orks', detachments: [] });
   });
 
+  it('gives each player’s disposition: BCP’s, else the one read from their list', async () => {
+    await record('PL-ADA', 3, 1);
+    await record('PL-BEN', 2, 2);
+    await db.update(players).set({ disposition: 'Purge the Foe' }).where(eq(players.id, 'PL-ADA'));
+    await db.update(players).set({ disposition: null }).where(eq(players.id, 'PL-BEN'));
+    await storeList(db, 'PL-BEN', gwList('Orks', 'War Horde', 'Take and Hold'));
+    const { rows } = await loadMetaRows(db, { ...RANGE, type: 'all' }, ALL_EVENTS, TODAY);
+    expect(rows.find((r) => r.wins === 3 && r.losses === 1)?.disposition).toBe('Purge the Foe');
+    expect(rows.find((r) => r.wins === 2 && r.losses === 2)?.disposition).toBe('Take and Hold');
+  });
+
   it('ignores a list the player has since replaced, and counts an allegiance without a list as unknown', async () => {
     await record('PL-ADA', 3, 1);
     await storeList(db, 'PL-ADA', gwList('Orks', 'War Horde'));

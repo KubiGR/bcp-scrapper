@@ -12,6 +12,10 @@ export const orks: MetaRow = {
   archetypes: [
     {
       detachments: ['Kult of Speed', 'Wreckas'],
+      dispositions: [
+        { name: 'Take and Hold', players: 9 },
+        { name: 'Purge the Foe', players: 3 },
+      ],
       players: 12,
       share: 0.12,
       games: 60,
@@ -22,6 +26,7 @@ export const orks: MetaRow = {
     },
     {
       detachments: null,
+      dispositions: [],
       players: 8,
       share: 0.08,
       games: 40,
@@ -44,6 +49,7 @@ export const necrons: MetaRow = {
   archetypes: [
     {
       detachments: ['Hypercrypt Legion'],
+      dispositions: [],
       players: 10,
       share: 0.1,
       games: 50,

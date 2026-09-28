@@ -102,6 +102,13 @@ describe('FactionTable', () => {
     expect(onToggle).toHaveBeenCalledWith('Orks');
     rerender(<FactionTable {...props} expanded={['Orks']} />);
     expect(screen.getByText('Kult of Speed + Wreckas')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.getAttribute('data-dispositions') !== null &&
+          el?.textContent === 'Take and Hold 75% · Purge the Foe 25%',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText('Detachment unknown or not in English')).toBeInTheDocument();
   });
 
@@ -124,6 +131,7 @@ describe('FactionTable', () => {
       archetypes: [
         {
           detachments: ['A'],
+          dispositions: [],
           players: 12,
           share: 0.12,
           games: 60,
@@ -134,6 +142,7 @@ describe('FactionTable', () => {
         },
         {
           detachments: ['B'],
+          dispositions: [],
           players: 11,
           share: 0.11,
           games: 50,
@@ -144,6 +153,7 @@ describe('FactionTable', () => {
         },
         {
           detachments: ['C'],
+          dispositions: [],
           players: 2,
           share: 0.02,
           games: 10,
@@ -154,6 +164,7 @@ describe('FactionTable', () => {
         },
         {
           detachments: null,
+          dispositions: [],
           players: 30,
           share: 0.3,
           games: 150,

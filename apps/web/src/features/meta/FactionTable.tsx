@@ -2,6 +2,7 @@ import type { MetaRow } from '@bcp/shared';
 import { ActionIcon, Table, Text, UnstyledButton, useMatches } from '@mantine/core';
 import { Fragment } from 'react';
 import { SortableTh, type SortDir } from '../../lib/table-sort';
+import { DispositionBreakdown } from './DispositionBreakdown';
 import { percent, sharePercent, winRateTone, type MetaSort } from './meta-queries';
 
 /** A row's players, for the drill-down: `detachments` undefined = the whole faction. */
@@ -209,6 +210,7 @@ export function FactionTable({
                           <Text size="sm" c="dimmed" component="span">
                             {label}
                           </Text>
+                          <DispositionBreakdown archetype={archetype} />
                         </Table.Td>
                         <Figures
                           row={archetype}

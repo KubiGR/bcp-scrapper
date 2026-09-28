@@ -11,6 +11,8 @@ export interface MetaPlayerRow {
   faction: string | null;
   /** From their current, read list; [] = unknown. */
   detachments: string[];
+  /** Their force disposition (BCP's, else read from the list); null = unknown. */
+  disposition: string | null;
   wins: number;
   losses: number;
   draws: number;
@@ -59,7 +61,15 @@ interface Tally {
   /** wins + ½ draws */
   points: number;
   x1: number;
+  /** Players per disposition (known ones only). */
+  dispositions: Map<string, number>;
 }
+
+/** Dispositions most picked first (then by name). */
+const dispositionList = (counts: Map<string, number>) =>
+  [...counts]
+    .map(([name, players]) => ({ name, players }))
+    .sort((a, b) => b.players - a.players || a.name.localeCompare(b.name));
 
 /**
  * A win rate that allows for sample size: the low end of its 95% Wilson score interval. Few games
@@ -97,9 +107,12 @@ export function computeMeta(rows: MetaPlayerRow[]): {
   const total = counted.length;
   const groups = groupRows<Tally>(
     counted,
-    () => ({ players: 0, games: 0, points: 0, x1: 0 }),
+    () => ({ players: 0, games: 0, points: 0, x1: 0, dispositions: new Map<string, number>() }),
     (tally, row) => {
       tally.players += 1;
+      if (row.disposition !== null) {
+        tally.dispositions.set(row.disposition, (tally.dispositions.get(row.disposition) ?? 0) + 1);
+      }
       tally.games += gamesOf(row);
       tally.points += row.wins + row.draws / 2;
       if (row.losses <= 1) tally.x1 += 1;
@@ -110,7 +123,11 @@ export function computeMeta(rows: MetaPlayerRow[]): {
       faction,
       ...figures(group.tally, total),
       archetypes: [...group.archetypes.values()]
-        .map((a): ArchetypeRow => ({ detachments: a.detachments, ...figures(a.tally, total) }))
+        .map((a): ArchetypeRow => ({
+          detachments: a.detachments,
+          ...figures(a.tally, total),
+          dispositions: dispositionList(a.tally.dispositions),
+        }))
         .sort(
           (x, y) =>
             nullsLast(x.detachments, y.detachments) ||

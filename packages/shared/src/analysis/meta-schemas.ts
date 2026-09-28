@@ -21,6 +21,8 @@ export const ArchetypeRowSchema = z.object({
   /** The list's detachments; null = the list isn't read (Detachment unknown). */
   detachments: z.array(z.string()).nullable(),
   ...figures,
+  /** Its players' dispositions, most picked first; players without a known one aren't counted. */
+  dispositions: z.array(z.object({ name: z.string(), players: count })),
 });
 export type ArchetypeRow = z.infer<typeof ArchetypeRowSchema>;
 

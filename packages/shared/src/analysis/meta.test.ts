@@ -9,6 +9,7 @@ const row = (overrides: Partial<MetaPlayerRow> = {}): MetaPlayerRow => ({
   teamPlacing: null,
   faction: 'Orks',
   detachments: [],
+  disposition: null,
   wins: 3,
   losses: 1,
   draws: 1,
@@ -61,6 +62,19 @@ describe('computeMeta', () => {
     expect(
       computeMeta([row({ wins: 1, losses: 0, draws: 0 })]).factions[0]?.reliableWinRate,
     ).toBeLessThan(0.5);
+  });
+
+  it('counts each archetype’s dispositions, most picked first, unknown ones left out', () => {
+    const dispositions = computeMeta([
+      row({ detachments: ['War Horde'], disposition: 'Take and Hold' }),
+      row({ detachments: ['War Horde'], disposition: 'Purge the Foe' }),
+      row({ detachments: ['War Horde'], disposition: 'Take and Hold' }),
+      row({ detachments: ['War Horde'], disposition: null }),
+    ]).factions[0]?.archetypes[0]?.dispositions;
+    expect(dispositions).toEqual([
+      { name: 'Take and Hold', players: 2 },
+      { name: 'Purge the Foe', players: 1 },
+    ]);
   });
 
   it('treats the same detachments in another order as one archetype', () => {

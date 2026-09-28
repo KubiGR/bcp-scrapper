@@ -17,6 +17,7 @@ const greyKnights: MetaRow = {
   archetypes: [
     {
       detachments: ['Teleport Strike Force'],
+      dispositions: [],
       players: 2,
       share: 0.02,
       games: 10,
@@ -45,7 +46,11 @@ const single = (
     x1: 0,
     x1Share: 0,
   };
-  return { faction, ...figures, archetypes: [{ detachments: [detachment], ...figures }] };
+  return {
+    faction,
+    ...figures,
+    archetypes: [{ detachments: [detachment], dispositions: [], ...figures }],
+  };
 };
 
 const props = {
@@ -80,6 +85,18 @@ describe('ArchetypeTable', () => {
     expect(within(rowOf('Hypercrypt Legion')).getByText('Necrons')).toBeInTheDocument();
     // Small shares keep a decimal, so rare archetypes don't all read 0%.
     expect(within(rowOf('Teleport Strike Force')).getByText('2.0%')).toBeInTheDocument();
+  });
+
+  it('shows which dispositions an archetype’s players picked', () => {
+    renderWithProviders(<ArchetypeTable {...props} />);
+    const row = rowOf('Kult of Speed + Wreckas');
+    expect(
+      within(row).getByText(
+        (_, el) =>
+          el?.getAttribute('data-dispositions') !== null &&
+          el?.textContent === 'Take and Hold 75% · Purge the Foe 25%',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('leaves out players without a known detachment, and says how many', () => {
