@@ -43,6 +43,8 @@ export interface FetchQueueWorkerOptions {
    * list, so the row is backed off like any other failure instead of wedging the queue.
    */
   loginRejected?: () => Promise<boolean>;
+  /** False when the server runs without automatic fetching (AUTO_FETCH_ENABLED=false). */
+  autoFetchAvailable?: boolean;
 }
 
 interface Pause {
@@ -128,7 +130,9 @@ export class FetchQueueWorker {
       totals: await queueTotals(this.#options.db),
       estimatedSeconds: await this.estimateSecondsFor(),
       auto: {
-        enabled: await getAutoFetchEnabled(this.#options.db),
+        enabled:
+          (this.#options.autoFetchAvailable ?? true) &&
+          (await getAutoFetchEnabled(this.#options.db)),
         ...(await autoJobSummary(this.#options.db)),
       },
     };

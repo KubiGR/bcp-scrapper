@@ -76,6 +76,19 @@ const ada = { playerId: 'PL-ADA', listId: 'LS-ADA' };
 const ben = { playerId: 'PL-BEN', listId: 'LS-BEN' };
 
 describe('FetchQueueWorker', () => {
+  it('reports automatic fetching off when the server runs without it, whatever the switch says', async () => {
+    const on = await worker().state();
+    expect(on.auto.enabled).toBe(true);
+    const off = new FetchQueueWorker({
+      db,
+      source,
+      logger: silentLogger,
+      intervalMs: 5000,
+      autoFetchAvailable: false,
+    });
+    expect((await off.state()).auto.enabled).toBe(false);
+  });
+
   it('keeps an automatic event load’s rounds automatic, at its priority', async () => {
     await fetchQueueRepo.enqueueEventPairings(db, EVENT, {
       rounds: null,

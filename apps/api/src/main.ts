@@ -35,6 +35,7 @@ const fetchQueue = new FetchQueueWorker({
   source,
   logger: logger.child({ module: 'fetch-queue' }),
   intervalMs: config.FETCH_QUEUE_INTERVAL_MS,
+  autoFetchAvailable: config.AUTO_FETCH_ENABLED,
   // Asked once per auth error: BCP refusing one list must not pause the queue while the login
   // works. The status check refreshes a stale login at most once (single-flight) and never
   // resends a refresh token BCP already refused.
