@@ -35,7 +35,7 @@ function targetOptions(unsure: Unsure, targets: Target[], faction: string): stri
 /** Factions with unsure, foreign or linked names, most unsure names first, as picker options. */
 function factionOptions(data: DetachmentNamesResponse) {
   const counts = new Map<string, number>();
-  for (const named of [...data.links, ...data.foreign]) {
+  for (const named of [...data.links, ...data.foreign, ...data.learned]) {
     for (const f of named.factions) counts.set(f, counts.get(f) ?? 0);
   }
   for (const unsure of data.unsure) {
@@ -250,6 +250,7 @@ export function DetachmentNamesCard() {
   const unsure = names.data?.unsure.filter(inFaction) ?? [];
   const foreign = names.data?.foreign.filter(inFaction) ?? [];
   const links = names.data?.links.filter(inFaction) ?? [];
+  const learned = names.data?.learned.filter(inFaction) ?? [];
   const known = names.data?.targets.filter((t) => t.factions.includes(faction)) ?? [];
   const rowProps: RowProps = {
     targets: names.data?.targets ?? [],
@@ -333,6 +334,37 @@ export function DetachmentNamesCard() {
                 detachment it means to count it.
               </Text>
               <NamesTable entries={foreign} foreign {...rowProps} />
+            </Stack>
+          )}
+          {learned.length > 0 && (
+            <Stack component="section" aria-label="Learned from BCP" gap={4}>
+              <Text size="sm" fw={600}>
+                Learned from BCP
+              </Text>
+              <Text size="xs" c="dimmed">
+                Names read as translations because players picked that detachment on BCP. If one is
+                really a different detachment, say so.
+              </Text>
+              {learned.map((translation) => (
+                <Group key={translation.name} gap="xs">
+                  <Text size="sm">{translation.name}</Text>
+                  <Text size="sm" c="dimmed">
+                    →
+                  </Text>
+                  <Text size="sm">{translation.target}</Text>
+                  <Button
+                    size="compact-xs"
+                    variant="subtle"
+                    disabled={readOnly}
+                    aria-label={`${translation.name} is not ${translation.target}`}
+                    onClick={() => {
+                      link.mutate({ name: translation.name, target: null, foreign: false });
+                    }}
+                  >
+                    Not the same
+                  </Button>
+                </Group>
+              ))}
             </Stack>
           )}
           {links.length > 0 && (

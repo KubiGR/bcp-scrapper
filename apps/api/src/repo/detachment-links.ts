@@ -7,7 +7,7 @@ import {
 import { eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { armyLists, detachmentLinks, players } from '../db/schema';
-import { tidyDetachments } from './lists';
+import { learnedTranslations, tidyDetachments } from './lists';
 
 const keyOf = (name: string) => cleanDetachmentName(name).toLowerCase();
 const sorted = (values: Iterable<string>) =>
@@ -55,7 +55,7 @@ const armyOf = sql<string | null>`case
 end`;
 
 export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> {
-  const [bcpRows, storedRows, links] = await Promise.all([
+  const [bcpRows, storedRows, links, learned] = await Promise.all([
     db
       .select({ name: bcpName, faction: armyOf })
       .from(armyLists)
@@ -70,6 +70,7 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
       .from(armyLists)
       .innerJoin(players, eq(players.id, armyLists.playerId)),
     db.select().from(detachmentLinks).orderBy(detachmentLinks.name),
+    learnedTranslations(db),
   ]);
 
   const targets = new Map<string, { name: string; factions: Set<string> }>();
@@ -112,6 +113,10 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
       .filter((entry) => !isForeign(entry))
       .map(({ name, lists, factions }) => ({ name, lists, factions })),
     foreign: names.filter(isForeign),
+    learned: learned.map((translation) => ({
+      ...translation,
+      factions: sorted(targets.get(translation.target.toLowerCase())?.factions ?? []),
+    })),
     targets: [...targets.values()]
       .map((target) => ({ name: target.name, factions: sorted(target.factions) }))
       .sort((a, b) => a.name.localeCompare(b.name)),

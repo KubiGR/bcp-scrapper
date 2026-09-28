@@ -391,6 +391,13 @@ export const DetachmentNamesResponseSchema = z.object({
       marked: z.boolean(),
     }),
   ),
+  /**
+   * Translations learned from BCP's detachment field (name → the detachment it's taken to mean),
+   * with the target's factions; a hand link replaces one.
+   */
+  learned: z.array(
+    z.object({ name: z.string(), target: z.string(), factions: z.array(z.string()) }),
+  ),
   /** BCP's detachment names, with the factions they're played in. */
   targets: z.array(z.object({ name: z.string(), factions: z.array(z.string()) })),
   /** `target` null = marked as its own detachment; `factions`: where the name is played. */

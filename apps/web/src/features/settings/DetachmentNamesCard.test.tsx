@@ -15,6 +15,7 @@ const names = (overrides: Partial<DetachmentNamesResponse> = {}): DetachmentName
     { name: 'Legión Sangrienta', lists: 3, factions: ['Chaos Daemons'], marked: false },
     { name: 'Arrazadorez', lists: 1, factions: ['Orks'], marked: true },
   ],
+  learned: [{ name: 'Cabalgata Sangrienta', target: 'Blood Legion', factions: ['Chaos Daemons'] }],
   targets: [
     { name: 'Blood Legion', factions: ['Chaos Daemons'] },
     { name: 'Shadow Legion', factions: ['Chaos Daemons'] },
@@ -210,6 +211,30 @@ describe('DetachmentNamesCard', () => {
     );
     await waitFor(() => {
       expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(true);
+    });
+  });
+
+  it('lists what was learned from BCP, and undoes a wrong one with Not the same', async () => {
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/detachments': names(),
+      'POST /api/detachments/links': names({ learned: [] }),
+    });
+    renderWithProviders(<DetachmentNamesCard />);
+    const learned = within(await screen.findByRole('region', { name: 'Learned from BCP' }));
+    expect(learned.getByText('Cabalgata Sangrienta')).toBeInTheDocument();
+    expect(learned.getByText('Blood Legion')).toBeInTheDocument();
+    fireEvent.click(
+      learned.getByRole('button', { name: 'Cabalgata Sangrienta is not Blood Legion' }),
+    );
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true);
+    });
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(JSON.parse(post?.[1]?.body as string)).toEqual({
+      name: 'Cabalgata Sangrienta',
+      target: null,
+      foreign: false,
     });
   });
 

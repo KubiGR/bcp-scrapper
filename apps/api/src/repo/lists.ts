@@ -5,6 +5,7 @@ import {
   cleanDetachmentName,
   DETACHMENT_TRANSLATIONS,
   detachmentParts,
+  looksForeign,
   countedFaction,
   splitDetachments,
   type ArmyList,
@@ -81,6 +82,18 @@ interface DetachmentVocabulary {
 }
 
 /**
+ * Translations learned from BCP's detachment field that no hand link overrides, as lists spell
+ * them: shown in Settings so a wrong one can be undone.
+ */
+export async function learnedTranslations(db: Db): Promise<{ name: string; target: string }[]> {
+  const vocabulary = await detachmentVocabulary(db);
+  return [...vocabulary.translations]
+    .filter(([key]) => !vocabulary.links.has(key))
+    .map(([key, target]) => ({ name: vocabulary.spellings.get(key) ?? key, target }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
  * Learns detachment names from every stored list. A line without "and"-type joiners is one name;
  * a comma list names its detachments; BCP's own detachment field is always a name (in English).
  * A list naming one detachment that isn't one of BCP's names, while BCP says another, teaches a
@@ -126,7 +139,10 @@ async function detachmentVocabulary(db: Db): Promise<DetachmentVocabulary> {
       only !== undefined &&
       bcp !== null &&
       detachmentParts(only).length === 1 &&
-      !bcpNames.has(only.toLowerCase())
+      !bcpNames.has(only.toLowerCase()) &&
+      // Only names in another language: an English-looking unknown name is most likely a
+      // detachment BCP doesn't list yet, whose players picked the nearest one on BCP.
+      looksForeign(only)
     ) {
       const english = cleanDetachmentName(bcp);
       const seen = pairs.get(only.toLowerCase()) ?? new Map<string, number>();

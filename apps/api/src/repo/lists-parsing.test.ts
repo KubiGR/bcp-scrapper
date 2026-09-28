@@ -198,6 +198,20 @@ describe('parsed lists', () => {
       expect((await rowOf('PL-BEN')).detachments).toEqual(['Zweideutig']);
     });
 
+    it('never learns an English-looking name: it’s likely a detachment BCP doesn’t list yet', async () => {
+      // BCP lacks it, so players pick the nearest one on BCP; that's no translation.
+      for (const id of ['PL-ADA', 'PL-BEN', 'PL-CARA']) {
+        await storeList(
+          db,
+          id,
+          gwList('Genestealer Cult', 'Xenocult Masses'),
+          'Biosanctic Broodsurge',
+        );
+      }
+      await tidyDetachments(db);
+      expect((await rowOf('PL-ADA')).detachments).toEqual(['Xenocult Masses']);
+    });
+
     it('uses BCP’s detachment when the list itself can’t be read', async () => {
       await storeList(db, 'PL-ADA', 'Just some units\nCaptain (80 pts)', 'Blood Legion');
       expect((await rowOf('PL-ADA')).detachments).toEqual(['Blood Legion']);

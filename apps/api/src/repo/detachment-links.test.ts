@@ -121,10 +121,21 @@ describe('detachment names', () => {
     ]);
   });
 
+  it('lists the translations learned from BCP, until one is linked by hand', async () => {
+    await storeList(db, 'PL-EVE', gwList('Chaos Daemons', 'Legión Sangrienta'), 'Blood Legion');
+    await storeList(db, 'PL-FINN', gwList('Chaos Daemons', 'Legión Sangrienta'), 'Blood Legion');
+    expect((await detachmentNames(db)).learned).toEqual([
+      { name: 'Legión Sangrienta', target: 'Blood Legion', factions: ['Chaos Daemons'] },
+    ]);
+    // "Not the same": its own detachment, which wins over what was learned.
+    await linkDetachment(db, 'Legión Sangrienta', null);
+    expect((await detachmentNames(db)).learned).toEqual([]);
+  });
+
   it('wins over a translation learned from BCP', async () => {
-    await storeList(db, 'PL-EVE', gwList('Chaos Daemons', 'Zweideutig'), 'Blood Legion');
-    await storeList(db, 'PL-FINN', gwList('Chaos Daemons', 'Zweideutig'), 'Blood Legion');
-    await linkDetachment(db, 'Zweideutig', 'Shadow Legion');
+    await storeList(db, 'PL-EVE', gwList('Chaos Daemons', 'Klauen des Zweifels'), 'Blood Legion');
+    await storeList(db, 'PL-FINN', gwList('Chaos Daemons', 'Klauen des Zweifels'), 'Blood Legion');
+    await linkDetachment(db, 'Klauen des Zweifels', 'Shadow Legion');
     expect(await detachmentsOf('PL-EVE')).toEqual(['Shadow Legion']);
   });
 });
