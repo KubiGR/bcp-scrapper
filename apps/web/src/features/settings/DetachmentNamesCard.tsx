@@ -1,21 +1,11 @@
 import type { DetachmentNamesResponse } from '@bcp/shared';
-import {
-  Alert,
-  Button,
-  Group,
-  List,
-  Select,
-  SimpleGrid,
-  Skeleton,
-  Stack,
-  Table,
-  Text,
-} from '@mantine/core';
+import { Alert, Badge, Button, Group, Select, Skeleton, Stack, Table, Text } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { meQuery } from '../auth/auth-queries';
+import classes from './DetachmentNamesCard.module.css';
 import { detachmentNamesQuery, linkDetachment, unlinkDetachment } from './detachment-names-queries';
 
 type Unsure = DetachmentNamesResponse['unsure'][number];
@@ -58,6 +48,7 @@ function UnsureRow({
 }: {
   unsure: Unsure;
   targets: Target[];
+  /** The picked faction, or ALL (then the row also says which factions play the name). */
   faction: string;
   readOnly: boolean;
   onLink: (target: string | null) => void;
@@ -70,13 +61,15 @@ function UnsureRow({
       <Table.Td ta="right" className="numeric">
         {unsure.lists}
       </Table.Td>
+      {faction === ALL && (
+        <Table.Td>
+          <Text size="sm" c="dimmed">
+            {unsure.factions.join(', ')}
+          </Text>
+        </Table.Td>
+      )}
       <Table.Td>
-        <Text size="sm" c="dimmed">
-          {unsure.factions.join(', ')}
-        </Text>
-      </Table.Td>
-      <Table.Td>
-        <Group gap="xs" wrap="nowrap">
+        <Group gap="xs">
           <Select
             aria-label={`Link ${unsure.name} to`}
             placeholder="Pick a detachment"
@@ -85,7 +78,7 @@ function UnsureRow({
             onChange={setTarget}
             searchable
             disabled={readOnly}
-            w={240}
+            w={{ base: '100%', xs: 240 }}
           />
           <Button
             size="xs"
@@ -180,7 +173,7 @@ export function DetachmentNamesCard() {
               }}
               allowDeselect={false}
               searchable
-              w={280}
+              w={{ base: '100%', xs: 280 }}
             />
           )}
           {names.data.unsure.length === 0 ? (
@@ -188,14 +181,33 @@ export function DetachmentNamesCard() {
               Every detachment name is known.
             </Text>
           ) : (
-            <SimpleGrid cols={{ base: 1, md: faction === ALL ? 1 : 2 }} spacing="lg">
-              <Table.ScrollContainer minWidth={640}>
+            <>
+              {faction !== ALL && (
+                <Stack gap={4}>
+                  <Text size="sm" fw={600}>
+                    Known {faction} detachments
+                  </Text>
+                  <Group
+                    component="ul"
+                    aria-label={`Known ${faction} detachments`}
+                    gap={6}
+                    className={classes.known}
+                  >
+                    {known.map((target) => (
+                      <Badge component="li" key={target.name} variant="light" color="gray">
+                        {target.name}
+                      </Badge>
+                    ))}
+                  </Group>
+                </Stack>
+              )}
+              <Table.ScrollContainer minWidth={faction === ALL ? 640 : 480}>
                 <Table verticalSpacing="xs">
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Name in lists</Table.Th>
                       <Table.Th ta="right">Lists</Table.Th>
-                      <Table.Th>Factions</Table.Th>
+                      {faction === ALL && <Table.Th>Factions</Table.Th>}
                       <Table.Th>Means</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
@@ -216,19 +228,7 @@ export function DetachmentNamesCard() {
                   </Table.Tbody>
                 </Table>
               </Table.ScrollContainer>
-              {faction !== ALL && (
-                <Stack gap={4}>
-                  <Text size="sm" fw={600}>
-                    Known {faction} detachments
-                  </Text>
-                  <List size="sm" aria-label={`Known ${faction} detachments`}>
-                    {known.map((target) => (
-                      <List.Item key={target.name}>{target.name}</List.Item>
-                    ))}
-                  </List>
-                </Stack>
-              )}
-            </SimpleGrid>
+            </>
           )}
           {links.length > 0 && (
             <Stack gap={4}>

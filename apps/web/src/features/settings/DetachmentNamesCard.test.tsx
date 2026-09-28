@@ -33,6 +33,8 @@ describe('DetachmentNamesCard', () => {
   it('lists the names BCP doesn’t use, with how many lists and which factions', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': names() });
     renderWithProviders(<DetachmentNamesCard />);
+    fireEvent.click(await screen.findByRole('combobox', { name: 'Faction' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'All factions' }));
     const row = within(
       rowOf(await screen.findByText('Cabalgata del Caos').then(() => 'Cabalgata del Caos')),
     );

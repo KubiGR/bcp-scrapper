@@ -172,7 +172,7 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
             onChange={(e) => {
               setQuery(e.currentTarget.value);
             }}
-            w={240}
+            w={{ base: '100%', xs: 240 }}
           />
           <MultiSelect
             aria-label="Faction"
@@ -182,7 +182,7 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
             onChange={setFactions}
             clearable
             searchable
-            w={240}
+            w={{ base: '100%', xs: 240 }}
           />
           <MultiSelect
             aria-label="Disposition"
@@ -192,7 +192,7 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
             onChange={setDispositions}
             renderOption={({ option }) => <DispositionText disposition={option.value} />}
             clearable
-            w={240}
+            w={{ base: '100%', xs: 240 }}
           />
           <MultiSelect
             aria-label="Detachment"
@@ -202,7 +202,7 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
             onChange={setDetachments}
             clearable
             searchable
-            w={240}
+            w={{ base: '100%', xs: 240 }}
           />
           <Select
             aria-label="Record"
@@ -216,7 +216,7 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
               setMaxLosses(value === null ? null : Number(value));
             }}
             clearable
-            w={180}
+            w={{ base: '100%', xs: 180 }}
           />
         </Group>
         <Group gap="sm" align="flex-start">

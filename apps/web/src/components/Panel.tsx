@@ -11,7 +11,12 @@ interface PanelProps extends PaperProps {
 /** The standard surface for every content block: a flat dark panel with a faint border. */
 export function Panel({ title, children, ...paperProps }: PanelProps) {
   return (
-    <Paper component="section" className={classes.panel} p="lg" {...paperProps}>
+    <Paper
+      component="section"
+      className={classes.panel}
+      p={{ base: 'sm', sm: 'lg' }}
+      {...paperProps}
+    >
       {title !== undefined && <Text className={classes.label}>{title}</Text>}
       {children}
     </Paper>

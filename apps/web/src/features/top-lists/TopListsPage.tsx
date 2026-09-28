@@ -73,7 +73,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
           }}
           searchable
           clearable
-          w={260}
+          w={{ base: '100%', xs: 260 }}
         />
         <DatePickerInput
           type="range"
@@ -82,7 +82,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
           allowSingleDateInRange
           value={dates.draft}
           onChange={dates.onRangeChange}
-          w={280}
+          w={{ base: '100%', xs: 280 }}
         />
         <Select
           label="Record"
@@ -92,7 +92,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
             if (value !== null) onSearchChange({ ...search, maxLosses: Number(value) });
           }}
           allowDeselect={false}
-          w={170}
+          w={{ base: '100%', xs: 170 }}
         />
         <MultiSelect
           label="Disposition"
@@ -104,7 +104,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
           }}
           renderOption={({ option }) => <DispositionText disposition={option.value} />}
           clearable
-          w={240}
+          w={{ base: '100%', xs: 240 }}
         />
         <MultiSelect
           label="Detachment"
@@ -116,7 +116,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
           }}
           searchable
           clearable
-          w={240}
+          w={{ base: '100%', xs: 240 }}
         />
       </Group>
 

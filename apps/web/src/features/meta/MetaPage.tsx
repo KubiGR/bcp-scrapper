@@ -53,7 +53,7 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
           allowSingleDateInRange
           value={dates.draft}
           onChange={dates.onRangeChange}
-          w={280}
+          w={{ base: '100%', xs: 280 }}
         />
         <SegmentedControl
           aria-label="Event type"

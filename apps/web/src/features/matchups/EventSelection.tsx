@@ -95,7 +95,7 @@ export function EventSelection({ events, exclude, include, onChange }: EventSele
 
   return (
     <Group gap="sm" align="flex-start" wrap="wrap">
-      <div style={{ flex: '1 1 480px' }}>
+      <div style={{ flex: '1 1 480px', minWidth: 0 }}>
         {toSync.length > 0 && (
           <Group mb="sm">
             <Button

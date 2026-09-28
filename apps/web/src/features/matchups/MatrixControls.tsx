@@ -75,7 +75,7 @@ export function MatrixControls({
           label="Disposition"
           placeholder={settings.dispositions.length === 0 ? 'All dispositions' : undefined}
           clearable
-          w={260}
+          w={{ base: '100%', xs: 260 }}
           data={dispositionOptions}
           value={settings.dispositions}
           onChange={(value) => {
@@ -88,7 +88,7 @@ export function MatrixControls({
           placeholder={settings.detachments.length === 0 ? 'All detachments' : undefined}
           clearable
           searchable
-          w={260}
+          w={{ base: '100%', xs: 260 }}
           data={detachmentOptions}
           value={settings.detachments}
           onChange={(value) => {

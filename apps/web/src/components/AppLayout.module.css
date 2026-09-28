@@ -44,25 +44,36 @@
   border-bottom-color: var(--mantine-color-neon-5);
 }
 
-/*
- * Below Mantine's `xs` breakpoint (36em / 576px, which covers a 375px phone): shrink the
- * brand and nav so both stay on one row inside the 60px header, with no wrap and no overflow.
- * Desktop (>= xs) keeps the original sizes untouched.
- */
+.actions {
+  min-width: 0;
+}
+
+/* The phone menu: full-width rows, tall enough to tap. */
+.menu {
+  background: var(--mantine-color-dark-8);
+  border-right: 1px solid rgb(255 255 255 / 0.07);
+}
+
+.menuLink {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 var(--mantine-spacing-md);
+  font-size: var(--mantine-font-size-md);
+  text-decoration: none;
+  color: var(--mantine-color-gray-3);
+  border-left: 2px solid transparent;
+}
+
+.menuLink[data-status='active'] {
+  color: var(--mantine-color-neon-4);
+  border-left-color: var(--mantine-color-neon-5);
+  background: rgb(255 255 255 / 0.03);
+}
+
 @media (max-width: 35.99375em) {
   .brand {
     font-size: 13px;
     letter-spacing: 0.04em;
-  }
-
-  .nav {
-    /* Group sets its gap via an inline `--group-gap` custom property, which a plain
-       (non-!important) rule can't out-rank; !important is required to shrink it here. */
-    gap: 8px !important;
-  }
-
-  .navLink {
-    padding: 6px 0;
-    font-size: 10px;
   }
 }

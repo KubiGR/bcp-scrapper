@@ -77,7 +77,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
         allowSingleDateInRange
         value={dates.draft}
         onChange={dates.onRangeChange}
-        w={280}
+        w={{ base: '100%', xs: 280 }}
       />
       {matchups.isPending && <Skeleton height={160} />}
       {matchups.error && (

@@ -1,0 +1,6 @@
+/* The known detachments: a plain list, laid out as a wrapping row of badges. */
+.known {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
