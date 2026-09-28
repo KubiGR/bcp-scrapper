@@ -46,13 +46,23 @@ describe('MetaPage', () => {
     expect(await screen.findByText('No big events in this range.')).toBeInTheDocument();
   });
 
+  it('sorts by win rate unless another column is chosen', async () => {
+    stubFetchRoutes({ 'GET /api/meta': metaResponse() });
+    renderWithRouter(<MetaPage search={{}} onSearchChange={vi.fn()} />);
+    await screen.findByText('Orks');
+    expect(screen.getByRole('columnheader', { name: 'Win rate' })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    );
+  });
+
   it('keeps sort and expanded factions in the search', async () => {
     stubFetchRoutes({ 'GET /api/meta': metaResponse() });
     const onSearchChange = vi.fn();
     renderWithRouter(<MetaPage search={{ type: 'teams' }} onSearchChange={onSearchChange} />);
     await screen.findByText('Orks');
-    fireEvent.click(screen.getByRole('button', { name: 'Win rate' }));
-    expect(onSearchChange).toHaveBeenCalledWith({ type: 'teams', sort: 'winRate' });
+    fireEvent.click(screen.getByRole('button', { name: 'Players' }));
+    expect(onSearchChange).toHaveBeenCalledWith({ type: 'teams', sort: 'players', dir: 'desc' });
     fireEvent.click(screen.getByRole('button', { name: 'Show Orks detachments' }));
     expect(onSearchChange).toHaveBeenCalledWith({ type: 'teams', expanded: 'Orks' });
   });
@@ -88,6 +98,15 @@ describe('MetaPage', () => {
     renderWithRouter(<MetaPage search={{}} onSearchChange={vi.fn()} />);
     fireEvent.click(await screen.findByRole('button', { name: '20 Orks players' }));
     expect(await screen.findByText('Ada Archer')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'W-L-D' })).toHaveAttribute(
+      'aria-sort',
+      'none',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'W-L-D' }));
+    expect(screen.getByRole('columnheader', { name: /W-L-D/ })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    );
     // Anywhere on the player's row opens the list.
     fireEvent.click(screen.getByText('Ada Archer'));
     expect(await screen.findByText('Orks list text')).toBeInTheDocument();

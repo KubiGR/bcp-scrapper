@@ -107,10 +107,11 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
                 <FactionTable
                   rows={meta.data.factions}
                   minPlayers={minPlayers}
-                  sort={search.sort ?? 'players'}
+                  sort={search.sort ?? 'winRate'}
+                  dir={search.dir ?? (search.sort === 'faction' ? 'asc' : 'desc')}
                   expanded={expanded}
-                  onSortChange={(sort) => {
-                    onSearchChange({ ...search, sort });
+                  onSortChange={(next) => {
+                    onSearchChange({ ...search, sort: next?.sort, dir: next?.dir });
                   }}
                   onToggle={(key) => {
                     const next = expanded.includes(key)

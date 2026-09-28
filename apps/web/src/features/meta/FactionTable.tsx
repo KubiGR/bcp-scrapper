@@ -1,6 +1,7 @@
 import type { MetaRow } from '@bcp/shared';
 import { ActionIcon, Table, Text, UnstyledButton } from '@mantine/core';
 import { Fragment } from 'react';
+import { SortableTh, type SortDir } from '../../lib/table-sort';
 import { percent, winRateTone, type MetaSort } from './meta-queries';
 
 /** A row's players, for the drill-down: `detachments` undefined = the whole faction. */
@@ -20,8 +21,10 @@ interface FactionTableProps {
   rows: MetaRow[];
   minPlayers: number;
   sort: MetaSort;
+  dir: SortDir;
   expanded: string[];
-  onSortChange: (sort: MetaSort) => void;
+  /** The next sort; null = back to the default. */
+  onSortChange: (next: { sort: MetaSort; dir: SortDir } | null) => void;
   onToggle: (key: string) => void;
   onOpenPlayers: (filter: PlayersFilter) => void;
 }
@@ -72,59 +75,67 @@ export function FactionTable({
   rows,
   minPlayers,
   sort,
+  dir,
   expanded,
   onSortChange,
   onToggle,
   onOpenPlayers,
 }: FactionTableProps) {
+  const sign = dir === 'asc' ? 1 : -1;
   const dimmed = (row: MetaRow) => row.faction === null || row.players < minPlayers;
-  const value = (row: MetaRow) =>
+  const metric = (row: Pick<MetaRow, 'players' | 'winRate' | 'x1Share'>) =>
     sort === 'winRate' ? row.winRate : sort === 'x1' ? row.x1Share : row.players;
+  const byName = (a: MetaRow, b: MetaRow) =>
+    factionName(a.faction).localeCompare(factionName(b.faction));
   const sorted = [...rows].sort(
     (a, b) =>
       Number(dimmed(a)) - Number(dimmed(b)) ||
       Number(a.faction === null) - Number(b.faction === null) ||
-      value(b) - value(a) ||
+      sign * (sort === 'faction' ? byName(a, b) : metric(a) - metric(b)) ||
       b.players - a.players ||
-      factionName(a.faction).localeCompare(factionName(b.faction)),
+      byName(a, b),
   );
   // Detachment rows follow the same rules: the chosen column, small ones and "unknown" last.
   const sortArchetypes = (archetypes: MetaRow['archetypes']) =>
     [...archetypes].sort((a, b) => {
       const small = (x: typeof a) => x.players < minPlayers;
-      const metric = (x: typeof a) =>
-        sort === 'winRate' ? x.winRate : sort === 'x1' ? x.x1Share : x.players;
       return (
         Number(a.detachments === null) - Number(b.detachments === null) ||
         Number(small(a)) - Number(small(b)) ||
-        metric(b) - metric(a) ||
+        sign *
+          (sort === 'faction'
+            ? archetypeName(a.detachments).localeCompare(archetypeName(b.detachments))
+            : metric(a) - metric(b)) ||
         b.players - a.players
       );
     });
-  const header = (label: string, key: MetaSort) => (
-    <Table.Th ta="right" aria-sort={sort === key ? 'descending' : 'none'}>
-      <UnstyledButton
-        onClick={() => {
-          onSortChange(key);
-        }}
-        fw={sort === key ? 700 : 500}
-        fz="sm"
-      >
-        {label}
-      </UnstyledButton>
-    </Table.Th>
-  );
+  // First click: numbers high to low, names A→Z; second flips; third goes back to the default.
+  const onSort = (key: MetaSort) => {
+    const first: SortDir = key === 'faction' ? 'asc' : 'desc';
+    if (key !== sort) onSortChange({ sort: key, dir: first });
+    else if (dir === first) onSortChange({ sort: key, dir: first === 'asc' ? 'desc' : 'asc' });
+    else onSortChange(null);
+  };
+  const state = { key: sort, dir };
 
   return (
     <Table.ScrollContainer minWidth={560}>
       <Table verticalSpacing="xs">
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>Faction</Table.Th>
-            {header('Players', 'players')}
+            <SortableTh column="faction" sort={state} onSort={onSort}>
+              Faction
+            </SortableTh>
+            <SortableTh column="players" sort={state} onSort={onSort} ta="right">
+              Players
+            </SortableTh>
             <Table.Th ta="right">Share</Table.Th>
-            {header('Win rate', 'winRate')}
-            {header('X-1 or better', 'x1')}
+            <SortableTh column="winRate" sort={state} onSort={onSort} ta="right">
+              Win rate
+            </SortableTh>
+            <SortableTh column="x1" sort={state} onSort={onSort} ta="right">
+              X-1 or better
+            </SortableTh>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>

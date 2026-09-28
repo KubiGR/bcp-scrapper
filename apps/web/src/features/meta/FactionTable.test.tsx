@@ -8,6 +8,7 @@ const props = {
   rows: [orks, necrons, tiny, unknown],
   minPlayers: 5,
   sort: 'players' as const,
+  dir: 'desc' as const,
   expanded: [] as string[],
   onSortChange: vi.fn(),
   onToggle: vi.fn(),
@@ -49,6 +50,38 @@ describe('FactionTable', () => {
     );
   });
 
+  it('flips a sorted column on a second click and turns it off on a third', () => {
+    const onSortChange = vi.fn();
+    const { rerender } = renderWithProviders(
+      <FactionTable {...props} onSortChange={onSortChange} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Players/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'players', dir: 'asc' });
+    rerender(<FactionTable {...props} dir="asc" onSortChange={onSortChange} />);
+    expect(screen.getByRole('columnheader', { name: /Players/ })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Players/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it('sorts low to high, and by faction name A→Z first', () => {
+    const onSortChange = vi.fn();
+    renderWithProviders(
+      <FactionTable {...props} sort="winRate" dir="asc" onSortChange={onSortChange} />,
+    );
+    const order = screen
+      .getAllByRole('row')
+      .slice(1)
+      .map((r) => r.textContent);
+    expect(order.findIndex((t) => t.includes('Necrons'))).toBeLessThan(
+      order.findIndex((t) => t.includes('Orks')),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Faction' }));
+    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'faction', dir: 'asc' });
+  });
+
   it('colours win rates: green above 55%, red below 45%', () => {
     renderWithProviders(<FactionTable {...props} />);
     expect(within(rowOf('Orks')).getByText('58%')).toHaveAttribute('data-tone', 'good');
@@ -62,7 +95,7 @@ describe('FactionTable', () => {
       <FactionTable {...props} onSortChange={onSortChange} onToggle={onToggle} />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Win rate' }));
-    expect(onSortChange).toHaveBeenCalledWith('winRate');
+    expect(onSortChange).toHaveBeenCalledWith({ sort: 'winRate', dir: 'desc' });
     const toggle = within(rowOf('Orks')).getByRole('button', { name: 'Show Orks detachments' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(toggle);

@@ -24,9 +24,11 @@ import { Panel } from '../../components/Panel';
 import rowClasses from '../../components/ClickableRow.module.css';
 import { PlayerLine } from '../../components/PlayerLine';
 import { formatIsoDay, plural } from '../../lib/format';
+import { SortableTh, useTableSort } from '../../lib/table-sort';
 import { useDraftRange } from '../../lib/use-draft-range';
 import { ListDrawer } from '../event/ListDrawer';
 import { formatRecord, lossLabel } from '../event/players-filter';
+import { FOUND_PLAYER_SORT } from './player-sort';
 import classes from './TopListsPage.module.css';
 import { topListsQuery, topListsWindow, type TopListsSearch } from './top-lists-queries';
 
@@ -56,6 +58,8 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
   const dispositions = split(search.dispositions);
   const detachments = split(search.detachments, DETACHMENT_SEPARATOR);
   const found = results.data?.players ?? [];
+  // Rows come best record first; a header re-sorts them.
+  const { sorted, sort, toggle } = useTableSort(found, FOUND_PLAYER_SORT);
   const open =
     openKey === null
       ? null
@@ -159,15 +163,23 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                   <Table verticalSpacing="xs" className={classes.results}>
                     <Table.Thead>
                       <Table.Tr>
-                        <Table.Th>Player</Table.Th>
-                        <Table.Th>Event</Table.Th>
-                        <Table.Th ta="right">W-L-D</Table.Th>
-                        <Table.Th>Army</Table.Th>
+                        <SortableTh column="player" sort={sort} onSort={toggle}>
+                          Player
+                        </SortableTh>
+                        <SortableTh column="event" sort={sort} onSort={toggle}>
+                          Event
+                        </SortableTh>
+                        <SortableTh column="record" sort={sort} onSort={toggle} ta="right">
+                          W-L-D
+                        </SortableTh>
+                        <SortableTh column="army" sort={sort} onSort={toggle}>
+                          Army
+                        </SortableTh>
                         <Table.Th aria-label="List" />
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {found.map((player) => (
+                      {sorted.map((player) => (
                         <Table.Tr
                           key={`${player.eventId}:${player.bcpId}`}
                           className={rowClasses.row}

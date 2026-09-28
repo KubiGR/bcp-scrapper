@@ -10,7 +10,8 @@ const MetaSearchSchema = z.object({
   to: optionalDay,
   type: z.enum(['all', 'singles', 'teams']).optional().catch(undefined),
   minPlayers: z.coerce.number().int().min(1).max(50).optional().catch(undefined),
-  sort: z.enum(['players', 'winRate', 'x1']).optional().catch(undefined),
+  sort: z.enum(['faction', 'players', 'winRate', 'x1']).optional().catch(undefined),
+  dir: z.enum(['asc', 'desc']).optional().catch(undefined),
   expanded: z.string().trim().min(1).optional().catch(undefined),
 });
 

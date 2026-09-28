@@ -50,6 +50,55 @@ describe('PlayersPanel', () => {
     expect(await screen.findByText(/Gladius Task Force/)).toBeInTheDocument();
   });
 
+  it('sorts the players on a column header', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [
+          aPlayer({ bcpId: 'P1', name: 'Zed Zulu', placing: 1, faction: 'Orks' }),
+          aPlayer({ bcpId: 'P2', name: 'Ada Archer', placing: 2, faction: 'Necrons' }),
+        ],
+      },
+    });
+    renderWithRouter(
+      <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
+    );
+    await screen.findByRole('button', { name: 'Zed Zulu' });
+    const names = () =>
+      screen
+        .getAllByRole('button')
+        .map((b) => b.textContent)
+        .filter((text) => text === 'Zed Zulu' || text === 'Ada Archer');
+    expect(names()).toEqual(['Zed Zulu', 'Ada Archer']);
+    // The table's sortable headers are buttons.
+    fireEvent.click(screen.getByRole('button', { name: /^Player/ }));
+    expect(names()).toEqual(['Ada Archer', 'Zed Zulu']);
+    fireEvent.click(screen.getByRole('button', { name: /^#/ }));
+    expect(names()).toEqual(['Zed Zulu', 'Ada Archer']);
+  });
+
+  it('sorts W-L-D like standings: most wins, then draws, then fewest losses', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [
+          aPlayer({ bcpId: 'P1', name: 'Three Oh', placing: 1, wins: 3, losses: 0, draws: 0 }),
+          aPlayer({ bcpId: 'P2', name: 'Four One', placing: 2, wins: 4, losses: 1, draws: 0 }),
+          aPlayer({ bcpId: 'P3', name: 'Five Oh', placing: 3, wins: 5, losses: 0, draws: 0 }),
+          aPlayer({ bcpId: 'P4', name: 'Four Draw', placing: 4, wins: 4, losses: 0, draws: 1 }),
+        ],
+      },
+    });
+    renderWithRouter(
+      <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
+    );
+    await screen.findByRole('button', { name: 'Three Oh' });
+    fireEvent.click(screen.getByRole('button', { name: /^W-L-D/ }));
+    const names = screen
+      .getAllByRole('button')
+      .map((b) => b.textContent)
+      .filter((text) => ['Three Oh', 'Four One', 'Five Oh', 'Four Draw'].includes(text));
+    expect(names).toEqual(['Five Oh', 'Four Draw', 'Four One', 'Three Oh']);
+  });
+
   it('opens the list the address names, and reports the player opened', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': {

@@ -75,6 +75,55 @@ describe('TopListsPage', () => {
     expect(await screen.findByText('Orks list text')).toBeInTheDocument();
   });
 
+  it('sorts the results on a column header', async () => {
+    const zed = {
+      ...aPlayer({ bcpId: 'PL-ZED', name: 'Zed Zulu', faction: 'Necrons', wins: 5, losses: 0 }),
+      eventId: 'EVT2',
+      eventName: 'Later Open',
+      eventStartDate: '2026-05-01T09:00:00.000Z',
+    };
+    const base = response();
+    stubFetchRoutes({ 'GET /api/players/search': { ...base, players: [zed, ...base.players] } });
+    renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
+    await screen.findByText('Zed Zulu');
+    const names = () =>
+      screen
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.querySelector('td p')?.textContent);
+    expect(names()).toEqual(['Zed Zulu', 'Ada Archer']);
+    fireEvent.click(screen.getByRole('button', { name: 'Player' }));
+    expect(names()).toEqual(['Ada Archer', 'Zed Zulu']);
+    fireEvent.click(screen.getByRole('button', { name: 'W-L-D' }));
+    expect(names()).toEqual(['Zed Zulu', 'Ada Archer']);
+  });
+
+  it('sorts W-L-D by win ratio, more wins first on a tie', async () => {
+    const player = (bcpId: string, name: string, wins: number, losses: number) => ({
+      ...aPlayer({ bcpId, name, wins, losses, draws: 0 }),
+      eventId: 'EVT1',
+      eventName: 'Sample Team Open',
+      eventStartDate: '2026-03-28T09:00:00.000Z',
+    });
+    stubFetchRoutes({
+      'GET /api/players/search': response({
+        players: [
+          player('P1', 'Three Oh', 3, 0),
+          player('P2', 'Four One', 4, 1),
+          player('P3', 'Five Oh', 5, 0),
+        ],
+      }),
+    });
+    renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
+    await screen.findByText('Three Oh');
+    fireEvent.click(screen.getByRole('button', { name: 'W-L-D' }));
+    const names = screen
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => row.querySelector('td p')?.textContent);
+    expect(names).toEqual(['Five Oh', 'Three Oh', 'Four One']);
+  });
+
   it('opens a list from anywhere on its row', async () => {
     stubFetchRoutes({
       'GET /api/players/search': response(),

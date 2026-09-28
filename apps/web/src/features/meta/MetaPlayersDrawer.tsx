@@ -7,6 +7,8 @@ import rowClasses from '../../components/ClickableRow.module.css';
 import { ErrorState } from '../../components/ErrorState';
 import { PlayerLine } from '../../components/PlayerLine';
 import { formatIsoDay } from '../../lib/format';
+import { SortableTh, useTableSort } from '../../lib/table-sort';
+import { FOUND_PLAYER_SORT } from '../top-lists/player-sort';
 import { ListDrawer } from '../event/ListDrawer';
 import { formatRecord } from '../event/players-filter';
 import { topListsQuery } from '../top-lists/top-lists-queries';
@@ -56,6 +58,7 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
     enabled: filter !== null,
   });
   const found = players.data?.players ?? [];
+  const { sorted, sort, toggle } = useTableSort(found, FOUND_PLAYER_SORT);
   const open =
     openKey === null
       ? null
@@ -79,8 +82,22 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
             </Text>
           )}
           <Table verticalSpacing="xs">
+            <Table.Thead>
+              <Table.Tr>
+                <SortableTh column="player" sort={sort} onSort={toggle}>
+                  Player
+                </SortableTh>
+                <SortableTh column="event" sort={sort} onSort={toggle}>
+                  Event
+                </SortableTh>
+                <SortableTh column="record" sort={sort} onSort={toggle} ta="right">
+                  W-L-D
+                </SortableTh>
+                <Table.Th aria-label="List" />
+              </Table.Tr>
+            </Table.Thead>
             <Table.Tbody>
-              {found.map((player) => (
+              {sorted.map((player) => (
                 <Table.Tr
                   key={`${player.eventId}:${player.bcpId}`}
                   className={rowClasses.row}

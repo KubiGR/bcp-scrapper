@@ -23,6 +23,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { FactionText } from '../../components/FactionText';
 import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
+import { useTableSort, type SortValue } from '../../lib/table-sort';
 import { EventQueueLine } from './EventQueueLine';
 import { playersQuery } from './event-queries';
 import { ExportMenu } from './ExportMenu';
@@ -79,6 +80,7 @@ function playerColumns({ showTeam, onOpen }: PlayerColumnsOptions): DataTableCol
   return [
     {
       accessor: 'placing',
+      sortable: true,
       title: '#',
       width: 56,
       textAlign: 'right',
@@ -86,6 +88,7 @@ function playerColumns({ showTeam, onOpen }: PlayerColumnsOptions): DataTableCol
     },
     {
       accessor: 'name',
+      sortable: true,
       title: 'Player',
       render: (p) => (
         <>
@@ -111,6 +114,7 @@ function playerColumns({ showTeam, onOpen }: PlayerColumnsOptions): DataTableCol
     },
     {
       accessor: 'teamName',
+      sortable: true,
       visibleMediaQuery: wide,
       title: 'Team',
       hidden: !showTeam,
@@ -118,6 +122,7 @@ function playerColumns({ showTeam, onOpen }: PlayerColumnsOptions): DataTableCol
     },
     {
       accessor: 'faction',
+      sortable: true,
       visibleMediaQuery: wide,
       title: 'Faction',
       render: (p) =>
@@ -125,18 +130,21 @@ function playerColumns({ showTeam, onOpen }: PlayerColumnsOptions): DataTableCol
     },
     {
       accessor: 'detachments',
+      sortable: true,
       visibleMediaQuery: wide,
       title: 'Detachment',
       render: (p) => (p.detachments.length > 0 ? p.detachments.join(' + ') : '—'),
     },
     {
       accessor: 'disposition',
+      sortable: true,
       visibleMediaQuery: wide,
       title: 'Disposition',
       render: (p) => (p.disposition ? <DispositionText disposition={p.disposition} /> : '—'),
     },
     {
       accessor: 'wins',
+      sortable: true,
       visibleMediaQuery: wide,
       title: 'W-L-D',
       textAlign: 'right',
@@ -144,11 +152,27 @@ function playerColumns({ showTeam, onOpen }: PlayerColumnsOptions): DataTableCol
     },
     {
       accessor: 'listStatus',
+      sortable: true,
       title: 'List',
       render: (p) => <ListStatusBadge status={p.listStatus} error={p.listError} />,
     },
   ];
 }
+
+/** How each column sorts; the record like standings: most wins, then draws, then fewest losses. */
+const PLAYER_SORT = {
+  placing: (p) => p.placing,
+  name: (p) => p.name,
+  teamName: (p) => p.teamName,
+  faction: (p) => p.faction,
+  detachments: (p) => (p.detachments.length > 0 ? p.detachments.join(' + ') : null),
+  disposition: (p) => p.disposition,
+  wins: (p) => p.wins * 1_000_000 + p.draws * 1_000 - p.losses,
+  listStatus: (p) => p.listStatus,
+} satisfies Record<string, SortValue<EventPlayer>>;
+type PlayerSortKey = keyof typeof PLAYER_SORT;
+const isPlayerSortKey = (key: string): key is PlayerSortKey => key in PLAYER_SORT;
+const BY_PLACING = { key: 'placing', dir: 'asc' } as const;
 
 interface PlayersPanelProps {
   event: EventDetail;
@@ -183,6 +207,24 @@ export function PlayersPanel({
   const all = players.data?.items ?? [];
   const openPlayer = all.find((p) => p.bcpId === openPlayerId) ?? null;
   const filtered = filterPlayers(all, { query, factions, dispositions, detachments, maxLosses });
+  // Sorted before grouping, so a team event sorts the players within each team.
+  const { sorted, sort, toggle } = useTableSort<EventPlayer, PlayerSortKey>(
+    filtered,
+    PLAYER_SORT,
+    BY_PLACING,
+    {
+      placing: 'asc',
+    },
+  );
+  const current = sort ?? BY_PLACING;
+  const sortProps = {
+    sortStatus: { columnAccessor: current.key, direction: current.dir },
+    onSortStatusChange: ({ columnAccessor }: { columnAccessor: string | number | symbol }) => {
+      if (typeof columnAccessor === 'string' && isPlayerSortKey(columnAccessor)) {
+        toggle(columnAccessor);
+      }
+    },
+  };
 
   const toggleTeam = (teamId: string) => {
     setSelectedTeams((prev) => {
@@ -203,7 +245,7 @@ export function PlayersPanel({
   };
 
   const grouped = event.isTeamEvent;
-  const groups = grouped ? groupPlayersByTeam(filtered).filter((g) => g.players.length > 0) : [];
+  const groups = grouped ? groupPlayersByTeam(sorted).filter((g) => g.players.length > 0) : [];
 
   return (
     <Stack gap="md">
@@ -284,6 +326,7 @@ export function PlayersPanel({
       ) : grouped && groups.length === 0 ? (
         <Panel p={0}>
           <DataTable<EventPlayer>
+            {...sortProps}
             records={[]}
             idAccessor="bcpId"
             fetching={players.isFetching || loadingFromBcp}
@@ -360,6 +403,8 @@ export function PlayersPanel({
                 </Group>
                 <Collapse expanded={expanded}>
                   <DataTable<EventPlayer>
+                    {...sortProps}
+                    {...sortProps}
                     records={group.players}
                     idAccessor="bcpId"
                     fetching={players.isFetching || loadingFromBcp}
@@ -382,7 +427,8 @@ export function PlayersPanel({
       ) : (
         <Panel p={0}>
           <DataTable<EventPlayer>
-            records={filtered}
+            {...sortProps}
+            records={sorted}
             idAccessor="bcpId"
             fetching={players.isFetching || loadingFromBcp}
             minHeight={220}

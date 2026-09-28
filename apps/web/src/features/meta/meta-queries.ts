@@ -2,7 +2,7 @@ import { addDays, MetaResponseSchema, toIsoDate, type DateRange } from '@bcp/sha
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { apiGet } from '../../api/client';
 
-export type MetaSort = 'players' | 'winRate' | 'x1';
+export type MetaSort = 'faction' | 'players' | 'winRate' | 'x1';
 
 /** The Meta page's URL search. `expanded`: `|`-separated factions ("(unknown)" for none). */
 export interface MetaSearch {
@@ -11,6 +11,8 @@ export interface MetaSearch {
   type?: 'all' | 'singles' | 'teams';
   minPlayers?: number;
   sort?: MetaSort;
+  /** Sort direction; default high to low (A→Z for faction). */
+  dir?: 'asc' | 'desc';
   expanded?: string;
 }
 
