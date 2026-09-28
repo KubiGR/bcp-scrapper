@@ -16,3 +16,16 @@ export const FOUND_PLAYER_SORT = {
   },
   army: (p) => p.faction,
 } satisfies Record<string, SortValue<FoundPlayer>>;
+
+/**
+ * Where a found player placed: in a team event their team's place ("Alpha Squad · #2"), else
+ * their own ("#3"); null when unplaced and teamless.
+ */
+export function placingLine(player: FoundPlayer): string | null {
+  if (player.teamName !== null) {
+    return player.teamPlacing === null
+      ? player.teamName
+      : `${player.teamName} · #${String(player.teamPlacing)}`;
+  }
+  return player.placing === null ? null : `#${String(player.placing)}`;
+}

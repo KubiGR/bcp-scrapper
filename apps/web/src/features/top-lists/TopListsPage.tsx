@@ -28,7 +28,7 @@ import { SortableTh, useTableSort } from '../../lib/table-sort';
 import { useDraftRange } from '../../lib/use-draft-range';
 import { ListDrawer } from '../event/ListDrawer';
 import { formatRecord, lossLabel } from '../event/players-filter';
-import { FOUND_PLAYER_SORT } from './player-sort';
+import { FOUND_PLAYER_SORT, placingLine } from './player-sort';
 import classes from './TopListsPage.module.css';
 import { topListsQuery, topListsWindow, type TopListsSearch } from './top-lists-queries';
 
@@ -192,9 +192,9 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                         >
                           <Table.Td>
                             <Text size="sm">{player.name}</Text>
-                            {player.teamName && (
-                              <Text size="xs" c="dimmed">
-                                {player.teamName}
+                            {placingLine(player) !== null && (
+                              <Text size="xs" c="dimmed" className="numeric">
+                                {placingLine(player)}
                               </Text>
                             )}
                           </Table.Td>

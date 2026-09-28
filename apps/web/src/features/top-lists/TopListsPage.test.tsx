@@ -142,6 +142,30 @@ describe('TopListsPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows where each player placed: their team’s place in a team event, else their own', async () => {
+    const solo = {
+      ...aPlayer({
+        bcpId: 'PL-SOL',
+        name: 'Sol Solo',
+        teamId: null,
+        teamName: null,
+        teamPlacing: null,
+        placing: 3,
+      }),
+      eventId: 'EVT2',
+      eventName: 'Singles GT',
+      eventStartDate: '2026-03-28T09:00:00.000Z',
+      eventPlayerCount: 96,
+      eventTeamCount: null,
+    };
+    const base = response();
+    stubFetchRoutes({ 'GET /api/players/search': { ...base, players: [...base.players, solo] } });
+    renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
+    const cell = async (name: string) => (await screen.findByText(name)).closest('td');
+    expect((await cell('Ada Archer'))?.textContent).toBe('Ada ArcherAlpha Squad · #2');
+    expect((await cell('Sol Solo'))?.textContent).toBe('Sol Solo#3');
+  });
+
   it('opens a list from anywhere on its row', async () => {
     stubFetchRoutes({
       'GET /api/players/search': response(),

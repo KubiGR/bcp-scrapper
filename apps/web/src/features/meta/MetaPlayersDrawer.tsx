@@ -8,7 +8,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { PlayerLine } from '../../components/PlayerLine';
 import { formatEventSize, formatIsoDay } from '../../lib/format';
 import { SortableTh, useTableSort } from '../../lib/table-sort';
-import { FOUND_PLAYER_SORT } from '../top-lists/player-sort';
+import { FOUND_PLAYER_SORT, placingLine } from '../top-lists/player-sort';
 import { ListDrawer } from '../event/ListDrawer';
 import { formatRecord } from '../event/players-filter';
 import { topListsQuery } from '../top-lists/top-lists-queries';
@@ -109,6 +109,11 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
                 >
                   <Table.Td>
                     <Text size="sm">{player.name}</Text>
+                    {placingLine(player) !== null && (
+                      <Text size="xs" c="dimmed" className="numeric">
+                        {placingLine(player)}
+                      </Text>
+                    )}
                     <Text size="xs" c="dimmed">
                       <PlayerLine {...player} />
                     </Text>
