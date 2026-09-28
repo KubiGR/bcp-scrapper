@@ -43,13 +43,14 @@ export function CoverageNotice({ window }: { window: DateRange }) {
   // Coverage stops at the day each run finished (future days keep changing), so only days up to
   // today can ever count as fetched: gaps are looked for up to today.
   const today = toIsoDate(new Date());
-  const gaps =
-    window.from > today
-      ? []
-      : findGaps(
-          { from: window.from, to: window.to < today ? window.to : today },
-          coverage.data.ranges,
-        );
+  // A range wholly in the future never counts as fetched, so it's always offered as is.
+  const upcoming = window.from > today;
+  const gaps = upcoming
+    ? [window]
+    : findGaps(
+        { from: window.from, to: window.to < today ? window.to : today },
+        coverage.data.ranges,
+      );
   const busy = sync.isSyncing || activeRun !== null;
   if (!busy && gaps.length === 0) return null;
 
@@ -59,11 +60,22 @@ export function CoverageNotice({ window }: { window: DateRange }) {
     <Alert
       color={busy ? 'neon' : 'yellow'}
       variant={busy ? 'light' : 'outline'}
-      title={busy ? 'Fetching tournaments from BCP' : 'Not fetched from BCP yet'}
+      title={
+        busy
+          ? 'Fetching tournaments from BCP'
+          : upcoming
+            ? 'Upcoming events'
+            : 'Not fetched from BCP yet'
+      }
     >
       <Group justify="space-between" wrap="wrap" gap="sm">
         <Text size="sm" aria-live="polite">
-          {!busy && <GapsText gaps={gaps} />}
+          {!busy &&
+            (upcoming ? (
+              'Upcoming events change as organisers add them to BCP.'
+            ) : (
+              <GapsText gaps={gaps} />
+            ))}
           {busy && sync.waiting && 'Waiting for the current catalogue refresh…'}
           {busy && !sync.waiting && (
             <>

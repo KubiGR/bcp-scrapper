@@ -122,6 +122,23 @@ describe('CoverageNotice', () => {
     );
   });
 
+  it('offers to fetch a range that lies wholly in the future', async () => {
+    const today = toIsoDate(new Date());
+    const future = { from: addDays(today, 10), to: addDays(today, 40) };
+    const fetchMock = stubFetchRoutes({
+      'GET /api/catalog/coverage': coverage([]),
+      'POST /api/sync': echoRange,
+    });
+    renderWithProviders(<CoverageNotice window={future} />);
+    expect(
+      await screen.findByText('Upcoming events change as organisers add them to BCP.'),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Fetch' }));
+    await waitFor(() => {
+      expect(postedRanges(fetchMock)).toEqual([{ kind: 'catalog', ...future }]);
+    });
+  });
+
   it('stays quiet when the whole range is fetched', async () => {
     const fetchMock = stubFetchRoutes({
       'GET /api/catalog/coverage': coverage([{ from: '2025-01-01', to: '2027-01-01' }]),

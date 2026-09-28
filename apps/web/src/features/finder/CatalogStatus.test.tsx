@@ -37,22 +37,27 @@ describe('CatalogStatus', () => {
     expect(callsTo(fetchMock, '/api/sync-runs/3')).toBe(0);
   });
 
-  it('follows a catalogue run that is already active elsewhere', async () => {
+  it('shows a run active elsewhere from the coverage (not polling it twice), then refreshes events', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const active = catalogRun({ id: 9, done: 5, range: { from: '2026-01-01', to: '2026-03-31' } });
+    let running = true;
     const fetchMock = stubFetchRoutes({
       'POST /api/catalog/latest': { window: latestWindow(new Date()), run: null },
-      'GET /api/catalog/coverage': coverage(active),
+      'GET /api/catalog/coverage': () => Response.json(coverage(running ? active : null)),
       'GET /api/sync-runs/9': active,
     });
-    renderWithProviders(<CatalogStatus />);
+    const { queryClient } = renderWithProviders(<CatalogStatus />);
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
 
     expect((await screen.findByText(/Updating the catalogue from BCP/)).textContent).toBe(
       'Updating the catalogue from BCP… 5 found',
     );
-    await act(() => vi.advanceTimersByTimeAsync(2000));
+    running = false;
+    await act(() => vi.advanceTimersByTimeAsync(2500));
     await waitFor(() => {
-      expect(callsTo(fetchMock, '/api/sync-runs/9')).toBeGreaterThan(0);
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ['events'] });
     });
+    // The coverage query already polls the run; nothing else does.
+    expect(callsTo(fetchMock, '/api/sync-runs/9')).toBe(0);
   });
 });

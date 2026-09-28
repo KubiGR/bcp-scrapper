@@ -1,7 +1,7 @@
 import { LatestRefreshSchema, type SyncRun } from '@bcp/shared';
 import { Text } from '@mantine/core';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { apiPost } from '../../api/client';
 import { formatDateTime } from '../../lib/format';
 import { followRun, sameRange, type FollowOptions } from '../sync/follow-sync';
@@ -38,7 +38,7 @@ export function CatalogStatus() {
     invalidate: [['events'], coverageQuery.queryKey],
     quiet: true,
   });
-  const { track, follow } = sync;
+  const { track } = sync;
   const activeRun = coverage.data?.activeRun ?? null;
 
   // Once per visit. The API skips it when the last 30 days were synced under 6 hours ago.
@@ -46,10 +46,19 @@ export function CatalogStatus() {
     track((onProgress, options) => refreshLatest(queryClient, onProgress, options));
   }, [track, queryClient]);
 
-  // A catalogue run started elsewhere (a deep-search fetch, another tab) is followed to the end.
+  // A catalogue run started elsewhere (a deep-search fetch, another tab) is shown from the
+  // coverage query, which polls while it's active; once it ends, the event list is refreshed.
+  // Following it here too would poll it twice (and notify twice for a deep-search fetch).
+  const activeId = activeRun?.id ?? null;
+  const [seenRun, setSeenRun] = useState<number | null>(null);
+  const [runsEnded, setRunsEnded] = useState(0);
+  if (activeId !== seenRun) {
+    setSeenRun(activeId);
+    if (activeId === null) setRunsEnded((n) => n + 1);
+  }
   useEffect(() => {
-    if (activeRun) follow(activeRun);
-  }, [activeRun, follow]);
+    if (runsEnded > 0) void queryClient.invalidateQueries({ queryKey: ['events'] });
+  }, [runsEnded, queryClient]);
 
   const run = sync.isSyncing ? sync.run : activeRun;
   if (run) {
