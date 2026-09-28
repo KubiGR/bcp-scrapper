@@ -51,6 +51,12 @@ describe('parseBcp', () => {
     }
   });
 
+  it('names the wrong field in the message too, since a failed job keeps only the message', () => {
+    expect(() => parseBcp(RawPlayer, { id: 'P1', placing: 'first' }, '/v1/players')).toThrow(
+      /^BCP response from \/v1\/players had an unexpected shape: placing \(.+\)$/,
+    );
+  });
+
   it('parseItems keeps the untouched raw object next to the parsed one', () => {
     const raw = { id: 'L1', armyListText: 'x', somethingNew: true };
     expect(parseItems(RawArmyList, [raw], '/v1/armylists')).toEqual([
@@ -237,6 +243,25 @@ describe('mapPlayer', () => {
       'test',
     );
     expect(mapPlayer(raw, 'E1').disposition).toBe('Take and Hold');
+  });
+
+  it('treats a faction, parent or disposition sent with only an id as unknown', () => {
+    // Seen live: one player of 33 had `faction: { id }` and nothing else.
+    const raw = parseBcp(
+      RawPlayer,
+      {
+        id: 'P5',
+        user: { firstName: 'Eve' },
+        faction: { id: 'F-1', parentFaction: { id: 'F-0' } },
+        subFaction: { id: 'SF-1' },
+      },
+      'test',
+    );
+    expect(mapPlayer(raw, 'E1')).toMatchObject({
+      faction: null,
+      parentFaction: null,
+      disposition: null,
+    });
   });
 
   it('is null without a subFaction', () => {

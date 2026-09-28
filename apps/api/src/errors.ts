@@ -52,9 +52,17 @@ export class BcpRateLimitedError extends AppError {
 
 export class BcpSchemaError extends AppError {
   constructor(endpoint: string, issues: { path: string; message: string }[]) {
-    super('BCP_SCHEMA_MISMATCH', 502, `BCP response from ${endpoint} had an unexpected shape`, {
-      details: { endpoint, issues },
-    });
+    // The fields in the message too: a failed queue job keeps only the message.
+    const fields = issues
+      .slice(0, 3)
+      .map((issue) => `${issue.path || '(root)'} (${issue.message})`)
+      .join('; ');
+    super(
+      'BCP_SCHEMA_MISMATCH',
+      502,
+      `BCP response from ${endpoint} had an unexpected shape${fields ? `: ${fields}` : ''}`,
+      { details: { endpoint, issues } },
+    );
   }
 }
 

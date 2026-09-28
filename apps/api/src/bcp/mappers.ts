@@ -79,7 +79,7 @@ function tallyRecord(games: RawGameSummary[] | null | undefined) {
 
 export function mapPlayer(raw: RawPlayer, eventId: string): Player {
   const name = [raw.user?.firstName, raw.user?.lastName].filter(Boolean).join(' ').trim();
-  const disposition = raw.subFaction?.name.trim() ?? '';
+  const disposition = raw.subFaction?.name?.trim() ?? '';
   return {
     bcpId: raw.id,
     eventBcpId: eventId,

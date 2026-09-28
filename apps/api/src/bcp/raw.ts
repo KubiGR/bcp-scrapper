@@ -76,11 +76,15 @@ export const RawPlayer = z.object({
   id: z.string(),
   user: z.object({ firstName: z.string().nullish(), lastName: z.string().nullish() }).nullish(),
   teamPlayerId: z.string().nullish(),
+  /** Names can be missing: BCP sometimes sends just `{ id }` (the faction is then unknown). */
   faction: z
-    .object({ name: z.string(), parentFaction: z.object({ name: z.string() }).nullish() })
+    .object({
+      name: z.string().nullish(),
+      parentFaction: z.object({ name: z.string().nullish() }).nullish(),
+    })
     .nullish(),
   /** The army's disposition (BCP's subFaction), e.g. "Take and Hold". */
-  subFaction: z.object({ name: z.string() }).nullish(),
+  subFaction: z.object({ name: z.string().nullish() }).nullish(),
   placing: z.number().nullish(),
   dropped: z.boolean().nullish(),
   listId: z.string().nullish(),
