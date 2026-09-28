@@ -1,4 +1,9 @@
-import { cleanDetachmentName, looksForeign, type DetachmentNamesResponse } from '@bcp/shared';
+import {
+  ALLEGIANCE_NAMES,
+  cleanDetachmentName,
+  looksForeign,
+  type DetachmentNamesResponse,
+} from '@bcp/shared';
 import { eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { armyLists, detachmentLinks, players } from '../db/schema';
@@ -36,10 +41,23 @@ export async function foreignDetachmentCheck(db: Db): Promise<(name: string) => 
  * misspellings), most used first; BCP's names with their factions to link them to; and the links
  * made so far.
  */
+/**
+ * The player's army as the rest of the app counts it: BCP's faction, or the army read from the
+ * list when BCP only names an allegiance ("Forces of the Hive Mind"); null when neither says.
+ */
+const armyOf = sql<string | null>`case
+  when ${players.faction} is null or lower(${players.faction}) in (${sql.join(
+    ALLEGIANCE_NAMES.map((name) => sql`${name}`),
+    sql`, `,
+  )})
+  then ${armyLists.parsedArmy}
+  else ${players.faction}
+end`;
+
 export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> {
   const [bcpRows, storedRows, links] = await Promise.all([
     db
-      .select({ name: bcpName, faction: players.faction })
+      .select({ name: bcpName, faction: armyOf })
       .from(armyLists)
       .innerJoin(players, eq(players.id, armyLists.playerId))
       .where(sql`${bcpName} is not null`),
@@ -47,7 +65,7 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
       .select({
         name: sql<string>`unnest(${armyLists.detachments})`,
         playerId: armyLists.playerId,
-        faction: players.faction,
+        faction: armyOf,
       })
       .from(armyLists)
       .innerJoin(players, eq(players.id, armyLists.playerId)),

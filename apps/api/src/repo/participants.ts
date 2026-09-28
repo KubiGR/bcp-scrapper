@@ -1,6 +1,6 @@
 import {
   knownDisposition,
-  resolveFaction,
+  countedFaction,
   type EventCounts,
   type EventPlayer,
   type Player,
@@ -135,7 +135,7 @@ export async function listEventPlayers(db: Db, eventId: string): Promise<EventPl
       teamName,
       teamId: player.teamId,
       teamPlacing,
-      ...resolveFaction(player.faction, row.parsedArmy),
+      ...countedFaction(player.faction, row.parsedArmy),
       parentFaction: player.parentFaction,
       placing: player.placing,
       wins: player.wins,

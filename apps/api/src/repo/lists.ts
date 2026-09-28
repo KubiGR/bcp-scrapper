@@ -5,7 +5,7 @@ import {
   cleanDetachmentName,
   DETACHMENT_TRANSLATIONS,
   detachmentParts,
-  resolveFaction,
+  countedFaction,
   splitDetachments,
   type ArmyList,
   type PlayerList,
@@ -284,7 +284,7 @@ export async function listEventArmyLists(db: Db, eventId: string): Promise<Expor
     .orderBy(sql`${players.placing} asc nulls last`, players.name);
   return rows.map(({ bcpFaction, parsedArmy, ...row }) => ({
     ...row,
-    faction: resolveFaction(bcpFaction, parsedArmy).faction,
+    faction: countedFaction(bcpFaction, parsedArmy).faction,
   }));
 }
 

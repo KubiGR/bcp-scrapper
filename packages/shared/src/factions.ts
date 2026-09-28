@@ -1,14 +1,14 @@
-const ALLEGIANCES = new Set(
-  [
-    'Imperium',
-    'Chaos',
-    'Xenos',
-    'Forces of the Imperium',
-    'Forces of Chaos',
-    'Forces of Xenos',
-    'Forces of the Hive Mind',
-  ].map((name) => name.toLowerCase()),
-);
+/** Allegiances BCP (or a list) may give instead of an army, lower-case. Never an army. */
+export const ALLEGIANCE_NAMES = [
+  'Imperium',
+  'Chaos',
+  'Xenos',
+  'Forces of the Imperium',
+  'Forces of Chaos',
+  'Forces of Xenos',
+  'Forces of the Hive Mind',
+].map((name) => name.toLowerCase());
+const ALLEGIANCES = new Set(ALLEGIANCE_NAMES);
 
 /** Allegiances a player can pick on BCP instead of an army; not factions. */
 export function isAllegiance(faction: string): boolean {

@@ -116,6 +116,14 @@ describe('listEventPlayers with parsed lists', () => {
     });
   });
 
+  it('shows no army for an allegiance like "Forces of the Hive Mind" without a list to read', async () => {
+    await db
+      .update(players)
+      .set({ faction: 'Forces of the Hive Mind' })
+      .where(eq(players.id, 'PL-ADA'));
+    expect(await find('PL-ADA')).toMatchObject({ faction: null, factionGuessed: false });
+  });
+
   it('keeps BCP’s faction, and fills a missing disposition only with a known one', async () => {
     await db.update(players).set({ disposition: null }).where(eq(players.id, 'PL-ADA'));
     await storeList(db, 'PL-ADA', gwList('Necrons', 'Awakened Dynasty', 'Purge the Foe'));

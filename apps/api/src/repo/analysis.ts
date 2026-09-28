@@ -1,4 +1,4 @@
-import { knownDisposition, resolveFaction, type EventAnalysisInput } from '@bcp/shared';
+import { countedFaction, knownDisposition, type EventAnalysisInput } from '@bcp/shared';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { armyLists, games, players, teamMatchups, teams } from '../db/schema';
@@ -58,7 +58,7 @@ export async function loadEventAnalysis(db: Db, eventId: string): Promise<EventA
   const playerInputs = playerRows.map((row) => ({
     id: row.id,
     name: row.name,
-    ...resolveFaction(row.faction, row.parsedArmy),
+    ...countedFaction(row.faction, row.parsedArmy),
     teamId: row.teamId,
     disposition: row.disposition ?? knownDisposition(row.parsedDisposition),
     detachments: row.detachments ?? [],

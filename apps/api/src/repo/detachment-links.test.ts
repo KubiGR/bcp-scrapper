@@ -50,6 +50,19 @@ describe('detachment names', () => {
     expect(names.links).toEqual([]);
   });
 
+  it('groups names by the real army, never an allegiance like "Forces of the Hive Mind"', async () => {
+    await db
+      .update(players)
+      .set({ faction: 'Forces of the Hive Mind' })
+      .where(eq(players.id, 'PL-EVE'));
+    await storeList(db, 'PL-EVE', gwList('Genestealer Cults', 'Xenocult Masses'));
+    const names = await detachmentNames(db);
+    // As BCP names the army.
+    expect(names.unsure.find((u) => u.name === 'Xenocult Masses')?.factions).toEqual([
+      'Genestealer Cult',
+    ]);
+  });
+
   it('sets apart the names that look foreign', async () => {
     expect((await detachmentNames(db)).foreign).toEqual([
       { name: 'Cabalgata del Caos', lists: 2, factions: ['Chaos Daemons'], marked: false },
