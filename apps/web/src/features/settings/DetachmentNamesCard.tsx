@@ -1,5 +1,16 @@
 import type { DetachmentNamesResponse } from '@bcp/shared';
-import { Alert, Button, Group, Select, Skeleton, Stack, Table, Text } from '@mantine/core';
+import {
+  Alert,
+  Button,
+  Group,
+  List,
+  Select,
+  SimpleGrid,
+  Skeleton,
+  Stack,
+  Table,
+  Text,
+} from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
@@ -10,22 +21,44 @@ import { detachmentNamesQuery, linkDetachment, unlinkDetachment } from './detach
 type Unsure = DetachmentNamesResponse['unsure'][number];
 type Target = DetachmentNamesResponse['targets'][number];
 
-/** BCP's detachment names, those played in the name's factions first. */
-function targetOptions(unsure: Unsure, targets: Target[]): string[] {
+const ALL = '';
+
+/**
+ * BCP's detachment names to link to: only the chosen faction's (when it has any), otherwise
+ * every one, those played in the name's factions first.
+ */
+function targetOptions(unsure: Unsure, targets: Target[], faction: string): string[] {
+  const inFaction = targets.filter((t) => t.factions.includes(faction));
+  if (inFaction.length > 0) return inFaction.map((t) => t.name);
   const own = targets.filter((t) => t.factions.some((f) => unsure.factions.includes(f)));
   const rest = targets.filter((t) => !own.includes(t));
   return [...own, ...rest].map((t) => t.name);
 }
 
+/** Factions with unsure or linked names, most unsure names first, as picker options. */
+function factionOptions(data: DetachmentNamesResponse) {
+  const counts = new Map<string, number>();
+  for (const linked of data.links)
+    for (const f of linked.factions) counts.set(f, counts.get(f) ?? 0);
+  for (const unsure of data.unsure) {
+    for (const f of unsure.factions) counts.set(f, (counts.get(f) ?? 0) + 1);
+  }
+  return [...counts]
+    .sort(([a, x], [b, y]) => y - x || a.localeCompare(b))
+    .map(([faction, count]) => ({ value: faction, label: `${faction} (${String(count)})` }));
+}
+
 function UnsureRow({
   unsure,
   targets,
+  faction,
   readOnly,
   onLink,
   pending,
 }: {
   unsure: Unsure;
   targets: Target[];
+  faction: string;
   readOnly: boolean;
   onLink: (target: string | null) => void;
   pending: boolean;
@@ -47,7 +80,7 @@ function UnsureRow({
           <Select
             aria-label={`Link ${unsure.name} to`}
             placeholder="Pick a detachment"
-            data={targetOptions(unsure, targets)}
+            data={targetOptions(unsure, targets, faction)}
             value={target}
             onChange={setTarget}
             searchable
@@ -104,6 +137,18 @@ export function DetachmentNamesCard() {
   });
   const unlink = useMutation({ mutationFn: unlinkDetachment, onSuccess: saved });
   const error = link.error ?? unlink.error;
+  const [picked, setPicked] = useState<string | null>(null);
+  const factions = names.data ? factionOptions(names.data) : [];
+  // The picked faction, or the one with the most unsure names (a faction with none left drops out).
+  const faction =
+    picked === ALL || factions.some((f) => f.value === picked)
+      ? (picked ?? ALL)
+      : (factions[0]?.value ?? ALL);
+  const inFaction = (list: { factions: string[] }) =>
+    faction === ALL || list.factions.includes(faction);
+  const unsure = names.data?.unsure.filter(inFaction) ?? [];
+  const links = names.data?.links.filter(inFaction) ?? [];
+  const known = names.data?.targets.filter((t) => t.factions.includes(faction)) ?? [];
 
   return (
     <Panel title="Detachment names">
@@ -125,44 +170,72 @@ export function DetachmentNamesCard() {
               {error.message}
             </Alert>
           )}
+          {factions.length > 0 && (
+            <Select
+              label="Faction"
+              data={[{ value: ALL, label: 'All factions' }, ...factions]}
+              value={faction}
+              onChange={(value) => {
+                setPicked(value ?? ALL);
+              }}
+              allowDeselect={false}
+              searchable
+              w={280}
+            />
+          )}
           {names.data.unsure.length === 0 ? (
             <Text size="sm" c="dimmed">
               Every detachment name is known.
             </Text>
           ) : (
-            <Table.ScrollContainer minWidth={640}>
-              <Table verticalSpacing="xs">
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Name in lists</Table.Th>
-                    <Table.Th ta="right">Lists</Table.Th>
-                    <Table.Th>Factions</Table.Th>
-                    <Table.Th>Means</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {names.data.unsure.map((unsure) => (
-                    <UnsureRow
-                      key={unsure.name}
-                      unsure={unsure}
-                      targets={names.data.targets}
-                      readOnly={readOnly}
-                      pending={link.isPending && link.variables.name === unsure.name}
-                      onLink={(target) => {
-                        link.mutate({ name: unsure.name, target });
-                      }}
-                    />
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
+            <SimpleGrid cols={{ base: 1, md: faction === ALL ? 1 : 2 }} spacing="lg">
+              <Table.ScrollContainer minWidth={640}>
+                <Table verticalSpacing="xs">
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Name in lists</Table.Th>
+                      <Table.Th ta="right">Lists</Table.Th>
+                      <Table.Th>Factions</Table.Th>
+                      <Table.Th>Means</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {unsure.map((unsure) => (
+                      <UnsureRow
+                        key={unsure.name}
+                        unsure={unsure}
+                        targets={names.data.targets}
+                        faction={faction}
+                        readOnly={readOnly}
+                        pending={link.isPending && link.variables.name === unsure.name}
+                        onLink={(target) => {
+                          link.mutate({ name: unsure.name, target });
+                        }}
+                      />
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+              {faction !== ALL && (
+                <Stack gap={4}>
+                  <Text size="sm" fw={600}>
+                    Known {faction} detachments
+                  </Text>
+                  <List size="sm" aria-label={`Known ${faction} detachments`}>
+                    {known.map((target) => (
+                      <List.Item key={target.name}>{target.name}</List.Item>
+                    ))}
+                  </List>
+                </Stack>
+              )}
+            </SimpleGrid>
           )}
-          {names.data.links.length > 0 && (
+          {links.length > 0 && (
             <Stack gap={4}>
               <Text size="sm" fw={600}>
                 Linked names
               </Text>
-              {names.data.links.map((linked) => (
+              {links.map((linked) => (
                 <Group key={linked.name} gap="xs">
                   <Text size="sm">{linked.name}</Text>
                   <Text size="sm" c="dimmed">

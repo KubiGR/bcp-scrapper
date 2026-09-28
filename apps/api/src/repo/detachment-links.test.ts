@@ -51,7 +51,9 @@ describe('detachment names', () => {
     expect(await detachmentsOf('PL-ADA')).toEqual(['Shadow Legion']);
     const linked = await detachmentNames(db);
     expect(linked.unsure).toEqual([]);
-    expect(linked.links).toEqual([{ name: 'Cabalgata del Caos', target: 'Shadow Legion' }]);
+    expect(linked.links).toEqual([
+      { name: 'Cabalgata del Caos', target: 'Shadow Legion', factions: ['Chaos Daemons'] },
+    ]);
 
     await unlinkDetachment(db, 'cabalgata del caos');
     expect(await detachmentsOf('PL-ADA')).toEqual(['Cabalgata del Caos']);
@@ -63,7 +65,9 @@ describe('detachment names', () => {
     expect(await detachmentsOf('PL-ADA')).toEqual(['Cabalgata del Caos']);
     const names = await detachmentNames(db);
     expect(names.unsure).toEqual([]);
-    expect(names.links).toEqual([{ name: 'Cabalgata del Caos', target: null }]);
+    expect(names.links).toEqual([
+      { name: 'Cabalgata del Caos', target: null, factions: ['Chaos Daemons'] },
+    ]);
   });
 
   it('wins over a translation learned from BCP', async () => {

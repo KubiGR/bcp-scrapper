@@ -366,8 +366,10 @@ export const DetachmentNamesResponseSchema = z.object({
   ),
   /** BCP's detachment names, with the factions they're played in. */
   targets: z.array(z.object({ name: z.string(), factions: z.array(z.string()) })),
-  /** `target` null = marked as its own detachment. */
-  links: z.array(z.object({ name: z.string(), target: z.string().nullable() })),
+  /** `target` null = marked as its own detachment; `factions`: where the name is played. */
+  links: z.array(
+    z.object({ name: z.string(), target: z.string().nullable(), factions: z.array(z.string()) }),
+  ),
 });
 export type DetachmentNamesResponse = z.infer<typeof DetachmentNamesResponseSchema>;
 

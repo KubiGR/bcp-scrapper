@@ -43,8 +43,12 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
   }
   const linked = new Set(links.map((link) => link.nameKey));
   const unsure = new Map<string, { name: string; players: Set<string>; factions: Set<string> }>();
+  const storedFactions = new Map<string, Set<string>>();
   for (const row of storedRows) {
     const key = row.name.toLowerCase();
+    if (row.faction !== null) {
+      storedFactions.set(key, (storedFactions.get(key) ?? new Set()).add(row.faction));
+    }
     if (targets.has(key) || linked.has(key)) continue;
     const entry = unsure.get(key) ?? { name: row.name, players: new Set(), factions: new Set() };
     entry.players.add(row.playerId);
@@ -63,7 +67,16 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
     targets: [...targets.values()]
       .map((target) => ({ name: target.name, factions: sorted(target.factions) }))
       .sort((a, b) => a.name.localeCompare(b.name)),
-    links: links.map((link) => ({ name: link.name, target: link.target })),
+    // A linked name no longer appears in stored lists: it belongs to its target's factions.
+    links: links.map((link) => ({
+      name: link.name,
+      target: link.target,
+      factions: sorted(
+        (link.target === null
+          ? storedFactions.get(link.nameKey)
+          : targets.get(link.target.toLowerCase())?.factions) ?? [],
+      ),
+    })),
   };
 }
 

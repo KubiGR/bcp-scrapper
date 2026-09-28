@@ -6,12 +6,20 @@ import { aUser, authOff, loggedIn } from '../auth/auth-test-utils';
 import { DetachmentNamesCard } from './DetachmentNamesCard';
 
 const names = (overrides: Partial<DetachmentNamesResponse> = {}): DetachmentNamesResponse => ({
-  unsure: [{ name: 'Cabalgata del Caos', lists: 6, factions: ['Chaos Daemons'] }],
+  unsure: [
+    { name: 'Cabalgata del Caos', lists: 6, factions: ['Chaos Daemons'] },
+    { name: 'Horda de Guerra', lists: 4, factions: ['Orks'] },
+    { name: 'Legion de Sangre', lists: 2, factions: ['Chaos Daemons'] },
+  ],
   targets: [
     { name: 'Blood Legion', factions: ['Chaos Daemons'] },
+    { name: 'Shadow Legion', factions: ['Chaos Daemons'] },
     { name: 'War Horde', factions: ['Orks'] },
   ],
-  links: [{ name: 'Die Macht der Moritoi', target: 'Might of the Moritoi' }],
+  links: [
+    { name: 'Die Macht der Moritoi', target: 'Might of the Moritoi', factions: ['Grey Knights'] },
+    { name: 'Der Kriegshaufen', target: 'War Horde', factions: ['Orks'] },
+  ],
   ...overrides,
 });
 
@@ -30,6 +38,45 @@ describe('DetachmentNamesCard', () => {
     );
     expect(row.getByText('6')).toBeInTheDocument();
     expect(row.getByText('Chaos Daemons')).toBeInTheDocument();
+  });
+
+  it('starts on the faction with the most unsure names, next to its known detachments', async () => {
+    stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': names() });
+    renderWithProviders(<DetachmentNamesCard />);
+    expect(await screen.findByRole('combobox', { name: 'Faction' })).toHaveValue(
+      'Chaos Daemons (2)',
+    );
+    expect(screen.getByText('Legion de Sangre')).toBeInTheDocument();
+    expect(screen.queryByText('Horda de Guerra')).not.toBeInTheDocument();
+    const known = within(screen.getByRole('list', { name: 'Known Chaos Daemons detachments' }));
+    expect(known.getByText('Blood Legion')).toBeInTheDocument();
+    expect(known.getByText('Shadow Legion')).toBeInTheDocument();
+    expect(known.queryByText('War Horde')).not.toBeInTheDocument();
+  });
+
+  it('switches faction, offering only that faction’s detachments and links', async () => {
+    stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': names() });
+    renderWithProviders(<DetachmentNamesCard />);
+    fireEvent.click(await screen.findByRole('combobox', { name: 'Faction' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Orks (1)' }));
+    const row = within(
+      rowOf(await screen.findByText('Horda de Guerra').then(() => 'Horda de Guerra')),
+    );
+    expect(screen.queryByText('Cabalgata del Caos')).not.toBeInTheDocument();
+    expect(screen.getByText('Der Kriegshaufen')).toBeInTheDocument();
+    expect(screen.queryByText('Die Macht der Moritoi')).not.toBeInTheDocument();
+    fireEvent.click(row.getByRole('combobox', { name: 'Link Horda de Guerra to' }));
+    const options = await screen.findAllByRole('option');
+    expect(options.map((o) => o.textContent)).toEqual(['War Horde']);
+  });
+
+  it('shows everything under All factions', async () => {
+    stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': names() });
+    renderWithProviders(<DetachmentNamesCard />);
+    fireEvent.click(await screen.findByRole('combobox', { name: 'Faction' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'All factions' }));
+    expect(await screen.findByText('Horda de Guerra')).toBeInTheDocument();
+    expect(screen.getByText('Cabalgata del Caos')).toBeInTheDocument();
     expect(screen.getByText('Die Macht der Moritoi')).toBeInTheDocument();
     expect(screen.getByText('Might of the Moritoi')).toBeInTheDocument();
   });
@@ -87,6 +134,9 @@ describe('DetachmentNamesCard', () => {
       'DELETE /api/detachments/links/': names({ links: [] }),
     });
     renderWithProviders(<DetachmentNamesCard />);
+    // A faction with links but no unsure names left is still in the picker.
+    fireEvent.click(await screen.findByRole('combobox', { name: 'Faction' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Grey Knights (0)' }));
     fireEvent.click(
       await screen.findByRole('button', { name: 'Undo link for Die Macht der Moritoi' }),
     );
