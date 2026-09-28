@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
@@ -161,6 +161,7 @@ describe('MatchupsPage', () => {
   });
 
   it('shows a live progress line while an event is fetching, and refetches', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const fetchMock = stubFetchRoutes({
       'GET /api/matchups': response({ events: [anEvent({ pairings: 'fetching' })] }),
     });
@@ -169,15 +170,15 @@ describe('MatchupsPage', () => {
     const progress = await screen.findByText(/Fetching pairings for 1 event/);
     expect(progress).toHaveAttribute('aria-live', 'polite');
 
-    await waitFor(
-      () => {
-        expect(
-          fetchMock.mock.calls.filter(
-            ([url]) => typeof url === 'string' && url.includes('/api/matchups?'),
-          ).length,
-        ).toBeGreaterThan(1);
-      },
-      { timeout: 6000, interval: 200 },
-    );
-  }, 8000);
+    const matrixCalls = () =>
+      fetchMock.mock.calls.filter(
+        ([url]) => typeof url === 'string' && url.includes('/api/matchups?'),
+      ).length;
+    const before = matrixCalls();
+    await act(() => vi.advanceTimersByTimeAsync(31_000));
+    await waitFor(() => {
+      expect(matrixCalls()).toBeGreaterThan(before);
+    });
+    vi.useRealTimers();
+  });
 });
