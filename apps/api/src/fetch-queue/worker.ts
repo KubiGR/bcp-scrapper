@@ -145,12 +145,17 @@ export class FetchQueueWorker {
   async estimateSecondsFor(eventId?: string): Promise<number | null> {
     // The whole-queue estimate is the user's own work; automatic jobs come after it anyway.
     const order = await queuedInOrder(this.#options.db, { userOnly: eventId === undefined });
-    const last =
-      eventId === undefined
-        ? order.length
-        : order.findLastIndex((row) => row.eventId === eventId) + 1;
+    if (eventId === undefined) {
+      return order.length === 0 ? null : Math.ceil((order.length * this.intervalMs) / 1000);
+    }
+    const last = order.findLastIndex((row) => row.eventId === eventId) + 1;
     if (last === 0) return null;
-    return Math.ceil((last * this.intervalMs) / 1000);
+    // An event load with pairings to follow queues the event's rounds once it's done: count them.
+    const loading = order.some(
+      (row) => row.eventId === eventId && row.kind === 'event' && row.followUp === 'pairings',
+    );
+    const rounds = loading ? ((await findEvent(this.#options.db, eventId))?.roundCount ?? 0) : 0;
+    return Math.ceil(((last + rounds) * this.intervalMs) / 1000);
   }
 
   #isPaused(): boolean {

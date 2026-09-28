@@ -287,6 +287,13 @@ describe('FetchQueueWorker', () => {
     expect(await w.estimateSecondsFor('OTHER')).toBeNull();
   });
 
+  it('counts the rounds an event load will queue in that event’s estimate', async () => {
+    await db.update(events).set({ roundCount: 5 }).where(eq(events.id, EVENT));
+    await fetchQueueRepo.enqueueEventPairings(db, EVENT, { rounds: null, priority: 0 });
+    // The load (5 s) and, after it, the event's 5 rounds (25 s).
+    expect(await worker().estimateSecondsFor(EVENT)).toBe(30);
+  });
+
   it('recovers from a tick that throws inside the interval, instead of an unhandled rejection', async () => {
     await enqueueLists(db, EVENT, [ada], 0);
     const claimSpy = vi

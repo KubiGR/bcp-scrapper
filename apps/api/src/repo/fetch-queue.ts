@@ -458,13 +458,22 @@ export async function markPairingsSyncedIfComplete(
 export async function queuedInOrder(
   db: Db,
   { userOnly = false }: { userOnly?: boolean } = {},
-): Promise<{ id: number; kind: FetchJobKind; eventId: string; playerId: string | null }[]> {
+): Promise<
+  {
+    id: number;
+    kind: FetchJobKind;
+    eventId: string;
+    playerId: string | null;
+    followUp: string | null;
+  }[]
+> {
   return db
     .select({
       id: fetchQueue.id,
       kind: fetchQueue.kind,
       eventId: fetchQueue.eventId,
       playerId: fetchQueue.playerId,
+      followUp: fetchQueue.followUp,
     })
     .from(fetchQueue)
     .where(
