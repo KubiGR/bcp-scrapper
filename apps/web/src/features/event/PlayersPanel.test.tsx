@@ -50,6 +50,23 @@ describe('PlayersPanel', () => {
     expect(await screen.findByText(/Gladius Task Force/)).toBeInTheDocument();
   });
 
+  it('names faction, detachments and record under the player too, for phones', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [aPlayer({ detachments: ['Gladius Task Force'], wins: 3, losses: 1 })],
+      },
+    });
+    renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
+    await screen.findByRole('button', { name: 'Ada Archer' });
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === 'P' &&
+          element.textContent === 'Space Marines · Gladius Task Force · 3-1-0',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('groups a team event’s players by team, collapsibly', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': {
@@ -185,7 +202,8 @@ describe('PlayersPanel', () => {
     const adaRow = (await screen.findByText('Ada Archer')).closest('tr');
     expect(adaRow && within(adaRow).getByText('Kult of Speed + Wreckas')).toBeInTheDocument();
     const caraRow = screen.getByText('Cara Cole').closest('tr');
-    expect(caraRow && within(caraRow).getByLabelText('Guessed from the list')).toBeInTheDocument();
+    // In the Faction column and in the phone line (one of them hidden by CSS in a browser).
+    expect(caraRow && within(caraRow).getAllByLabelText('Guessed from the list')).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Detachment' }));
     fireEvent.click(await screen.findByRole('option', { name: 'Hypercrypt Legion' }));

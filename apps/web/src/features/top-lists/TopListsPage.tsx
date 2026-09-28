@@ -11,6 +11,7 @@ import {
   Table,
   Text,
   Title,
+  useMatches,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
@@ -18,12 +19,14 @@ import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
 import { DispositionText } from '../../components/DispositionText';
 import { ErrorState } from '../../components/ErrorState';
+import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
 import { PlayerLine } from '../../components/PlayerLine';
 import { formatIsoDay, plural } from '../../lib/format';
 import { useDraftRange } from '../../lib/use-draft-range';
 import { ListDrawer } from '../event/ListDrawer';
 import { formatRecord, lossLabel } from '../event/players-filter';
+import classes from './TopListsPage.module.css';
 import { topListsQuery, topListsWindow, type TopListsSearch } from './top-lists-queries';
 
 const LOSS_CHOICES = [0, 1, 2, 3, 4, 5];
@@ -57,68 +60,74 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
       ? null
       : (found.find((p) => p.eventId === openKey.eventId && p.bcpId === openKey.bcpId) ?? null);
   const maxLosses = search.maxLosses ?? 1;
+  // Phones show each result as a card (see the CSS module), which needs no scrolling.
+  const tableMinWidth = useMatches({ base: 0, sm: 720 });
   const notLoaded = results.data ? results.data.eventsInRange - results.data.eventsLoaded : 0;
 
   return (
     <Stack gap="lg">
       <Title order={1}>Top lists</Title>
-      <Group gap="md" align="flex-end" wrap="wrap">
-        <MultiSelect
-          label="Factions"
-          placeholder={factions.length === 0 ? 'All factions' : undefined}
-          data={uniqueSorted([...(results.data?.factionOptions ?? []), ...factions])}
-          value={factions}
-          onChange={(value) => {
-            onSearchChange({ ...search, factions: join(value) });
-          }}
-          searchable
-          clearable
-          w={{ base: '100%', xs: 260 }}
-        />
-        <DatePickerInput
-          type="range"
-          label="Dates"
-          valueFormat="D MMM YYYY"
-          allowSingleDateInRange
-          value={dates.draft}
-          onChange={dates.onRangeChange}
-          w={{ base: '100%', xs: 280 }}
-        />
-        <Select
-          label="Record"
-          data={LOSS_CHOICES.map((n) => ({ value: String(n), label: lossLabel(n) }))}
-          value={String(maxLosses)}
-          onChange={(value) => {
-            if (value !== null) onSearchChange({ ...search, maxLosses: Number(value) });
-          }}
-          allowDeselect={false}
-          w={{ base: '100%', xs: 170 }}
-        />
-        <MultiSelect
-          label="Disposition"
-          placeholder={dispositions.length === 0 ? 'All dispositions' : undefined}
-          data={uniqueSorted([...KNOWN_DISPOSITIONS, ...dispositions])}
-          value={dispositions}
-          onChange={(value) => {
-            onSearchChange({ ...search, dispositions: join(value) });
-          }}
-          renderOption={({ option }) => <DispositionText disposition={option.value} />}
-          clearable
-          w={{ base: '100%', xs: 240 }}
-        />
-        <MultiSelect
-          label="Detachment"
-          placeholder={detachments.length === 0 ? 'All detachments' : undefined}
-          data={uniqueSorted([...(results.data?.detachmentOptions ?? []), ...detachments])}
-          value={detachments}
-          onChange={(value) => {
-            onSearchChange({ ...search, detachments: join(value, DETACHMENT_SEPARATOR) });
-          }}
-          searchable
-          clearable
-          w={{ base: '100%', xs: 240 }}
-        />
-      </Group>
+      <FilterToggle
+        active={[factions, dispositions, detachments].filter((chosen) => chosen.length > 0).length}
+      >
+        <Group gap="md" align="flex-end" wrap="wrap">
+          <MultiSelect
+            label="Factions"
+            placeholder={factions.length === 0 ? 'All factions' : undefined}
+            data={uniqueSorted([...(results.data?.factionOptions ?? []), ...factions])}
+            value={factions}
+            onChange={(value) => {
+              onSearchChange({ ...search, factions: join(value) });
+            }}
+            searchable
+            clearable
+            w={{ base: '100%', xs: 260 }}
+          />
+          <DatePickerInput
+            type="range"
+            label="Dates"
+            valueFormat="D MMM YYYY"
+            allowSingleDateInRange
+            value={dates.draft}
+            onChange={dates.onRangeChange}
+            w={{ base: '100%', xs: 280 }}
+          />
+          <Select
+            label="Record"
+            data={LOSS_CHOICES.map((n) => ({ value: String(n), label: lossLabel(n) }))}
+            value={String(maxLosses)}
+            onChange={(value) => {
+              if (value !== null) onSearchChange({ ...search, maxLosses: Number(value) });
+            }}
+            allowDeselect={false}
+            w={{ base: '100%', xs: 170 }}
+          />
+          <MultiSelect
+            label="Disposition"
+            placeholder={dispositions.length === 0 ? 'All dispositions' : undefined}
+            data={uniqueSorted([...KNOWN_DISPOSITIONS, ...dispositions])}
+            value={dispositions}
+            onChange={(value) => {
+              onSearchChange({ ...search, dispositions: join(value) });
+            }}
+            renderOption={({ option }) => <DispositionText disposition={option.value} />}
+            clearable
+            w={{ base: '100%', xs: 240 }}
+          />
+          <MultiSelect
+            label="Detachment"
+            placeholder={detachments.length === 0 ? 'All detachments' : undefined}
+            data={uniqueSorted([...(results.data?.detachmentOptions ?? []), ...detachments])}
+            value={detachments}
+            onChange={(value) => {
+              onSearchChange({ ...search, detachments: join(value, DETACHMENT_SEPARATOR) });
+            }}
+            searchable
+            clearable
+            w={{ base: '100%', xs: 240 }}
+          />
+        </Group>
+      </FilterToggle>
 
       {results.isPending && <Skeleton height={200} />}
       {results.error && <ErrorState error={results.error} onRetry={() => void results.refetch()} />}
@@ -145,8 +154,8 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
               </Text>
             ) : (
               <Panel p={0}>
-                <Table.ScrollContainer minWidth={720}>
-                  <Table verticalSpacing="xs">
+                <Table.ScrollContainer minWidth={tableMinWidth}>
+                  <Table verticalSpacing="xs" className={classes.results}>
                     <Table.Thead>
                       <Table.Tr>
                         <Table.Th>Player</Table.Th>

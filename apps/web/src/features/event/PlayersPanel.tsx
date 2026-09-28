@@ -13,12 +13,14 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
+import type { MantineTheme } from '@mantine/core';
 import { DataTable, type DataTableColumn } from 'mantine-datatable';
 import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
 import { DispositionText } from '../../components/DispositionText';
 import { ErrorState } from '../../components/ErrorState';
 import { FactionText } from '../../components/FactionText';
+import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
 import { EventQueueLine } from './EventQueueLine';
 import { playersQuery } from './event-queries';
@@ -51,6 +53,27 @@ interface PlayerColumnsOptions {
   onOpen: (bcpId: string) => void;
 }
 
+/** From tablet width up these get their own columns; on phones, a line under the player's name. */
+const wide = (theme: MantineTheme) => `(min-width: ${theme.breakpoints.sm})`;
+
+/** The phone line: team (when shown), faction, detachments and record. */
+function PhoneLine({ player, showTeam }: { player: EventPlayer; showTeam: boolean }) {
+  const detachments = player.detachments.length > 0 ? player.detachments.join(' + ') : null;
+  const rest = [detachments, formatRecord(player)].filter((part) => part !== null);
+  return (
+    <Text size="xs" c="dimmed" hiddenFrom="sm">
+      {showTeam && player.teamName !== null && `${player.teamName} · `}
+      {player.faction !== null && (
+        <>
+          <FactionText faction={player.faction} guessed={player.factionGuessed} />
+          {' · '}
+        </>
+      )}
+      {rest.join(' · ')}
+    </Text>
+  );
+}
+
 function playerColumns({ showTeam, onOpen }: PlayerColumnsOptions): DataTableColumn<EventPlayer>[] {
   return [
     {
@@ -64,48 +87,56 @@ function playerColumns({ showTeam, onOpen }: PlayerColumnsOptions): DataTableCol
       accessor: 'name',
       title: 'Player',
       render: (p) => (
-        <Group gap="xs" wrap="nowrap">
-          <UnstyledButton
-            className={classes.playerName}
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpen(p.bcpId);
-            }}
-          >
-            {p.name}
-          </UnstyledButton>
-          {p.dropped && (
-            <Badge size="xs" color="gray" variant="outline">
-              Dropped
-            </Badge>
-          )}
-        </Group>
+        <>
+          <Group gap="xs" wrap="nowrap">
+            <UnstyledButton
+              className={classes.playerName}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpen(p.bcpId);
+              }}
+            >
+              {p.name}
+            </UnstyledButton>
+            {p.dropped && (
+              <Badge size="xs" color="gray" variant="outline">
+                Dropped
+              </Badge>
+            )}
+          </Group>
+          <PhoneLine player={p} showTeam={showTeam} />
+        </>
       ),
     },
     {
       accessor: 'teamName',
+      visibleMediaQuery: wide,
       title: 'Team',
       hidden: !showTeam,
       render: (p) => p.teamName ?? '—',
     },
     {
       accessor: 'faction',
+      visibleMediaQuery: wide,
       title: 'Faction',
       render: (p) =>
         p.faction === null ? '—' : <FactionText faction={p.faction} guessed={p.factionGuessed} />,
     },
     {
       accessor: 'detachments',
+      visibleMediaQuery: wide,
       title: 'Detachment',
       render: (p) => (p.detachments.length > 0 ? p.detachments.join(' + ') : '—'),
     },
     {
       accessor: 'disposition',
+      visibleMediaQuery: wide,
       title: 'Disposition',
       render: (p) => (p.disposition ? <DispositionText disposition={p.disposition} /> : '—'),
     },
     {
       accessor: 'wins',
+      visibleMediaQuery: wide,
       title: 'W-L-D',
       textAlign: 'right',
       render: (p) => <span className="numeric">{formatRecord(p)}</span>,
@@ -164,61 +195,69 @@ export function PlayersPanel({ event, loadingFromBcp }: PlayersPanelProps) {
   return (
     <Stack gap="md">
       <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
-        <Group gap="sm" wrap="wrap">
-          <TextInput
-            aria-label="Search players"
-            placeholder="Search player or team"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.currentTarget.value);
-            }}
-            w={{ base: '100%', xs: 240 }}
-          />
-          <MultiSelect
-            aria-label="Faction"
-            placeholder={factions.length === 0 ? 'All factions' : undefined}
-            data={factionsOf(all)}
-            value={factions}
-            onChange={setFactions}
-            clearable
-            searchable
-            w={{ base: '100%', xs: 240 }}
-          />
-          <MultiSelect
-            aria-label="Disposition"
-            placeholder={dispositions.length === 0 ? 'All dispositions' : undefined}
-            data={dispositionsOf(all)}
-            value={dispositions}
-            onChange={setDispositions}
-            renderOption={({ option }) => <DispositionText disposition={option.value} />}
-            clearable
-            w={{ base: '100%', xs: 240 }}
-          />
-          <MultiSelect
-            aria-label="Detachment"
-            placeholder={detachments.length === 0 ? 'All detachments' : undefined}
-            data={detachmentsOf(all)}
-            value={detachments}
-            onChange={setDetachments}
-            clearable
-            searchable
-            w={{ base: '100%', xs: 240 }}
-          />
-          <Select
-            aria-label="Record"
-            placeholder="All results"
-            data={lossOptions(event.roundCount).map((n) => ({
-              value: String(n),
-              label: lossLabel(n),
-            }))}
-            value={maxLosses === null ? null : String(maxLosses)}
-            onChange={(value) => {
-              setMaxLosses(value === null ? null : Number(value));
-            }}
-            clearable
-            w={{ base: '100%', xs: 180 }}
-          />
-        </Group>
+        <FilterToggle
+          active={
+            [query !== '', factions.length > 0, dispositions.length > 0, detachments.length > 0]
+              .concat(maxLosses !== null)
+              .filter(Boolean).length
+          }
+        >
+          <Group gap="sm" wrap="wrap">
+            <TextInput
+              aria-label="Search players"
+              placeholder="Search player or team"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.currentTarget.value);
+              }}
+              w={{ base: '100%', xs: 240 }}
+            />
+            <MultiSelect
+              aria-label="Faction"
+              placeholder={factions.length === 0 ? 'All factions' : undefined}
+              data={factionsOf(all)}
+              value={factions}
+              onChange={setFactions}
+              clearable
+              searchable
+              w={{ base: '100%', xs: 240 }}
+            />
+            <MultiSelect
+              aria-label="Disposition"
+              placeholder={dispositions.length === 0 ? 'All dispositions' : undefined}
+              data={dispositionsOf(all)}
+              value={dispositions}
+              onChange={setDispositions}
+              renderOption={({ option }) => <DispositionText disposition={option.value} />}
+              clearable
+              w={{ base: '100%', xs: 240 }}
+            />
+            <MultiSelect
+              aria-label="Detachment"
+              placeholder={detachments.length === 0 ? 'All detachments' : undefined}
+              data={detachmentsOf(all)}
+              value={detachments}
+              onChange={setDetachments}
+              clearable
+              searchable
+              w={{ base: '100%', xs: 240 }}
+            />
+            <Select
+              aria-label="Record"
+              placeholder="All results"
+              data={lossOptions(event.roundCount).map((n) => ({
+                value: String(n),
+                label: lossLabel(n),
+              }))}
+              value={maxLosses === null ? null : String(maxLosses)}
+              onChange={(value) => {
+                setMaxLosses(value === null ? null : Number(value));
+              }}
+              clearable
+              w={{ base: '100%', xs: 180 }}
+            />
+          </Group>
+        </FilterToggle>
         <Group gap="sm" align="flex-start">
           <FetchListsMenu event={event} players={all} selectedTeamIds={[...selectedTeams]} />
           <ExportMenu event={event} />

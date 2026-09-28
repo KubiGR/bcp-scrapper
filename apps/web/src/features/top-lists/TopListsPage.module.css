@@ -1,0 +1,48 @@
+/*
+ * Below Mantine's `sm` breakpoint each result is a small card instead of a wide row:
+ * player and List button, then the army, then event and record.
+ */
+@media (max-width: 47.99em) {
+  .results thead {
+    display: none;
+  }
+
+  .results tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'player list'
+      'army army'
+      'event record';
+    column-gap: var(--mantine-spacing-sm);
+    padding: var(--mantine-spacing-xs) 0;
+    border-bottom: 1px solid var(--table-border-color);
+  }
+
+  .results td {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    border: 0;
+  }
+
+  .results td:nth-child(1) {
+    grid-area: player;
+  }
+
+  .results td:nth-child(2) {
+    grid-area: event;
+  }
+
+  .results td:nth-child(3) {
+    grid-area: record;
+    align-self: end;
+  }
+
+  .results td:nth-child(4) {
+    grid-area: army;
+  }
+
+  .results td:nth-child(5) {
+    grid-area: list;
+  }
+}

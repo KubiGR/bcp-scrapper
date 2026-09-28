@@ -1,0 +1,10 @@
+.toggle {
+  align-self: flex-start;
+}
+
+/* Below Mantine's `sm` breakpoint the filters show only once the button opens them. */
+@media (max-width: 47.99em) {
+  .filters:not([data-open]) {
+    display: none;
+  }
+}
