@@ -48,13 +48,31 @@ const response = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('MatchupsPage', () => {
-  it('renders the date range inputs, the event list and the matrix', async () => {
-    stubFetchRoutes({ 'GET /api/matchups': response() });
+  it('shows the dates and the matrix, with the event list behind an Events button', async () => {
+    stubFetchRoutes({
+      'GET /api/matchups': response({
+        events: [anEvent(), anEvent({ id: 'EVT2', name: 'Other Open', included: false })],
+      }),
+    });
     renderWithRouter(<MatchupsPage search={{}} onSearchChange={vi.fn()} />);
 
     expect(await screen.findByLabelText('Dates')).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Sample Team Open' })).toBeInTheDocument();
     expect(await screen.findByRole('columnheader', { name: 'Orks' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Sample Team Open' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Events · 1 of 2' }));
+    expect(await screen.findByRole('link', { name: 'Sample Team Open' })).toBeInTheDocument();
+  });
+
+  it('says when events in range are missing pairings, pointing to Events', async () => {
+    stubFetchRoutes({
+      'GET /api/matchups': response({
+        events: [anEvent(), anEvent({ id: 'EVT2', name: 'Other Open', pairings: 'missing' })],
+      }),
+    });
+    renderWithRouter(<MatchupsPage search={{}} onSearchChange={vi.fn()} />);
+    expect(
+      await screen.findByText('1 event is missing pairings: fetch them under Events.'),
+    ).toBeInTheDocument();
   });
 
   it('shows an empty state instead of an empty table when nothing is included', async () => {
@@ -145,6 +163,7 @@ describe('MatchupsPage', () => {
     });
     renderWithRouter(<StatefulMatchupsPage initial={{ include: 'EVT1' }} />);
 
+    fireEvent.click(await screen.findByRole('button', { name: /^Events ·/ }));
     const checkbox = await screen.findByRole('checkbox', { name: 'Include Sample Team Open' });
     expect(checkbox).toBeChecked();
     fireEvent.click(checkbox);

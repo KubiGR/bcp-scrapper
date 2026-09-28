@@ -1,5 +1,5 @@
 import { DETACHMENT_SEPARATOR } from '@bcp/shared';
-import { Box, Button, Group, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Box, Button, Drawer, Group, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -36,6 +36,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
   const now = new Date();
   const window = crossWindow(search, now);
   const [cell, setCell] = useState<{ row: string; col: string } | null>(null);
+  const [eventsOpen, setEventsOpen] = useState(false);
 
   const matchups = useQuery(crossMatchupsQuery(search));
   const games = useQuery({
@@ -67,18 +68,45 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
   // of blanking the view, so the event list and controls stay usable while the new data loads.
   const dimmed = matchups.isPlaceholderData || matchups.isFetching;
 
+  const eventSelection = matchups.data && (
+    <EventSelection
+      events={matchups.data.events}
+      exclude={splitIds(search.exclude)}
+      include={splitIds(search.include)}
+      onChange={(next) => {
+        onSearchChange({
+          ...search,
+          exclude: joinIds(next.exclude),
+          include: joinIds(next.include),
+        });
+      }}
+    />
+  );
+
   return (
     <Stack gap="lg">
       <Title order={1}>Faction matchups</Title>
-      <DatePickerInput
-        type="range"
-        label="Dates"
-        valueFormat="D MMM YYYY"
-        allowSingleDateInRange
-        value={dates.draft}
-        onChange={dates.onRangeChange}
-        w={{ base: '100%', xs: 280 }}
-      />
+      <Group gap="md" align="flex-end" wrap="wrap">
+        <DatePickerInput
+          type="range"
+          label="Dates"
+          valueFormat="D MMM YYYY"
+          allowSingleDateInRange
+          value={dates.draft}
+          onChange={dates.onRangeChange}
+          w={{ base: '100%', xs: 280 }}
+        />
+        {matchups.data && matchups.data.events.length > 0 && (
+          <Button
+            variant="default"
+            onClick={() => {
+              setEventsOpen(true);
+            }}
+          >
+            {`Events · ${String(matchups.data.events.filter((e) => e.included).length)} of ${String(matchups.data.events.length)}`}
+          </Button>
+        )}
+      </Group>
       {matchups.isPending && <Skeleton height={160} />}
       {matchups.error && (
         <ErrorState error={matchups.error} onRetry={() => void matchups.refetch()} />
@@ -98,18 +126,33 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
               …
             </Text>
           )}
-          <EventSelection
-            events={matchups.data.events}
-            exclude={splitIds(search.exclude)}
-            include={splitIds(search.include)}
-            onChange={(next) => {
-              onSearchChange({
-                ...search,
-                exclude: joinIds(next.exclude),
-                include: joinIds(next.include),
-              });
-            }}
-          />
+          {(() => {
+            const unsynced = matchups.data.events.filter(
+              (event) => event.pairings === 'missing' || event.pairings === 'partial',
+            ).length;
+            return unsynced > 0 ? (
+              <Text size="sm" c="dimmed">
+                {plural(unsynced, 'event')} {unsynced === 1 ? 'is' : 'are'} missing pairings: fetch
+                them under Events.
+              </Text>
+            ) : null;
+          })()}
+          {matchups.data.events.length === 0 ? (
+            eventSelection
+          ) : (
+            // The event list is long: it lives in a drawer, so the matrix comes first.
+            <Drawer
+              opened={eventsOpen}
+              onClose={() => {
+                setEventsOpen(false);
+              }}
+              position="right"
+              size="xl"
+              title="Events in this range"
+            >
+              {eventSelection}
+            </Drawer>
+          )}
           {matchups.data.events.length > 0 && (
             <>
               <MatrixControls
