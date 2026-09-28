@@ -4,7 +4,7 @@ const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   /** Loopback by default, so the API is not reachable from the network. */
   HOST: z.string().min(1).default('127.0.0.1'),
-  PORT: z.coerce.number().int().positive().default(3001),
+  PORT: z.coerce.number().int().positive().default(3401),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().min(1).default('postgres://bcp:bcp@localhost:5434/bcp'),
   TOURNAMENT_SOURCE: z.enum(['bcp', 'fixtures']).default('fixtures'),
