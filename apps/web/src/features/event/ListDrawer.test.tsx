@@ -179,6 +179,17 @@ describe('ListDrawer', () => {
     expect(await screen.findByText('Queued · the fetch queue is paused.')).toBeInTheDocument();
   });
 
+  it('says a list mid-fetch is being fetched even once the queue is paused', async () => {
+    stubQueue(15, { ...running, paused: true, pausedReason: 'user' });
+    renderQueued('fetching');
+    // The fetch under way finishes; pausing only stops the next ones.
+    await waitFor(() => {
+      expect(screen.getByText('Fetching this list…')).toBeInTheDocument();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByText(/paused/)).not.toBeInTheDocument();
+  });
+
   it('shows a list being fetched', async () => {
     stubQueue(15);
     renderQueued('fetching');

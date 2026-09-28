@@ -125,16 +125,20 @@ function FetchThisList({
   );
 }
 
-/** Where a queued list stands: paused, being fetched, or about how long this event's queue takes. */
+/**
+ * Where a queued list stands: being fetched (a fetch under way finishes even once the queue is
+ * paused), paused, or about how long this event's queue takes.
+ */
 function QueuedStatus({ eventId, player }: { eventId: string; player: EventPlayer }) {
   const event = useQuery(eventQuery(eventId));
   const queue = useQuery(fetchQueueQuery);
   const seconds = event.data?.queueSeconds ?? null;
-  const paused = queue.data?.paused ?? false;
+  const fetching = player.listStatus === 'fetching';
+  const paused = !fetching && (queue.data?.paused ?? false);
 
   let status: ReactNode;
-  if (paused) status = 'Queued · the fetch queue is paused.';
-  else if (player.listStatus === 'fetching') status = 'Fetching this list…';
+  if (fetching) status = 'Fetching this list…';
+  else if (paused) status = 'Queued · the fetch queue is paused.';
   else if (seconds !== null) {
     status = (
       <>
