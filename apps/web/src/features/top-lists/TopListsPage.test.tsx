@@ -23,6 +23,8 @@ const response = (overrides: Partial<PlayerSearchResponse> = {}): PlayerSearchRe
       eventId: 'EVT1',
       eventName: 'Sample Team Open',
       eventStartDate: '2026-03-28T09:00:00.000Z',
+      eventPlayerCount: 96,
+      eventTeamCount: 12,
     },
   ],
   truncated: false,
@@ -81,6 +83,8 @@ describe('TopListsPage', () => {
       eventId: 'EVT2',
       eventName: 'Later Open',
       eventStartDate: '2026-05-01T09:00:00.000Z',
+      eventPlayerCount: 96,
+      eventTeamCount: 12,
     };
     const base = response();
     stubFetchRoutes({ 'GET /api/players/search': { ...base, players: [zed, ...base.players] } });
@@ -104,6 +108,8 @@ describe('TopListsPage', () => {
       eventId: 'EVT1',
       eventName: 'Sample Team Open',
       eventStartDate: '2026-03-28T09:00:00.000Z',
+      eventPlayerCount: 96,
+      eventTeamCount: 12,
     });
     stubFetchRoutes({
       'GET /api/players/search': response({
@@ -122,6 +128,18 @@ describe('TopListsPage', () => {
       .slice(1)
       .map((row) => row.querySelector('td p')?.textContent);
     expect(names).toEqual(['Five Oh', 'Three Oh', 'Four One']);
+  });
+
+  it('shows each event’s size next to its date', async () => {
+    stubFetchRoutes({ 'GET /api/players/search': response() });
+    renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
+    const row = (await screen.findByText('Ada Archer')).closest('tr');
+    if (row === null) throw new Error('no row');
+    expect(
+      within(row).getByText(
+        (_, el) => el?.tagName === 'P' && el.textContent.endsWith('· 96 players · 12 teams'),
+      ),
+    ).toBeInTheDocument();
   });
 
   it('opens a list from anywhere on its row', async () => {

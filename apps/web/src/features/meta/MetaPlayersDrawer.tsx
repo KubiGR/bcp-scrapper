@@ -6,7 +6,7 @@ import { AnchorLink } from '../../components/AnchorLink';
 import rowClasses from '../../components/ClickableRow.module.css';
 import { ErrorState } from '../../components/ErrorState';
 import { PlayerLine } from '../../components/PlayerLine';
-import { formatIsoDay } from '../../lib/format';
+import { formatEventSize, formatIsoDay } from '../../lib/format';
 import { SortableTh, useTableSort } from '../../lib/table-sort';
 import { FOUND_PLAYER_SORT } from '../top-lists/player-sort';
 import { ListDrawer } from '../event/ListDrawer';
@@ -122,7 +122,11 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
                       {player.eventName}
                     </AnchorLink>
                     <Text size="xs" c="dimmed" className="numeric">
-                      {formatIsoDay(player.eventStartDate.slice(0, 10))}
+                      {formatIsoDay(player.eventStartDate.slice(0, 10))} ·{' '}
+                      {formatEventSize({
+                        playerCount: player.eventPlayerCount,
+                        teamCount: player.eventTeamCount,
+                      })}
                     </Text>
                   </Table.Td>
                   <Table.Td ta="right" className="numeric">

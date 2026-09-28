@@ -23,7 +23,7 @@ import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
 import rowClasses from '../../components/ClickableRow.module.css';
 import { PlayerLine } from '../../components/PlayerLine';
-import { formatIsoDay, plural } from '../../lib/format';
+import { formatEventSize, formatIsoDay, plural } from '../../lib/format';
 import { SortableTh, useTableSort } from '../../lib/table-sort';
 import { useDraftRange } from '../../lib/use-draft-range';
 import { ListDrawer } from '../event/ListDrawer';
@@ -207,7 +207,11 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                               {player.eventName}
                             </AnchorLink>
                             <Text size="xs" c="dimmed" className="numeric">
-                              {formatIsoDay(player.eventStartDate.slice(0, 10))}
+                              {formatIsoDay(player.eventStartDate.slice(0, 10))} ·{' '}
+                              {formatEventSize({
+                                playerCount: player.eventPlayerCount,
+                                teamCount: player.eventTeamCount,
+                              })}
                             </Text>
                           </Table.Td>
                           <Table.Td ta="right" className="numeric">

@@ -127,6 +127,8 @@ export async function searchTopLists(
         parsedDisposition: armyLists.parsedDisposition,
         eventName: events.name,
         eventStartDate: events.startDate,
+        eventPlayerCount: events.playerCount,
+        eventTeamCount: events.teamCount,
       })
       .from(players)
       .innerJoin(events, sql`${events.id} = ${players.eventId}`)
@@ -197,6 +199,8 @@ export async function searchTopLists(
       eventId: row.eventId,
       eventName: row.eventName,
       eventStartDate: row.eventStartDate.toISOString(),
+      eventPlayerCount: row.eventPlayerCount,
+      eventTeamCount: row.eventTeamCount,
     }),
   );
 

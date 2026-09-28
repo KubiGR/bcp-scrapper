@@ -46,6 +46,16 @@ describe('searchTopLists', () => {
     expect(result.eventsInRange).toBe(result.eventsLoaded);
   });
 
+  it('names each player’s event size', async () => {
+    const result = await searchTopLists(db, query({ maxLosses: 5 }), ALL_EVENTS, TODAY);
+    const team = result.players.find((p) => p.eventId === 'EVTTEAM0001');
+    const [row] = await db.select().from(events).where(eq(events.id, 'EVTTEAM0001'));
+    expect(team).toMatchObject({
+      eventPlayerCount: row?.playerCount,
+      eventTeamCount: row?.teamCount,
+    });
+  });
+
   it('counts draws as not losses, and never includes a player with no games', async () => {
     await record('PL-ADA', 3, 1, 1);
     await record('PL-BEN', 0, 0, 0);
