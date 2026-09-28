@@ -79,4 +79,19 @@ describe('computeStandings', () => {
     expect(pending.teams[0]?.perRound[0]).toMatchObject({ points: null, outcome: null });
     expect(pending.teams[0]?.totals).toEqual({ wins: 0, losses: 0, draws: 0, points: 0 });
   });
+
+  it('gives no outcome to either side while only one score is in', () => {
+    const half = computeStandings({
+      teams,
+      players: [],
+      matchups: [m('x', 1, 'RED', 'BLUE', 30, null)],
+      games: [],
+    });
+    const red = half.teams.find((row) => row.team.id === 'RED');
+    const blue = half.teams.find((row) => row.team.id === 'BLUE');
+    expect(red?.perRound[0]).toMatchObject({ points: 30, outcome: null });
+    expect(blue?.perRound[0]).toMatchObject({ points: null, outcome: null });
+    expect(red?.totals).toMatchObject({ wins: 0, losses: 0, draws: 0 });
+    expect(blue?.totals).toMatchObject({ wins: 0, losses: 0, draws: 0 });
+  });
 });
