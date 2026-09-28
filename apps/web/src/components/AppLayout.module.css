@@ -15,14 +15,6 @@
   color: var(--mantine-color-white);
 }
 
-/* The header's only accent: a small solid square standing in for a HUD indicator light. */
-.brandMark {
-  width: 8px;
-  height: 8px;
-  flex-shrink: 0;
-  background: var(--mantine-color-neon-5);
-}
-
 .navLink {
   padding: 6px 2px;
   font-family: var(--mantine-font-family);

@@ -5,6 +5,13 @@ import { renderWithRouter, stubFetchRoutes } from '../test/render';
 import { AppLayout } from './AppLayout';
 
 describe('AppLayout', () => {
+  it('shows the logo next to the site name', async () => {
+    stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/fetch-queue': null });
+    renderWithRouter(<AppLayout />);
+    const home = await screen.findByRole('link', { name: 'BCP Analyzer' });
+    expect(home.querySelector('svg[data-logo]')).not.toBeNull();
+  });
+
   it('opens the page menu from the menu button on phones, and closes it on a pick', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/fetch-queue': null });
     renderWithRouter(<AppLayout />);

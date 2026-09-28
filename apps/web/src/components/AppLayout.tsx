@@ -6,6 +6,7 @@ import { FinderSearchSchema } from '../features/finder/finder-search';
 import { AccountMenu } from '../features/auth/AccountMenu';
 import { QueueIndicator } from '../features/fetch-queue/QueueIndicator';
 import classes from './AppLayout.module.css';
+import { Logo } from './Logo';
 
 const FINDER_DEFAULTS = FinderSearchSchema.parse({});
 
@@ -48,7 +49,7 @@ export function AppLayout() {
                 aria-expanded={menuOpen}
               />
               <Link to="/" search={FINDER_DEFAULTS} className={classes.brand} onClick={menu.close}>
-                <span className={classes.brandMark} aria-hidden />
+                <Logo size={26} />
                 BCP Analyzer
               </Link>
             </Group>
