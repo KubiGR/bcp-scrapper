@@ -11,7 +11,7 @@ import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { armyLists, players, teams } from '../db/schema';
 import { isRetryableFailure, latestQueueRowsByPlayer, type LatestQueueRow } from './fetch-queue';
-import { findPlayersMissingLists, isMissingList, storedCurrentList } from './lists';
+import { findPlayersMissingLists, storedCurrentList } from './lists';
 import { excludedColumns } from './upsert';
 
 export async function upsertTeams(db: Db, list: Fetched<Team>[]): Promise<void> {
@@ -156,28 +156,26 @@ export async function countEventParticipants(db: Db, eventId: string): Promise<E
     db.$count(teams, eq(teams.eventId, eventId)),
     db.$count(players, and(ofEvent, isNotNull(players.listId))),
     db
-      .select({
-        fetched: count(armyLists.playerId),
-        missing: sql<number>`count(*) filter (where ${isMissingList})`.mapWith(Number),
-      })
+      .select({ fetched: count(armyLists.playerId) })
       .from(players)
       .leftJoin(armyLists, storedCurrentList)
       .where(ofEvent),
     latestQueueRowsByPlayer(db, eventId),
     findPlayersMissingLists(db, eventId),
   ]);
+  const missingPlayers = new Set(missing.map((m) => m.playerId));
   return {
     players: playerCount,
     teams: teamCount,
     listsAvailable,
     listsFetched: lists[0]?.fetched ?? 0,
-    listsMissing: lists[0]?.missing ?? 0,
+    listsMissing: missingPlayers.size,
     listsQueued: [...queue.values()].filter(
       (row) => row.status === 'queued' || row.status === 'fetching',
     ).length,
     // "No list on BCP" is final, so it isn't counted: nothing can be retried about it.
     listsFailed: [...queue.entries()].filter(
-      ([playerId, row]) => isRetryableFailure(row) && missing.some((m) => m.playerId === playerId),
+      ([playerId, row]) => isRetryableFailure(row) && missingPlayers.has(playerId),
     ).length,
   };
 }
