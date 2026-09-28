@@ -98,6 +98,18 @@ export async function replaceRoundPairings(
 }
 
 /** How much of an event's pairings is stored: distinct rounds, team matchups and games. */
+/** The rounds of an event with any stored team matchups or games. */
+export async function storedPairingRounds(db: Db, eventId: string): Promise<Set<number>> {
+  const [matchupRounds, gameRounds] = await Promise.all([
+    db
+      .selectDistinct({ round: teamMatchups.round })
+      .from(teamMatchups)
+      .where(eq(teamMatchups.eventId, eventId)),
+    db.selectDistinct({ round: games.round }).from(games).where(eq(games.eventId, eventId)),
+  ]);
+  return new Set([...matchupRounds, ...gameRounds].map((row) => row.round));
+}
+
 export async function storedPairingsSummary(
   db: Db,
   eventId: string,

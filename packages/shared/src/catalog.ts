@@ -81,13 +81,20 @@ export const FINISHED_GRACE_MS = 24 * 3_600_000;
  * Finished when BCP says it ended, or its last day (end date, else start date) is more than a
  * day behind us — organisers often forget to close events in BCP. Upcoming before it starts.
  */
+/** When a not-closed event counts as finished by its dates: its last day plus the grace. */
+export function eventFinishedBy(event: {
+  startDate: string | Date;
+  endDate: string | Date | null;
+}): Date {
+  return new Date(new Date(event.endDate ?? event.startDate).getTime() + FINISHED_GRACE_MS);
+}
+
 export function eventPhase(
   event: { startDate: string | Date; endDate: string | Date | null; ended: boolean },
   now: Date,
 ): EventPhase {
   if (event.ended) return 'finished';
-  const lastDay = new Date(event.endDate ?? event.startDate);
-  if (lastDay.getTime() + FINISHED_GRACE_MS < now.getTime()) return 'finished';
+  if (eventFinishedBy(event).getTime() < now.getTime()) return 'finished';
   const start = new Date(event.startDate);
   if (start.getTime() > now.getTime()) return 'upcoming';
   return 'running';

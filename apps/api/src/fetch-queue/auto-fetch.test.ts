@@ -1,12 +1,13 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { fetchQueue } from '../db/schema';
+import { events, fetchQueue } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { setAutoFetchEnabled } from '../repo/app-settings';
 import { upsertEventSummaries } from '../repo/events';
 import { markJobFailed } from '../repo/fetch-queue';
 import { syncEvent } from '../sync/jobs';
+import { syncRoundPairings } from '../sync/round-pairings';
 import { SyncRunner } from '../sync/runner';
 import { ALL_EVENTS, sampleSource, silentLogger } from '../test/helpers';
 import { AutoFetchPlanner } from './auto-fetch';
@@ -93,6 +94,65 @@ describe('AutoFetchPlanner', () => {
     expect(requeued.some((j) => j.playerId === 'PL-ADA')).toBe(false);
     expect(requeued.some((j) => j.kind === 'pairings-round')).toBe(false);
     expect(requeued.filter((j) => j.kind === 'list')).toHaveLength(6);
+  });
+
+  describe('rounds fetched while the event ran (EVTTEAM0001: Mar 28–29, 2 rounds)', () => {
+    const doneRounds = (finishedAt: Date) =>
+      db.insert(fetchQueue).values(
+        [1, 2].map((round) => ({
+          kind: 'pairings-round' as const,
+          eventId: 'EVTTEAM0001',
+          round,
+          status: 'done' as const,
+          finishedAt,
+          priority: -10,
+          origin: 'auto' as const,
+        })),
+      );
+    const synced = async () =>
+      (await db.select().from(events).where(eq(events.id, 'EVTTEAM0001')))[0]?.pairingsSyncedAt;
+
+    beforeEach(async () => {
+      await syncEvent({ db, source }, 'EVTTEAM0001');
+      await db
+        .update(events)
+        .set({ ended: false, roundCount: 2 })
+        .where(eq(events.id, 'EVTTEAM0001'));
+    });
+
+    it('fetches an empty round again once the event is over, then marks it complete', async () => {
+      await doneRounds(new Date('2026-03-28T15:00:00Z'));
+      await planner().planOnce();
+      const again = (await jobs()).filter(
+        (j) => j.kind === 'pairings-round' && j.status === 'queued',
+      );
+      expect(again.map((j) => j.round)).toEqual([1, 2]);
+
+      // Fetched after the event, still empty: BCP has nothing; leave it and call it complete.
+      await db.delete(fetchQueue).where(eq(fetchQueue.status, 'queued'));
+      await doneRounds(now);
+      await planner().planOnce();
+      expect((await jobs()).some((j) => j.kind === 'pairings-round' && j.status === 'queued')).toBe(
+        false,
+      );
+      expect(await synced()).toBeInstanceOf(Date);
+    });
+
+    it('marks an event complete whose rounds are all stored, without fetching them again', async () => {
+      for (const round of [1, 2]) {
+        await syncRoundPairings(
+          { db, source, logger: silentLogger },
+          { id: 'EVTTEAM0001', isTeamEvent: true },
+          round,
+        );
+      }
+      await doneRounds(new Date('2026-03-28T15:00:00Z'));
+      await planner().planOnce();
+      expect((await jobs()).some((j) => j.kind === 'pairings-round' && j.status === 'queued')).toBe(
+        false,
+      );
+      expect(await synced()).toBeInstanceOf(Date);
+    });
   });
 
   it('does nothing while switched off', async () => {

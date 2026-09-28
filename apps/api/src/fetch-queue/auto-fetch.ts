@@ -1,4 +1,4 @@
-import { eventPhase, isBigEvent, type EventSizeRule } from '@bcp/shared';
+import { eventFinishedBy, eventPhase, isBigEvent, type EventSizeRule } from '@bcp/shared';
 import { and, desc, gte, lte } from 'drizzle-orm';
 import { refreshLatest } from '../catalog';
 import type { Db } from '../db/client';
@@ -11,7 +11,10 @@ import {
   enqueueLists,
   eventPairingsJobs,
   failedTargets,
+  markPairingsSyncedIfComplete,
+  roundFetchIsFinal,
 } from '../repo/fetch-queue';
+import { storedPairingRounds } from '../repo/pairings';
 import { findPlayersMissingLists, tidyDetachments } from '../repo/lists';
 import type { SyncRunner } from '../sync/runner';
 
@@ -146,16 +149,26 @@ export class AutoFetchPlanner {
     }
     let queued = 0;
     if (event.pairingsSyncedAt === null && !failed.pairings) {
-      const rounds = Array.from({ length: event.roundCount }, (_, i) => i + 1).filter(
-        (round) => !failed.doneRounds.has(round),
-      );
-      queued += (
+      const now = this.#now();
+      const stored = await storedPairingRounds(db, event.id);
+      // A round fetched while the event ran may have come back empty (not played yet): fetch it
+      // again, once, after the event is over by its dates (so it can't repeat every pass).
+      const pastCutoff = eventFinishedBy(event) <= now;
+      const rounds = Array.from({ length: event.roundCount }, (_, i) => i + 1).filter((round) => {
+        if (!failed.doneRounds.has(round)) return true;
+        const fetchedAt = failed.doneRounds.get(round) ?? null;
+        return pastCutoff && !roundFetchIsFinal(event, fetchedAt, stored.has(round), now);
+      });
+      const added = (
         await enqueueEventPairings(db, event.id, {
           rounds,
           priority: AUTO_PRIORITY,
           origin: 'auto',
         })
       ).queuedRounds;
+      queued += added;
+      // Nothing left to fetch: every round is final, so the event's pairings are complete.
+      if (rounds.length === 0) await markPairingsSyncedIfComplete(db, event.id, now);
     }
     const missing = (await findPlayersMissingLists(db, event.id)).filter(
       (item) => !failed.players.has(item.playerId),

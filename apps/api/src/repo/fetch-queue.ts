@@ -1,3 +1,4 @@
+import { eventFinishedBy, eventPhase } from '@bcp/shared';
 import {
   and,
   count,
@@ -16,6 +17,7 @@ import {
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from '../db/client';
 import { events, fetchQueue } from '../db/schema';
+import { storedPairingRounds } from './pairings';
 
 export type FetchJobKind = (typeof fetchQueue.$inferSelect)['kind'];
 
@@ -316,6 +318,7 @@ function newestJobPerTarget(db: Db, where?: SQL) {
         status: fetchQueue.status,
         error: fetchQueue.error,
         errorCode: fetchQueue.errorCode,
+        finishedAt: fetchQueue.finishedAt,
       },
     )
     .from(fetchQueue)
@@ -405,25 +408,49 @@ export async function eventPairingsJobs(
 }
 
 /**
+ * Whether a round's fetch is final: it happened after the event finished by its dates, or the
+ * round has stored pairings and the event has finished. A round fetched while the event ran and
+ * stored nothing (not played yet) is not final: fetching it again may find pairings.
+ */
+export function roundFetchIsFinal(
+  event: { startDate: Date; endDate: Date | null; ended: boolean },
+  fetchedAt: Date | null,
+  stored: boolean,
+  now: Date,
+): boolean {
+  if (fetchedAt !== null && fetchedAt >= eventFinishedBy(event)) return true;
+  return stored && eventPhase(event, now) === 'finished';
+}
+
+/**
  * Sets `events.pairings_synced_at` when no pairings job of the event is open and every round
- * 1..roundCount has a newest pairings-round job that is done. Returns whether it did.
+ * 1..roundCount has a newest pairings-round job that is done and final (see roundFetchIsFinal).
+ * Returns whether it did.
  */
 export async function markPairingsSyncedIfComplete(
   db: Db,
   eventId: string,
-  roundCount: number,
-  at = new Date(),
+  now = new Date(),
 ): Promise<boolean> {
-  if (roundCount === 0) return false;
+  const [event] = await db.select().from(events).where(eq(events.id, eventId));
+  if (!event || event.roundCount === 0) return false;
   const { queued } = await eventPairingsJobs(db, eventId);
   if (queued > 0) return false;
-  const newest = await newestJobPerTarget(
-    db,
-    and(eq(fetchQueue.eventId, eventId), eq(fetchQueue.kind, 'pairings-round')),
+  const [newest, stored] = await Promise.all([
+    newestJobPerTarget(
+      db,
+      and(eq(fetchQueue.eventId, eventId), eq(fetchQueue.kind, 'pairings-round')),
+    ),
+    storedPairingRounds(db, eventId),
+  ]);
+  const done = new Map(
+    newest.filter((row) => row.status === 'done').map((row) => [row.round, row.finishedAt]),
   );
-  const done = new Set(newest.filter((row) => row.status === 'done').map((row) => row.round));
-  for (let round = 1; round <= roundCount; round += 1) if (!done.has(round)) return false;
-  await db.update(events).set({ pairingsSyncedAt: at }).where(eq(events.id, eventId));
+  for (let round = 1; round <= event.roundCount; round += 1) {
+    if (!done.has(round)) return false;
+    if (!roundFetchIsFinal(event, done.get(round) ?? null, stored.has(round), now)) return false;
+  }
+  await db.update(events).set({ pairingsSyncedAt: now }).where(eq(events.id, eventId));
   return true;
 }
 
@@ -503,7 +530,12 @@ export async function autoJobSummary(db: Db): Promise<{ jobs: number; events: nu
 export async function failedTargets(
   db: Db,
   eventId: string,
-): Promise<{ players: Set<string>; event: boolean; pairings: boolean; doneRounds: Set<number> }> {
+): Promise<{
+  players: Set<string>;
+  event: boolean;
+  pairings: boolean;
+  doneRounds: Map<number, Date | null>;
+}> {
   const rows = await newestJobPerTarget(db, eq(fetchQueue.eventId, eventId));
   const failed = rows.filter((row) => row.status === 'failed');
   return {
@@ -512,11 +544,11 @@ export async function failedTargets(
     ),
     event: failed.some((row) => row.kind === 'event'),
     pairings: failed.some((row) => row.kind === 'pairings-round'),
-    /** Rounds already fetched (their newest job is done): never fetched twice by the planner. */
-    doneRounds: new Set(
+    /** Rounds already fetched (their newest job is done), with when. */
+    doneRounds: new Map(
       rows.flatMap((row) =>
         row.kind === 'pairings-round' && row.status === 'done' && row.round !== null
-          ? [row.round]
+          ? [[row.round, row.finishedAt] as const]
           : [],
       ),
     ),

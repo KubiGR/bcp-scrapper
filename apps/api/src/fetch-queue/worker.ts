@@ -282,7 +282,7 @@ export class FetchQueueWorker {
     );
     await markJobDone(db, job.id);
     try {
-      await markPairingsSyncedIfComplete(db, event.id, event.roundCount);
+      await markPairingsSyncedIfComplete(db, event.id);
     } catch (error) {
       // The round is stored; the next round job (or a refresh) sets the synced time.
       logger.warn({ err: error, eventId: event.id }, 'Could not mark the event’s pairings synced');

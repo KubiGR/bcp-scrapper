@@ -3,7 +3,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
 import { events, fetchQueue } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
-import { sampleSource } from '../test/helpers';
+import { sampleSource, silentLogger } from '../test/helpers';
+import { syncEvent } from '../sync/jobs';
+import { syncRoundPairings } from '../sync/round-pairings';
 import { upsertEventDetail, upsertEventSummaries } from './events';
 import {
   autoJobSummary,
@@ -342,12 +344,64 @@ describe('pairings jobs', () => {
     await enqueueEventPairings(db, EVENT, { rounds: [1, 2], priority: 0 });
     const one = await claim();
     await markJobDone(db, one.id);
-    expect(await markPairingsSyncedIfComplete(db, EVENT, 2)).toBe(false);
+    expect(await markPairingsSyncedIfComplete(db, EVENT)).toBe(false);
     const two = await claim();
     await markJobDone(db, two.id);
-    expect(await markPairingsSyncedIfComplete(db, EVENT, 2)).toBe(true);
+    expect(await markPairingsSyncedIfComplete(db, EVENT)).toBe(true);
     const [event] = await db.select().from(events).where(eq(events.id, EVENT));
     expect(event?.pairingsSyncedAt).toBeInstanceOf(Date);
+  });
+
+  describe('rounds fetched while the event ran', () => {
+    const day = (iso: string) => new Date(`${iso}T12:00:00Z`);
+    beforeEach(async () => {
+      // Ran 26–27 Sep; counts as finished by date a day after its last day.
+      await db
+        .update(events)
+        .set({
+          startDate: day('2026-09-26'),
+          endDate: day('2026-09-27'),
+          ended: false,
+          roundCount: 2,
+        })
+        .where(eq(events.id, EVENT));
+      await enqueueEventPairings(db, EVENT, { rounds: [1, 2], priority: 0 });
+      await markJobDone(db, (await claim()).id);
+      await markJobDone(db, (await claim()).id);
+    });
+    const fetchedAt = (at: Date) =>
+      db.update(fetchQueue).set({ finishedAt: at }).where(eq(fetchQueue.kind, 'pairings-round'));
+
+    it('are not final while empty, until fetched again after the event finished', async () => {
+      await fetchedAt(day('2026-09-26'));
+      expect(await markPairingsSyncedIfComplete(db, EVENT, day('2026-10-01'))).toBe(false);
+      await fetchedAt(day('2026-09-29'));
+      expect(await markPairingsSyncedIfComplete(db, EVENT, day('2026-10-01'))).toBe(true);
+    });
+
+    it('are final once stored and the event has finished, but not while it runs', async () => {
+      await syncEvent({ db, source: sampleSource() }, EVENT);
+      // The sync rewrote the sample's own dates and ended flag.
+      await db
+        .update(events)
+        .set({
+          startDate: day('2026-09-26'),
+          endDate: day('2026-09-27'),
+          ended: false,
+          roundCount: 2,
+        })
+        .where(eq(events.id, EVENT));
+      for (const round of [1, 2]) {
+        await syncRoundPairings(
+          { db, source: sampleSource(), logger: silentLogger },
+          { id: EVENT, isTeamEvent: true },
+          round,
+        );
+      }
+      await fetchedAt(day('2026-09-26'));
+      expect(await markPairingsSyncedIfComplete(db, EVENT, day('2026-09-27'))).toBe(false);
+      expect(await markPairingsSyncedIfComplete(db, EVENT, day('2026-09-29'))).toBe(true);
+    });
   });
 
   it('counts a round whose newest job failed', async () => {
@@ -403,9 +457,9 @@ describe('pairings jobs', () => {
     await markJobDone(db, (await claim()).id);
     await markJobDone(db, (await claim()).id);
     await enqueueEventPairings(db, EVENT, { rounds: [1], priority: 0 }); // round 1 again
-    expect(await markPairingsSyncedIfComplete(db, EVENT, 2)).toBe(false);
+    expect(await markPairingsSyncedIfComplete(db, EVENT)).toBe(false);
     await markJobFailed(db, (await claim()).id, 'BCP down', 'BCP_UNAVAILABLE');
-    expect(await markPairingsSyncedIfComplete(db, EVENT, 2)).toBe(false);
+    expect(await markPairingsSyncedIfComplete(db, EVENT)).toBe(false);
     const [event] = await db.select().from(events).where(eq(events.id, EVENT));
     expect(event?.pairingsSyncedAt).toBeNull();
   });
