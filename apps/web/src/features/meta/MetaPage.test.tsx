@@ -20,7 +20,10 @@ describe('MetaPage', () => {
     const onSearchChange = vi.fn();
     renderWithRouter(<MetaPage search={{}} onSearchChange={onSearchChange} />);
     expect(await screen.findByText('Kult of Speed + Wreckas')).toBeInTheDocument();
+    expect(screen.getByText(/^Very popular ·/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Show Orks detachments' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('switch', { name: 'Group by popularity' }));
+    expect(onSearchChange).toHaveBeenCalledWith({ grouped: false });
     fireEvent.click(screen.getByRole('radio', { name: 'Armies' }));
     expect(onSearchChange).toHaveBeenCalledWith({ view: 'armies' });
   });

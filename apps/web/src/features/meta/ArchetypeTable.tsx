@@ -1,5 +1,6 @@
 import type { ArchetypeRow, MetaRow } from '@bcp/shared';
-import { MultiSelect, Stack, Table, Text, useMatches } from '@mantine/core';
+import { Group, MultiSelect, Stack, Switch, Table, Text, useMatches } from '@mantine/core';
+import { Fragment } from 'react';
 import { plural } from '../../lib/format';
 import { SortableTh, type SortDir } from '../../lib/table-sort';
 import { factionKey, factionName, Figures, type PlayersFilter } from './FactionTable';
@@ -13,6 +14,11 @@ interface Archetype extends ArchetypeRow {
 
 interface ArchetypeTableProps {
   rows: MetaRow[];
+  /** All counted players, for the groups' player counts. */
+  totalPlayers: number;
+  /** Group by popularity (share of players), sorting within each group. */
+  grouped: boolean;
+  onGroupedChange: (grouped: boolean) => void;
   minPlayers: number;
   /** `faction` sorts by archetype name (faction, then detachments). */
   sort: MetaSort;
@@ -25,6 +31,34 @@ interface ArchetypeTableProps {
   onOpenPlayers: (filter: PlayersFilter) => void;
 }
 
+/**
+ * Popularity groups by share of all players, so a high win rate from a handful of players
+ * doesn't outrank a solid one from hundreds. Shares, not counts, so they fit any date range.
+ */
+const BANDS = [
+  { name: 'Very popular', range: '2%+ of players', min: 0.02 },
+  { name: 'Popular', range: '1–2%', min: 0.01 },
+  { name: 'Played', range: '0.5–1%', min: 0.005 },
+  { name: 'Rare', range: 'under 0.5%', min: 0 },
+] as const;
+
+/** The fewest players with at least `share` of `total` (rounding error aside). */
+const playersFor = (share: number, total: number) => Math.ceil(share * total - 1e-9);
+
+function bandTitle(index: number, total: number): string {
+  const band = BANDS[index];
+  if (band === undefined) return '';
+  const low = playersFor(band.min, total);
+  const above = BANDS[index - 1];
+  const players =
+    index === BANDS.length - 1
+      ? `under ${String(playersFor(BANDS[index - 1]?.min ?? 0, total))}`
+      : above === undefined
+        ? `${String(low)}+`
+        : `${String(low)}–${String(playersFor(above.min, total) - 1)}`;
+  return `${band.name} · ${band.range} (${players})`;
+}
+
 const nameOf = (archetype: Archetype) =>
   `${factionName(archetype.faction)} · ${archetype.detachments.join(' + ')}`;
 
@@ -35,6 +69,9 @@ const nameOf = (archetype: Archetype) =>
  */
 export function ArchetypeTable({
   rows,
+  totalPlayers,
+  grouped,
+  onGroupedChange,
   minPlayers,
   sort,
   dir,
@@ -72,6 +109,15 @@ export function ArchetypeTable({
       nameOf(a).localeCompare(nameOf(b)),
   );
 
+  const groups = grouped
+    ? BANDS.map((band, index) => ({
+        title: bandTitle(index, totalPlayers),
+        archetypes: sorted.filter(
+          (a) => a.share >= band.min && a.share < (BANDS[index - 1]?.min ?? Infinity),
+        ),
+      })).filter((group) => group.archetypes.length > 0)
+    : [{ title: null, archetypes: sorted }];
+
   // First click: numbers high to low, names A→Z; second flips; third goes back to the default.
   const onSort = (key: MetaSort) => {
     const first: SortDir = key === 'faction' ? 'asc' : 'desc';
@@ -83,19 +129,28 @@ export function ArchetypeTable({
 
   return (
     <Stack gap="sm">
-      <MultiSelect
-        aria-label="Factions"
-        placeholder={factions.length === 0 ? 'All factions' : undefined}
-        data={rows.map((row) => ({
-          value: factionKey(row.faction),
-          label: factionName(row.faction),
-        }))}
-        value={factions}
-        onChange={onFactionsChange}
-        searchable
-        clearable
-        w={{ base: '100%', xs: 320 }}
-      />
+      <Group gap="md" align="center" wrap="wrap">
+        <MultiSelect
+          aria-label="Factions"
+          placeholder={factions.length === 0 ? 'All factions' : undefined}
+          data={rows.map((row) => ({
+            value: factionKey(row.faction),
+            label: factionName(row.faction),
+          }))}
+          value={factions}
+          onChange={onFactionsChange}
+          searchable
+          clearable
+          w={{ base: '100%', xs: 320 }}
+        />
+        <Switch
+          label="Group by popularity"
+          checked={grouped}
+          onChange={(event) => {
+            onGroupedChange(event.currentTarget.checked);
+          }}
+        />
+      </Group>
       <Table.ScrollContainer minWidth={tableMinWidth}>
         <Table verticalSpacing="xs">
           <Table.Thead>
@@ -118,33 +173,46 @@ export function ArchetypeTable({
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {sorted.map((archetype) => {
-              const small = dimmed(archetype);
-              return (
-                <Table.Tr
-                  key={nameOf(archetype)}
-                  data-dimmed={small}
-                  style={{ opacity: small ? 0.55 : 1 }}
-                >
-                  <Table.Td>
-                    <Text size="sm">{archetype.detachments.join(' + ')}</Text>
-                    <Text size="xs" c="dimmed">
-                      {factionName(archetype.faction)}
-                    </Text>
-                  </Table.Td>
-                  <Figures
-                    row={archetype}
-                    label={nameOf(archetype)}
-                    onOpen={() => {
-                      onOpenPlayers({
-                        faction: archetype.faction,
-                        detachments: archetype.detachments,
-                      });
-                    }}
-                  />
-                </Table.Tr>
-              );
-            })}
+            {groups.map((group) => (
+              <Fragment key={group.title ?? 'all'}>
+                {group.title !== null && (
+                  <Table.Tr>
+                    <Table.Td colSpan={5} pt="md">
+                      <Text size="xs" fw={700} tt="uppercase" c="dimmed">
+                        {group.title}
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                )}
+                {group.archetypes.map((archetype) => {
+                  const small = dimmed(archetype);
+                  return (
+                    <Table.Tr
+                      key={nameOf(archetype)}
+                      data-dimmed={small}
+                      style={{ opacity: small ? 0.55 : 1 }}
+                    >
+                      <Table.Td>
+                        <Text size="sm">{archetype.detachments.join(' + ')}</Text>
+                        <Text size="xs" c="dimmed">
+                          {factionName(archetype.faction)}
+                        </Text>
+                      </Table.Td>
+                      <Figures
+                        row={archetype}
+                        label={nameOf(archetype)}
+                        onOpen={() => {
+                          onOpenPlayers({
+                            faction: archetype.faction,
+                            detachments: archetype.detachments,
+                          });
+                        }}
+                      />
+                    </Table.Tr>
+                  );
+                })}
+              </Fragment>
+            ))}
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>

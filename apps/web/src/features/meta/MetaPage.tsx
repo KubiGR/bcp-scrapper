@@ -134,6 +134,11 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
                 {view === 'archetypes' ? (
                   <ArchetypeTable
                     rows={meta.data.factions}
+                    totalPlayers={meta.data.totals.players}
+                    grouped={search.grouped ?? true}
+                    onGroupedChange={(grouped) => {
+                      onSearchChange({ ...search, grouped: grouped ? undefined : false });
+                    }}
                     minPlayers={minPlayers}
                     sort={sort}
                     dir={dir}
