@@ -6,7 +6,7 @@ const optionalText = z.string().trim().min(1).max(100).optional().catch(undefine
 
 const PlayersSearchSchema = z.object({ q: optionalText, faction: optionalText });
 
-export const Route = createFileRoute('/players')({
+export const Route = createFileRoute('/players/')({
   validateSearch: PlayersSearchSchema,
   component: PlayersRoute,
 });
