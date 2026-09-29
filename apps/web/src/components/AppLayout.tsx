@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { to: '/', label: 'Tournaments' },
   { to: '/analysis/matchups', label: 'Matchups' },
   { to: '/analysis/factions', label: 'Factions' },
+  { to: '/players', label: 'Players' },
   { to: '/analysis/meta', label: 'Meta' },
   { to: '/analysis/top-lists', label: 'Top lists' },
   { to: '/queue', label: 'Queue' },

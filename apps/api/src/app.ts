@@ -18,6 +18,7 @@ import { fetchQueueRoutes } from './routes/fetch-queue';
 import { matchupsRoutes } from './routes/matchups';
 import { metaRoutes } from './routes/meta';
 import { playersSearchRoutes } from './routes/players-search';
+import { rankingsRoutes } from './routes/rankings';
 import { syncRoutes } from './routes/sync';
 import { userRoutes } from './routes/users';
 import type { SyncRunner } from './sync/runner';
@@ -111,6 +112,7 @@ export function createApp(deps: AppDeps) {
   app.route('/api', analysisRoutes(deps));
   app.route('/api', matchupsRoutes({ ...deps, now }));
   app.route('/api', playersSearchRoutes({ ...deps, now }));
+  app.route('/api', rankingsRoutes({ ...deps, now }));
   app.route('/api', metaRoutes({ ...deps, now }));
   app.route('/api', detachmentLinkRoutes({ db: deps.db, authRequired: auth.required }));
   app.route(

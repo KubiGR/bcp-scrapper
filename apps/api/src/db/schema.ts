@@ -88,6 +88,8 @@ export const players = pgTable(
     /** No FK: BCP may reference a team entry we never received. */
     teamId: text('team_id'),
     name: text('name').notNull(),
+    /** BCP's account id: the same person across events; null when BCP hides the user. */
+    bcpUserId: text('bcp_user_id'),
     faction: text('faction'),
     parentFaction: text('parent_faction'),
     placing: integer('placing'),
@@ -104,6 +106,7 @@ export const players = pgTable(
     index('players_event_idx').on(t.eventId),
     index('players_event_faction_idx').on(t.eventId, t.faction),
     index('players_team_idx').on(t.teamId),
+    index('players_user_idx').on(t.bcpUserId),
   ],
 );
 

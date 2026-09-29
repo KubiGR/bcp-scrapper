@@ -109,6 +109,7 @@ export async function searchTopLists(
         id: players.id,
         eventId: players.eventId,
         name: players.name,
+        bcpUserId: players.bcpUserId,
         teamId: players.teamId,
         teamName: teams.name,
         teamPlacing: teams.placing,
@@ -182,6 +183,7 @@ export async function searchTopLists(
     ({ row, faction, factionGuessed, disposition, detachments }) => ({
       bcpId: row.id,
       name: row.name,
+      bcpUserId: row.bcpUserId,
       teamName: row.teamName,
       teamId: row.teamId,
       teamPlacing: row.teamPlacing,

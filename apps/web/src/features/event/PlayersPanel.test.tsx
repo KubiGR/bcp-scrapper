@@ -28,6 +28,20 @@ const teamToggle = (team: string) => ({
 });
 
 describe('PlayersPanel', () => {
+  it('marks a top-ranked player with their rank', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [aPlayer({ bcpId: 'P1', name: 'Zed Zulu', bcpUserId: 'US-ZED' })],
+      },
+      'GET /api/rankings/top': { ranks: { 'US-ZED': 3 } },
+    });
+    renderWithRouter(
+      <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
+    );
+    const badge = await screen.findByRole('link', { name: 'Ranked #3' });
+    expect(badge).toHaveAttribute('href', '/players/US-ZED');
+  });
+
   it('opens a player list from the keyboard via a focusable player-name button', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': { items: [aPlayer()] },

@@ -155,6 +155,8 @@ export type ListStatus = z.infer<typeof ListStatusSchema>;
 export const EventPlayerSchema = z.object({
   bcpId: z.string().min(1),
   name: z.string(),
+  /** BCP's account id, for the player's ranking; null when BCP hides the user. */
+  bcpUserId: z.string().nullable(),
   teamName: z.string().nullable(),
   teamId: z.string().nullable(),
   /** The team's BCP placing, for ordering teams. */
@@ -458,3 +460,90 @@ export const QueueDetailsSchema = z.object({
   ),
 });
 export type QueueDetails = z.infer<typeof QueueDetailsSchema>;
+
+/** GET /api/rankings: a page of the ranking, filtered by name and faction. */
+export const RankingsQuerySchema = z.object({
+  search: z.string().trim().max(100).optional(),
+  faction: z.string().trim().min(1).max(100).optional(),
+  offset: z.coerce.number().int().min(0).default(0),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});
+export type RankingsQuery = z.infer<typeof RankingsQuerySchema>;
+
+const RankedResultSchema = z.object({
+  eventId: z.string(),
+  eventName: z.string(),
+  eventStart: z.iso.date(),
+  isTeamEvent: z.boolean(),
+  teamName: z.string().nullable(),
+  placing: z.number().int(),
+  field: z.number().int(),
+  score: z.number(),
+  counts: z.boolean(),
+});
+
+export const RankedPlayerSchema = z.object({
+  rank: z.number().int().positive(),
+  userId: z.string(),
+  name: z.string(),
+  points: z.number(),
+  /** Results making the points (at most 5). */
+  counted: z.number().int(),
+  /** All counted results of the 12 months. */
+  results: z.number().int(),
+  best: RankedResultSchema,
+  /** Most played first, at most 2. */
+  factions: z.array(z.string()),
+});
+export type RankedPlayerRow = z.infer<typeof RankedPlayerSchema>;
+
+export const RankingsResponseSchema = z.object({
+  players: z.array(RankedPlayerSchema),
+  /** Players matching the filters. */
+  total: z.number().int().nonnegative(),
+  /** All ranked players. */
+  ranked: z.number().int().nonnegative(),
+  /** Factions of ranked players (A→Z), for the filter. */
+  factionOptions: z.array(z.string()),
+});
+export type RankingsResponse = z.infer<typeof RankingsResponseSchema>;
+
+/** Top-ranked players' ranks by account id, for rank badges. */
+export const TopRanksSchema = z.object({ ranks: z.record(z.string(), z.number().int()) });
+export type TopRanks = z.infer<typeof TopRanksSchema>;
+/** How many top players get a rank badge. */
+export const TOP_RANKS = 100;
+
+export const PlayerHistoryEntrySchema = z.object({
+  /** The player's entry in that event (for its list). */
+  playerId: z.string(),
+  eventId: z.string(),
+  eventName: z.string(),
+  eventStart: z.iso.date(),
+  isTeamEvent: z.boolean(),
+  teamName: z.string().nullable(),
+  faction: z.string().nullable(),
+  detachments: z.array(z.string()),
+  /** Their placing, or their team's at a team event. */
+  placing: z.number().int().nullable(),
+  /** Placed entries (teams at a team event). */
+  field: z.number().int().nullable(),
+  hasList: z.boolean(),
+  /** Null when the event doesn't count (small, running, older than 12 months, no placing). */
+  score: z.number().nullable(),
+  counts: z.boolean(),
+});
+export type PlayerHistoryEntry = z.infer<typeof PlayerHistoryEntrySchema>;
+
+export const PlayerRankingSchema = z.object({
+  userId: z.string(),
+  name: z.string(),
+  rank: z.number().int().positive().nullable(),
+  ranked: z.number().int().nonnegative(),
+  points: z.number(),
+  /** When the oldest counted result drops out of the 12 months (YYYY-MM-DD). */
+  dropsOn: z.iso.date().nullable(),
+  /** Newest first. */
+  history: z.array(PlayerHistoryEntrySchema),
+});
+export type PlayerRanking = z.infer<typeof PlayerRankingSchema>;

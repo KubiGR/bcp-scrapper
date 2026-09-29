@@ -78,6 +78,7 @@ export function aPlayer(overrides: Partial<EventPlayer> = {}): EventPlayer {
   return {
     bcpId: 'PL-ADA',
     name: 'Ada Archer',
+    bcpUserId: null,
     teamName: 'Alpha Squad',
     teamId: 'TM-ALPHA',
     factionGuessed: false,

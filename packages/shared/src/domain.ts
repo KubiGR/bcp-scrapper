@@ -42,6 +42,8 @@ export const PlayerSchema = z.object({
   eventBcpId: z.string().min(1),
   teamBcpId: z.string().nullable(),
   name: z.string(),
+  /** BCP's account id: the same person across events; null when BCP hides the user. */
+  bcpUserId: z.string().nullable(),
   faction: z.string().nullable(),
   parentFaction: z.string().nullable(),
   placing: z.number().int().nullable(),

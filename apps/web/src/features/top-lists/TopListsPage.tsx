@@ -31,6 +31,7 @@ import { formatRecord, lossLabel } from '../event/players-filter';
 import { FOUND_PLAYER_SORT, placingLine } from './player-sort';
 import classes from './TopListsPage.module.css';
 import { topListsQuery, topListsWindow, type TopListsSearch } from './top-lists-queries';
+import { RankBadge } from '../rankings/RankBadge';
 
 const LOSS_CHOICES = [0, 1, 2, 3, 4, 5];
 
@@ -191,7 +192,10 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                           }}
                         >
                           <Table.Td>
-                            <Text size="sm">{player.name}</Text>
+                            <Text size="sm">
+                              {player.name}
+                              <RankBadge userId={player.bcpUserId} />
+                            </Text>
                             {placingLine(player) !== null && (
                               <Text size="xs" c="dimmed" className="numeric">
                                 {placingLine(player)}

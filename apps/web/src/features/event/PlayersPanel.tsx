@@ -43,6 +43,7 @@ import {
   missingListCountFor,
 } from './players-filter';
 import { useQueueLists } from './use-queue-lists';
+import { RankBadge } from '../rankings/RankBadge';
 
 function emptyText(loadingFromBcp: boolean, playerCount: number): string {
   if (loadingFromBcp) return 'Loading players from BCP…';
@@ -102,6 +103,7 @@ function playerColumns({ showTeam, onOpen }: PlayerColumnsOptions): DataTableCol
             >
               {p.name}
             </UnstyledButton>
+            <RankBadge userId={p.bcpUserId} />
             {p.dropped && (
               <Badge size="xs" color="gray" variant="outline">
                 Dropped
