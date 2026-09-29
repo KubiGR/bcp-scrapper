@@ -11,14 +11,13 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { ordinal, plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
-import { rankingsQuery } from './rankings-queries';
+import { rankingsPagesQuery } from './rankings-queries';
 
 /** The Players page's URL search. */
 export interface PlayersSearch {
@@ -30,8 +29,6 @@ interface PlayersPageProps {
   search: PlayersSearch;
   onSearchChange: (next: PlayersSearch) => void;
 }
-
-const PAGE = 100;
 
 type Column = 'rank' | 'name' | 'points' | 'results';
 const VALUES: Record<Column, SortValue<RankedPlayerRow>> = {
@@ -105,12 +102,15 @@ function PlayersTable({ rows }: { rows: RankedPlayerRow[] }) {
 
 /** Players ranked by tournament points: their 5 best results of the last 12 months. */
 export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
-  // "Show more" starts over whenever the filters change.
-  const filters = `${search.q ?? ''}|${search.faction ?? ''}`;
-  const [paging, setPaging] = useState({ filters, limit: PAGE });
-  const limit = paging.filters === filters ? paging.limit : PAGE;
-  const rankings = useQuery(rankingsQuery({ search: search.q, faction: search.faction, limit }));
-  const data = rankings.data;
+  // Each "Show more" loads the next page; new filters start from the first again.
+  const rankings = useInfiniteQuery(
+    rankingsPagesQuery({ search: search.q?.trim(), faction: search.faction }),
+  );
+  const first = rankings.data?.pages[0];
+  const data =
+    first === undefined
+      ? undefined
+      : { ...first, players: rankings.data?.pages.flatMap((page) => page.players) ?? [] };
 
   return (
     <Stack gap="lg">
@@ -123,6 +123,7 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
         <TextInput
           label="Search players"
           placeholder="Name"
+          maxLength={100}
           value={search.q ?? ''}
           onChange={(e) => {
             onSearchChange({ ...search, q: e.currentTarget.value || undefined });
@@ -162,13 +163,13 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
               ) : (
                 <Stack gap="sm">
                   <PlayersTable rows={data.players} />
-                  {data.players.length < data.total && (
+                  {rankings.hasNextPage && (
                     <Group justify="center">
                       <Button
                         variant="light"
-                        loading={rankings.isFetching}
+                        loading={rankings.isFetchingNextPage}
                         onClick={() => {
-                          setPaging({ filters, limit: limit + PAGE });
+                          void rankings.fetchNextPage();
                         }}
                       >
                         Show more

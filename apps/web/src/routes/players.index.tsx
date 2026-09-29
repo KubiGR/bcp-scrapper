@@ -4,7 +4,11 @@ import { PlayersPage, type PlayersSearch } from '../features/rankings/PlayersPag
 
 const optionalText = z.string().trim().min(1).max(100).optional().catch(undefined);
 
-const PlayersSearchSchema = z.object({ q: optionalText, faction: optionalText });
+const PlayersSearchSchema = z.object({
+  // As typed, spaces included: trimming here would eat the space between first and last name.
+  q: z.string().min(1).max(100).optional().catch(undefined),
+  faction: optionalText,
+});
 
 export const Route = createFileRoute('/players/')({
   validateSearch: PlayersSearchSchema,

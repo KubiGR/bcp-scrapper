@@ -77,15 +77,27 @@ describe('PlayersPage', () => {
     expect(onSearchChange).toHaveBeenCalledWith({ q: 'ada' });
   });
 
-  it('shows more players on request', async () => {
+  it('shows the next 100 players on request, past 500 too, keeping the ones shown', async () => {
     const fetchMock = stubFetchRoutes({
-      'GET /api/rankings': response([player()], { total: 150 }),
+      'GET /api/rankings': (url: string) =>
+        Response.json(
+          url.includes('offset=500')
+            ? response([player({ rank: 501, userId: 'US-NEW', name: 'Nia New' })], { total: 900 })
+            : response([player()], { total: 900 }),
+        ),
     });
     renderWithRouter(<PlayersPage search={{}} onSearchChange={vi.fn()} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Show more' }));
-    await waitFor(() => {
-      expect(JSON.stringify(fetchMock.mock.calls)).toContain('limit=200');
-    });
+    await screen.findByRole('table', { name: 'Players' });
+    // Each click asks for the next page only, so it never runs into the API's page size cap.
+    for (let page = 1; page <= 5; page += 1) {
+      fireEvent.click(await screen.findByRole('button', { name: 'Show more' }));
+      await waitFor(() => {
+        expect(JSON.stringify(fetchMock.mock.calls)).toContain(`offset=${String(page * 100)}`);
+      });
+    }
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toContain('limit=600');
+    expect(await screen.findByRole('link', { name: 'Nia New' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Ada Archer' }).length).toBeGreaterThan(0);
   });
 
   it('says when nobody is ranked yet', async () => {
