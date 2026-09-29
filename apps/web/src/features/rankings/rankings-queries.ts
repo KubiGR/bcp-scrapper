@@ -5,7 +5,7 @@ import {
   type RankingsQuery,
 } from '@bcp/shared';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
-import { apiGet } from '../../api/client';
+import { ApiError, apiGet } from '../../api/client';
 
 export const topRanksQuery = queryOptions({
   queryKey: ['rankings', 'top'],
@@ -31,4 +31,6 @@ export const playerRankingQuery = (userId: string) =>
   queryOptions({
     queryKey: ['rankings', 'player', userId],
     queryFn: () => apiGet(`/api/rankings/${encodeURIComponent(userId)}`, PlayerRankingSchema),
+    // An unknown account stays unknown.
+    retry: (count, error) => !(error instanceof ApiError && error.status === 404) && count < 3,
   });
