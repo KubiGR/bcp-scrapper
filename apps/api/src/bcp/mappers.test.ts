@@ -195,7 +195,7 @@ describe('mapPlayer', () => {
       RawPlayer,
       {
         id: 'P1',
-        user: { firstName: 'Ada', lastName: 'Archer' },
+        user: { id: 'US-ADA', firstName: 'Ada', lastName: 'Archer' },
         teamPlayerId: 'T1',
         faction: { name: 'Blood Angels', parentFaction: { name: 'Space Marines' } },
         placing: 3,
@@ -215,6 +215,7 @@ describe('mapPlayer', () => {
       eventBcpId: 'E1',
       teamBcpId: 'T1',
       name: 'Ada Archer',
+      bcpUserId: 'US-ADA',
       faction: 'Blood Angels',
       parentFaction: 'Space Marines',
       placing: 3,
@@ -225,6 +226,11 @@ describe('mapPlayer', () => {
       listBcpId: 'L1',
       disposition: null,
     });
+  });
+
+  it('has no account id when BCP hides the user', () => {
+    const raw = parseBcp(RawPlayer, { id: 'P2', user: null }, 'test');
+    expect(mapPlayer(raw, 'E1').bcpUserId).toBeNull();
   });
 
   it('falls back to "Unknown player" when BCP hides the user', () => {

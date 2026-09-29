@@ -85,6 +85,7 @@ export function mapPlayer(raw: RawPlayer, eventId: string): Player {
     eventBcpId: eventId,
     teamBcpId: raw.teamPlayerId ?? null,
     name: name || 'Unknown player',
+    bcpUserId: raw.user?.id ?? null,
     faction: raw.faction?.name ?? null,
     parentFaction: raw.faction?.parentFaction?.name ?? null,
     placing: raw.placing ?? null,

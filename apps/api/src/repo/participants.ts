@@ -41,6 +41,7 @@ export async function upsertPlayers(db: Db, list: Fetched<Player>[]): Promise<vo
         eventId: player.eventBcpId,
         teamId: player.teamBcpId,
         name: player.name,
+        bcpUserId: player.bcpUserId,
         faction: player.faction,
         parentFaction: player.parentFaction,
         placing: player.placing,

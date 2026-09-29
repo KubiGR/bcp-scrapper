@@ -74,7 +74,13 @@ export type RawGameSummary = z.output<typeof RawGameSummary>;
 
 export const RawPlayer = z.object({
   id: z.string(),
-  user: z.object({ firstName: z.string().nullish(), lastName: z.string().nullish() }).nullish(),
+  user: z
+    .object({
+      id: z.string().nullish(),
+      firstName: z.string().nullish(),
+      lastName: z.string().nullish(),
+    })
+    .nullish(),
   teamPlayerId: z.string().nullish(),
   /** Names can be missing: BCP sometimes sends just `{ id }` (the faction is then unknown). */
   faction: z
