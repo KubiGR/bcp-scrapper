@@ -65,7 +65,7 @@ function ChangeText({ change }: { change: number | null }) {
 }
 
 /** A win rate coloured by the win-rate tone: blue above 55 %, orange below 45 %. */
-function WinRateText({ rate }: { rate: number }) {
+export function WinRateText({ rate }: { rate: number }) {
   const tone = winRateTone(rate);
   return (
     <Text size="sm" className="numeric" c={TONE_COLOR[tone]} data-tone={tone} component="span">

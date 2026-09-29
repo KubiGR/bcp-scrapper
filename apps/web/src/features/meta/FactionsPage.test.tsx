@@ -4,37 +4,46 @@ import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { FactionsPage } from './FactionsPage';
 import { metaResponse, necrons, orks, tiny, unknown } from './meta-test-data';
 
-const bars = async () =>
-  within(await screen.findByRole('list', { name: 'Factions by share of players' })).getAllByRole(
-    'listitem',
-  );
-
-const at = (items: HTMLElement[], index: number) => {
-  const item = items[index];
-  if (item === undefined) throw new Error(`no bar ${String(index)}`);
-  return within(item);
+const rowsOf = async () =>
+  within(await screen.findByRole('table', { name: 'Factions' }))
+    .getAllByRole('row')
+    .slice(1);
+const nameOf = (row: HTMLElement) => row.querySelector('td')?.textContent;
+const cells = (row: HTMLElement | undefined) => {
+  if (row === undefined) throw new Error('no row');
+  return within(row);
 };
 
 describe('FactionsPage', () => {
-  it('shows each faction’s share of players, biggest first, Unknown faction last', async () => {
+  it('shows share, players, win rate and reliable win rate, by reliable win rate, Unknown last', async () => {
     stubFetchRoutes({
-      'GET /api/meta': metaResponse({ factions: [unknown, tiny, necrons, orks] }),
+      'GET /api/meta': metaResponse({ factions: [unknown, orks, necrons, tiny] }),
     });
     renderWithRouter(<FactionsPage search={{}} onSearchChange={vi.fn()} />);
-    const items = await bars();
-    expect(items.map((item) => item.querySelector('a, [data-name]')?.textContent)).toEqual([
+    const rows = await rowsOf();
+    // Reliable: Grey Knights 82%, Orks 50%, Necrons 32%.
+    expect(rows.map(nameOf)).toEqual(['Grey Knights', 'Orks', 'Necrons', 'Unknown faction']);
+    const ork = cells(rows[1]);
+    expect(ork.getByText('20%')).toBeInTheDocument();
+    expect(ork.getByText('20')).toBeInTheDocument();
+    expect(ork.getByText('58%')).toHaveAttribute('data-tone', 'good');
+    expect(ork.getByText('50%')).toHaveAttribute('data-tone', 'even');
+    // Small shares keep a decimal.
+    expect(cells(rows[0]).getByText('2.0%')).toBeInTheDocument();
+    expect(screen.getByText('100 players · 3 events')).toBeInTheDocument();
+  });
+
+  it('sorts by another column on click, Unknown faction still last', async () => {
+    stubFetchRoutes({ 'GET /api/meta': metaResponse() });
+    renderWithRouter(<FactionsPage search={{}} onSearchChange={vi.fn()} />);
+    await rowsOf();
+    fireEvent.click(screen.getByRole('button', { name: 'Players' }));
+    expect((await rowsOf()).map(nameOf)).toEqual([
       'Orks',
       'Necrons',
       'Grey Knights',
       'Unknown faction',
     ]);
-    const first = at(items, 0);
-    expect(first.getByText('20%')).toBeInTheDocument();
-    expect(first.getByText('20 players')).toBeInTheDocument();
-    expect(first.getByText('58% WR')).toHaveAttribute('data-tone', 'good');
-    // Small shares keep a decimal.
-    expect(at(items, 2).getByText('2.0%')).toBeInTheDocument();
-    expect(screen.getByText('100 players · 3 events')).toBeInTheDocument();
   });
 
   it('opens a faction on the Meta page with the same range and event type', async () => {
@@ -62,7 +71,7 @@ describe('FactionsPage', () => {
     stubFetchRoutes({ 'GET /api/meta': metaResponse() });
     const onSearchChange = vi.fn();
     renderWithRouter(<FactionsPage search={{}} onSearchChange={onSearchChange} />);
-    await bars();
+    await rowsOf();
     fireEvent.click(screen.getByRole('radio', { name: 'Teams' }));
     expect(onSearchChange).toHaveBeenCalledWith({ type: 'teams' });
   });

@@ -1,23 +1,16 @@
 import type { MetaRow } from '@bcp/shared';
-import { Box, Group, SegmentedControl, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Box, Group, SegmentedControl, Skeleton, Stack, Table, Text, Title } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { plural } from '../../lib/format';
+import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { useDraftRange } from '../../lib/use-draft-range';
-import { factionName, TONE_COLOR } from './FactionTable';
-import classes from './FactionsPage.module.css';
+import { factionName, WinRateText } from './FactionTable';
 import { EVENT_TYPES } from './MetaPage';
-import {
-  metaQuery,
-  metaWindow,
-  percent,
-  sharePercent,
-  winRateTone,
-  type MetaSearch,
-} from './meta-queries';
+import { metaQuery, metaWindow, sharePercent, type MetaSearch } from './meta-queries';
 
 /** The Factions page's URL search: the Meta API's filters only. */
 export type FactionsSearch = Pick<MetaSearch, 'from' | 'to' | 'type'>;
@@ -27,70 +20,90 @@ interface FactionsPageProps {
   onSearchChange: (next: FactionsSearch) => void;
 }
 
-/** Biggest share first, the Unknown faction last. */
-const byShare = (a: MetaRow, b: MetaRow) =>
-  Number(a.faction === null) - Number(b.faction === null) || b.players - a.players;
+type Column = 'faction' | 'players' | 'winRate' | 'reliable';
 
-function FactionBar({
-  row,
-  widest,
-  search,
-}: {
-  row: MetaRow;
-  widest: number;
-  search: FactionsSearch;
-}) {
-  const tone = winRateTone(row.winRate);
-  const name = factionName(row.faction);
+const VALUES: Record<Column, SortValue<MetaRow>> = {
+  faction: (row) => factionName(row.faction),
+  players: (row) => row.players,
+  winRate: (row) => row.winRate,
+  reliable: (row) => row.reliableWinRate,
+};
+
+function FactionsTable({ rows, search }: { rows: MetaRow[]; search: FactionsSearch }) {
+  // Win rate allowing for sample size first: a big solid faction outranks a small lucky one.
+  const { sorted, sort, toggle } = useTableSort<MetaRow, Column>(rows, VALUES, {
+    key: 'reliable',
+    dir: 'desc',
+  });
+  // The Unknown faction last, whichever way the table sorts.
+  const ordered = [
+    ...sorted.filter((row) => row.faction !== null),
+    ...sorted.filter((row) => row.faction === null),
+  ];
   return (
-    <li className={classes.item}>
-      <Text size="sm" className={classes.name}>
-        {row.faction === null ? (
-          <Text span inherit c="dimmed" data-name>
-            {name}
-          </Text>
-        ) : (
-          <AnchorLink to="/analysis/meta" search={{ ...search, factions: row.faction }}>
-            {name}
-          </AnchorLink>
-        )}
-      </Text>
-      <div className={classes.track} aria-hidden>
-        <div
-          className={classes.bar}
-          data-unknown={row.faction === null || undefined}
-          style={{ width: `${String(widest === 0 ? 0 : (row.share / widest) * 100)}%` }}
-        />
-      </div>
-      <Text size="sm" className={`${classes.figures} numeric`}>
-        <Text span inherit fw={600}>
-          {sharePercent(row.share)}
-        </Text>
-        <Text span inherit c="dimmed">
-          {' · '}
-        </Text>
-        <Text span inherit c="dimmed">
-          {plural(row.players, 'player')}
-        </Text>
-        <Text span inherit c="dimmed">
-          {' · '}
-        </Text>
-        <Text span inherit c={TONE_COLOR[tone]} data-tone={tone}>
-          {percent(row.winRate)} WR
-        </Text>
-      </Text>
-    </li>
+    <Table.ScrollContainer minWidth={480}>
+      <Table aria-label="Factions" striped highlightOnHover>
+        <Table.Thead>
+          <Table.Tr>
+            <SortableTh column="faction" sort={sort} onSort={toggle}>
+              Faction
+            </SortableTh>
+            <Table.Th ta="right">Share</Table.Th>
+            <SortableTh column="players" sort={sort} onSort={toggle} ta="right">
+              Players
+            </SortableTh>
+            <SortableTh column="winRate" sort={sort} onSort={toggle} ta="right">
+              Win rate
+            </SortableTh>
+            <SortableTh column="reliable" sort={sort} onSort={toggle} ta="right">
+              Reliable
+            </SortableTh>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {ordered.map((row) => (
+            <Table.Tr key={row.faction ?? '(unknown)'}>
+              <Table.Td>
+                {row.faction === null ? (
+                  <Text size="sm" c="dimmed">
+                    {factionName(null)}
+                  </Text>
+                ) : (
+                  <AnchorLink to="/analysis/meta" search={{ ...search, factions: row.faction }}>
+                    {row.faction}
+                  </AnchorLink>
+                )}
+              </Table.Td>
+              <Table.Td ta="right" className="numeric">
+                {sharePercent(row.share)}
+              </Table.Td>
+              <Table.Td ta="right" className="numeric">
+                {row.players}
+              </Table.Td>
+              <Table.Td ta="right">
+                <WinRateText rate={row.winRate} />
+              </Table.Td>
+              <Table.Td ta="right">
+                <WinRateText rate={row.reliableWinRate} />
+              </Table.Td>
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
+    </Table.ScrollContainer>
   );
 }
 
-/** Every faction's share of the players at big events, as bars; each opens its Meta archetypes. */
+/**
+ * Every faction's share of the players at big events and how it does, by reliable win rate; each
+ * opens its archetypes on Meta.
+ */
 export function FactionsPage({ search, onSearchChange }: FactionsPageProps) {
   const meta = useQuery(metaQuery(search));
   const dates = useDraftRange(metaWindow(search, new Date()), (range) => {
     onSearchChange({ ...search, from: range.from, to: range.to });
   });
-  const rows = [...(meta.data?.factions ?? [])].sort(byShare);
-  const widest = Math.max(0, ...rows.map((row) => row.share));
+  const rows = meta.data?.factions ?? [];
 
   return (
     <Stack gap="lg">
@@ -134,16 +147,7 @@ export function FactionsPage({ search, onSearchChange }: FactionsPageProps) {
             <Panel
               title={`${plural(meta.data.totals.players, 'player')} · ${plural(meta.data.eventsLoaded, 'event')}`}
             >
-              <ul className={classes.list} aria-label="Factions by share of players">
-                {rows.map((row) => (
-                  <FactionBar
-                    key={row.faction ?? '(unknown)'}
-                    row={row}
-                    widest={widest}
-                    search={search}
-                  />
-                ))}
-              </ul>
+              <FactionsTable rows={rows} search={search} />
             </Panel>
           </Box>
         ))}
