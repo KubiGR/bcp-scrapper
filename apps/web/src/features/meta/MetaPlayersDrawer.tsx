@@ -14,6 +14,7 @@ import { formatRecord } from '../event/players-filter';
 import { topListsQuery } from '../top-lists/top-lists-queries';
 import { UNKNOWN_DETACHMENT, type PlayersFilter } from './FactionTable';
 import type { MetaSearch } from './meta-queries';
+import { RankBadge } from '../rankings/RankBadge';
 
 interface MetaPlayersDrawerProps {
   filter: PlayersFilter | null;
@@ -108,7 +109,10 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
                   }}
                 >
                   <Table.Td>
-                    <Text size="sm">{player.name}</Text>
+                    <Text size="sm">
+                      {player.name}
+                      <RankBadge userId={player.bcpUserId} />
+                    </Text>
                     {placingLine(player) !== null && (
                       <Text size="xs" c="dimmed" className="numeric">
                         {placingLine(player)}

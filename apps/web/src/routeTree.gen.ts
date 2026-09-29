@@ -18,6 +18,7 @@ import { Route as AnalysisMatchupsRouteImport } from './routes/analysis.matchups
 import { Route as AnalysisMetaRouteImport } from './routes/analysis.meta'
 import { Route as AnalysisTopListsRouteImport } from './routes/analysis.top-lists'
 import { Route as EventsEventIdRouteImport } from './routes/events.$eventId'
+import { Route as PlayersUserIdRouteImport } from './routes/players.$userId'
 import { Route as EventsEventIdTeamsTeamIdRouteImport } from './routes/events.$eventId_.teams.$teamId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -65,6 +66,11 @@ const EventsEventIdRoute = EventsEventIdRouteImport.update({
   path: '/events/$eventId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlayersUserIdRoute = PlayersUserIdRouteImport.update({
+  id: '/players/$userId',
+  path: '/players/$userId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EventsEventIdTeamsTeamIdRoute =
   EventsEventIdTeamsTeamIdRouteImport.update({
     id: '/events/$eventId_/teams/$teamId',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/analysis/meta': typeof AnalysisMetaRoute
   '/analysis/top-lists': typeof AnalysisTopListsRoute
   '/events/$eventId': typeof EventsEventIdRoute
+  '/players/$userId': typeof PlayersUserIdRoute
   '/events/$eventId/teams/$teamId': typeof EventsEventIdTeamsTeamIdRoute
 }
 export interface FileRoutesByTo {
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/analysis/meta': typeof AnalysisMetaRoute
   '/analysis/top-lists': typeof AnalysisTopListsRoute
   '/events/$eventId': typeof EventsEventIdRoute
+  '/players/$userId': typeof PlayersUserIdRoute
   '/events/$eventId/teams/$teamId': typeof EventsEventIdTeamsTeamIdRoute
 }
 export interface FileRoutesById {
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/analysis/meta': typeof AnalysisMetaRoute
   '/analysis/top-lists': typeof AnalysisTopListsRoute
   '/events/$eventId': typeof EventsEventIdRoute
+  '/players/$userId': typeof PlayersUserIdRoute
   '/events/$eventId_/teams/$teamId': typeof EventsEventIdTeamsTeamIdRoute
 }
 export interface FileRouteTypes {
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/analysis/meta'
     | '/analysis/top-lists'
     | '/events/$eventId'
+    | '/players/$userId'
     | '/events/$eventId/teams/$teamId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/analysis/meta'
     | '/analysis/top-lists'
     | '/events/$eventId'
+    | '/players/$userId'
     | '/events/$eventId/teams/$teamId'
   id:
     | '__root__'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/analysis/meta'
     | '/analysis/top-lists'
     | '/events/$eventId'
+    | '/players/$userId'
     | '/events/$eventId_/teams/$teamId'
   fileRoutesById: FileRoutesById
 }
@@ -158,6 +170,7 @@ export interface RootRouteChildren {
   AnalysisMetaRoute: typeof AnalysisMetaRoute
   AnalysisTopListsRoute: typeof AnalysisTopListsRoute
   EventsEventIdRoute: typeof EventsEventIdRoute
+  PlayersUserIdRoute: typeof PlayersUserIdRoute
   EventsEventIdTeamsTeamIdRoute: typeof EventsEventIdTeamsTeamIdRoute
 }
 
@@ -226,6 +239,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsEventIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/players/$userId': {
+      id: '/players/$userId'
+      path: '/players/$userId'
+      fullPath: '/players/$userId'
+      preLoaderRoute: typeof PlayersUserIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/events/$eventId_/teams/$teamId': {
       id: '/events/$eventId_/teams/$teamId'
       path: '/events/$eventId/teams/$teamId'
@@ -246,6 +266,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalysisMetaRoute: AnalysisMetaRoute,
   AnalysisTopListsRoute: AnalysisTopListsRoute,
   EventsEventIdRoute: EventsEventIdRoute,
+  PlayersUserIdRoute: PlayersUserIdRoute,
   EventsEventIdTeamsTeamIdRoute: EventsEventIdTeamsTeamIdRoute,
 }
 export const routeTree = rootRouteImport
