@@ -22,10 +22,10 @@ beforeEach(async () => {
 describe('loadRankings', () => {
   it('scores team events by the team’s placing, shared by its members', async () => {
     const ranked = await loadRankings(db, ALL_EVENTS, TODAY);
-    // 4 placed teams, 8 players: TM-CHARLIE (1st) = 100 × 1 × ln 8 / ln 100.
+    // 4 placed teams, 8 players: TM-CHARLIE (1st) = 100 × 1 × √(8 / 100).
     const top = ranked.slice(0, 2);
     expect(top.map((p) => p.userId).sort()).toEqual(['US-EVE', 'US-FINN']);
-    expect(top[0]?.points).toBeCloseTo(45.15, 1);
+    expect(top[0]?.points).toBeCloseTo(28.28, 1);
     expect(ranked).toHaveLength(8);
   });
 
@@ -34,7 +34,7 @@ describe('loadRankings', () => {
     const ranked = await loadRankings(db, ALL_EVENTS, TODAY);
     expect(ranked.map((p) => p.userId)).not.toContain('US-GIA');
     // 3 placed teams now: TM-ALPHA (2nd) scores (3 − 2) / 2.
-    expect(ranked.find((p) => p.userId === 'US-ADA')?.points).toBeCloseTo(45.15 / 2, 1);
+    expect(ranked.find((p) => p.userId === 'US-ADA')?.points).toBeCloseTo(28.28 / 2, 1);
   });
 
   it('counts only finished big events, and only players with an account', async () => {

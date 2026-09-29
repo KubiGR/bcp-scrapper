@@ -42,8 +42,10 @@ For one counted result:
   events).
 - **Placing score:** `(N − placing) / (N − 1)`: 1 for 1st, 0 for last; 1 when N = 1. Clamped to
   0–1 (a placing above N gives 0).
-- **Size factor:** `min(1, ln(players) / ln(100))`, where players is the event's player count
-  (for a team event, all team members): 20 players ≈ 0.65, 40 ≈ 0.80, 100 or more = 1.
+- **Size factor:** `sqrt(players / 100)`, where players is the event's player count (for a team
+  event, all team members): 20 players ≈ 0.45, 40 ≈ 0.63, 100 = 1, 400 = 2, 1,000 ≈ 3.16. No cap:
+  bigger events count more (changed 2026-09-29 from `min(1, ln(players) / ln(100))`, which
+  counted every event of 100+ players the same).
 - **Event score:** `100 × placing score × size factor`, rounded to one decimal for display
   (computed unrounded).
 
@@ -64,7 +66,8 @@ two players share a rank.
 - The top 100 first, with "Show more" loading 100 more at a time. Columns sort like the other
   tables (default: rank).
 - An explanation line: "Points: the 5 best results of the last 12 months at big events. 1st place
-  at a 100+ player event scores 100."
+  at a 100-player event scores 100; bigger events score more (400 players: 200), smaller ones less
+  (20 players: 45)."
 
 ### Player page (`/players/$userId`)
 

@@ -50,10 +50,13 @@ export function placingScore(placing: number, field: number): number {
   return Math.min(1, Math.max(0, (field - placing) / (field - 1)));
 }
 
-/** Bigger events count more, fully from 100 players. */
+/**
+ * Bigger events count more, by the square root of their size: 1 at 100 players, 0.45 at 20, 2 at
+ * 400, 3.16 at 1,000.
+ */
 export function sizeFactor(players: number): number {
-  if (players <= 1) return 0;
-  return Math.min(1, Math.log(players) / Math.log(100));
+  if (players <= 0) return 0;
+  return Math.sqrt(players / 100);
 }
 
 export function eventScore(result: Pick<RankingResult, 'placing' | 'field' | 'players'>): number {

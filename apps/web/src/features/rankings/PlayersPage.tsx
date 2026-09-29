@@ -116,8 +116,9 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
     <Stack gap="lg">
       <Title order={1}>Players</Title>
       <Text size="sm" c="dimmed">
-        Points: the 5 best results of the last 12 months at big events. 1st place at a 100+ player
-        event scores 100.
+        Points: the 5 best results of the last 12 months at big events. 1st place at a 100-player
+        event scores 100; bigger events score more (400 players: 200), smaller ones less (20
+        players: 45).
       </Text>
       <Group gap="md" align="flex-end" wrap="wrap">
         <TextInput

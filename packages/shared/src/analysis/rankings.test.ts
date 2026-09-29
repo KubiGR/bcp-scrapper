@@ -32,16 +32,18 @@ describe('scoring', () => {
     expect(placingScore(30, 20)).toBe(0);
   });
 
-  it('grows with event size, full from 100 players', () => {
-    expect(sizeFactor(20)).toBeCloseTo(0.6505, 3);
-    expect(sizeFactor(40)).toBeCloseTo(0.801, 3);
+  it('grows with the square root of event size: 1 at 100 players, more above', () => {
+    expect(sizeFactor(20)).toBeCloseTo(0.4472, 3);
+    expect(sizeFactor(40)).toBeCloseTo(0.6325, 3);
     expect(sizeFactor(100)).toBe(1);
-    expect(sizeFactor(300)).toBe(1);
+    expect(sizeFactor(400)).toBe(2);
+    expect(sizeFactor(1000)).toBeCloseTo(3.1623, 3);
   });
 
   it('scores 100 for winning a 100-player event', () => {
     expect(eventScore({ placing: 1, field: 100, players: 100 })).toBe(100);
-    expect(eventScore({ placing: 1, field: 20, players: 20 })).toBeCloseTo(65.05, 1);
+    expect(eventScore({ placing: 1, field: 20, players: 20 })).toBeCloseTo(44.72, 1);
+    expect(eventScore({ placing: 1, field: 400, players: 400 })).toBe(200);
   });
 });
 
