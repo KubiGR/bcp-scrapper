@@ -37,7 +37,7 @@ const VIEWS = [
   { label: 'Armies', value: 'armies' },
 ];
 
-const EVENT_TYPES = [
+export const EVENT_TYPES = [
   { label: 'All', value: 'all' },
   { label: 'Singles', value: 'singles' },
   { label: 'Teams', value: 'teams' },

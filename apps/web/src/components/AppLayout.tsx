@@ -13,6 +13,7 @@ const FINDER_DEFAULTS = FinderSearchSchema.parse({});
 const NAV_ITEMS = [
   { to: '/', label: 'Tournaments' },
   { to: '/analysis/matchups', label: 'Matchups' },
+  { to: '/analysis/factions', label: 'Factions' },
   { to: '/analysis/meta', label: 'Meta' },
   { to: '/analysis/top-lists', label: 'Top lists' },
   { to: '/queue', label: 'Queue' },
@@ -20,7 +21,7 @@ const NAV_ITEMS = [
 ] as const;
 
 /** Pages in the header on wide screens; on narrower ones, behind a menu button. */
-const NAV_BREAKPOINT = 'md';
+const NAV_BREAKPOINT = 'lg';
 
 export function AppLayout() {
   const [menuOpen, menu] = useDisclosure(false);
@@ -59,7 +60,7 @@ export function AppLayout() {
               <Group
                 component="nav"
                 aria-label="Main"
-                gap="xl"
+                gap="lg"
                 wrap="nowrap"
                 visibleFrom={NAV_BREAKPOINT}
               >

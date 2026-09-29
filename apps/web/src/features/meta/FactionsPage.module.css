@@ -1,0 +1,59 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+}
+
+/* Name, bar, figures in one row on wide screens; the bar under the name on phones. */
+.item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'name figures'
+    'bar bar';
+  column-gap: var(--mantine-spacing-md);
+  row-gap: 4px;
+  align-items: center;
+}
+
+@media (min-width: 48em) {
+  .item {
+    grid-template-columns: 200px 1fr 260px;
+    grid-template-areas: 'name bar figures';
+  }
+}
+
+.name {
+  grid-area: name;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track {
+  grid-area: bar;
+  height: 14px;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mantine-color-dark-6);
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mantine-color-neon-5);
+}
+
+.bar[data-unknown] {
+  background: var(--mantine-color-gray-6);
+}
+
+.figures {
+  grid-area: figures;
+  text-align: right;
+  white-space: nowrap;
+}

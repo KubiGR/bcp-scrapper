@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as QueueRouteImport } from './routes/queue'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as AnalysisFactionsRouteImport } from './routes/analysis.factions'
 import { Route as AnalysisMatchupsRouteImport } from './routes/analysis.matchups'
 import { Route as AnalysisMetaRouteImport } from './routes/analysis.meta'
 import { Route as AnalysisTopListsRouteImport } from './routes/analysis.top-lists'
@@ -37,6 +38,11 @@ const QueueRoute = QueueRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalysisFactionsRoute = AnalysisFactionsRouteImport.update({
+  id: '/analysis/factions',
+  path: '/analysis/factions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalysisMatchupsRoute = AnalysisMatchupsRouteImport.update({
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
+  '/analysis/factions': typeof AnalysisFactionsRoute
   '/analysis/matchups': typeof AnalysisMatchupsRoute
   '/analysis/meta': typeof AnalysisMetaRoute
   '/analysis/top-lists': typeof AnalysisTopListsRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
+  '/analysis/factions': typeof AnalysisFactionsRoute
   '/analysis/matchups': typeof AnalysisMatchupsRoute
   '/analysis/meta': typeof AnalysisMetaRoute
   '/analysis/top-lists': typeof AnalysisTopListsRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
+  '/analysis/factions': typeof AnalysisFactionsRoute
   '/analysis/matchups': typeof AnalysisMatchupsRoute
   '/analysis/meta': typeof AnalysisMetaRoute
   '/analysis/top-lists': typeof AnalysisTopListsRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/queue'
     | '/settings'
+    | '/analysis/factions'
     | '/analysis/matchups'
     | '/analysis/meta'
     | '/analysis/top-lists'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/queue'
     | '/settings'
+    | '/analysis/factions'
     | '/analysis/matchups'
     | '/analysis/meta'
     | '/analysis/top-lists'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/queue'
     | '/settings'
+    | '/analysis/factions'
     | '/analysis/matchups'
     | '/analysis/meta'
     | '/analysis/top-lists'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   QueueRoute: typeof QueueRoute
   SettingsRoute: typeof SettingsRoute
+  AnalysisFactionsRoute: typeof AnalysisFactionsRoute
   AnalysisMatchupsRoute: typeof AnalysisMatchupsRoute
   AnalysisMetaRoute: typeof AnalysisMetaRoute
   AnalysisTopListsRoute: typeof AnalysisTopListsRoute
@@ -176,6 +189,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analysis/factions': {
+      id: '/analysis/factions'
+      path: '/analysis/factions'
+      fullPath: '/analysis/factions'
+      preLoaderRoute: typeof AnalysisFactionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analysis/matchups': {
@@ -221,6 +241,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   QueueRoute: QueueRoute,
   SettingsRoute: SettingsRoute,
+  AnalysisFactionsRoute: AnalysisFactionsRoute,
   AnalysisMatchupsRoute: AnalysisMatchupsRoute,
   AnalysisMetaRoute: AnalysisMetaRoute,
   AnalysisTopListsRoute: AnalysisTopListsRoute,
