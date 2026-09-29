@@ -15,14 +15,14 @@ const cells = (row: HTMLElement | undefined) => {
 };
 
 describe('FactionsPage', () => {
-  it('shows share, players, win rate and reliable win rate, by reliable win rate, Unknown last', async () => {
+  it('shows share, players, win rate and reliable win rate, by reliable win rate, without the Unknown faction', async () => {
     stubFetchRoutes({
       'GET /api/meta': metaResponse({ factions: [unknown, orks, necrons, tiny] }),
     });
     renderWithRouter(<FactionsPage search={{}} onSearchChange={vi.fn()} />);
     const rows = await rowsOf();
     // Reliable: Grey Knights 82%, Orks 50%, Necrons 32%.
-    expect(rows.map(nameOf)).toEqual(['Grey Knights', 'Orks', 'Necrons', 'Unknown faction']);
+    expect(rows.map(nameOf)).toEqual(['Grey Knights', 'Orks', 'Necrons']);
     const ork = cells(rows[1]);
     expect(ork.getByText('20%')).toBeInTheDocument();
     expect(ork.getByText('20')).toBeInTheDocument();
@@ -37,17 +37,12 @@ describe('FactionsPage', () => {
     expect(screen.getByText('100 players · 3 events')).toBeInTheDocument();
   });
 
-  it('sorts by another column on click, Unknown faction still last', async () => {
+  it('sorts by another column on click', async () => {
     stubFetchRoutes({ 'GET /api/meta': metaResponse() });
     renderWithRouter(<FactionsPage search={{}} onSearchChange={vi.fn()} />);
     await rowsOf();
     fireEvent.click(screen.getByRole('button', { name: 'Players' }));
-    expect((await rowsOf()).map(nameOf)).toEqual([
-      'Orks',
-      'Necrons',
-      'Grey Knights',
-      'Unknown faction',
-    ]);
+    expect((await rowsOf()).map(nameOf)).toEqual(['Orks', 'Necrons', 'Grey Knights']);
   });
 
   it('opens a faction on the Meta page with the same range and event type', async () => {
@@ -67,8 +62,6 @@ describe('FactionsPage', () => {
       to: '2026-08-31',
       type: 'singles',
     });
-    // No Meta page for the unknown faction's archetypes to open.
-    expect(screen.queryByRole('link', { name: 'Unknown faction' })).not.toBeInTheDocument();
   });
 
   it('keeps the event type in the search', async () => {

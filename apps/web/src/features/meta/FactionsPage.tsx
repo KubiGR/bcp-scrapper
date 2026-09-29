@@ -8,7 +8,7 @@ import { Panel } from '../../components/Panel';
 import { plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { useDraftRange } from '../../lib/use-draft-range';
-import { factionName, ReliableText, WinRateText } from './FactionTable';
+import { ReliableText, WinRateText } from './FactionTable';
 import classes from './FactionsPage.module.css';
 import { EVENT_TYPES } from './MetaPage';
 import { metaQuery, metaWindow, sharePercent, type MetaSearch } from './meta-queries';
@@ -23,25 +23,22 @@ interface FactionsPageProps {
 
 type Column = 'faction' | 'players' | 'winRate' | 'reliable';
 
-const VALUES: Record<Column, SortValue<MetaRow>> = {
-  faction: (row) => factionName(row.faction),
+const VALUES: Record<Column, SortValue<MetaRow & { faction: string }>> = {
+  faction: (row) => row.faction,
   players: (row) => row.players,
   winRate: (row) => row.winRate,
   reliable: (row) => row.reliableWinRate,
 };
 
-function FactionsTable({ rows, search }: { rows: MetaRow[]; search: FactionsSearch }) {
+type KnownRow = MetaRow & { faction: string };
+
+function FactionsTable({ rows, search }: { rows: KnownRow[]; search: FactionsSearch }) {
   // Win rate allowing for sample size first: a big solid faction outranks a small lucky one.
-  const { sorted, sort, toggle } = useTableSort<MetaRow, Column>(rows, VALUES, {
+  const { sorted, sort, toggle } = useTableSort<KnownRow, Column>(rows, VALUES, {
     key: 'reliable',
     dir: 'desc',
   });
-  // The Unknown faction last, whichever way the table sorts.
   const widest = Math.max(0, ...rows.map((row) => row.share));
-  const ordered = [
-    ...sorted.filter((row) => row.faction !== null),
-    ...sorted.filter((row) => row.faction === null),
-  ];
   return (
     <Table.ScrollContainer minWidth={560}>
       <Table aria-label="Factions" striped highlightOnHover>
@@ -63,18 +60,12 @@ function FactionsTable({ rows, search }: { rows: MetaRow[]; search: FactionsSear
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {ordered.map((row) => (
-            <Table.Tr key={row.faction ?? '(unknown)'}>
+          {sorted.map((row) => (
+            <Table.Tr key={row.faction}>
               <Table.Td>
-                {row.faction === null ? (
-                  <Text size="sm" c="dimmed">
-                    {factionName(null)}
-                  </Text>
-                ) : (
-                  <AnchorLink to="/analysis/meta" search={{ ...search, factions: row.faction }}>
-                    {row.faction}
-                  </AnchorLink>
-                )}
+                <AnchorLink to="/analysis/meta" search={{ ...search, factions: row.faction }}>
+                  {row.faction}
+                </AnchorLink>
               </Table.Td>
               <Table.Td>
                 <Group gap="xs" wrap="nowrap" justify="flex-end">
@@ -82,7 +73,6 @@ function FactionsTable({ rows, search }: { rows: MetaRow[]; search: FactionsSear
                     <div
                       className={classes.bar}
                       data-share-bar
-                      data-unknown={row.faction === null || undefined}
                       style={{ width: `${String(widest === 0 ? 0 : (row.share / widest) * 100)}%` }}
                     />
                   </div>
@@ -117,7 +107,8 @@ export function FactionsPage({ search, onSearchChange }: FactionsPageProps) {
   const dates = useDraftRange(metaWindow(search, new Date()), (range) => {
     onSearchChange({ ...search, from: range.from, to: range.to });
   });
-  const rows = meta.data?.factions ?? [];
+  // Only known factions: the Unknown faction isn't one to compare.
+  const rows = (meta.data?.factions ?? []).filter((row): row is KnownRow => row.faction !== null);
 
   return (
     <Stack gap="lg">
