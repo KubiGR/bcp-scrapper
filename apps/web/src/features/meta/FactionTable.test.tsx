@@ -100,9 +100,17 @@ describe('FactionTable', () => {
     expect(within(rowOf('Necrons')).getByText('40%')).toHaveAttribute('data-tone', 'bad');
   });
 
-  it('colours the reliable win rate the same way', () => {
-    renderWithProviders(<FactionTable {...props} />);
-    expect(within(rowOf('Orks')).getByText('50%')).toHaveAttribute('data-tone', 'even');
+  it('colours the reliable win rate by whether the win rate is surely above or below 50%', () => {
+    renderWithProviders(
+      <FactionTable
+        {...props}
+        rows={[
+          { ...orks, winRate: 0.6, games: 1000 },
+          { ...necrons, winRate: 0.4, games: 1000 },
+        ]}
+      />,
+    );
+    expect(within(rowOf('Orks')).getByText('50%')).toHaveAttribute('data-tone', 'good');
     expect(within(rowOf('Necrons')).getByText('32%')).toHaveAttribute('data-tone', 'bad');
   });
 

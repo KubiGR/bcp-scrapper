@@ -1,4 +1,10 @@
-import { addDays, MetaResponseSchema, toIsoDate, type DateRange } from '@bcp/shared';
+import {
+  addDays,
+  MetaResponseSchema,
+  reliableWinRate,
+  toIsoDate,
+  type DateRange,
+} from '@bcp/shared';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { apiGet } from '../../api/client';
 
@@ -59,3 +65,16 @@ export const percent = (ratio: number) => `${Math.round(ratio * 100)}%`;
 /** A share of all players: one decimal under 10 %, so rare archetypes don't all read 0 %. */
 export const sharePercent = (ratio: number) =>
   ratio < 0.1 ? `${(ratio * 100).toFixed(1)}%` : percent(ratio);
+
+/**
+ * The reliable win rate's tone: good when even the low end of the win rate's 95 % range is above
+ * 50 %, bad when even its high end is below, even when it could still be a coin toss.
+ */
+export function reliableTone(row: { winRate: number; games: number }): 'good' | 'bad' | 'even' {
+  if (row.games === 0) return 'even';
+  const points = row.winRate * row.games;
+  if (reliableWinRate(points, row.games) > 0.5) return 'good';
+  // The high end, by symmetry: 1 minus the low end of the losing rate.
+  if (1 - reliableWinRate(row.games - points, row.games) < 0.5) return 'bad';
+  return 'even';
+}

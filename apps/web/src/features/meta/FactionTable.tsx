@@ -4,7 +4,7 @@ import { Fragment } from 'react';
 import { SortableTh, type SortDir } from '../../lib/table-sort';
 import { DispositionBreakdown } from './DispositionBreakdown';
 import { Sparkline } from './Sparkline';
-import { percent, sharePercent, winRateTone, type MetaSort } from './meta-queries';
+import { percent, reliableTone, sharePercent, winRateTone, type MetaSort } from './meta-queries';
 
 /** A row's players, for the drill-down: `detachments` undefined = the whole faction. */
 export interface PlayersFilter {
@@ -66,10 +66,22 @@ function ChangeText({ change }: { change: number | null }) {
 
 /** A win rate coloured by the win-rate tone: blue above 55 %, orange below 45 %. */
 export function WinRateText({ rate }: { rate: number }) {
-  const tone = winRateTone(rate);
+  return <ToneText tone={winRateTone(rate)}>{percent(rate)}</ToneText>;
+}
+
+/** A reliable win rate, blue when the win rate is surely above 50 %, orange when surely below. */
+export function ReliableText({
+  row,
+}: {
+  row: Pick<MetaRow, 'reliableWinRate' | 'winRate' | 'games'>;
+}) {
+  return <ToneText tone={reliableTone(row)}>{percent(row.reliableWinRate)}</ToneText>;
+}
+
+function ToneText({ tone, children }: { tone: 'good' | 'bad' | 'even'; children: string }) {
   return (
     <Text size="sm" className="numeric" c={TONE_COLOR[tone]} data-tone={tone} component="span">
-      {percent(rate)}
+      {children}
     </Text>
   );
 }
@@ -82,7 +94,15 @@ export function Figures({
 }: {
   row: Pick<
     MetaRow,
-    'players' | 'share' | 'winRate' | 'reliableWinRate' | 'change' | 'trend' | 'x1' | 'x1Share'
+    | 'players'
+    | 'share'
+    | 'games'
+    | 'winRate'
+    | 'reliableWinRate'
+    | 'change'
+    | 'trend'
+    | 'x1'
+    | 'x1Share'
   >;
   /** The weeks `row.trend` follows. */
   weeks: string[];
@@ -112,7 +132,7 @@ export function Figures({
         <WinRateText rate={row.winRate} />
       </Table.Td>
       <Table.Td ta="right">
-        <WinRateText rate={row.reliableWinRate} />
+        <ReliableText row={row} />
       </Table.Td>
       <Table.Td ta="right" visibleFrom="sm">
         <ChangeText change={changeOf(row)} />

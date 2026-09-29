@@ -8,7 +8,8 @@ import { Panel } from '../../components/Panel';
 import { plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { useDraftRange } from '../../lib/use-draft-range';
-import { factionName, WinRateText } from './FactionTable';
+import { factionName, ReliableText, WinRateText } from './FactionTable';
+import classes from './FactionsPage.module.css';
 import { EVENT_TYPES } from './MetaPage';
 import { metaQuery, metaWindow, sharePercent, type MetaSearch } from './meta-queries';
 
@@ -36,12 +37,13 @@ function FactionsTable({ rows, search }: { rows: MetaRow[]; search: FactionsSear
     dir: 'desc',
   });
   // The Unknown faction last, whichever way the table sorts.
+  const widest = Math.max(0, ...rows.map((row) => row.share));
   const ordered = [
     ...sorted.filter((row) => row.faction !== null),
     ...sorted.filter((row) => row.faction === null),
   ];
   return (
-    <Table.ScrollContainer minWidth={480}>
+    <Table.ScrollContainer minWidth={560}>
       <Table aria-label="Factions" striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
@@ -74,8 +76,20 @@ function FactionsTable({ rows, search }: { rows: MetaRow[]; search: FactionsSear
                   </AnchorLink>
                 )}
               </Table.Td>
-              <Table.Td ta="right" className="numeric">
-                {sharePercent(row.share)}
+              <Table.Td>
+                <Group gap="xs" wrap="nowrap" justify="flex-end">
+                  <div className={classes.track} aria-hidden>
+                    <div
+                      className={classes.bar}
+                      data-share-bar
+                      data-unknown={row.faction === null || undefined}
+                      style={{ width: `${String(widest === 0 ? 0 : (row.share / widest) * 100)}%` }}
+                    />
+                  </div>
+                  <Text size="sm" className="numeric" w={48} ta="right">
+                    {sharePercent(row.share)}
+                  </Text>
+                </Group>
               </Table.Td>
               <Table.Td ta="right" className="numeric">
                 {row.players}
@@ -84,7 +98,7 @@ function FactionsTable({ rows, search }: { rows: MetaRow[]; search: FactionsSear
                 <WinRateText rate={row.winRate} />
               </Table.Td>
               <Table.Td ta="right">
-                <WinRateText rate={row.reliableWinRate} />
+                <ReliableText row={row} />
               </Table.Td>
             </Table.Tr>
           ))}

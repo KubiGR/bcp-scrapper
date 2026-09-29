@@ -28,8 +28,12 @@ describe('FactionsPage', () => {
     expect(ork.getByText('20')).toBeInTheDocument();
     expect(ork.getByText('58%')).toHaveAttribute('data-tone', 'good');
     expect(ork.getByText('50%')).toHaveAttribute('data-tone', 'even');
-    // Small shares keep a decimal.
+    expect(cells(rows[0]).getByText('82%')).toHaveAttribute('data-tone', 'good');
+    // Small shares keep a decimal; a bar shows each share against the biggest.
     expect(cells(rows[0]).getByText('2.0%')).toBeInTheDocument();
+    const bar = rows[1]?.querySelector<HTMLElement>('[data-share-bar]');
+    expect(bar?.style.width).toBe('100%');
+    expect(rows[2]?.querySelector<HTMLElement>('[data-share-bar]')?.style.width).toBe('50%');
     expect(screen.getByText('100 players · 3 events')).toBeInTheDocument();
   });
 

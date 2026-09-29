@@ -4,7 +4,7 @@ import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { aPlayer } from '../../test/sample-data';
 import { MetaPage } from './MetaPage';
 import { metaResponse } from './meta-test-data';
-import { metaParams } from './meta-queries';
+import { metaParams, reliableTone } from './meta-queries';
 
 describe('metaParams', () => {
   it('sends only the server filters', () => {
@@ -203,5 +203,16 @@ describe('MetaPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '10 Necrons players' }));
     await screen.findByRole('heading', { name: 'Necrons' });
     expect(screen.queryByText('Ada Archer')).not.toBeInTheDocument();
+  });
+});
+
+describe('reliableTone', () => {
+  it('is good when even the low end is above 50%, bad when even the high end is below', () => {
+    expect(reliableTone({ winRate: 0.6, games: 1000 })).toBe('good');
+    expect(reliableTone({ winRate: 0.4, games: 1000 })).toBe('bad');
+    // 60% from 20 games could still be a coin toss.
+    expect(reliableTone({ winRate: 0.6, games: 20 })).toBe('even');
+    expect(reliableTone({ winRate: 0.4, games: 20 })).toBe('even');
+    expect(reliableTone({ winRate: 0, games: 0 })).toBe('even');
   });
 });
