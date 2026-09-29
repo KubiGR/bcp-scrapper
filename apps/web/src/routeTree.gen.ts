@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PlayersRouteImport } from './routes/players'
 import { Route as QueueRouteImport } from './routes/queue'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AnalysisFactionsRouteImport } from './routes/analysis.factions'
@@ -29,6 +30,11 @@ const IndexRoute = IndexRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlayersRoute = PlayersRouteImport.update({
+  id: '/players',
+  path: '/players',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QueueRoute = QueueRouteImport.update({
@@ -67,9 +73,9 @@ const EventsEventIdRoute = EventsEventIdRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlayersUserIdRoute = PlayersUserIdRouteImport.update({
-  id: '/players/$userId',
-  path: '/players/$userId',
-  getParentRoute: () => rootRouteImport,
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => PlayersRoute,
 } as any)
 const EventsEventIdTeamsTeamIdRoute =
   EventsEventIdTeamsTeamIdRouteImport.update({
@@ -81,6 +87,7 @@ const EventsEventIdTeamsTeamIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/players': typeof PlayersRouteWithChildren
   '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/analysis/factions': typeof AnalysisFactionsRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/players': typeof PlayersRouteWithChildren
   '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/analysis/factions': typeof AnalysisFactionsRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/players': typeof PlayersRouteWithChildren
   '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/analysis/factions': typeof AnalysisFactionsRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/players'
     | '/queue'
     | '/settings'
     | '/analysis/factions'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/players'
     | '/queue'
     | '/settings'
     | '/analysis/factions'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/login'
+    | '/players'
     | '/queue'
     | '/settings'
     | '/analysis/factions'
@@ -163,6 +175,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  PlayersRoute: typeof PlayersRouteWithChildren
   QueueRoute: typeof QueueRoute
   SettingsRoute: typeof SettingsRoute
   AnalysisFactionsRoute: typeof AnalysisFactionsRoute
@@ -170,7 +183,6 @@ export interface RootRouteChildren {
   AnalysisMetaRoute: typeof AnalysisMetaRoute
   AnalysisTopListsRoute: typeof AnalysisTopListsRoute
   EventsEventIdRoute: typeof EventsEventIdRoute
-  PlayersUserIdRoute: typeof PlayersUserIdRoute
   EventsEventIdTeamsTeamIdRoute: typeof EventsEventIdTeamsTeamIdRoute
 }
 
@@ -188,6 +200,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/players': {
+      id: '/players'
+      path: '/players'
+      fullPath: '/players'
+      preLoaderRoute: typeof PlayersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/queue': {
@@ -241,10 +260,10 @@ declare module '@tanstack/react-router' {
     }
     '/players/$userId': {
       id: '/players/$userId'
-      path: '/players/$userId'
+      path: '/$userId'
       fullPath: '/players/$userId'
       preLoaderRoute: typeof PlayersUserIdRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof PlayersRoute
     }
     '/events/$eventId_/teams/$teamId': {
       id: '/events/$eventId_/teams/$teamId'
@@ -256,9 +275,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface PlayersRouteChildren {
+  PlayersUserIdRoute: typeof PlayersUserIdRoute
+}
+
+const PlayersRouteChildren: PlayersRouteChildren = {
+  PlayersUserIdRoute: PlayersUserIdRoute,
+}
+
+const PlayersRouteWithChildren =
+  PlayersRoute._addFileChildren(PlayersRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  PlayersRoute: PlayersRouteWithChildren,
   QueueRoute: QueueRoute,
   SettingsRoute: SettingsRoute,
   AnalysisFactionsRoute: AnalysisFactionsRoute,
@@ -266,7 +297,6 @@ const rootRouteChildren: RootRouteChildren = {
   AnalysisMetaRoute: AnalysisMetaRoute,
   AnalysisTopListsRoute: AnalysisTopListsRoute,
   EventsEventIdRoute: EventsEventIdRoute,
-  PlayersUserIdRoute: PlayersUserIdRoute,
   EventsEventIdTeamsTeamIdRoute: EventsEventIdTeamsTeamIdRoute,
 }
 export const routeTree = rootRouteImport

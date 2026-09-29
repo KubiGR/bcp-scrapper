@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatEventDates, formatEventSize, formatRoundCount } from './format';
+import { formatEventDates, formatEventSize, formatRoundCount, ordinal } from './format';
 
 const utcDay = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'UTC' });
 
@@ -30,5 +30,22 @@ describe('formatRoundCount', () => {
     expect(formatRoundCount(5)).toBe('5 rounds');
     expect(formatRoundCount(1)).toBe('1 round');
     expect(formatRoundCount(0)).toBeNull();
+  });
+});
+
+describe('ordinal', () => {
+  it('adds st, nd, rd or th', () => {
+    expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 112].map(ordinal)).toEqual([
+      '1st',
+      '2nd',
+      '3rd',
+      '4th',
+      '11th',
+      '12th',
+      '13th',
+      '21st',
+      '22nd',
+      '112th',
+    ]);
   });
 });

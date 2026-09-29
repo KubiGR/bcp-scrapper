@@ -46,3 +46,11 @@ export function formatDuration(seconds: number): string {
   const rest = minutes % 60;
   return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
 }
+
+/** 1 → "1st", 2 → "2nd", 11 → "11th", 23 → "23rd". */
+export function ordinal(n: number): string {
+  const tens = n % 100;
+  const suffixes: Record<number, string> = { 1: 'st', 2: 'nd', 3: 'rd' };
+  const suffix = tens >= 11 && tens <= 13 ? 'th' : (suffixes[n % 10] ?? 'th');
+  return `${String(n)}${suffix}`;
+}
