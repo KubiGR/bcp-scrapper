@@ -94,6 +94,11 @@ describe('listEventPlayers', () => {
     const ada = (await listEventPlayers(db, EVENT)).find((p) => p.bcpId === 'PL-ADA');
     expect(ada).toMatchObject({ teamId: 'TM-ALPHA', teamName: 'Alpha Squad', teamPlacing: 2 });
   });
+
+  it('gives each player’s BCP account id', async () => {
+    const ada = (await listEventPlayers(db, EVENT)).find((p) => p.bcpId === 'PL-ADA');
+    expect(ada?.bcpUserId).toBe('US-ADA');
+  });
 });
 
 describe('listEventPlayers with parsed lists', () => {

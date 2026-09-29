@@ -155,6 +155,8 @@ export type ListStatus = z.infer<typeof ListStatusSchema>;
 export const EventPlayerSchema = z.object({
   bcpId: z.string().min(1),
   name: z.string(),
+  /** BCP's account id, for the player's ranking; null when BCP hides the user. */
+  bcpUserId: z.string().nullable(),
   teamName: z.string().nullable(),
   teamId: z.string().nullable(),
   /** The team's BCP placing, for ordering teams. */

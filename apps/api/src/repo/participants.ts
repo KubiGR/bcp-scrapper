@@ -133,6 +133,7 @@ export async function listEventPlayers(db: Db, eventId: string): Promise<EventPl
     return {
       bcpId: player.id,
       name: player.name,
+      bcpUserId: player.bcpUserId,
       teamName,
       teamId: player.teamId,
       teamPlacing,
