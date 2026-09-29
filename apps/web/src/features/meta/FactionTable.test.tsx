@@ -100,7 +100,7 @@ describe('FactionTable', () => {
     expect(within(rowOf('Necrons')).getByText('40%')).toHaveAttribute('data-tone', 'bad');
   });
 
-  it('colours the reliable win rate by whether the win rate is surely above or below 50%', () => {
+  it('colours the reliable win rate: blue from 50%, orange below 45%', () => {
     renderWithProviders(
       <FactionTable
         {...props}

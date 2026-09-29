@@ -69,13 +69,11 @@ export function WinRateText({ rate }: { rate: number }) {
   return <ToneText tone={winRateTone(rate)}>{percent(rate)}</ToneText>;
 }
 
-/** A reliable win rate, blue when the win rate is surely above 50 %, orange when surely below. */
-export function ReliableText({
-  row,
-}: {
-  row: Pick<MetaRow, 'reliableWinRate' | 'winRate' | 'games'>;
-}) {
-  return <ToneText tone={reliableTone(row)}>{percent(row.reliableWinRate)}</ToneText>;
+/** A reliable win rate: blue from 50 %, orange below 45 %. */
+export function ReliableText({ row }: { row: Pick<MetaRow, 'reliableWinRate'> }) {
+  return (
+    <ToneText tone={reliableTone(row.reliableWinRate)}>{percent(row.reliableWinRate)}</ToneText>
+  );
 }
 
 function ToneText({ tone, children }: { tone: 'good' | 'bad' | 'even'; children: string }) {

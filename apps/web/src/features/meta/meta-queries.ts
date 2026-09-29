@@ -1,10 +1,4 @@
-import {
-  addDays,
-  MetaResponseSchema,
-  reliableWinRate,
-  toIsoDate,
-  type DateRange,
-} from '@bcp/shared';
+import { addDays, MetaResponseSchema, toIsoDate, type DateRange } from '@bcp/shared';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { apiGet } from '../../api/client';
 
@@ -53,10 +47,14 @@ export function metaWindow(search: MetaSearch, now: Date): DateRange {
   return { from: search.from ?? addDays(to, -90), to };
 }
 
-/** Like the matchups heatmap: below 45 % bad, above 55 % good. */
+/**
+ * Like the matchups heatmap: below 45 % bad, above 55 % good; judged on the rounded percentage
+ * shown, so two rates that read the same get the same colour.
+ */
 export function winRateTone(rate: number): 'good' | 'bad' | 'even' {
-  if (rate > 0.55) return 'good';
-  if (rate < 0.45) return 'bad';
+  const shown = Math.round(rate * 100);
+  if (shown > 55) return 'good';
+  if (shown < 45) return 'bad';
   return 'even';
 }
 
@@ -67,14 +65,12 @@ export const sharePercent = (ratio: number) =>
   ratio < 0.1 ? `${(ratio * 100).toFixed(1)}%` : percent(ratio);
 
 /**
- * The reliable win rate's tone: good when even the low end of the win rate's 95 % range is above
- * 50 %, bad when even its high end is below, even when it could still be a coin toss.
+ * The reliable win rate's tone, by the rounded percentage shown: good from 50 % (the win rate is
+ * very likely above even), bad below 45 %.
  */
-export function reliableTone(row: { winRate: number; games: number }): 'good' | 'bad' | 'even' {
-  if (row.games === 0) return 'even';
-  const points = row.winRate * row.games;
-  if (reliableWinRate(points, row.games) > 0.5) return 'good';
-  // The high end, by symmetry: 1 minus the low end of the losing rate.
-  if (1 - reliableWinRate(row.games - points, row.games) < 0.5) return 'bad';
+export function reliableTone(reliable: number): 'good' | 'bad' | 'even' {
+  const shown = Math.round(reliable * 100);
+  if (shown >= 50) return 'good';
+  if (shown < 45) return 'bad';
   return 'even';
 }

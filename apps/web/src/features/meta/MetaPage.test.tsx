@@ -4,7 +4,7 @@ import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { aPlayer } from '../../test/sample-data';
 import { MetaPage } from './MetaPage';
 import { metaResponse } from './meta-test-data';
-import { metaParams, reliableTone } from './meta-queries';
+import { metaParams, reliableTone, winRateTone } from './meta-queries';
 
 describe('metaParams', () => {
   it('sends only the server filters', () => {
@@ -207,12 +207,20 @@ describe('MetaPage', () => {
 });
 
 describe('reliableTone', () => {
-  it('is good when even the low end is above 50%, bad when even the high end is below', () => {
-    expect(reliableTone({ winRate: 0.6, games: 1000 })).toBe('good');
-    expect(reliableTone({ winRate: 0.4, games: 1000 })).toBe('bad');
-    // 60% from 20 games could still be a coin toss.
-    expect(reliableTone({ winRate: 0.6, games: 20 })).toBe('even');
-    expect(reliableTone({ winRate: 0.4, games: 20 })).toBe('even');
-    expect(reliableTone({ winRate: 0, games: 0 })).toBe('even');
+  it('is good from 50% shown (surely above even), bad below 45%, by the number shown', () => {
+    expect(reliableTone(0.496)).toBe('good'); // shows 50%
+    expect(reliableTone(0.494)).toBe('even'); // shows 49%
+    expect(reliableTone(0.446)).toBe('even'); // shows 45%
+    expect(reliableTone(0.444)).toBe('bad'); // shows 44%
+  });
+});
+
+describe('winRateTone', () => {
+  it('colours by the rounded percentage shown, so two "45%" never differ', () => {
+    expect(winRateTone(0.446)).toBe('even'); // shows 45%
+    expect(winRateTone(0.452)).toBe('even'); // shows 45%
+    expect(winRateTone(0.444)).toBe('bad'); // shows 44%
+    expect(winRateTone(0.554)).toBe('even'); // shows 55%
+    expect(winRateTone(0.556)).toBe('good'); // shows 56%
   });
 });
