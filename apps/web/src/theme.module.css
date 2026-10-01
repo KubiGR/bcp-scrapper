@@ -1,0 +1,10 @@
+/*
+ * A multi-select's typing field, while nobody types and something is picked (no placeholder):
+ * out of the layout, so it never wraps to a line of its own under the pills. Focused (typing) or
+ * empty (placeholder shown), it's back in the flow.
+ */
+.multiSelectField:not(:focus):not(:placeholder-shown) {
+  position: absolute;
+  width: 1px;
+  opacity: 0;
+}

@@ -6,6 +6,7 @@ import {
   type MantineColorsTuple,
 } from '@mantine/core';
 import { prefixFilter } from './lib/prefix-filter';
+import classes from './theme.module.css';
 
 /**
  * Near-black navy. Mantine's dark scheme uses dark[7] for the page, dark[6] for surfaces,
@@ -76,7 +77,13 @@ export const theme = createTheme({
   components: {
     // Typing in a dropdown finds names by their first letters first ("ne" → Necrons).
     Select: Select.extend({ defaultProps: { filter: prefixFilter } }),
-    MultiSelect: MultiSelect.extend({ defaultProps: { filter: prefixFilter } }),
+    MultiSelect: MultiSelect.extend({
+      defaultProps: { filter: prefixFilter },
+      // One long pill shouldn't double the box's height: the typing field takes what room the
+      // pills leave, and leaves the layout while nobody types (see theme.module.css).
+      styles: { inputField: { minWidth: 0 } },
+      classNames: { inputField: classes.multiSelectField },
+    }),
     Autocomplete: Autocomplete.extend({ defaultProps: { filter: prefixFilter } }),
   },
 });
