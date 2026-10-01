@@ -363,7 +363,10 @@ export const PlayerSearchResponseSchema = z.object({
   truncated: z.boolean(),
   /** Factions of every qualifying player, before the faction/detachment filters (A→Z). */
   factionOptions: z.array(z.string()),
-  /** Detachments of every qualifying player, before the faction/detachment filters (A→Z). */
+  /**
+   * Detachments of the qualifying players of the chosen factions (all factions when none is
+   * chosen), before the detachment filter (A→Z).
+   */
   detachmentOptions: z.array(z.string()),
   /** Big events starting in the range. */
   eventsInRange: z.number().int().nonnegative(),

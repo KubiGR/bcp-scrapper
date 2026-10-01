@@ -54,9 +54,9 @@ const sorted = (values: Iterable<string>) =>
 /**
  * Players of big events starting in the range (default: the last 90 days) who went X-n or better,
  * filtered by faction (the guessed army counts), disposition and detachment (only read lists).
- * Best win/loss ratio first (draws count half), then most wins, then newest event; at most
- * TOP_LISTS_LIMIT. One query for
- * the qualifying players; list states only for the rows returned.
+ * Best record first, like standings (most wins, then draws, then fewest losses), then newest
+ * event; at most TOP_LISTS_LIMIT. One query for the qualifying players; list states only for the
+ * rows returned.
  */
 export async function searchTopLists(
   db: Db,
@@ -143,12 +143,11 @@ export async function searchTopLists(
           gt(sql`${players.wins} + ${players.losses} + ${players.draws}`, 0),
         ),
       )
-      // Best record first: win/loss ratio with draws as half a win, then more wins, then newest.
+      // Best record first, like standings: most wins, then draws, then fewest losses; then newest.
       .orderBy(
-        desc(
-          sql`(${players.wins} + ${players.draws} * 0.5) / (${players.wins} + ${players.losses} + ${players.draws})`,
-        ),
         desc(players.wins),
+        desc(players.draws),
+        players.losses,
         desc(events.startDate),
         players.name,
       ),
@@ -210,7 +209,12 @@ export async function searchTopLists(
     players: result,
     truncated: matching.length > TOP_LISTS_LIMIT,
     factionOptions: sorted(qualifying.flatMap((p) => (p.faction === null ? [] : [p.faction]))),
-    detachmentOptions: sorted(qualifying.flatMap((p) => p.detachments)),
+    // The chosen factions' detachments only (all factions' when none is chosen).
+    detachmentOptions: sorted(
+      qualifying
+        .filter((player) => anyOf(query.factions, player.faction))
+        .flatMap((player) => player.detachments),
+    ),
     eventsInRange: inRange.length,
     eventsLoaded: loaded.length,
   };

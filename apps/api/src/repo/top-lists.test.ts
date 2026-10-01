@@ -64,21 +64,19 @@ describe('searchTopLists', () => {
     expect(ids).not.toContain('PL-BEN');
   });
 
-  it('sorts by win/loss ratio (draws count half), then most wins, then newest event', async () => {
-    await record('PL-ADA', 3, 1, 0); // 0.75
-    await record('PL-BEN', 4, 1, 0); // 0.8
-    await record('PL-CARA', 2, 0, 0); // 1.0
-    await record('PL-DAN', 5, 0, 0); // 1.0, more wins than Cara
-    await record('PL-EVE', 2, 1, 1); // 0.625
-    const ids = (await searchTopLists(db, query({ maxLosses: 5 }), ALL_EVENTS, TODAY)).players
+  it('sorts like standings: most wins, then most draws, then fewest losses', async () => {
+    await record('PL-ADA', 3, 1, 0);
+    await record('PL-BEN', 4, 1, 0);
+    await record('PL-CARA', 2, 0, 0);
+    await record('PL-DAN', 5, 0, 0);
+    await record('PL-EVE', 2, 1, 1);
+    const found = (await searchTopLists(db, query({ maxLosses: 5 }), ALL_EVENTS, TODAY)).players;
+    const ids = found
       .map((p) => p.bcpId)
       .filter((id) => ['PL-ADA', 'PL-BEN', 'PL-CARA', 'PL-DAN', 'PL-EVE'].includes(id));
-    expect(ids).toEqual(['PL-DAN', 'PL-CARA', 'PL-BEN', 'PL-ADA', 'PL-EVE']);
-
-    const ratios = (
-      await searchTopLists(db, query({ maxLosses: 5 }), ALL_EVENTS, TODAY)
-    ).players.map((p) => (p.wins + p.draws / 2) / (p.wins + p.losses + p.draws));
-    expect(ratios).toEqual([...ratios].sort((x, y) => y - x));
+    expect(ids).toEqual(['PL-DAN', 'PL-BEN', 'PL-ADA', 'PL-EVE', 'PL-CARA']);
+    const keys = found.map((p) => p.wins * 1_000_000 + p.draws * 1_000 - p.losses);
+    expect(keys).toEqual([...keys].sort((x, y) => y - x));
   });
 
   it('filters by faction, including an army guessed from the list', async () => {
@@ -98,19 +96,32 @@ describe('searchTopLists', () => {
     });
   });
 
-  it('offers faction and detachment choices from every qualifying player, not just the filtered ones', async () => {
+  it('offers every qualifying faction, and the detachments of the chosen factions', async () => {
     await record('PL-ADA', 3, 0, 0);
+    await db.update(players).set({ faction: 'Orks' }).where(eq(players.id, 'PL-ADA'));
     await storeList(db, 'PL-ADA', gwList('Orks', 'War Horde'));
-    const result = await searchTopLists(
+    const necrons = await searchTopLists(
       db,
       query({ factions: ['Necrons'], detachments: ['Hypercrypt Legion'] }),
       ALL_EVENTS,
       TODAY,
     );
-    expect(result.players).toEqual([]);
-    expect(result.factionOptions).toContain('Orks');
-    expect(result.factionOptions.length).toBeGreaterThan(1);
-    expect(result.detachmentOptions).toEqual(['War Horde']);
+    expect(necrons.players).toEqual([]);
+    expect(necrons.factionOptions).toContain('Orks');
+    expect(necrons.factionOptions.length).toBeGreaterThan(1);
+    // War Horde is an Orks detachment: not offered while only Necrons are chosen.
+    expect(necrons.detachmentOptions).toEqual([]);
+    const orks = await searchTopLists(
+      db,
+      query({ factions: ['Orks'], detachments: ['Hypercrypt Legion'] }),
+      ALL_EVENTS,
+      TODAY,
+    );
+    expect(orks.detachmentOptions).toEqual(['War Horde']);
+    // No faction chosen: every qualifying player's detachments.
+    expect((await searchTopLists(db, query({}), ALL_EVENTS, TODAY)).detachmentOptions).toEqual([
+      'War Horde',
+    ]);
   });
 
   it('filters by detachment, matching only players whose list was read', async () => {

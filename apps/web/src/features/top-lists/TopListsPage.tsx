@@ -60,7 +60,11 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
   const detachments = split(search.detachments, DETACHMENT_SEPARATOR);
   const found = results.data?.players ?? [];
   // Rows come best record first; a header re-sorts them.
-  const { sorted, sort, toggle } = useTableSort(found, FOUND_PLAYER_SORT);
+  // Best record first, like standings.
+  const { sorted, sort, toggle } = useTableSort<
+    (typeof found)[number],
+    keyof typeof FOUND_PLAYER_SORT
+  >(found, FOUND_PLAYER_SORT, { key: 'record', dir: 'desc' });
   const open =
     openKey === null
       ? null

@@ -102,7 +102,7 @@ describe('TopListsPage', () => {
     expect(names()).toEqual(['Zed Zulu', 'Ada Archer']);
   });
 
-  it('sorts W-L-D by win ratio, more wins first on a tie', async () => {
+  it('starts sorted by W-L-D like standings: most wins, then draws, then fewest losses', async () => {
     const player = (bcpId: string, name: string, wins: number, losses: number) => ({
       ...aPlayer({ bcpId, name, wins, losses, draws: 0 }),
       eventId: 'EVT1',
@@ -122,12 +122,15 @@ describe('TopListsPage', () => {
     });
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
     await screen.findByText('Three Oh');
-    fireEvent.click(screen.getByRole('button', { name: 'W-L-D' }));
-    const names = screen
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => row.querySelector('td p')?.textContent);
-    expect(names).toEqual(['Five Oh', 'Three Oh', 'Four One']);
+    const names = () =>
+      screen
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.querySelector('td p')?.textContent);
+    expect(names()).toEqual(['Five Oh', 'Four One', 'Three Oh']);
+    // A click flips it: fewest wins first.
+    fireEvent.click(screen.getByRole('button', { name: /^W-L-D/ }));
+    expect(names()).toEqual(['Three Oh', 'Four One', 'Five Oh']);
   });
 
   it('shows each event’s size next to its date', async () => {
