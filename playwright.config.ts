@@ -28,6 +28,8 @@ export default defineConfig({
         FETCH_QUEUE_INTERVAL_MS: '200',
         // The smoke tests count lists and jobs; background fetching would change them.
         AUTO_FETCH_ENABLED: 'false',
+        // No GitHub downloads in e2e: they'd re-tidy fixture lists mid-run.
+        BSDATA_ENABLED: 'false',
         // The sample fixtures are tiny (8 players, 2 rounds): keep the size rule from filtering them out.
         MIN_EVENT_ROUNDS: '0',
         MIN_EVENT_PLAYERS: '0',

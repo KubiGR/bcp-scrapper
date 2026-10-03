@@ -210,18 +210,27 @@ function tidy(
   bcpDetachment: string | null,
   army: string | null,
 ): string[] {
-  if (detachments.length === 0) return bcpDetachment === null ? [] : [bcpDetachment];
+  // BSData's detachments of the list's army; all of them for an army BSData doesn't cover, but
+  // then only exact or loose matches: guessing across factions could rewrite a name wrongly.
+  const own = army === null ? undefined : vocabulary.bsdata.get(army);
+  const candidates = own ?? vocabulary.bsdataAll;
+  const fuzzy = own !== undefined;
+  /** BSData's spelling of a name that is already a detachment (BCP's, or a link's target). */
+  const spelled = (name: string) => matchDetachment(name, candidates, { fuzzy: false }) ?? name;
+  if (detachments.length === 0) return bcpDetachment === null ? [] : [spelled(bcpDetachment)];
   const known = new Set([...vocabulary.known, ...vocabulary.translations.keys()]);
-  // BSData's detachments of the list's army; all of them for an army BSData doesn't cover.
-  const candidates =
-    (army === null ? undefined : vocabulary.bsdata.get(army)) ?? vocabulary.bsdataAll;
   return splitDetachments(detachments.map(cleanDetachmentName), known).map((name) => {
     const key = name.toLowerCase();
     // A hand link (or "Not English" mark) wins over everything.
-    if (vocabulary.links.has(key)) return vocabulary.links.get(key) ?? name;
+    if (vocabulary.links.has(key)) {
+      const target = vocabulary.links.get(key);
+      return target === null || target === undefined ? name : spelled(target);
+    }
     const named = vocabulary.translations.get(key) ?? canonicalDetachment(name);
     return (
-      matchDetachment(named, candidates) ?? vocabulary.spellings.get(named.toLowerCase()) ?? named
+      matchDetachment(named, candidates, { fuzzy }) ??
+      vocabulary.spellings.get(named.toLowerCase()) ??
+      named
     );
   });
 }

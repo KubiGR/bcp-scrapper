@@ -90,6 +90,14 @@ describe('detachments outside an army’s BSData list', () => {
     expect((await wrongPairCheck(db))('World Eaters', 'Gore Tide')).toBe(false);
   });
 
+  it('compares names loosely: case, accents and punctuation don’t make a wrong pair', async () => {
+    // An older link to BCP's spelling of a BSData detachment.
+    await linkDetachment(db, 'Gore Band', 'berzerker-warband');
+    await storeList(db, 'PL-EVE', gwList('World Eaters', 'Gore Band'));
+    expect((await detachmentNames(db)).wrong).toEqual([]);
+    expect((await wrongPairCheck(db))('World Eaters', 'Berzérker Warband')).toBe(false);
+  });
+
   it('counts a linked name as its target', async () => {
     await linkDetachment(db, 'Gore Band', 'Berzerker Warband');
     await storeList(db, 'PL-EVE', gwList('World Eaters', 'Gore Band'));

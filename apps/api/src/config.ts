@@ -28,6 +28,11 @@ const EnvSchema = z.object({
     .enum(['true', 'false', '1', '0'])
     .default('true')
     .transform((value) => value === 'true' || value === '1'),
+  /** Reading each faction's detachments from BSData on GitHub once a day; false switches it off. */
+  BSDATA_ENABLED: z
+    .enum(['true', 'false', '1', '0'])
+    .default('true')
+    .transform((value) => value === 'true' || value === '1'),
   /** How often the planner looks for missing events, pairings and lists. */
   AUTO_FETCH_INTERVAL_MS: z.coerce.number().int().min(1000).default(600_000),
   /** Only events that started within this many days are fetched automatically. */

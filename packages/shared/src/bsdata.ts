@@ -163,7 +163,8 @@ export function parseBsdataCatalogues(files: unknown[]): BsdataParse {
   };
 }
 
-/** Lower-case, no accents, apostrophes or hyphens, single spaces. */
+/** Lower-case, no accents, apostrophes or hyphens, single spaces: names compare in this form. */
+export const looseDetachmentKey = (name: string) => loose(name);
 const loose = (name: string) =>
   name
     .normalize('NFD')
@@ -198,15 +199,24 @@ function distance(a: string, b: string): number {
  * accents, apostrophes and hyphens, the last words of exactly one candidate ("Oathband"), or
  * (8+ letters) at most 2 letters off with a single closest candidate; else null.
  */
-export function matchDetachment(name: string, candidates: readonly string[]): string | null {
+export function matchDetachment(
+  name: string,
+  candidates: readonly string[],
+  /** `fuzzy: false`: exact and loose matches only (no last words, no typos). */
+  options: { fuzzy?: boolean } = {},
+): string | null {
   if (candidates.includes(name)) return name;
   const key = loose(name);
   if (key === '') return null;
   const exactLoose = candidates.filter((candidate) => loose(candidate) === key);
   if (exactLoose.length === 1) return exactLoose[0] ?? null;
-  const ending = candidates.filter((candidate) => loose(candidate).endsWith(` ${key}`));
-  if (ending.length === 1) return ending[0] ?? null;
-  if (key.replace(/ /g, '').length < 8) return null;
+  if (options.fuzzy === false) return null;
+  const letters = key.replace(/ /g, '').length;
+  if (letters >= 6) {
+    const ending = candidates.filter((candidate) => loose(candidate).endsWith(` ${key}`));
+    if (ending.length === 1) return ending[0] ?? null;
+  }
+  if (letters < 8) return null;
   const scored = candidates
     .map((candidate) => ({ candidate, d: distance(key, loose(candidate)) }))
     .filter((entry) => entry.d <= 2)

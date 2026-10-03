@@ -51,6 +51,13 @@ describe('lists and BSData', () => {
     expect(await detachmentsOf('PL-ADA')).toEqual(['Awakened Dynasty']);
   });
 
+  it('never guesses across factions: only exact or loose matches there', async () => {
+    await bsdata('Necrons', 'Awakened Dynasty');
+    // 2 letters off a Necrons detachment, in a Tyranids list (BSData has no Tyranids here).
+    await storeList(db, 'PL-ADA', gwList('Tyranids', 'Awakened Dynosty'));
+    expect(await detachmentsOf('PL-ADA')).toEqual(['Awakened Dynosty']);
+  });
+
   it('goes by the BCP faction when the list names no army', async () => {
     await bsdata('Orks', 'Kult of Speed');
     // Searching every faction, the two spellings would tie: no match.

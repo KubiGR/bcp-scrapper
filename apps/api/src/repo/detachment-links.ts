@@ -2,6 +2,7 @@ import {
   ALLEGIANCE_NAMES,
   cleanDetachmentName,
   looksForeign,
+  looseDetachmentKey,
   SPACE_MARINES,
   type DetachmentNamesResponse,
 } from '@bcp/shared';
@@ -84,8 +85,9 @@ async function bsdataRules(db: Db) {
   ]);
   // A name marked as its own detachment is one BSData doesn't have (yet): never flagged.
   const own = new Set(ownLinks.map((link) => link.nameKey));
+  // Compared loosely: a spelling that differs only in case, accents or punctuation is the same.
   const names = new Map(
-    [...bsdata].map(([faction, list]) => [faction, new Set(list.map((n) => n.toLowerCase()))]),
+    [...bsdata].map(([faction, list]) => [faction, new Set(list.map(looseDetachmentKey))]),
   );
   const kept = new Set(keeps.map((keep) => `${keep.faction}\u0000${keep.nameKey}`));
   /** Whether a list's detachment is outside its army's BSData list (and not kept anyway). */
@@ -94,7 +96,9 @@ async function bsdataRules(db: Db) {
     const known = names.get(army);
     if (known === undefined) return false;
     const key = keyOf(name);
-    return !known.has(key) && !own.has(key) && !kept.has(`${army}\u0000${key}`);
+    return (
+      !known.has(looseDetachmentKey(name)) && !own.has(key) && !kept.has(`${army}\u0000${key}`)
+    );
   };
   return { bsdata, keeps, wrong };
 }

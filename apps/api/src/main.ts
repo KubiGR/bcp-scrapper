@@ -65,8 +65,9 @@ const autoFetch = config.AUTO_FETCH_ENABLED
 autoFetch?.start();
 
 // BSData (detachments per faction): checked hourly, read again once a day.
-const bsdata = httpBsdataClient();
+const bsdata = config.BSDATA_ENABLED ? httpBsdataClient() : undefined;
 const syncBsdataIfDue = async () => {
+  if (bsdata === undefined) return;
   try {
     if (await bsdataDue(database.db, new Date())) {
       const status = await syncBsdata(database.db, bsdata, new Date());
