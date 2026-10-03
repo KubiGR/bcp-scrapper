@@ -1,3 +1,4 @@
+import { addDays, updateOfDay, type EffectiveUpdate } from '@bcp/shared';
 import {
   Box,
   Group,
@@ -21,12 +22,14 @@ import {
   DEFAULT_MIN_PLAYERS,
   metaQuery,
   metaWindow,
+  type ChangeSpans,
   type MetaSearch,
   type MetaSort,
 } from './meta-queries';
 import { MetaPlayersDrawer } from './MetaPlayersDrawer';
 import { TeamMeta } from './TeamMeta';
 import { UpdatePicker } from '../updates/UpdatePicker';
+import { effectiveOf, updatesQuery } from '../updates/updates-queries';
 
 interface MetaPageProps {
   search: MetaSearch;
@@ -44,9 +47,34 @@ export const EVENT_TYPES = [
   { label: 'Teams', value: 'teams' },
 ];
 
+/**
+ * What Meta's Change compares: the update in force on the range's last day (from its start to that
+ * day) with the update before it; null without two updates.
+ */
+function changeSpans(
+  updates: EffectiveUpdate[],
+  to: string,
+): { spans: ChangeSpans; label: string } | null {
+  const latest = updateOfDay(updates, to);
+  const previous = latest === null ? undefined : updates[updates.indexOf(latest) - 1];
+  if (latest === null || previous === undefined) return null;
+  return {
+    spans: {
+      recentFrom: latest.start,
+      recentTo: to,
+      priorFrom: previous.start,
+      priorTo: addDays(latest.start, -1),
+    },
+    label: `${latest.name} vs ${previous.name}`,
+  };
+}
+
 /** Popular factions and archetypes, how they do, and what top teams bring. */
 export function MetaPage({ search, onSearchChange }: MetaPageProps) {
-  const meta = useQuery(metaQuery(search));
+  // Change compares the latest game update in range with the one before it, when updates are known.
+  const updates = useQuery(updatesQuery);
+  const change = changeSpans(effectiveOf(updates.data), metaWindow(search, new Date()).to);
+  const meta = useQuery(metaQuery(search, change?.spans));
   const [players, setPlayers] = useState<PlayersFilter | null>(null);
   const dates = useDraftRange(metaWindow(search, new Date()), (range) => {
     onSearchChange({ ...search, from: range.from, to: range.to });
@@ -142,6 +170,7 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
               >
                 {view === 'archetypes' ? (
                   <ArchetypeTable
+                    changeLabel={change?.label}
                     rows={meta.data.factions}
                     weeks={meta.data.weeks}
                     minPlayers={minPlayers}
@@ -159,6 +188,7 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
                   />
                 ) : (
                   <FactionTable
+                    changeLabel={change?.label}
                     rows={meta.data.factions}
                     weeks={meta.data.weeks}
                     minPlayers={minPlayers}

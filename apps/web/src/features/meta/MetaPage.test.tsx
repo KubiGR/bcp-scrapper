@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { aPlayer } from '../../test/sample-data';
@@ -15,6 +15,39 @@ describe('metaParams', () => {
 });
 
 describe('MetaPage', () => {
+  it('compares the latest update in range with the one before it for Change', async () => {
+    const update = (id: string, start: string, name: string) => ({
+      id,
+      name,
+      autoName: name,
+      start,
+      autoStart: start,
+      merged: false,
+      hidden: false,
+      events: 4,
+      summary: '',
+      suggestions: [name],
+    });
+    const fetchMock = stubFetchRoutes({
+      'GET /api/meta': metaResponse(),
+      'GET /api/updates': {
+        updates: [
+          update('b', '2026-09-30', 'MFM 1.5'),
+          update('a', '2026-07-22', 'Summer 2026 Faction Packs'),
+        ],
+      },
+    });
+    renderWithRouter(
+      <MetaPage search={{ from: '2026-08-01', to: '2026-10-03' }} onSearchChange={vi.fn()} />,
+    );
+    await waitFor(() => {
+      expect(JSON.stringify(fetchMock.mock.calls)).toContain(
+        'recentFrom=2026-09-30&recentTo=2026-10-03&priorFrom=2026-07-22&priorTo=2026-09-29',
+      );
+    });
+    expect(await screen.findByTitle('MFM 1.5 vs Summer 2026 Faction Packs')).toBeInTheDocument();
+  });
+
   it('offers the game updates next to the dates', async () => {
     stubFetchRoutes({
       'GET /api/meta': metaResponse(),

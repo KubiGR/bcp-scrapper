@@ -22,20 +22,31 @@ export interface MetaSearch {
 
 export const DEFAULT_MIN_PLAYERS = 10;
 
-/** Only the date range and event type go to the API; the rest is display. */
-export function metaParams(search: MetaSearch): string {
+/** The two spans Meta's Change compares (e.g. the latest game update and the one before). */
+export interface ChangeSpans {
+  recentFrom: string;
+  recentTo: string;
+  priorFrom: string;
+  priorTo: string;
+}
+
+export const DEFAULT_CHANGE_LABEL =
+  'Win rate in the last 30 days minus the 30 days before them, with 30+ games in each; – otherwise.';
+
+/** Only the date range, event type and compared spans go to the API; the rest is display. */
+export function metaParams(search: MetaSearch, compare?: ChangeSpans): string {
   return new URLSearchParams(
-    Object.entries({ from: search.from, to: search.to, type: search.type }).flatMap(
+    Object.entries({ from: search.from, to: search.to, type: search.type, ...compare }).flatMap(
       ([key, value]) => (value === undefined ? [] : [[key, value]]),
     ),
   ).toString();
 }
 
-export const metaQuery = (search: MetaSearch) =>
+export const metaQuery = (search: MetaSearch, compare?: ChangeSpans) =>
   queryOptions({
-    queryKey: ['meta', metaParams(search)],
+    queryKey: ['meta', metaParams(search, compare)],
     queryFn: () => {
-      const params = metaParams(search);
+      const params = metaParams(search, compare);
       return apiGet(`/api/meta${params ? `?${params}` : ''}`, MetaResponseSchema);
     },
     placeholderData: keepPreviousData,

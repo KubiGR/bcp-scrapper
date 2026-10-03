@@ -17,16 +17,40 @@ export function metaRoutes(deps: { db: Db; eventRule: EventSizeRule; now: () => 
     const query = parseInput(MetaQuerySchema, c.req.query());
     const today = deps.now();
     const { from, to } = metaRange(query, today);
-    // The change column compares the range's last 30 days with the 30 days before them.
-    const [current, lastSixty] = await Promise.all([
+    // The change column compares two spans: the ones given (e.g. two game updates), else the
+    // range's last 30 days with the 30 days before them.
+    const spans =
+      query.recentFrom !== undefined &&
+      query.recentTo !== undefined &&
+      query.priorFrom !== undefined &&
+      query.priorTo !== undefined
+        ? {
+            recent: { from: query.recentFrom, to: query.recentTo },
+            prior: { from: query.priorFrom, to: query.priorTo },
+          }
+        : {
+            recent: { from: addDays(to, -29), to },
+            prior: { from: addDays(to, -59), to: addDays(to, -30) },
+          };
+    const [current, compared] = await Promise.all([
       loadMetaRows(deps.db, { ...query, from, to }, deps.eventRule, today),
-      loadMetaRows(deps.db, { ...query, from: addDays(to, -59), to }, deps.eventRule, today),
+      loadMetaRows(
+        deps.db,
+        {
+          ...query,
+          from: spans.prior.from < spans.recent.from ? spans.prior.from : spans.recent.from,
+          to: spans.prior.to > spans.recent.to ? spans.prior.to : spans.recent.to,
+        },
+        deps.eventRule,
+        today,
+      ),
     ]);
-    const recentFrom = addDays(to, -29);
+    const within = (span: { from: string; to: string }) => (row: { eventStart: string }) =>
+      row.eventStart >= span.from && row.eventStart <= span.to;
     const { rows, eventsInRange, eventsLoaded } = current;
     const { factions, totals, weeks } = computeMeta(rows, {
-      recent: lastSixty.rows.filter((row) => row.eventStart >= recentFrom),
-      prior: lastSixty.rows.filter((row) => row.eventStart < recentFrom),
+      recent: compared.rows.filter(within(spans.recent)),
+      prior: compared.rows.filter(within(spans.prior)),
     });
     const teams = computeTeamMeta(rows);
     const body: MetaResponse = {

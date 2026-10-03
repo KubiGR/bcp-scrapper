@@ -81,9 +81,32 @@ export const MetaQuerySchema = z
     from: z.iso.date().optional(),
     to: z.iso.date().optional(),
     type: z.enum(['all', 'singles', 'teams']).default('all'),
+    /**
+     * The change column's two spans (e.g. the latest game update and the one before); all four or
+     * none. Without them, the range's last 30 days are compared with the 30 before.
+     */
+    recentFrom: z.iso.date().optional(),
+    recentTo: z.iso.date().optional(),
+    priorFrom: z.iso.date().optional(),
+    priorTo: z.iso.date().optional(),
   })
   .refine((q) => !q.from || !q.to || q.from <= q.to, {
     message: '`from` must be on or before `to`',
     path: ['from'],
-  });
+  })
+  .refine(
+    (q) => {
+      const spans = [q.recentFrom, q.recentTo, q.priorFrom, q.priorTo];
+      if (spans.every((day) => day === undefined)) return true;
+      return (
+        spans.every((day) => day !== undefined) &&
+        (q.recentFrom ?? '') <= (q.recentTo ?? '') &&
+        (q.priorFrom ?? '') <= (q.priorTo ?? '')
+      );
+    },
+    {
+      message: 'Give both compared spans (each from on or before to), or neither',
+      path: ['recentFrom'],
+    },
+  );
 export type MetaQuery = z.infer<typeof MetaQuerySchema>;

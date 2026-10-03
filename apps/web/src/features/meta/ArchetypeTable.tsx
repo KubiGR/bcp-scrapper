@@ -4,7 +4,7 @@ import { plural } from '../../lib/format';
 import { SortableTh, type SortDir } from '../../lib/table-sort';
 import { DispositionBreakdown } from './DispositionBreakdown';
 import { changeOf, factionKey, factionName, Figures, type PlayersFilter } from './FactionTable';
-import type { MetaSort } from './meta-queries';
+import { DEFAULT_CHANGE_LABEL, type MetaSort } from './meta-queries';
 
 /** One archetype with its faction: a row of the flat table. */
 interface Archetype extends ArchetypeRow {
@@ -14,6 +14,8 @@ interface Archetype extends ArchetypeRow {
 
 interface ArchetypeTableProps {
   rows: MetaRow[];
+  /** What Change compares, for its header's tooltip (default: the last 30 days vs the 30 before). */
+  changeLabel?: string;
   /** The weeks each row's trend follows. */
   weeks: string[];
   minPlayers: number;
@@ -37,6 +39,7 @@ const nameOf = (archetype: Archetype) =>
  * faction's, are dimmed and sorted last; players without a known detachment in English can't be shown.
  */
 export function ArchetypeTable({
+  changeLabel = DEFAULT_CHANGE_LABEL,
   rows,
   weeks,
   minPlayers,
@@ -144,7 +147,7 @@ export function ArchetypeTable({
                 onSort={onSort}
                 ta="right"
                 visibleFrom="sm"
-                title="Win rate in the last 30 days minus the 30 days before them, with 30+ games in each; – otherwise."
+                title={changeLabel}
               >
                 Change
               </SortableTh>

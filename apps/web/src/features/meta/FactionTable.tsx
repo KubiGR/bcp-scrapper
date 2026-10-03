@@ -4,7 +4,14 @@ import { Fragment } from 'react';
 import { SortableTh, type SortDir } from '../../lib/table-sort';
 import { DispositionBreakdown } from './DispositionBreakdown';
 import { Sparkline } from './Sparkline';
-import { percent, reliableTone, sharePercent, winRateTone, type MetaSort } from './meta-queries';
+import {
+  DEFAULT_CHANGE_LABEL,
+  percent,
+  reliableTone,
+  sharePercent,
+  winRateTone,
+  type MetaSort,
+} from './meta-queries';
 
 /** A row's players, for the drill-down: `detachments` undefined = the whole faction. */
 export interface PlayersFilter {
@@ -24,6 +31,8 @@ export const TONE_COLOR = { good: 'blue.4', bad: 'orange.5', even: undefined } a
 
 interface FactionTableProps {
   rows: MetaRow[];
+  /** What Change compares, for its header's tooltip (default: the last 30 days vs the 30 before). */
+  changeLabel?: string;
   /** The weeks each row's trend follows. */
   weeks: string[];
   minPlayers: number;
@@ -147,6 +156,7 @@ export function Figures({
  * minimum players, and the Unknown faction, are dimmed and sorted last.
  */
 export function FactionTable({
+  changeLabel = DEFAULT_CHANGE_LABEL,
   rows,
   weeks,
   minPlayers,
@@ -245,7 +255,7 @@ export function FactionTable({
               onSort={onSort}
               ta="right"
               visibleFrom="sm"
-              title="Win rate in the last 30 days minus the 30 days before them, with 30+ games in each; – otherwise."
+              title={changeLabel}
             >
               Change
             </SortableTh>

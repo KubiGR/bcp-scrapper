@@ -68,6 +68,33 @@ describe('GET /api/meta', () => {
     expect(shortRange.factions.find((f) => f.faction === 'Orks')?.change).toBeCloseTo(0.2, 6);
   });
 
+  it('compares two given spans instead, such as two game updates', async () => {
+    await syncEvent({ db, source: sampleSource() }, 'EVTBRACKET01'); // 9 May
+    await db.update(players).set({ faction: 'Orks', wins: 5, losses: 5, draws: 0 });
+    await db.update(players).set({ wins: 7, losses: 3 }).where(eq(players.id, 'PB-R1'));
+    await db.update(players).set({ wins: 7, losses: 3 }).where(eq(players.eventId, 'EVTBRACKET01'));
+    // Only May in range, but the change compares May (recent) with March-April (prior).
+    const body = (await (
+      await app.request(
+        '/api/meta?from=2026-05-01&to=2026-05-20&recentFrom=2026-05-01&recentTo=2026-05-20&priorFrom=2026-03-01&priorTo=2026-04-30',
+      )
+    ).json()) as MetaResponse;
+    expect(body.factions.find((f) => f.faction === 'Orks')?.change).toBeCloseTo(0.2, 6);
+    // Spans that say nothing about the last 30 days: no change.
+    const empty = (await (
+      await app.request(
+        '/api/meta?from=2026-05-01&to=2026-05-20&recentFrom=2026-06-01&recentTo=2026-06-30&priorFrom=2026-03-01&priorTo=2026-04-30',
+      )
+    ).json()) as MetaResponse;
+    expect(empty.factions.find((f) => f.faction === 'Orks')?.change).toBeNull();
+  });
+
+  it('wants both compared spans or neither', async () => {
+    expect((await app.request('/api/meta?recentFrom=2026-05-01&recentTo=2026-05-20')).status).toBe(
+      400,
+    );
+  });
+
   it('has no team section for singles only', async () => {
     const body = (await (
       await app.request('/api/meta?from=2026-01-01&to=2026-12-31&type=singles')
