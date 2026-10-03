@@ -8,6 +8,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   real,
   serial,
   text,
@@ -338,3 +339,30 @@ export const detachmentLinks = pgTable('detachment_links', {
   foreign: boolean('foreign').notNull().default(false),
   createdAt: timestamptz('created_at').notNull().defaultNow(),
 });
+
+/** Each faction's detachments, read from BSData (replaced per faction on every sync). */
+export const bsdataDetachments = pgTable(
+  'bsdata_detachments',
+  { faction: text('faction').notNull(), name: text('name').notNull() },
+  (t) => [primaryKey({ columns: [t.faction, t.name] })],
+);
+
+/** BSData files read, with the version read (git blob sha) and the last error. */
+export const bsdataFiles = pgTable('bsdata_files', {
+  path: text('path').primaryKey(),
+  sha: text('sha').notNull(),
+  checkedAt: timestamptz('checked_at').notNull().defaultNow(),
+  error: text('error'),
+});
+
+/** A detachment kept for a faction although BSData doesn't list it there ("Keep anyway"). */
+export const detachmentKeeps = pgTable(
+  'detachment_keeps',
+  {
+    faction: text('faction').notNull(),
+    nameKey: text('name_key').notNull(),
+    name: text('name').notNull(),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.faction, t.nameKey] })],
+);
