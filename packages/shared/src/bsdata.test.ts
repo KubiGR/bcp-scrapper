@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseBsdataCatalogues } from './bsdata';
+import { matchDetachment, parseBsdataCatalogues } from './bsdata';
 
 const entry = (name: string, modifiers?: unknown[]) => ({ name, id: `e-${name}`, modifiers });
 const hiddenUnless = (catalogueId: string) => ({
@@ -135,5 +135,28 @@ describe('parseBsdataCatalogues', () => {
     ]);
     expect(result.unknownCatalogues).toEqual(['Xenos - Hrud']);
     expect(result.factions.size).toBe(0);
+  });
+});
+
+describe('matchDetachment', () => {
+  const candidates = ['Needgaârd Oathband', 'Hearthband', "The Phaeron's Armoury", 'War Horde'];
+
+  it('matches exactly, then ignoring case, spacing, accents, apostrophes and hyphens', () => {
+    expect(matchDetachment('Hearthband', candidates)).toBe('Hearthband');
+    expect(matchDetachment('needgaard  oathband', candidates)).toBe('Needgaârd Oathband');
+    expect(matchDetachment('The Phaerons Armoury', candidates)).toBe("The Phaeron's Armoury");
+    expect(matchDetachment('War-Horde', candidates)).toBe('War Horde');
+  });
+
+  it('matches a short name that ends exactly one candidate', () => {
+    expect(matchDetachment('Oathband', candidates)).toBe('Needgaârd Oathband');
+    expect(matchDetachment('Band', ['Hearthband', 'Oath Band', 'War Band'])).toBeNull();
+  });
+
+  it('allows up to 2 letters off on names of 8+ letters, only with one clear match', () => {
+    expect(matchDetachment('Hearthbnad', candidates)).toBe('Hearthband');
+    expect(matchDetachment('Wor Hord', candidates)).toBeNull(); // short: no typo matching
+    expect(matchDetachment('Blood Legion', ['Blood Legions', 'Blood Legian'])).toBeNull();
+    expect(matchDetachment('Something Else', candidates)).toBeNull();
   });
 });
