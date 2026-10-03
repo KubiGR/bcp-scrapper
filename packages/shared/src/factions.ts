@@ -94,6 +94,7 @@ const ALIASES: Record<string, (typeof BCP_FACTIONS)[number]> = {
   daemons: 'Chaos Daemons',
   'legiones daemonica': 'Chaos Daemons',
   votann: 'Leagues of Votann',
+  'agents of the imperium': 'Imperial Agents',
   // Chapters without a BCP faction of their own
   ultramarines: SPACE_MARINES,
   'imperial fists': SPACE_MARINES,
