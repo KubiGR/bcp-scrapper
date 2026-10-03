@@ -5,9 +5,10 @@ import {
   SPACE_MARINES,
   type DetachmentNamesResponse,
 } from '@bcp/shared';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
-import { armyLists, detachmentLinks, players } from '../db/schema';
+import { armyLists, detachmentKeeps, detachmentLinks, players } from '../db/schema';
+import { bsdataByFaction } from './bsdata';
 import { learnedTranslations, tidyDetachments } from './lists';
 
 const keyOf = (name: string) => cleanDetachmentName(name).toLowerCase();
@@ -71,8 +72,51 @@ function ownFactions(counts: Map<string, number>): string[] {
   return [...counts].filter(([, lists]) => lists > 1 || !clearOwner).map(([faction]) => faction);
 }
 
+/** Lower-case BSData detachments per faction, and the kept (faction, lower-case name) pairs. */
+async function bsdataRules(db: Db) {
+  const [bsdata, keeps] = await Promise.all([
+    bsdataByFaction(db),
+    db.select().from(detachmentKeeps).orderBy(detachmentKeeps.faction, detachmentKeeps.name),
+  ]);
+  const names = new Map(
+    [...bsdata].map(([faction, list]) => [faction, new Set(list.map((n) => n.toLowerCase()))]),
+  );
+  const kept = new Set(keeps.map((keep) => `${keep.faction}\u0000${keep.nameKey}`));
+  /** Whether a list's detachment is outside its army's BSData list (and not kept anyway). */
+  const wrong = (army: string | null, name: string) => {
+    if (army === null) return false;
+    const known = names.get(army);
+    if (known === undefined) return false;
+    const key = keyOf(name);
+    return !known.has(key) && !kept.has(`${army}\u0000${key}`);
+  };
+  return { bsdata, keeps, wrong };
+}
+
+/** (army, detachment) → whether it's a wrong pair: army covered by BSData, name not in it, not kept. */
+export async function wrongPairCheck(
+  db: Db,
+): Promise<(army: string | null, name: string) => boolean> {
+  return (await bsdataRules(db)).wrong;
+}
+
+/** Keeps a detachment for a faction although BSData doesn't list it there. */
+export async function keepDetachment(db: Db, faction: string, name: string): Promise<void> {
+  const clean = cleanDetachmentName(name);
+  await db
+    .insert(detachmentKeeps)
+    .values({ faction, nameKey: clean.toLowerCase(), name: clean })
+    .onConflictDoNothing();
+}
+
+export async function unkeepDetachment(db: Db, faction: string, name: string): Promise<void> {
+  await db
+    .delete(detachmentKeeps)
+    .where(and(eq(detachmentKeeps.faction, faction), eq(detachmentKeeps.nameKey, keyOf(name))));
+}
+
 export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> {
-  const [bcpRows, storedRows, links, learned] = await Promise.all([
+  const [bcpRows, storedRows, links, learned, rules] = await Promise.all([
     db
       .select({ name: bcpName, faction: armyOf })
       .from(armyLists)
@@ -88,6 +132,7 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
       .innerJoin(players, eq(players.id, armyLists.playerId)),
     db.select().from(detachmentLinks).orderBy(detachmentLinks.name),
     learnedTranslations(db),
+    bsdataRules(db),
   ]);
 
   // BCP's names, with how many lists of each faction use them.
@@ -100,9 +145,23 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
     }
     bcpNames.set(name.toLowerCase(), entry);
   }
-  const targets = new Map<string, { name: string; factions: Set<string> }>();
+  const targets = new Map<string, { name: string; factions: Set<string>; bsdata: boolean }>();
+  // BSData's detachments first: their spelling and factions win.
+  for (const [faction, names] of rules.bsdata) {
+    for (const name of names) {
+      const target = targets.get(name.toLowerCase()) ?? {
+        name,
+        factions: new Set<string>(),
+        bsdata: true,
+      };
+      target.factions.add(faction);
+      targets.set(name.toLowerCase(), target);
+    }
+  }
   for (const [key, { name, factions }] of bcpNames) {
-    targets.set(key, { name, factions: new Set(ownFactions(factions)) });
+    if (!targets.has(key)) {
+      targets.set(key, { name, factions: new Set(ownFactions(factions)), bsdata: false });
+    }
   }
   // Linked names are settled; those marked as not English stay listed, apart.
   const settled = new Set(links.filter((link) => !link.foreign).map((link) => link.nameKey));
@@ -127,6 +186,7 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
     targets.set(link.nameKey, {
       name: link.name,
       factions: storedFactions.get(link.nameKey) ?? new Set<string>(),
+      bsdata: false,
     });
   }
 
@@ -141,6 +201,27 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
   const isForeign = (entry: { name: string; marked: boolean }) =>
     entry.marked || looksForeign(entry.name);
 
+  // Detachments outside their army's BSData list (names that aren't English are listed apart).
+  const wrongLists = new Map<string, { faction: string; name: string; players: Set<string> }>();
+  for (const row of storedRows) {
+    if (row.faction === null || !rules.wrong(row.faction, row.name)) continue;
+    if (isForeign({ name: row.name, marked: marked.has(row.name.toLowerCase()) })) continue;
+    const key = `${row.faction}\u0000${row.name.toLowerCase()}`;
+    const entry = wrongLists.get(key) ?? {
+      faction: row.faction,
+      name: row.name,
+      players: new Set<string>(),
+    };
+    entry.players.add(row.playerId);
+    wrongLists.set(key, entry);
+  }
+  const bsdataFactionsOf = (name: string) =>
+    sorted(
+      [...rules.bsdata]
+        .filter(([, names]) => names.some((n) => n.toLowerCase() === name.toLowerCase()))
+        .map(([faction]) => faction),
+    );
+
   return {
     unsure: names
       .filter((entry) => !isForeign(entry))
@@ -151,8 +232,25 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
       factions: sorted(targets.get(translation.target.toLowerCase())?.factions ?? []),
     })),
     targets: [...targets.values()]
-      .map((target) => ({ name: target.name, factions: sorted(target.factions) }))
+      .map((target) => ({
+        name: target.name,
+        factions: sorted(target.factions),
+        bsdata: target.bsdata,
+      }))
       .sort((a, b) => a.name.localeCompare(b.name)),
+    bsdataFactions: sorted(rules.bsdata.keys()),
+    wrong: [...wrongLists.values()]
+      .map((entry) => ({
+        faction: entry.faction,
+        name: entry.name,
+        lists: entry.players.size,
+        bsdataFactions: bsdataFactionsOf(entry.name),
+      }))
+      .sort(
+        (a, b) =>
+          a.faction.localeCompare(b.faction) || b.lists - a.lists || a.name.localeCompare(b.name),
+      ),
+    kept: rules.keeps.map((keep) => ({ faction: keep.faction, name: keep.name })),
     // A linked name no longer appears in stored lists: it belongs to its target's factions.
     links: links
       .filter((link) => !link.foreign)

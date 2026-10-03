@@ -10,7 +10,7 @@ import {
 import { and, gt, gte, inArray, lt, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { armyLists, events, players, teams } from '../db/schema';
-import { foreignDetachmentCheck } from './detachment-links';
+import { foreignDetachmentCheck, wrongPairCheck } from './detachment-links';
 import { storedCurrentList } from './lists';
 
 const DAY_MS = 86_400_000;
@@ -64,7 +64,7 @@ export async function loadMetaRows(
     inRange.filter((event) => eventPhase(event, today) === 'finished').map((event) => event.id),
   );
 
-  const [loaded, found, foreign] = await Promise.all([
+  const [loaded, found, foreign, wrongPair] = await Promise.all([
     db
       .selectDistinct({ eventId: players.eventId })
       .from(players)
@@ -93,11 +93,14 @@ export async function loadMetaRows(
         ),
       ),
     foreignDetachmentCheck(db),
+    wrongPairCheck(db),
   ]);
 
   const startOf = new Map(inRange.map((event) => [event.id, isoDay(event.startDate)]));
   const rows = found.map((row) => {
     const { faction } = countedFaction(row.faction, row.parsedArmy);
+    // The army a list's detachments belong to: the one it names, else the counted faction.
+    const army = row.parsedArmy ?? faction;
     return {
       eventId: row.eventId,
       isTeamEvent: teamEvents.has(row.eventId),
@@ -107,8 +110,12 @@ export async function loadMetaRows(
       teamPlacing: row.teamPlacing,
       faction,
       disposition: row.disposition ?? knownDisposition(row.parsedDisposition),
-      // A detachment that isn't English can't be told apart from others: detachment unknown.
-      detachments: row.detachments?.some(foreign) === true ? [] : (row.detachments ?? []),
+      // A detachment that isn't English can't be told apart from others, and one outside its
+      // army's BSData list is most likely a mistake: detachment unknown either way.
+      detachments:
+        row.detachments?.some((name) => foreign(name) || wrongPair(army, name)) === true
+          ? []
+          : (row.detachments ?? []),
       wins: row.wins,
       losses: row.losses,
       draws: row.draws,

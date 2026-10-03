@@ -80,6 +80,24 @@ describe('/api/detachments', () => {
     expect(after.foreign.map((f) => [f.name, f.marked])).toEqual([['Hellrider Cavalcade', true]]);
   });
 
+  it('keeps a detachment for a faction anyway, and undoes it', async () => {
+    const app = createApp(deps());
+    const keep = (method: string, body: unknown) =>
+      app.request('/api/detachments/keeps', {
+        method,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    const kept = await keep('POST', { faction: 'Chaos Daemons', name: 'Hellrider Cavalcade' });
+    expect(kept.status).toBe(200);
+    expect(((await kept.json()) as DetachmentNamesResponse).kept).toEqual([
+      { faction: 'Chaos Daemons', name: 'Hellrider Cavalcade' },
+    ]);
+    const undone = await keep('DELETE', { faction: 'Chaos Daemons', name: 'Hellrider Cavalcade' });
+    expect(((await undone.json()) as DetachmentNamesResponse).kept).toEqual([]);
+    expect((await keep('POST', { faction: '', name: 'X' })).status).toBe(400);
+  });
+
   it('validates the request', async () => {
     const app = createApp(deps());
     expect((await post(app, { name: '', target: null })).status).toBe(400);

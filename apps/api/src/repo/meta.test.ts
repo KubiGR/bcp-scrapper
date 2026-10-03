@@ -1,11 +1,12 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { players } from '../db/schema';
+import { bsdataDetachments, players } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { syncEvent } from '../sync/jobs';
 import { ALL_EVENTS, sampleSource } from '../test/helpers';
 import { gwList, storeList } from '../test/lists';
+import { keepDetachment } from './detachment-links';
 import { loadMetaRows } from './meta';
 
 let db: Db;
@@ -61,6 +62,20 @@ describe('loadMetaRows', () => {
     const { rows } = await loadMetaRows(db, { ...RANGE, type: 'all' }, ALL_EVENTS, TODAY);
     const ada = rows.find((r) => r.wins === 3 && r.losses === 1);
     expect(ada).toMatchObject({ faction: 'Orks', detachments: [] });
+  });
+
+  it('counts a detachment BSData doesn’t list for the army as unknown, unless kept', async () => {
+    await db.insert(bsdataDetachments).values({ faction: 'Orks', name: 'War Horde' });
+    await record('PL-ADA', 3, 1);
+    await db.update(players).set({ faction: 'Orks' }).where(eq(players.id, 'PL-ADA'));
+    await storeList(db, 'PL-ADA', gwList('Orks', 'Wreckas'));
+    const orksDetachments = async () =>
+      (await loadMetaRows(db, { ...RANGE, type: 'all' }, ALL_EVENTS, TODAY)).rows
+        .filter((r) => r.faction === 'Orks')
+        .map((r) => r.detachments);
+    expect(await orksDetachments()).not.toContainEqual(['Wreckas']);
+    await keepDetachment(db, 'Orks', 'Wreckas');
+    expect(await orksDetachments()).toContainEqual(['Wreckas']);
   });
 
   it('gives each player’s disposition: BCP’s, else the one read from their list', async () => {

@@ -1,9 +1,15 @@
-import { DetachmentLinkRequestSchema } from '@bcp/shared';
+import { DetachmentKeepRequestSchema, DetachmentLinkRequestSchema } from '@bcp/shared';
 import { Hono } from 'hono';
 import type { AuthEnv } from '../auth/middleware';
 import type { Db } from '../db/client';
 import { ForbiddenError } from '../errors';
-import { detachmentNames, linkDetachment, unlinkDetachment } from '../repo/detachment-links';
+import {
+  detachmentNames,
+  keepDetachment,
+  linkDetachment,
+  unkeepDetachment,
+  unlinkDetachment,
+} from '../repo/detachment-links';
 import { parseInput } from '../validation';
 import { requireJson } from './require-json';
 
@@ -15,20 +21,41 @@ export function detachmentLinkRoutes(deps: { db: Db; authRequired: boolean }) {
       throw new ForbiddenError('Only admins can link detachment names');
     }
   };
-  return new Hono<AuthEnv>()
-    .get('/detachments', async (c) => c.json(await detachmentNames(db)))
-    .post('/detachments/links', requireJson, async (c) => {
-      adminOnly(c.get('user'));
-      const { name, target, foreign } = parseInput(
-        DetachmentLinkRequestSchema,
-        await c.req.json<unknown>().catch(() => null),
-      );
-      await linkDetachment(db, name, target, foreign);
-      return c.json(await detachmentNames(db));
-    })
-    .delete('/detachments/links/:name', async (c) => {
-      adminOnly(c.get('user'));
-      await unlinkDetachment(db, c.req.param('name'));
-      return c.json(await detachmentNames(db));
-    });
+  return (
+    new Hono<AuthEnv>()
+      .get('/detachments', async (c) => c.json(await detachmentNames(db)))
+      .post('/detachments/links', requireJson, async (c) => {
+        adminOnly(c.get('user'));
+        const { name, target, foreign } = parseInput(
+          DetachmentLinkRequestSchema,
+          await c.req.json<unknown>().catch(() => null),
+        );
+        await linkDetachment(db, name, target, foreign);
+        return c.json(await detachmentNames(db));
+      })
+      .delete('/detachments/links/:name', async (c) => {
+        adminOnly(c.get('user'));
+        await unlinkDetachment(db, c.req.param('name'));
+        return c.json(await detachmentNames(db));
+      })
+      // A detachment kept for a faction although BSData doesn't list it there, and the undo.
+      .post('/detachments/keeps', requireJson, async (c) => {
+        adminOnly(c.get('user'));
+        const { faction, name } = parseInput(
+          DetachmentKeepRequestSchema,
+          await c.req.json<unknown>().catch(() => null),
+        );
+        await keepDetachment(db, faction, name);
+        return c.json(await detachmentNames(db));
+      })
+      .delete('/detachments/keeps', requireJson, async (c) => {
+        adminOnly(c.get('user'));
+        const { faction, name } = parseInput(
+          DetachmentKeepRequestSchema,
+          await c.req.json<unknown>().catch(() => null),
+        );
+        await unkeepDetachment(db, faction, name);
+        return c.json(await detachmentNames(db));
+      })
+  );
 }

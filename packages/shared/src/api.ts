@@ -403,12 +403,31 @@ export const DetachmentNamesResponseSchema = z.object({
   learned: z.array(
     z.object({ name: z.string(), target: z.string(), factions: z.array(z.string()) }),
   ),
-  /** BCP's detachment names, with the factions they're played in. */
-  targets: z.array(z.object({ name: z.string(), factions: z.array(z.string()) })),
+  /**
+   * Detachments to link names to: BSData's (`bsdata`, with the factions BSData lists them for)
+   * and BCP's names (with the factions they're played in).
+   */
+  targets: z.array(
+    z.object({ name: z.string(), factions: z.array(z.string()), bsdata: z.boolean() }),
+  ),
   /** `target` null = marked as its own detachment; `factions`: where the name is played. */
   links: z.array(
     z.object({ name: z.string(), target: z.string().nullable(), factions: z.array(z.string()) }),
   ),
+  /** Factions BSData covers: their known detachments are BSData's. */
+  bsdataFactions: z.array(z.string()),
+  /** Detachments lists use for an army BSData covers but doesn't list them for. */
+  wrong: z.array(
+    z.object({
+      faction: z.string(),
+      name: z.string(),
+      lists: z.number().int().nonnegative(),
+      /** Factions BSData lists this detachment for. */
+      bsdataFactions: z.array(z.string()),
+    }),
+  ),
+  /** Pairs kept anyway. */
+  kept: z.array(z.object({ faction: z.string(), name: z.string() })),
 });
 export type DetachmentNamesResponse = z.infer<typeof DetachmentNamesResponseSchema>;
 
@@ -558,3 +577,9 @@ export const BsdataStatusSchema = z.object({
   errors: z.array(z.object({ path: z.string(), error: z.string() })),
 });
 export type BsdataStatus = z.infer<typeof BsdataStatusSchema>;
+
+/** POST / DELETE /api/detachments/keeps: keep a detachment for a faction anyway, or undo it. */
+export const DetachmentKeepRequestSchema = z.object({
+  faction: z.string().trim().min(1).max(100),
+  name: z.string().trim().min(1).max(200),
+});

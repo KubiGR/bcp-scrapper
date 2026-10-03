@@ -17,14 +17,17 @@ const names = (overrides: Partial<DetachmentNamesResponse> = {}): DetachmentName
   ],
   learned: [{ name: 'Cabalgata Sangrienta', target: 'Blood Legion', factions: ['Chaos Daemons'] }],
   targets: [
-    { name: 'Blood Legion', factions: ['Chaos Daemons'] },
-    { name: 'Shadow Legion', factions: ['Chaos Daemons'] },
-    { name: 'War Horde', factions: ['Orks'] },
+    { name: 'Blood Legion', factions: ['Chaos Daemons'], bsdata: false },
+    { name: 'Shadow Legion', factions: ['Chaos Daemons'], bsdata: false },
+    { name: 'War Horde', factions: ['Orks'], bsdata: false },
   ],
   links: [
     { name: 'Die Macht der Moritoi', target: 'Might of the Moritoi', factions: ['Grey Knights'] },
     { name: 'Der Kriegshaufen', target: 'War Horde', factions: ['Orks'] },
   ],
+  bsdataFactions: [],
+  wrong: [],
+  kept: [],
   ...overrides,
 });
 

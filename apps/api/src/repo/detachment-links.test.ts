@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { armyLists, players } from '../db/schema';
+import { armyLists, bsdataDetachments, players } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { sampleSource } from '../test/helpers';
 import { gwList, storeList } from '../test/lists';
@@ -9,8 +9,11 @@ import { upsertEventDetail } from './events';
 import {
   detachmentNames,
   foreignDetachmentCheck,
+  keepDetachment,
   linkDetachment,
+  unkeepDetachment,
   unlinkDetachment,
+  wrongPairCheck,
 } from './detachment-links';
 import { replaceEventPlayers, replaceEventTeams } from './participants';
 
@@ -38,14 +41,64 @@ beforeEach(async () => {
 const detachmentsOf = async (playerId: string) =>
   (await db.select().from(armyLists).where(eq(armyLists.playerId, playerId)))[0]?.detachments;
 
+describe('detachments outside an army’s BSData list', () => {
+  beforeEach(async () => {
+    await db.insert(bsdataDetachments).values([
+      { faction: 'World Eaters', name: 'Berzerker Warband' },
+      { faction: 'Chaos Daemons', name: 'Blood Legion' },
+      { faction: 'Chaos Daemons', name: 'Shadow Legion' },
+    ]);
+    await db.update(players).set({ faction: 'World Eaters' }).where(eq(players.id, 'PL-EVE'));
+  });
+
+  it('lists them with the factions BSData has them for, until kept', async () => {
+    await storeList(db, 'PL-EVE', gwList('World Eaters', 'Blood Legion'));
+    const names = await detachmentNames(db);
+    expect(names.bsdataFactions).toEqual(['Chaos Daemons', 'World Eaters']);
+    expect(names.wrong).toEqual([
+      {
+        faction: 'World Eaters',
+        name: 'Blood Legion',
+        lists: 1,
+        bsdataFactions: ['Chaos Daemons'],
+      },
+    ]);
+    expect(names.targets.find((t) => t.name === 'Berzerker Warband')).toEqual({
+      name: 'Berzerker Warband',
+      factions: ['World Eaters'],
+      bsdata: true,
+    });
+    await keepDetachment(db, 'World Eaters', 'Blood Legion');
+    const kept = await detachmentNames(db);
+    expect(kept.wrong).toEqual([]);
+    expect(kept.kept).toEqual([{ faction: 'World Eaters', name: 'Blood Legion' }]);
+    await unkeepDetachment(db, 'World Eaters', 'Blood Legion');
+    expect((await detachmentNames(db)).wrong).toHaveLength(1);
+  });
+
+  it('counts a linked name as its target', async () => {
+    await linkDetachment(db, 'Gore Band', 'Berzerker Warband');
+    await storeList(db, 'PL-EVE', gwList('World Eaters', 'Gore Band'));
+    expect((await detachmentNames(db)).wrong).toEqual([]);
+  });
+
+  it('never flags without an army, or for an army BSData doesn’t cover', async () => {
+    const wrong = await wrongPairCheck(db);
+    expect(wrong(null, 'Anything')).toBe(false);
+    expect(wrong('Necrons', 'Anything')).toBe(false);
+    expect(wrong('World Eaters', 'Blood Legion')).toBe(true);
+    expect(wrong('World Eaters', 'berzerker warband')).toBe(false);
+  });
+});
+
 describe('detachment names', () => {
   it('lists the names BCP doesn’t use, most used first, with their factions', async () => {
     await storeList(db, 'PL-EVE', gwList('Chaos Daemons', 'Wreckas'));
     const names = await detachmentNames(db);
     expect(names.unsure).toEqual([{ name: 'Wreckas', lists: 1, factions: ['Chaos Daemons'] }]);
     expect(names.targets).toEqual([
-      { name: 'Blood Legion', factions: ['Chaos Daemons'] },
-      { name: 'Shadow Legion', factions: ['Chaos Daemons'] },
+      { name: 'Blood Legion', factions: ['Chaos Daemons'], bsdata: false },
+      { name: 'Shadow Legion', factions: ['Chaos Daemons'], bsdata: false },
     ]);
     expect(names.links).toEqual([]);
   });
@@ -155,6 +208,7 @@ describe('detachment names', () => {
     expect(names.targets).toContainEqual({
       name: 'Cabalgata del Caos',
       factions: ['Chaos Daemons'],
+      bsdata: false,
     });
   });
 
