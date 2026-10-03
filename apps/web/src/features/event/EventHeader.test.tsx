@@ -1,10 +1,23 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { renderWithProviders } from '../../test/render';
+import { renderWithProviders, stubFetchRoutes } from '../../test/render';
+import { twoUpdates } from '../updates/test-updates';
 import { anEventDetail } from '../../test/sample-data';
 import { EventHeader } from './EventHeader';
 
 describe('EventHeader', () => {
+  it('names the game update the event was played under', async () => {
+    stubFetchRoutes({ 'GET /api/updates': twoUpdates() });
+    renderWithProviders(
+      <EventHeader
+        event={anEventDetail({ startDate: '2026-06-20T09:00:00.000Z' })}
+        syncing={false}
+        onRefresh={vi.fn()}
+      />,
+    );
+    expect(await screen.findByText('Update: Jun 2026 · Faction Packs')).toBeInTheDocument();
+  });
+
   it('links to the event on BCP in a new tab', () => {
     renderWithProviders(
       <EventHeader event={anEventDetail()} syncing={false} onRefresh={vi.fn()} />,

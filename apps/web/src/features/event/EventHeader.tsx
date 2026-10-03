@@ -7,6 +7,7 @@ import {
   formatEventSize,
   formatRoundCount,
 } from '../../lib/format';
+import { UpdateLabel } from '../updates/UpdateLabel';
 
 interface EventHeaderProps {
   event: EventDetail;
@@ -46,6 +47,7 @@ export function EventHeader({ event, syncing, onRefresh }: EventHeaderProps) {
         <Text size="sm" c="dimmed" className="numeric">
           {[formatEventSize(event), formatRoundCount(event.roundCount)].filter(Boolean).join(' · ')}
         </Text>
+        <UpdateLabel startDate={event.startDate} prefix="Update: " size="sm" c="dimmed" />
         <EventStatusBadges event={event} />
       </Group>
       {event.lastSyncedAt !== null && (

@@ -3,11 +3,12 @@ import {
   toIsoDate,
   updateSpans,
   type EffectiveUpdate,
+  type GameUpdatePatch,
   type GameUpdatesResponse,
   type UpdateSpan,
 } from '@bcp/shared';
 import { queryOptions, useQuery } from '@tanstack/react-query';
-import { apiGet } from '../../api/client';
+import { apiGet, apiPatch } from '../../api/client';
 
 export const updatesQuery = queryOptions({
   queryKey: ['game-updates'],
@@ -27,3 +28,7 @@ export function useUpdateSpans(): UpdateSpan[] {
   const { data } = useQuery(updatesQuery);
   return updateSpans(effectiveOf(data), toIsoDate(new Date()));
 }
+
+/** An admin's edit to an update (null name/start: back to BSData's). */
+export const patchGameUpdate = (id: string, patch: GameUpdatePatch) =>
+  apiPatch(`/api/updates/${encodeURIComponent(id)}`, patch, GameUpdatesResponseSchema);

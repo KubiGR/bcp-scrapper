@@ -1,8 +1,9 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatEventDates } from '../../lib/format';
-import { renderWithProviders } from '../../test/render';
+import { renderWithProviders, stubFetchRoutes } from '../../test/render';
 import { anEvent } from '../../test/sample-data';
+import { twoUpdates } from '../updates/test-updates';
 import { EventsTable } from './EventsTable';
 
 // mantine-datatable decides per-column visibility with `useMediaQuery`, which calls
@@ -33,6 +34,27 @@ const props = {
 };
 
 describe('EventsTable', () => {
+  it('names each event’s game update under its date', async () => {
+    stubFetchRoutes({ 'GET /api/updates': twoUpdates() });
+    renderWithProviders(
+      <EventsTable
+        {...props}
+        onOpen={vi.fn()}
+        response={{
+          items: [
+            anEvent({ bcpId: 'E1', name: 'Summer GT', startDate: '2026-07-30T09:00:00.000Z' }),
+            anEvent({ bcpId: 'E2', name: 'Spring RTT', startDate: '2026-05-01T09:00:00.000Z' }),
+          ],
+          total: 2,
+          page: 1,
+          pageSize: 25,
+        }}
+      />,
+    );
+    expect(await screen.findByText('Jul 2026 · MFM')).toBeInTheDocument();
+    expect(screen.getByText('Before first update')).toBeInTheDocument();
+  });
+
   it('lists events with size and badges, and opens one on click', () => {
     const onOpen = vi.fn();
     renderWithProviders(

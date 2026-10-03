@@ -6,6 +6,7 @@ import { Panel } from '../../components/Panel';
 import { formatEventDates, formatEventSize } from '../../lib/format';
 import classes from './EventsTable.module.css';
 import { FINDER_PAGE_SIZE, type FinderSearch } from './finder-search';
+import { UpdateLabel } from '../updates/UpdateLabel';
 
 type EventSort = FinderSearch['sort'];
 type SortDir = FinderSearch['dir'];
@@ -79,9 +80,12 @@ export function EventsTable({
             sortable: true,
             visibleMediaQuery: wide,
             render: (event) => (
-              <Text size="sm" className="numeric">
-                {formatEventDates(event.startDate, event.endDate)}
-              </Text>
+              <>
+                <Text size="sm" className="numeric">
+                  {formatEventDates(event.startDate, event.endDate)}
+                </Text>
+                <UpdateLabel startDate={event.startDate} size="xs" c="dimmed" />
+              </>
             ),
           },
           {
