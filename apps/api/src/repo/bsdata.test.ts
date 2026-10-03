@@ -41,6 +41,7 @@ const orks = catalogue('ork', 'Xenos - Orks', ['War Horde']);
 const fakeClient = (files: Record<string, { sha: string; body: unknown }>) => {
   const fetched: string[] = [];
   const client: BsdataClient = {
+    commits: () => Promise.resolve([]),
     tree: () =>
       Promise.resolve({
         commit: 'c1',

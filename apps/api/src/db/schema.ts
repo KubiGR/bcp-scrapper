@@ -366,3 +366,22 @@ export const detachmentKeeps = pgTable(
   },
   (t) => [primaryKey({ columns: [t.faction, t.nameKey] })],
 );
+
+/** BSData's commits (first line of each message), for building game updates. */
+export const bsdataCommits = pgTable('bsdata_commits', {
+  sha: text('sha').primaryKey(),
+  /** The commit author's UTC day (YYYY-MM-DD). */
+  day: text('day').notNull(),
+  message: text('message').notNull(),
+});
+
+/** Admin edits to a game update, keyed by its first commit's sha. */
+export const gameUpdates = pgTable('game_updates', {
+  id: text('id').primaryKey(),
+  name: text('name'),
+  /** YYYY-MM-DD; null = BSData's start. */
+  startOverride: text('start_override'),
+  merged: boolean('merged').notNull().default(false),
+  hidden: boolean('hidden').notNull().default(false),
+  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+});

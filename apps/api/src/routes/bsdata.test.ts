@@ -32,6 +32,7 @@ const necrons = {
   },
 };
 const client: BsdataClient = {
+  commits: () => Promise.resolve([]),
   tree: () => Promise.resolve({ commit: 'c1', files: [{ path: 'Necrons.json', sha: 'a' }] }),
   file: () => Promise.resolve(necrons),
 };
