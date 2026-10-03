@@ -62,6 +62,18 @@ describe('UpdatePicker', () => {
     );
   });
 
+  it('calls the update in force today Current, and a later one Upcoming', async () => {
+    stubFetchRoutes({
+      'GET /api/updates': {
+        updates: [update('z', '2099-01-01', 'Far future'), ...updates.updates],
+      },
+    });
+    renderWithProviders(<UpdatePicker from="2026-01-01" to="2026-02-01" onChange={vi.fn()} />);
+    await open();
+    expect(screen.getByRole('option', { name: /^Current: Sep 2026 · MFM/ })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /^Upcoming: Far future/ })).toBeInTheDocument();
+  });
+
   it('shows no picker without updates', async () => {
     stubFetchRoutes({ 'GET /api/updates': { updates: [] } });
     renderWithProviders(

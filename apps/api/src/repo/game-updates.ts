@@ -8,13 +8,33 @@ import {
   type GameUpdatesResponse,
   type UpdateEdits,
 } from '@bcp/shared';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { BsdataClient } from '../bsdata/client';
 import type { Db } from '../db/client';
-import { bsdataCommits, events, gameUpdates } from '../db/schema';
+import { appSettings, bsdataCommits, events, gameUpdates } from '../db/schema';
+import { HISTORY_ERROR } from './bsdata';
 
 /** Reads BSData's new commits (all of them the first time); returns how many were added. */
 export async function syncUpdateCommits(db: Db, client: BsdataClient): Promise<number> {
+  try {
+    const added = await readNewCommits(db, client);
+    await db.delete(appSettings).where(eq(appSettings.key, HISTORY_ERROR));
+    return added;
+  } catch (error) {
+    // Shown on the BSData card until a read works again.
+    const message = error instanceof Error ? error.message : String(error);
+    await db
+      .insert(appSettings)
+      .values({ key: HISTORY_ERROR, value: message })
+      .onConflictDoUpdate({
+        target: appSettings.key,
+        set: { value: message, updatedAt: new Date() },
+      });
+    throw error;
+  }
+}
+
+async function readNewCommits(db: Db, client: BsdataClient): Promise<number> {
   const stored = new Set(
     (await db.select({ sha: bsdataCommits.sha }).from(bsdataCommits)).map((row) => row.sha),
   );

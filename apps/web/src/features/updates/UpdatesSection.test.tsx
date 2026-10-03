@@ -64,9 +64,7 @@ describe('UpdatesSection', () => {
       'PATCH /api/updates/b': twoUpdates(),
     });
     renderWithProviders(<UpdatesSection />);
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Change the start of Jul 2026 · MFM' }),
-    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Change date: Jul 2026 · MFM' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Start (YYYY-MM-DD)' }), {
       target: { value: '2026-07-25' },
     });
@@ -84,15 +82,13 @@ describe('UpdatesSection', () => {
     });
     renderWithProviders(<UpdatesSection />);
     // The oldest has none before it to merge into.
-    await screen.findByRole('button', { name: 'Merge Jul 2026 · MFM into the update before' });
+    await screen.findByRole('button', { name: 'Merge into previous: Jul 2026 · MFM' });
     expect(
       screen.queryByRole('button', {
-        name: 'Merge Jun 2026 · Faction Packs into the update before',
+        name: 'Merge into previous: Jun 2026 · Faction Packs',
       }),
     ).not.toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Merge Jul 2026 · MFM into the update before' }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Merge into previous: Jul 2026 · MFM' }));
     await waitFor(() => {
       expect(patchOf(fetchMock)?.body).toEqual({ merged: true });
     });
@@ -107,6 +103,20 @@ describe('UpdatesSection', () => {
     expect(
       await screen.findByRole('button', { name: 'Undo merge of Jul 2026 · MFM' }),
     ).toBeInTheDocument();
+  });
+
+  it('offers no merge when the update before is hidden', async () => {
+    const [jul, jun] = twoUpdates().updates;
+    if (jul === undefined || jun === undefined) throw new Error('fixture');
+    stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/updates': { updates: [jul, { ...jun, hidden: true }] },
+    });
+    renderWithProviders(<UpdatesSection />);
+    await screen.findByRole('button', { name: 'Rename Jul 2026 · MFM' });
+    expect(
+      screen.queryByRole('button', { name: 'Merge into previous: Jul 2026 · MFM' }),
+    ).not.toBeInTheDocument();
   });
 
   it('says when no updates were read yet', async () => {

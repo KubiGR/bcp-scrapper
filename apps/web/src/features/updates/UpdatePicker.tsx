@@ -1,4 +1,4 @@
-import { selectedUpdates, selectionRange } from '@bcp/shared';
+import { selectedUpdates, selectionRange, toIsoDate, updateOfDay } from '@bcp/shared';
 import { MultiSelect, Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { updatesQuery, useUpdateSpans } from './updates-queries';
@@ -25,9 +25,17 @@ export function UpdatePicker({ from, to, onChange }: UpdatePickerProps) {
   // The factions each update touched, under its name in the list.
   const summaries = new Map(updates?.updates.map((u) => [u.id, u.summary]));
   const newest = spans.at(-1)?.id;
+  // "Current": the update in force today; one whose start was moved into the future is upcoming.
+  const today = toIsoDate(new Date());
+  const current = updateOfDay(spans, today)?.id;
   const data = [...spans].reverse().map((span) => ({
     value: span.id,
-    label: span.id === newest ? `Current: ${span.name}` : span.name,
+    label:
+      span.start > today
+        ? `Upcoming: ${span.name}`
+        : span.id === current
+          ? `Current: ${span.name}`
+          : span.name,
   }));
   const value = selectedUpdates(spans, from, to);
   return (

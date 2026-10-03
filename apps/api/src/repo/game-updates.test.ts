@@ -4,6 +4,7 @@ import type { BsdataClient } from '../bsdata/client';
 import type { Db } from '../db/client';
 import { events } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
+import { bsdataStatus } from './bsdata';
 import { editGameUpdate, listGameUpdates, syncUpdateCommits } from './game-updates';
 
 let db: Db;
@@ -88,6 +89,15 @@ describe('game updates', () => {
     await syncUpdateCommits(db, fakeClient(history).client);
     await expect(syncUpdateCommits(db, fakeClient([], 0).client)).rejects.toThrow('500');
     expect((await listGameUpdates(db, TODAY)).updates).toHaveLength(3);
+  });
+
+  it('shows a failed history read in the BSData status, until a read works', async () => {
+    await expect(syncUpdateCommits(db, fakeClient([], 0).client)).rejects.toThrow();
+    expect((await bsdataStatus(db)).errors).toEqual([
+      { path: 'Commit history', error: 'GitHub answered 500' },
+    ]);
+    await syncUpdateCommits(db, fakeClient(history).client);
+    expect((await bsdataStatus(db)).errors).toEqual([]);
   });
 
   it('lists updates newest first with their events', async () => {

@@ -13,6 +13,7 @@ const status = (overrides: Partial<BsdataStatus> = {}): BsdataStatus => ({
     { faction: 'Orks', detachments: 17 },
   ],
   errors: [{ path: 'Tyranids.json', error: 'GitHub answered 500' }],
+  uncovered: ['Deathwatch', 'Imperial Agents'],
   ...overrides,
 });
 
@@ -25,6 +26,9 @@ describe('BsdataCard', () => {
       screen.getByText(`Checked ${formatDateTime('2026-10-03T10:00:00.000Z')}`),
     ).toBeInTheDocument();
     expect(screen.getByText('Tyranids.json: GitHub answered 500')).toBeInTheDocument();
+    expect(
+      screen.getByText('Not in BSData yet (BCP’s names count there): Deathwatch, Imperial Agents'),
+    ).toBeInTheDocument();
   });
 
   it('refreshes on request', async () => {

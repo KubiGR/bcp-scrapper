@@ -67,11 +67,14 @@ describe('syncBsdata', () => {
       'Awakened Dynasty',
       'Canoptek Court',
     ]);
-    expect(status).toEqual({
+    expect(status).toMatchObject({
       checkedAt: NOW.toISOString(),
       factions: [{ faction: 'Necrons', detachments: 2 }],
       errors: [],
     });
+    // Every other faction isn't covered (yet).
+    expect(status.uncovered).toContain('Orks');
+    expect(status.uncovered).not.toContain('Necrons');
     expect(await bsdataStatus(db)).toEqual(status);
   });
 

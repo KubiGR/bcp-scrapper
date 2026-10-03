@@ -48,6 +48,11 @@ export function BsdataCard() {
               <Text size="sm" c="dimmed">{`Checked ${formatDateTime(data.checkedAt)}`}</Text>
             </>
           )}
+          {data.checkedAt !== null && data.uncovered.length > 0 && (
+            <Text size="sm" c="dimmed">
+              {`Not in BSData yet (BCP’s names count there): ${data.uncovered.join(', ')}`}
+            </Text>
+          )}
           {data.errors.map((error) => (
             <Text key={error.path} size="sm" c="red">
               {`${error.path}: ${error.error}`}

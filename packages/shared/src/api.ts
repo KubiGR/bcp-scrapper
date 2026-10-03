@@ -575,6 +575,8 @@ export const BsdataStatusSchema = z.object({
   checkedAt: z.iso.datetime().nullable(),
   factions: z.array(z.object({ faction: z.string(), detachments: z.number().int() })),
   errors: z.array(z.object({ path: z.string(), error: z.string() })),
+  /** BCP's factions BSData has no detachments for (yet): BCP's names count there. */
+  uncovered: z.array(z.string()),
 });
 export type BsdataStatus = z.infer<typeof BsdataStatusSchema>;
 

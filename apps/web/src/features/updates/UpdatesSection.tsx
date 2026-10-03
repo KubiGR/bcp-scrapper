@@ -29,7 +29,9 @@ export function UpdatesSection() {
     },
   });
   const list = updates.data?.updates ?? [];
-  const oldest = list.at(-1)?.id;
+  /** Whether a visible update comes before this one (newest first: later in the list). */
+  const hasVisibleBefore = (update: GameUpdate) =>
+    list.slice(list.indexOf(update) + 1).some((older) => !older.merged && !older.hidden);
 
   const actions = (update: GameUpdate) => {
     const run = (patch: GameUpdatePatch) => {
@@ -51,15 +53,15 @@ export function UpdatesSection() {
         {button('Rename', `Rename ${update.name}`, () => {
           setEditing({ id: update.id, field: 'name', value: update.name });
         })}
-        {button('Change date', `Change the start of ${update.name}`, () => {
+        {button('Change date', `Change date: ${update.name}`, () => {
           setEditing({ id: update.id, field: 'start', value: update.start });
         })}
         {update.merged
           ? button('Undo merge', `Undo merge of ${update.name}`, () => {
               run({ merged: false });
             })
-          : update.id !== oldest &&
-            button('Merge into previous', `Merge ${update.name} into the update before`, () => {
+          : hasVisibleBefore(update) &&
+            button('Merge into previous', `Merge into previous: ${update.name}`, () => {
               run({ merged: true });
             })}
         {button(

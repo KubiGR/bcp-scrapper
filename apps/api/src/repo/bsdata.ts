@@ -1,10 +1,12 @@
-import { parseBsdataCatalogues, type BsdataStatus } from '@bcp/shared';
+import { BCP_FACTIONS, parseBsdataCatalogues, type BsdataStatus } from '@bcp/shared';
 import { asc, eq, isNotNull, sql } from 'drizzle-orm';
 import type { BsdataClient } from '../bsdata/client';
 import type { Db } from '../db/client';
 import { appSettings, bsdataDetachments, bsdataFiles } from '../db/schema';
 
 const CHECKED_AT = 'bsdataCheckedAt';
+/** Why the last read of BSData's commit history (for game updates) failed; absent when it worked. */
+export const HISTORY_ERROR = 'bsdataHistoryError';
 const DAY_MS = 86_400_000;
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -19,7 +21,7 @@ async function checkedAt(db: Db): Promise<string | null> {
 
 /** Last check, faction counts (A→Z) and files whose last read failed. */
 export async function bsdataStatus(db: Db): Promise<BsdataStatus> {
-  const [at, counts, errors] = await Promise.all([
+  const [at, counts, errors, history] = await Promise.all([
     checkedAt(db),
     db
       .select({ faction: bsdataDetachments.faction, detachments: sql<number>`count(*)::int` })
@@ -31,13 +33,25 @@ export async function bsdataStatus(db: Db): Promise<BsdataStatus> {
       .from(bsdataFiles)
       .where(isNotNull(bsdataFiles.error))
       .orderBy(asc(bsdataFiles.path)),
+    db
+      .select({ value: appSettings.value })
+      .from(appSettings)
+      .where(eq(appSettings.key, HISTORY_ERROR)),
   ]);
+  const historyError = history[0]?.value;
+  const covered = new Set(counts.map((row) => row.faction));
   return {
     checkedAt: at,
     factions: counts,
-    errors: errors.flatMap((row) =>
-      row.error === null ? [] : [{ path: row.path, error: row.error }],
-    ),
+    errors: [
+      ...errors.flatMap((row) =>
+        row.error === null ? [] : [{ path: row.path, error: row.error }],
+      ),
+      ...(typeof historyError === 'string'
+        ? [{ path: 'Commit history', error: historyError }]
+        : []),
+    ],
+    uncovered: BCP_FACTIONS.filter((faction) => !covered.has(faction)),
   };
 }
 

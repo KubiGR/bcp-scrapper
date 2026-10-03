@@ -60,7 +60,7 @@ const appWith = (bsdata?: BsdataClient) => {
 describe('BSData routes', () => {
   it('answers the status, and refreshes from BSData', async () => {
     const app = appWith(client);
-    expect(await (await app.request('/api/bsdata')).json()).toEqual({
+    expect(await (await app.request('/api/bsdata')).json()).toMatchObject({
       checkedAt: null,
       factions: [],
       errors: [],
