@@ -72,8 +72,15 @@ export function rankingCutoff(today: Date): string {
 export function computeRankings(results: RankingResult[], today: Date): RankedPlayer[] {
   const cutoff = rankingCutoff(today);
   const byPlayer = new Map<string, RankingResult[]>();
+  // One result per player and event: an account entered twice keeps its better placing.
+  const perEvent = new Map<string, RankingResult>();
   for (const result of results) {
     if (result.eventStart <= cutoff) continue;
+    const key = `${result.userId}\u0000${result.eventId}`;
+    const kept = perEvent.get(key);
+    if (kept === undefined || eventScore(result) > eventScore(kept)) perEvent.set(key, result);
+  }
+  for (const result of perEvent.values()) {
     byPlayer.set(result.userId, [...(byPlayer.get(result.userId) ?? []), result]);
   }
   const players = [...byPlayer.values()].map((own) => {
@@ -111,7 +118,9 @@ export function computeRankings(results: RankingResult[], today: Date): RankedPl
         b.points - a.points ||
         b.results - a.results ||
         b.best.score - a.best.score ||
-        a.name.localeCompare(b.name),
+        a.name.localeCompare(b.name) ||
+        // Last: the account, so players tied on everything never swap ranks between requests.
+        a.userId.localeCompare(b.userId),
     )
     .map((player, index) => ({ rank: index + 1, ...player }));
 }

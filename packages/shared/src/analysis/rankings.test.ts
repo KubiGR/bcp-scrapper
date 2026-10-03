@@ -83,6 +83,24 @@ describe('computeRankings', () => {
     expect(ranked.map((p) => p.rank)).toEqual([1, 2, 3]);
   });
 
+  it('ranks players tied on everything by account id, so ranks never swap', () => {
+    const twins = [
+      result({ userId: 'U2', name: 'Same Name' }),
+      result({ userId: 'U1', name: 'Same Name' }),
+    ];
+    expect(computeRankings(twins, TODAY).map((p) => p.userId)).toEqual(['U1', 'U2']);
+    expect(computeRankings([...twins].reverse(), TODAY).map((p) => p.userId)).toEqual(['U1', 'U2']);
+  });
+
+  it('counts a player entered twice in one event once, with their better placing', () => {
+    const [ada] = computeRankings(
+      [result({ placing: 1 }), result({ placing: 50 }), result({ eventId: 'E2', placing: 1 })],
+      TODAY,
+    );
+    expect(ada?.results).toBe(2);
+    expect(ada?.points).toBe(200);
+  });
+
   it('names a player by their newest counted result, with their 2 most played factions', () => {
     const [ada] = computeRankings(
       [
