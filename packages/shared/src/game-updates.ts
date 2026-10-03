@@ -79,7 +79,8 @@ export function groupUpdates(commits: UpdateCommit[], gapDays = 7): AutoUpdate[]
   const updates: { commits: UpdateCommit[] }[] = [];
   const sorted = commits
     .filter((c) => isUpdateCommit(c.message))
-    .sort((a, b) => a.day.localeCompare(b.day));
+    // By day, then sha: the same first commit (an update's id) whatever order they're read in.
+    .sort((a, b) => a.day.localeCompare(b.day) || a.sha.localeCompare(b.sha));
   for (const commit of sorted) {
     const current = updates.at(-1);
     const last = current?.commits.at(-1);

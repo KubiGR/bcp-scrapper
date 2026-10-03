@@ -8,19 +8,17 @@ import {
   type GameUpdatesResponse,
   type UpdateEdits,
 } from '@bcp/shared';
-import { desc, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import type { BsdataClient } from '../bsdata/client';
 import type { Db } from '../db/client';
 import { bsdataCommits, events, gameUpdates } from '../db/schema';
 
 /** Reads BSData's new commits (all of them the first time); returns how many were added. */
 export async function syncUpdateCommits(db: Db, client: BsdataClient): Promise<number> {
-  const [newest] = await db
-    .select({ sha: bsdataCommits.sha })
-    .from(bsdataCommits)
-    .orderBy(desc(bsdataCommits.day), desc(bsdataCommits.sha))
-    .limit(1);
-  const commits = await client.commits(newest?.sha ?? null);
+  const stored = new Set(
+    (await db.select({ sha: bsdataCommits.sha }).from(bsdataCommits)).map((row) => row.sha),
+  );
+  const commits = await client.commits((sha) => stored.has(sha));
   if (commits.length === 0) return 0;
   const added = await db
     .insert(bsdataCommits)
@@ -88,8 +86,8 @@ export async function listGameUpdates(db: Db, today: string): Promise<GameUpdate
 }
 
 /**
- * Applies an admin's edit. A new start must stay after the previous update's start and before the
- * next one's (in BSData's order), so updates never overlap.
+ * Applies an admin's edit, unless it would leave the visible updates out of BSData's order or
+ * sharing a start (whatever the edit: a new start, a reset, showing or un-merging one).
  */
 export async function editGameUpdate(
   db: Db,
@@ -98,22 +96,20 @@ export async function editGameUpdate(
   _today: string,
 ): Promise<'ok' | 'not-found' | 'out-of-order'> {
   const { auto, edits } = await updatesAndEdits(db);
-  const update = auto.find((u) => u.id === id);
-  if (update === undefined) return 'not-found';
-  if (patch.start !== undefined && patch.start !== null) {
-    const others = effectiveUpdates(
-      auto.filter((u) => u.id !== id),
-      edits,
-    );
-    const previous = others.filter((u) => u.start < update.start).at(-1);
-    const next = others.find((u) => u.start > update.start);
-    if (
-      (previous !== undefined && patch.start <= previous.start) ||
-      (next !== undefined && patch.start >= next.start)
-    ) {
-      return 'out-of-order';
-    }
-  }
+  if (!auto.some((u) => u.id === id)) return 'not-found';
+  const current = edits.get(id) ?? { name: null, start: null, merged: false, hidden: false };
+  const after = new Map(edits).set(id, {
+    name: patch.name === undefined ? current.name : patch.name,
+    start: patch.start === undefined ? current.start : patch.start,
+    merged: patch.merged ?? current.merged,
+    hidden: patch.hidden ?? current.hidden,
+  });
+  // Visible updates in BSData's order must start on strictly later days.
+  const starts = auto.flatMap((update) => {
+    const edit = after.get(update.id);
+    return edit?.merged === true || edit?.hidden === true ? [] : [edit?.start ?? update.start];
+  });
+  if (starts.some((start, i) => i > 0 && start <= (starts[i - 1] ?? ''))) return 'out-of-order';
   const set = {
     ...(patch.name === undefined ? {} : { name: patch.name }),
     ...(patch.start === undefined ? {} : { startOverride: patch.start }),

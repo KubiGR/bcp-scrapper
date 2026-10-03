@@ -19,20 +19,28 @@ beforeEach(async () => {
 const TODAY = '2026-10-03';
 const commit = (sha: string, day: string, message = 'MFM'): UpdateCommit => ({ sha, day, message });
 
-/** A client whose history is `newestFirst`; records the sha it was asked to stop at. */
-const fakeClient = (newestFirst: UpdateCommit[], failAfter?: number) => {
-  const asked: (string | null)[] = [];
+/**
+ * A client whose history is `listed` in GitHub's order, read in pages of 2 until a page holds
+ * only stored commits; records how many pages it read.
+ */
+const fakeClient = (listed: UpdateCommit[], failAfter?: number) => {
+  const read = { pages: 0 };
   const client: BsdataClient = {
     tree: () => Promise.resolve({ commit: 'c', files: [] }),
     file: () => Promise.resolve({}),
-    commits: (stopAtSha) => {
-      asked.push(stopAtSha);
-      if (failAfter !== undefined) return Promise.reject(new Error('GitHub answered 500'));
-      const stop = newestFirst.findIndex((c) => c.sha === stopAtSha);
-      return Promise.resolve(stop < 0 ? newestFirst : newestFirst.slice(0, stop));
+    async commits(isStored) {
+      if (failAfter !== undefined) throw new Error('GitHub answered 500');
+      const found: UpdateCommit[] = [];
+      for (let i = 0; i < listed.length; i += 2) {
+        read.pages += 1;
+        const page = listed.slice(i, i + 2);
+        if (page.every((c) => isStored(c.sha))) break;
+        found.push(...page.filter((c) => !isStored(c.sha)));
+      }
+      return Promise.resolve(found);
     },
   };
-  return { client, asked };
+  return { client, read };
 };
 
 const history = [
@@ -60,7 +68,20 @@ describe('game updates', () => {
     expect(await syncUpdateCommits(db, fakeClient(history).client)).toBe(4);
     const later = fakeClient([commit('e', '2026-10-02', 'Codex: Orks'), ...history]);
     expect(await syncUpdateCommits(db, later.client)).toBe(1);
-    expect(later.asked).toEqual(['d']);
+    // Page 1 (e, d) had a new commit; page 2 (fix, b) held only stored ones: stop.
+    expect(later.read.pages).toBe(2);
+  });
+
+  it('finds new commits listed below stored ones (merged later on GitHub)', async () => {
+    await syncUpdateCommits(db, fakeClient(history).client);
+    // A pull request's commit p, merged after d, is listed below d.
+    const merged = fakeClient([
+      commit('m', '2026-10-03', 'Merge pull request'),
+      commit('d', '2026-09-30'),
+      commit('p', '2026-09-28', 'Faction Pack fix'),
+      ...history.slice(1),
+    ]);
+    expect(await syncUpdateCommits(db, merged.client)).toBe(2);
   });
 
   it('keeps what it read when the history can’t be read', async () => {
@@ -98,6 +119,22 @@ describe('game updates', () => {
     const { updates } = await listGameUpdates(db, TODAY);
     expect(updates.find((u) => u.id === 'a')).toMatchObject({ name: 'Edition launch', events: 1 });
     expect(updates.find((u) => u.id === 'b')).toMatchObject({ merged: true, events: 0 });
+  });
+
+  it('never lets updates overlap, whatever the edit', async () => {
+    await syncUpdateCommits(db, fakeClient(history).client);
+    // Hide b, move d onto b's start, then try to show b again.
+    expect(await editGameUpdate(db, 'b', { hidden: true }, TODAY)).toBe('ok');
+    expect(await editGameUpdate(db, 'd', { start: '2026-07-22' }, TODAY)).toBe('ok');
+    expect(await editGameUpdate(db, 'b', { hidden: false }, TODAY)).toBe('out-of-order');
+  });
+
+  it('judges a new start against the other updates’ edited starts', async () => {
+    await syncUpdateCommits(db, fakeClient(history).client);
+    expect(await editGameUpdate(db, 'b', { start: '2026-07-28' }, TODAY)).toBe('ok');
+    expect(await editGameUpdate(db, 'a', { start: '2026-07-25' }, TODAY)).toBe('ok');
+    expect(await editGameUpdate(db, 'b', { start: '2026-07-30' }, TODAY)).toBe('ok');
+    expect(await editGameUpdate(db, 'b', { start: '2026-07-01' }, TODAY)).toBe('out-of-order');
   });
 
   it('moves a start date, and refuses one out of order or an unknown update', async () => {

@@ -1,12 +1,15 @@
-import { selectedUpdates, selectionRange, type DateRange } from '@bcp/shared';
+import { selectedUpdates, selectionRange } from '@bcp/shared';
 import { MultiSelect } from '@mantine/core';
 import { useUpdateSpans } from './updates-queries';
 
 interface UpdatePickerProps {
   from: string;
   to: string;
-  /** The picked updates' days, from the first's start to the last's end. */
-  onChange: (range: DateRange) => void;
+  /**
+   * The picked updates' days, from the first's start to the last's end; no `to` when that's the
+   * current update (the page's default end is today, so saved links keep up with new events).
+   */
+  onChange: (range: { from: string; to: string | undefined }) => void;
 }
 
 /**
@@ -31,7 +34,8 @@ export function UpdatePicker({ from, to, onChange }: UpdatePickerProps) {
       placeholder={value.length === 0 ? 'Custom dates' : undefined}
       onChange={(ids) => {
         const range = selectionRange(spans, ids);
-        if (range !== null) onChange(range);
+        if (range === null) return;
+        onChange({ from: range.from, to: ids.includes(newest ?? '') ? undefined : range.to });
       }}
       w={{ base: '100%', xs: 260 }}
     />

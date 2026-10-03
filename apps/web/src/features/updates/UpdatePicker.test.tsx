@@ -1,4 +1,4 @@
-import { toIsoDate, type GameUpdate } from '@bcp/shared';
+import type { GameUpdate } from '@bcp/shared';
 import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
@@ -21,7 +21,6 @@ const updates = {
     update('a', '2026-06-09', 'Jun 2026 · MFM'),
   ],
 };
-const today = toIsoDate(new Date());
 
 const open = async () => {
   fireEvent.click(await screen.findByRole('combobox', { name: 'Update' }));
@@ -48,7 +47,8 @@ describe('UpdatePicker', () => {
       'true',
     );
     fireEvent.click(screen.getByRole('option', { name: 'Current: Sep 2026 · MFM' }));
-    expect(onChange).toHaveBeenCalledWith({ from: '2026-06-09', to: today });
+    // Up to the current update: no end date, so a saved link keeps up with new events.
+    expect(onChange).toHaveBeenCalledWith({ from: '2026-06-09', to: undefined });
   });
 
   it('shows no picker without updates', async () => {

@@ -46,6 +46,19 @@ describe('groupUpdates', () => {
     expect(updates[0]?.id).toBe('2026-06-09-Updated to Faction Pack');
   });
 
+  it('keeps the same id whatever order same-day commits come in', () => {
+    const one = groupUpdates([
+      commit('2026-06-09', 'MFM', 'zz'),
+      commit('2026-06-09', 'MFM', 'aa'),
+    ]);
+    const other = groupUpdates([
+      commit('2026-06-09', 'MFM', 'aa'),
+      commit('2026-06-09', 'MFM', 'zz'),
+    ]);
+    expect(one[0]?.id).toBe('aa');
+    expect(other[0]?.id).toBe('aa');
+  });
+
   it('names an update by month and what changed', () => {
     const [update] = groupUpdates([
       commit('2026-07-22', 'Codex: Orks release'),

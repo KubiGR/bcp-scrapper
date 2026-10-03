@@ -14,8 +14,11 @@ export interface BsdataTreeFile {
 }
 
 export interface BsdataClient {
-  /** Commits of main, newest first, down to (not including) `stopAtSha`; all when null. */
-  commits(stopAtSha: string | null): Promise<UpdateCommit[]>;
+  /**
+   * Commits of main not stored yet, read page by page (GitHub's order) until a page holds only
+   * stored ones: a commit merged later can be listed below stored ones, so no single stop commit.
+   */
+  commits(isStored: (sha: string) => boolean): Promise<UpdateCommit[]>;
   /** The commit sha of main and its root *.json files. */
   tree(): Promise<{ commit: string; files: BsdataTreeFile[] }>;
   /** A file's parsed JSON at that commit. */
@@ -61,25 +64,27 @@ export function httpBsdataClient(
       };
     },
     file: (commit, path) => get(`${RAW}/${commit}/${encodeURIComponent(path)}`),
-    async commits(stopAtSha) {
+    async commits(isStored) {
       const found: UpdateCommit[] = [];
       for (let page = 1; page <= MAX_COMMIT_PAGES; page += 1) {
         const body = await get(`${COMMITS}&page=${String(page)}`);
         if (!Array.isArray(body) || body.length === 0) break;
-        for (const item of body as {
-          sha?: unknown;
-          commit?: { message?: unknown; author?: { date?: unknown } };
-        }[]) {
+        const commits = (
+          body as { sha?: unknown; commit?: { message?: unknown; author?: { date?: unknown } } }[]
+        ).flatMap((item) => {
           const date = item.commit?.author?.date;
           const message = item.commit?.message;
-          if (typeof item.sha !== 'string' || typeof date !== 'string') continue;
-          if (item.sha === stopAtSha) return found;
-          found.push({
-            sha: item.sha,
-            day: date.slice(0, 10),
-            message: typeof message === 'string' ? (message.split('\n')[0] ?? '') : '',
-          });
-        }
+          if (typeof item.sha !== 'string' || typeof date !== 'string') return [];
+          return [
+            {
+              sha: item.sha,
+              day: date.slice(0, 10),
+              message: typeof message === 'string' ? (message.split('\n')[0] ?? '') : '',
+            },
+          ];
+        });
+        if (commits.every((commit) => isStored(commit.sha))) break;
+        found.push(...commits.filter((commit) => !isStored(commit.sha)));
       }
       return found;
     },
