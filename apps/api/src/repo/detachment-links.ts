@@ -5,7 +5,7 @@ import {
   SPACE_MARINES,
   type DetachmentNamesResponse,
 } from '@bcp/shared';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { armyLists, detachmentKeeps, detachmentLinks, players } from '../db/schema';
 import { bsdataByFaction } from './bsdata';
@@ -74,10 +74,16 @@ function ownFactions(counts: Map<string, number>): string[] {
 
 /** Lower-case BSData detachments per faction, and the kept (faction, lower-case name) pairs. */
 async function bsdataRules(db: Db) {
-  const [bsdata, keeps] = await Promise.all([
+  const [bsdata, keeps, ownLinks] = await Promise.all([
     bsdataByFaction(db),
     db.select().from(detachmentKeeps).orderBy(detachmentKeeps.faction, detachmentKeeps.name),
+    db
+      .select({ nameKey: detachmentLinks.nameKey })
+      .from(detachmentLinks)
+      .where(and(isNull(detachmentLinks.target), eq(detachmentLinks.foreign, false))),
   ]);
+  // A name marked as its own detachment is one BSData doesn't have (yet): never flagged.
+  const own = new Set(ownLinks.map((link) => link.nameKey));
   const names = new Map(
     [...bsdata].map(([faction, list]) => [faction, new Set(list.map((n) => n.toLowerCase()))]),
   );
@@ -88,7 +94,7 @@ async function bsdataRules(db: Db) {
     const known = names.get(army);
     if (known === undefined) return false;
     const key = keyOf(name);
-    return !known.has(key) && !kept.has(`${army}\u0000${key}`);
+    return !known.has(key) && !own.has(key) && !kept.has(`${army}\u0000${key}`);
   };
   return { bsdata, keeps, wrong };
 }
@@ -205,6 +211,8 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
   const wrongLists = new Map<string, { faction: string; name: string; players: Set<string> }>();
   for (const row of storedRows) {
     if (row.faction === null || !rules.wrong(row.faction, row.name)) continue;
+    // Names nobody knows need linking first ("Not linked yet" / "Not in English").
+    if (unsure.has(row.name.toLowerCase())) continue;
     if (isForeign({ name: row.name, marked: marked.has(row.name.toLowerCase()) })) continue;
     const key = `${row.faction}\u0000${row.name.toLowerCase()}`;
     const entry = wrongLists.get(key) ?? {

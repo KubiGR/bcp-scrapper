@@ -76,6 +76,20 @@ describe('detachments outside an army’s BSData list', () => {
     expect((await detachmentNames(db)).wrong).toHaveLength(1);
   });
 
+  it('leaves names nobody knows to Not linked yet, not here', async () => {
+    await storeList(db, 'PL-EVE', gwList('World Eaters', 'Rompecraneos Sagrados'));
+    const names = await detachmentNames(db);
+    expect(names.unsure.map((u) => u.name)).toContain('Rompecraneos Sagrados');
+    expect(names.wrong).toEqual([]);
+  });
+
+  it('never flags a name marked as its own detachment (one BSData doesn’t have yet)', async () => {
+    await storeList(db, 'PL-EVE', gwList('World Eaters', 'Gore Tide'));
+    await linkDetachment(db, 'Gore Tide', null);
+    expect((await detachmentNames(db)).wrong).toEqual([]);
+    expect((await wrongPairCheck(db))('World Eaters', 'Gore Tide')).toBe(false);
+  });
+
   it('counts a linked name as its target', async () => {
     await linkDetachment(db, 'Gore Band', 'Berzerker Warband');
     await storeList(db, 'PL-EVE', gwList('World Eaters', 'Gore Band'));
