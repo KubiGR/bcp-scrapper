@@ -7,6 +7,7 @@ import {
   detachmentParts,
   looksForeign,
   countedFaction,
+  matchDetachment,
   splitDetachments,
   type ArmyList,
   type PlayerList,
@@ -17,6 +18,7 @@ import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import type { Logger } from '../logger';
 import { armyLists, detachmentLinks, players, teams } from '../db/schema';
+import { bsdataByFaction } from './bsdata';
 
 /** Joins a player's stored list only while it is their current BCP list. */
 export const storedCurrentList = and(
@@ -53,7 +55,7 @@ export function bcpDetachmentOf(raw: unknown): string | null {
   return name === undefined ? null : cleanDetachmentName(name);
 }
 
-/** Every stored list's text and BCP detachment. */
+/** Every stored list's text and BCP detachment, with the player's BCP faction. */
 function sourceRows(db: Db) {
   return db
     .select({
@@ -61,9 +63,15 @@ function sourceRows(db: Db) {
       text: armyLists.text,
       detachments: armyLists.detachments,
       bcp: sql<string | null>`${armyLists.raw} -> 'warhammer' ->> 'detachment'`,
+      bcpFaction: players.faction,
     })
-    .from(armyLists);
+    .from(armyLists)
+    .leftJoin(players, eq(players.id, armyLists.playerId));
 }
+
+/** The army a list's detachments belong to: the one it names, else the player's BCP faction. */
+const armyOfList = (text: string | null, bcpFaction: string | null) =>
+  parseArmyList(text).army ?? countedFaction(bcpFaction, null).faction;
 
 /** A translation is learned from this many agreeing lists, and at least this share of them. */
 const LEARN_MIN_LISTS = 2;
@@ -79,6 +87,10 @@ interface DetachmentVocabulary {
   translations: Map<string, string>;
   /** Lower-case name → what an admin linked it to (null: its own detachment); wins over all. */
   links: Map<string, string | null>;
+  /** Faction → its detachments in BSData. */
+  bsdata: Map<string, string[]>;
+  /** Every BSData detachment, for an army BSData doesn't cover. */
+  bsdataAll: string[];
 }
 
 /**
@@ -176,7 +188,11 @@ async function detachmentVocabulary(db: Db): Promise<DetachmentVocabulary> {
       [...spelled].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? lower,
     ]),
   );
-  return { known, spellings, translations, links };
+  const bsdata = await bsdataByFaction(db);
+  const bsdataAll = [...new Set([...bsdata.values()].flat())];
+  // BSData's names are detachments too, so joined lines split on them.
+  bsdataAll.forEach((name) => known.add(name));
+  return { known, spellings, translations, links, bsdata, bsdataAll };
 }
 
 /** Names known to be single detachments (see detachmentVocabulary). */
@@ -192,28 +208,35 @@ function tidy(
   detachments: string[],
   vocabulary: DetachmentVocabulary,
   bcpDetachment: string | null,
+  army: string | null,
 ): string[] {
   if (detachments.length === 0) return bcpDetachment === null ? [] : [bcpDetachment];
   const known = new Set([...vocabulary.known, ...vocabulary.translations.keys()]);
-  return splitDetachments(detachments.map(cleanDetachmentName), known)
-    .map((name) => {
-      const key = name.toLowerCase();
-      if (vocabulary.links.has(key)) return vocabulary.links.get(key) ?? name;
-      return vocabulary.translations.get(key) ?? canonicalDetachment(name);
-    })
-    .map((name) => vocabulary.spellings.get(name.toLowerCase()) ?? name);
+  // BSData's detachments of the list's army; all of them for an army BSData doesn't cover.
+  const candidates =
+    (army === null ? undefined : vocabulary.bsdata.get(army)) ?? vocabulary.bsdataAll;
+  return splitDetachments(detachments.map(cleanDetachmentName), known).map((name) => {
+    const key = name.toLowerCase();
+    // A hand link (or "Not English" mark) wins over everything.
+    if (vocabulary.links.has(key)) return vocabulary.links.get(key) ?? name;
+    const named = vocabulary.translations.get(key) ?? canonicalDetachment(name);
+    return (
+      matchDetachment(named, candidates) ?? vocabulary.spellings.get(named.toLowerCase()) ?? named
+    );
+  });
 }
 
-/** The parsed columns for a list's text. */
+/** The parsed columns for a list's text; `bcpFaction`: the player's, for an army-less list. */
 function parsedColumns(
   text: string | null,
   vocabulary: DetachmentVocabulary,
   bcpDetachment: string | null,
+  bcpFaction: string | null,
 ) {
   const parsed = parseArmyList(text);
   return {
     parsedArmy: parsed.army,
-    detachments: tidy(parsed.detachments, vocabulary, bcpDetachment),
+    detachments: tidy(parsed.detachments, vocabulary, bcpDetachment, armyOfList(text, bcpFaction)),
     parsedDisposition: parsed.disposition,
     parserVersion: PARSER_VERSION,
   };
@@ -227,11 +250,12 @@ function parsedColumns(
 export async function tidyDetachments(db: Db): Promise<number> {
   const vocabulary = await detachmentVocabulary(db);
   let changed = 0;
-  for (const { playerId, text, detachments, bcp } of await sourceRows(db)) {
+  for (const { playerId, text, detachments, bcp, bcpFaction } of await sourceRows(db)) {
     const tidied = tidy(
       parseArmyList(text).detachments,
       vocabulary,
       bcp === null ? null : cleanDetachmentName(bcp),
+      armyOfList(text, bcpFaction),
     );
     if (tidied.join('\u0000') !== detachments.join('\u0000')) {
       await db
@@ -254,12 +278,21 @@ export async function saveArmyList(
   list: Fetched<ArmyList>,
   listId: string = list.bcpId,
 ): Promise<void> {
+  const [player] = await db
+    .select({ faction: players.faction })
+    .from(players)
+    .where(eq(players.id, playerId));
   const values = {
     listId,
     text: list.text,
     raw: list.raw,
     fetchedAt: new Date(),
-    ...parsedColumns(list.text, await detachmentVocabulary(db), bcpDetachmentOf(list.raw)),
+    ...parsedColumns(
+      list.text,
+      await detachmentVocabulary(db),
+      bcpDetachmentOf(list.raw),
+      player?.faction ?? null,
+    ),
   };
   await db
     .insert(armyLists)
@@ -351,6 +384,8 @@ const EMPTY_VOCABULARY: DetachmentVocabulary = {
   spellings: new Map(),
   translations: new Map(),
   links: new Map(),
+  bsdata: new Map(),
+  bsdataAll: [],
 };
 
 /**
@@ -369,7 +404,7 @@ export async function reparseLists(db: Db, logger: Logger): Promise<number> {
     for (const { playerId, text, raw } of batch) {
       await db
         .update(armyLists)
-        .set(parsedColumns(text, EMPTY_VOCABULARY, bcpDetachmentOf(raw)))
+        .set(parsedColumns(text, EMPTY_VOCABULARY, bcpDetachmentOf(raw), null))
         .where(eq(armyLists.playerId, playerId));
     }
     reparsed += batch.length;
