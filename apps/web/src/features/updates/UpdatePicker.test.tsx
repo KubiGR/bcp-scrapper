@@ -13,6 +13,8 @@ const update = (id: string, start: string, name: string): GameUpdate => ({
   merged: false,
   hidden: false,
   events: 3,
+  summary: id === 'b' ? 'Orks, Tyranids' : '',
+  suggestions: [name],
 });
 const updates = {
   updates: [
@@ -33,7 +35,7 @@ describe('UpdatePicker', () => {
     renderWithProviders(<UpdatePicker from="2026-01-01" to="2026-02-01" onChange={onChange} />);
     expect(await screen.findByPlaceholderText('Custom dates')).toBeInTheDocument();
     await open();
-    fireEvent.click(screen.getByRole('option', { name: 'Jul 2026 · Faction Packs' }));
+    fireEvent.click(screen.getByRole('option', { name: /^Jul 2026 · Faction Packs/ }));
     expect(onChange).toHaveBeenCalledWith({ from: '2026-07-22', to: '2026-09-29' });
   });
 
@@ -49,6 +51,15 @@ describe('UpdatePicker', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Current: Sep 2026 · MFM' }));
     // Up to the current update: no end date, so a saved link keeps up with new events.
     expect(onChange).toHaveBeenCalledWith({ from: '2026-06-09', to: undefined });
+  });
+
+  it('says which factions each update touched', async () => {
+    stubFetchRoutes({ 'GET /api/updates': updates });
+    renderWithProviders(<UpdatePicker from="2026-01-01" to="2026-02-01" onChange={vi.fn()} />);
+    await open();
+    expect(screen.getByRole('option', { name: /Jul 2026 · Faction Packs/ })).toHaveTextContent(
+      'Orks, Tyranids',
+    );
   });
 
   it('shows no picker without updates', async () => {

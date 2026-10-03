@@ -58,15 +58,101 @@ describe('groupUpdates', () => {
     expect(one[0]?.id).toBe('aa');
     expect(other[0]?.id).toBe('aa');
   });
+});
 
-  it('names an update by month and what changed', () => {
-    const [update] = groupUpdates([
-      commit('2026-07-22', 'Codex: Orks release'),
-      commit('2026-07-23', 'Orks MFM changes'),
-      commit('2026-07-24', 'Balance Dataslate'),
-      commit('2026-07-25', 'SM Faction Pack'),
+describe('update names', () => {
+  /** The edition's first update, so the ones under test aren't "Edition launch". */
+  const launch = commit('2026-01-05', 'MFM', 'launch');
+  const nameOf = (...commits: UpdateCommit[]) => groupUpdates([launch, ...commits])[1];
+
+  it('calls the edition’s first update its launch', () => {
+    expect(groupUpdates([launch])[0]?.name).toBe('Edition launch');
+  });
+
+  it('names a codex release', () => {
+    expect(
+      nameOf(commit('2026-07-22', 'Codex: Orks release'), commit('2026-07-23', 'MFM'))?.name,
+    ).toBe('Codex: Orks');
+    expect(
+      nameOf(commit('2026-07-22', 'Codex: Orks'), commit('2026-07-23', 'Codex Tyranids'))?.name,
+    ).toBe('Codexes: Orks & Tyranids');
+  });
+
+  it('uses an official version the commits name', () => {
+    expect(
+      nameOf(
+        commit('2026-09-30', 'MFM and Faction Packs'),
+        commit('2026-09-30', 'MFM 1.5 readme update'),
+      )?.name,
+    ).toBe('MFM 1.5');
+  });
+
+  it('names a faction that most of the update is about', () => {
+    expect(
+      nameOf(
+        commit('2026-07-22', 'Orks Faction Pack updates'),
+        commit('2026-07-23', 'Orks MFM changes'),
+        commit('2026-07-24', 'AM MFM changes'),
+      )?.name,
+    ).toBe('Orks shake-up');
+  });
+
+  it('otherwise names it by season and what most commits changed', () => {
+    expect(
+      nameOf(
+        commit('2026-07-22', 'AM Faction Pack changes'),
+        commit('2026-07-22', 'Aeldari Faction Pack changes'),
+        commit('2026-07-23', 'Tau MFM changes'),
+      )?.name,
+    ).toBe('Summer 2026 Faction Packs');
+    expect(
+      nameOf(
+        commit('2026-08-29', 'MFM'),
+        commit('2026-08-30', 'GK MFM'),
+        commit('2026-08-30', 'AM Faction Pack'),
+      )?.name,
+    ).toBe('Late Summer 2026 points');
+  });
+
+  it('never gives two updates the same name', () => {
+    const updates = groupUpdates([
+      launch,
+      commit('2026-07-01', 'MFM'),
+      commit('2026-07-20', 'MFM'),
     ]);
-    expect(update?.name).toBe('Jul 2026 · MFM & Faction Packs & Dataslate & Codex: Orks');
+    expect(updates.map((u) => u.name)).toEqual([
+      'Edition launch',
+      'Summer 2026 points',
+      'Summer 2026 points II',
+    ]);
+  });
+
+  it('sums up the factions it touched, most first', () => {
+    const update = nameOf(
+      commit('2026-07-22', 'AM Faction Pack changes'),
+      commit('2026-07-23', 'AM MFM changes'),
+      commit('2026-07-23', 'GK MFM changes'),
+      commit('2026-07-24', 'GSC MFM changes'),
+      commit('2026-07-24', 'IK MFM changes'),
+      commit('2026-07-24', 'Drukhari MFM changes'),
+      commit('2026-07-24', 'Necrons MFM changes'),
+      commit('2026-07-25', 'Orks MFM changes'),
+    );
+    expect(update?.summary).toBe(
+      'Astra Militarum, Drukhari, Genestealer Cult, Grey Knights, Imperial Knights, Necrons +1 more',
+    );
+    expect(nameOf(commit('2026-07-22', 'MFM'))?.summary).toBe('');
+  });
+
+  it('offers other names to pick from', () => {
+    const update = nameOf(
+      commit('2026-07-22', 'Orks Faction Pack updates'),
+      commit('2026-07-23', 'Orks MFM changes'),
+    );
+    expect(update?.suggestions).toEqual(
+      expect.arrayContaining(['Orks shake-up', 'Summer 2026 Faction Packs', 'Update 2 · Jul 2026']),
+    );
+    expect(new Set(update?.suggestions).size).toBe(update?.suggestions.length);
   });
 });
 
@@ -87,7 +173,7 @@ describe('effectiveUpdates and spans', () => {
     ]);
     expect(effectiveUpdates(auto, edits)).toEqual([
       { id: 'a', name: 'Edition launch', start: '2026-06-09' },
-      { id: 'b', name: 'Jul 2026 · MFM', start: '2026-07-25' },
+      { id: 'b', name: 'Summer 2026 points', start: '2026-07-25' },
     ]);
   });
 

@@ -10,6 +10,8 @@ export const aGameUpdate = (overrides: Partial<GameUpdate> = {}): GameUpdate => 
   merged: false,
   hidden: false,
   events: 2,
+  summary: 'Orks, Tyranids',
+  suggestions: ['Jul 2026 · MFM', 'Orks shake-up', 'Update 2 · Jul 2026'],
   ...overrides,
 });
 
@@ -24,6 +26,8 @@ export const twoUpdates = (): GameUpdatesResponse => ({
       start: '2026-06-09',
       autoStart: '2026-06-09',
       events: 5,
+      summary: 'Aeldari',
+      suggestions: ['Jun 2026 · Faction Packs', 'Edition launch'],
     }),
   ],
 });

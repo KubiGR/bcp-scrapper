@@ -79,6 +79,8 @@ export async function listGameUpdates(db: Db, today: string): Promise<GameUpdate
           merged: edit?.merged ?? false,
           hidden: edit?.hidden ?? false,
           events: eventsOf(update.id),
+          summary: update.summary,
+          suggestions: update.suggestions,
         };
       })
       .reverse(),

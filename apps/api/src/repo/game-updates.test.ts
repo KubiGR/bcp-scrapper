@@ -102,8 +102,8 @@ describe('game updates', () => {
       ['a', '2026-06-09', 1],
     ]);
     expect(updates[1]).toMatchObject({
-      name: 'Jul 2026 · MFM',
-      autoName: 'Jul 2026 · MFM',
+      name: 'Summer 2026 points',
+      autoName: 'Summer 2026 points',
       autoStart: '2026-07-22',
       merged: false,
       hidden: false,
@@ -113,11 +113,11 @@ describe('game updates', () => {
   it('keeps edits as new commits arrive, and counts merged days in the update before', async () => {
     await syncUpdateCommits(db, fakeClient(history).client);
     await event('E2', '2026-07-30');
-    expect(await editGameUpdate(db, 'a', { name: 'Edition launch' }, TODAY)).toBe('ok');
+    expect(await editGameUpdate(db, 'a', { name: 'Big launch' }, TODAY)).toBe('ok');
     expect(await editGameUpdate(db, 'b', { merged: true }, TODAY)).toBe('ok');
     await syncUpdateCommits(db, fakeClient([commit('e', '2026-10-02'), ...history]).client);
     const { updates } = await listGameUpdates(db, TODAY);
-    expect(updates.find((u) => u.id === 'a')).toMatchObject({ name: 'Edition launch', events: 1 });
+    expect(updates.find((u) => u.id === 'a')).toMatchObject({ name: 'Big launch', events: 1 });
     expect(updates.find((u) => u.id === 'b')).toMatchObject({ merged: true, events: 0 });
   });
 

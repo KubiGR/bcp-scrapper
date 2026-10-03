@@ -29,6 +29,8 @@ describe('MetaPage', () => {
             merged: false,
             hidden: false,
             events: 4,
+            summary: '',
+            suggestions: ['Sep 2026 · MFM'],
           },
         ],
       },

@@ -66,9 +66,10 @@ describe('/api/updates', () => {
     await app.request('/api/bsdata/refresh', { method: 'POST' });
     const listed = (await (await app.request('/api/updates')).json()) as GameUpdatesResponse;
     expect(listed.updates.map((u) => [u.id, u.name])).toEqual([
-      ['b', 'Jul 2026 · Faction Packs'],
-      ['a', 'Jun 2026 · MFM'],
+      ['b', 'Summer 2026 Faction Packs'],
+      ['a', 'Edition launch'],
     ]);
+    expect(listed.updates[0]?.suggestions).toContain('Update 2 · Jul 2026');
     const renamed = await patch(app, 'a', { name: 'Edition launch' });
     expect(renamed.status).toBe(200);
     expect(((await renamed.json()) as GameUpdatesResponse).updates[1]?.name).toBe('Edition launch');

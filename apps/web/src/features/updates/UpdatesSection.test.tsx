@@ -37,6 +37,26 @@ describe('UpdatesSection', () => {
     });
   });
 
+  it('shows what an update touched, and suggests names when renaming', async () => {
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/updates': twoUpdates(),
+      'PATCH /api/updates/b': twoUpdates(),
+    });
+    renderWithProviders(<UpdatesSection />);
+    expect(await screen.findByText('Orks, Tyranids')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Jul 2026 · MFM' }));
+    const name = screen.getByRole('textbox', { name: 'Name' });
+    fireEvent.click(screen.getByRole('button', { name: 'Suggest' }));
+    expect(name).toHaveValue('Orks shake-up');
+    fireEvent.click(screen.getByRole('button', { name: 'Suggest' }));
+    expect(name).toHaveValue('Update 2 · Jul 2026');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(patchOf(fetchMock)?.body).toEqual({ name: 'Update 2 · Jul 2026' });
+    });
+  });
+
   it('moves an update’s start', async () => {
     const fetchMock = stubFetchRoutes({
       'GET /api/auth/me': authOff,

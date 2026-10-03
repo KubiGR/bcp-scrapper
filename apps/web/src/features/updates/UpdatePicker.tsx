@@ -1,6 +1,7 @@
 import { selectedUpdates, selectionRange } from '@bcp/shared';
-import { MultiSelect } from '@mantine/core';
-import { useUpdateSpans } from './updates-queries';
+import { MultiSelect, Stack, Text } from '@mantine/core';
+import { useQuery } from '@tanstack/react-query';
+import { updatesQuery, useUpdateSpans } from './updates-queries';
 
 interface UpdatePickerProps {
   from: string;
@@ -19,7 +20,10 @@ interface UpdatePickerProps {
  */
 export function UpdatePicker({ from, to, onChange }: UpdatePickerProps) {
   const spans = useUpdateSpans();
+  const { data: updates } = useQuery(updatesQuery);
   if (spans.length === 0) return null;
+  // The factions each update touched, under its name in the list.
+  const summaries = new Map(updates?.updates.map((u) => [u.id, u.summary]));
   const newest = spans.at(-1)?.id;
   const data = [...spans].reverse().map((span) => ({
     value: span.id,
@@ -36,6 +40,19 @@ export function UpdatePicker({ from, to, onChange }: UpdatePickerProps) {
         const range = selectionRange(spans, ids);
         if (range === null) return;
         onChange({ from: range.from, to: ids.includes(newest ?? '') ? undefined : range.to });
+      }}
+      renderOption={({ option }) => {
+        const summary = summaries.get(option.value) ?? '';
+        return (
+          <Stack gap={0}>
+            <Text size="sm">{option.label}</Text>
+            {summary !== '' && (
+              <Text size="xs" c="dimmed">
+                {summary}
+              </Text>
+            )}
+          </Stack>
+        );
       }}
       w={{ base: '100%', xs: 260 }}
     />

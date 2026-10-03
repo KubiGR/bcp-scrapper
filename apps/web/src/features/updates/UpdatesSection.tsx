@@ -95,6 +95,11 @@ export function UpdatesSection() {
                         <Text size="sm" c={update.merged || update.hidden ? 'dimmed' : undefined}>
                           {update.name}
                         </Text>
+                        {update.summary !== '' && (
+                          <Text size="xs" c="dimmed">
+                            {update.summary}
+                          </Text>
+                        )}
                         {update.name !== update.autoName && (
                           <Text size="xs" c="dimmed">{`BSData: ${update.autoName}`}</Text>
                         )}
@@ -136,6 +141,21 @@ export function UpdatesSection() {
                                 setEditing({ ...editing, value: e.currentTarget.value });
                               }}
                             />
+                            {editing.field === 'name' && update.suggestions.length > 1 && (
+                              <Button
+                                size="compact-xs"
+                                variant="light"
+                                onClick={() => {
+                                  // The next generated name after the one shown.
+                                  const at = update.suggestions.indexOf(editing.value);
+                                  const next =
+                                    update.suggestions[(at + 1) % update.suggestions.length];
+                                  if (next !== undefined) setEditing({ ...editing, value: next });
+                                }}
+                              >
+                                Suggest
+                              </Button>
+                            )}
                             <Button
                               size="compact-xs"
                               loading={save.isPending}
