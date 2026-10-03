@@ -37,6 +37,70 @@ const rowOf = (name: string) => {
   return row;
 };
 
+describe('DetachmentNamesCard with BSData', () => {
+  const orksOnly = (overrides: Partial<DetachmentNamesResponse> = {}) =>
+    names({
+      unsure: [{ name: 'Horda de Guerra', lists: 4, factions: ['Orks'] }],
+      foreign: [],
+      learned: [],
+      links: [],
+      bsdataFactions: ['Orks'],
+      targets: [
+        { name: 'Kult of Speed', factions: ['Orks'], bsdata: true },
+        { name: 'War Horde', factions: ['Orks'], bsdata: true },
+        { name: 'Waaagh Band', factions: ['Orks'], bsdata: false },
+      ],
+      ...overrides,
+    });
+
+  it('shows BSData’s detachments as a covered faction’s known ones', async () => {
+    stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': orksOnly() });
+    renderWithProviders(<DetachmentNamesCard />);
+    const known = within(await screen.findByRole('list', { name: 'Known Orks detachments' }));
+    expect(known.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'Kult of Speed',
+      'War Horde',
+    ]);
+  });
+
+  it('lists detachments outside the faction’s BSData list, to keep anyway or undo', async () => {
+    const withPairs = orksOnly({
+      wrong: [
+        { faction: 'Orks', name: 'Wreckas', lists: 2, bsdataFactions: [] },
+        { faction: 'Orks', name: 'Blood Legion', lists: 1, bsdataFactions: ['Chaos Daemons'] },
+      ],
+      kept: [{ faction: 'Orks', name: 'Dread Mob' }],
+    });
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/detachments': withPairs,
+      'POST /api/detachments/keeps': withPairs,
+      'DELETE /api/detachments/keeps': withPairs,
+    });
+    renderWithProviders(<DetachmentNamesCard />);
+    const section = within(await screen.findByRole('region', { name: 'Not in this faction' }));
+    expect(section.getByText('Wreckas · 2 lists')).toBeInTheDocument();
+    expect(section.getByText('BSData doesn’t list it')).toBeInTheDocument();
+    expect(section.getByText('BSData has it for Chaos Daemons')).toBeInTheDocument();
+    fireEvent.click(section.getByRole('button', { name: 'Keep Wreckas for Orks' }));
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true);
+    });
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(JSON.parse(post?.[1]?.body as string)).toEqual({ faction: 'Orks', name: 'Wreckas' });
+    fireEvent.click(section.getByRole('button', { name: 'Undo keep Dread Mob for Orks' }));
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          ([url, init]) =>
+            init?.method === 'DELETE' &&
+            JSON.stringify(url).includes('/api/detachments/keeps/Orks/Dread%20Mob'),
+        ),
+      ).toBe(true);
+    });
+  });
+});
+
 describe('DetachmentNamesCard', () => {
   it('lists the names BCP doesn’t use, with how many lists and which factions', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': names() });

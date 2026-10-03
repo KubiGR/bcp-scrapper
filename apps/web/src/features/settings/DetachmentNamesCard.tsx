@@ -4,10 +4,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
+import { plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { meQuery } from '../auth/auth-queries';
 import classes from './DetachmentNamesCard.module.css';
-import { detachmentNamesQuery, linkDetachment, unlinkDetachment } from './detachment-names-queries';
+import {
+  detachmentNamesQuery,
+  keepDetachment,
+  linkDetachment,
+  unkeepDetachment,
+  unlinkDetachment,
+} from './detachment-names-queries';
 
 type Unsure = DetachmentNamesResponse['unsure'][number];
 type Foreign = DetachmentNamesResponse['foreign'][number];
@@ -25,11 +32,16 @@ const ALL = '';
  * every one, those played in the name's factions first.
  */
 function targetOptions(unsure: Unsure, targets: Target[], faction: string): string[] {
+  // BSData's detachments before BCP's names.
+  const byBsdata = (list: Target[]) => [
+    ...list.filter((t) => t.bsdata),
+    ...list.filter((t) => !t.bsdata),
+  ];
   const inFaction = targets.filter((t) => t.factions.includes(faction));
-  if (inFaction.length > 0) return inFaction.map((t) => t.name);
+  if (inFaction.length > 0) return byBsdata(inFaction).map((t) => t.name);
   const own = targets.filter((t) => t.factions.some((f) => unsure.factions.includes(f)));
   const rest = targets.filter((t) => !own.includes(t));
-  return [...own, ...rest].map((t) => t.name);
+  return [...byBsdata(own), ...byBsdata(rest)].map((t) => t.name);
 }
 
 /** Factions with unsure, foreign or linked names, most unsure names first, as picker options. */
@@ -40,6 +52,9 @@ function factionOptions(data: DetachmentNamesResponse) {
   }
   for (const unsure of data.unsure) {
     for (const f of unsure.factions) counts.set(f, (counts.get(f) ?? 0) + 1);
+  }
+  for (const pair of [...data.wrong, ...data.kept]) {
+    counts.set(pair.faction, counts.get(pair.faction) ?? 0);
   }
   return [...counts]
     .sort(([a, x], [b, y]) => y - x || a.localeCompare(b))
@@ -237,7 +252,17 @@ export function DetachmentNamesCard() {
     onSuccess: saved,
   });
   const unlink = useMutation({ mutationFn: unlinkDetachment, onSuccess: saved });
-  const error = link.error ?? unlink.error;
+  const keep = useMutation({
+    mutationFn: ({ faction, name }: { faction: string; name: string }) =>
+      keepDetachment(faction, name),
+    onSuccess: saved,
+  });
+  const unkeep = useMutation({
+    mutationFn: ({ faction, name }: { faction: string; name: string }) =>
+      unkeepDetachment(faction, name),
+    onSuccess: saved,
+  });
+  const error = link.error ?? unlink.error ?? keep.error ?? unkeep.error;
   const [picked, setPicked] = useState<string | null>(null);
   const factions = names.data ? factionOptions(names.data) : [];
   // The picked faction, or the one with the most unsure names (a faction with none left drops out).
@@ -251,7 +276,13 @@ export function DetachmentNamesCard() {
   const foreign = names.data?.foreign.filter(inFaction) ?? [];
   const links = names.data?.links.filter(inFaction) ?? [];
   const learned = names.data?.learned.filter(inFaction) ?? [];
-  const known = names.data?.targets.filter((t) => t.factions.includes(faction)) ?? [];
+  // A faction BSData covers knows BSData's detachments; others the names BCP uses.
+  const covered = names.data?.bsdataFactions.includes(faction) === true;
+  const known =
+    names.data?.targets.filter((t) => t.factions.includes(faction) && (!covered || t.bsdata)) ?? [];
+  const ofFaction = (pair: { faction: string }) => faction === ALL || pair.faction === faction;
+  const wrong = names.data?.wrong.filter(ofFaction) ?? [];
+  const kept = names.data?.kept.filter(ofFaction) ?? [];
   const rowProps: RowProps = {
     targets: names.data?.targets ?? [],
     faction,
@@ -334,6 +365,62 @@ export function DetachmentNamesCard() {
                 detachment it means to count it.
               </Text>
               <NamesTable entries={foreign} foreign {...rowProps} />
+            </Stack>
+          )}
+          {(wrong.length > 0 || kept.length > 0) && (
+            <Stack component="section" aria-label="Not in this faction" gap={4}>
+              <Text size="sm" fw={600}>
+                Not in this faction
+              </Text>
+              <Text size="xs" c="dimmed">
+                Detachments lists use that BSData doesn’t list for their army. Meta counts them as
+                detachment unknown, unless you keep them anyway.
+              </Text>
+              {wrong.map((pair) => (
+                <Group key={`${pair.faction}:${pair.name}`} gap="xs">
+                  <Text size="sm">{`${pair.name} · ${plural(pair.lists, 'list')}`}</Text>
+                  {faction === ALL && (
+                    <Text size="sm" c="dimmed">
+                      {pair.faction}
+                    </Text>
+                  )}
+                  <Text size="xs" c="dimmed">
+                    {pair.bsdataFactions.length === 0
+                      ? 'BSData doesn’t list it'
+                      : `BSData has it for ${pair.bsdataFactions.join(', ')}`}
+                  </Text>
+                  <Button
+                    size="compact-xs"
+                    variant="subtle"
+                    disabled={readOnly}
+                    aria-label={`Keep ${pair.name} for ${pair.faction}`}
+                    onClick={() => {
+                      keep.mutate({ faction: pair.faction, name: pair.name });
+                    }}
+                  >
+                    Keep anyway
+                  </Button>
+                </Group>
+              ))}
+              {kept.map((pair) => (
+                <Group key={`kept:${pair.faction}:${pair.name}`} gap="xs">
+                  <Text size="sm">{pair.name}</Text>
+                  <Text size="sm" c="dimmed">
+                    {`kept for ${pair.faction}`}
+                  </Text>
+                  <Button
+                    size="compact-xs"
+                    variant="subtle"
+                    disabled={readOnly}
+                    aria-label={`Undo keep ${pair.name} for ${pair.faction}`}
+                    onClick={() => {
+                      unkeep.mutate({ faction: pair.faction, name: pair.name });
+                    }}
+                  >
+                    Undo
+                  </Button>
+                </Group>
+              ))}
             </Stack>
           )}
           {learned.length > 0 && (

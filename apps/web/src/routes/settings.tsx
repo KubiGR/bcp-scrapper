@@ -2,6 +2,7 @@ import { Grid, Stack, Title } from '@mantine/core';
 import { createFileRoute } from '@tanstack/react-router';
 import { FetchQueueCard } from '../features/fetch-queue/FetchQueueCard';
 import { AutoFetchCard } from '../features/settings/AutoFetchCard';
+import { BsdataCard } from '../features/settings/BsdataCard';
 import { BcpStatusCard } from '../features/settings/BcpStatusCard';
 import { DetachmentNamesCard } from '../features/settings/DetachmentNamesCard';
 import { UsersCard } from '../features/settings/UsersCard';
@@ -19,6 +20,7 @@ function SettingsPage() {
             <BcpStatusCard />
             <FetchQueueCard />
             <AutoFetchCard />
+            <BsdataCard />
             <UsersCard />
           </Stack>
         </Grid.Col>

@@ -93,7 +93,11 @@ describe('/api/detachments', () => {
     expect(((await kept.json()) as DetachmentNamesResponse).kept).toEqual([
       { faction: 'Chaos Daemons', name: 'Hellrider Cavalcade' },
     ]);
-    const undone = await keep('DELETE', { faction: 'Chaos Daemons', name: 'Hellrider Cavalcade' });
+    // Undo through the address (a DELETE carries no body).
+    const undone = await app.request(
+      `/api/detachments/keeps/${encodeURIComponent('Chaos Daemons')}/${encodeURIComponent('Hellrider Cavalcade')}`,
+      { method: 'DELETE' },
+    );
     expect(((await undone.json()) as DetachmentNamesResponse).kept).toEqual([]);
     expect((await keep('POST', { faction: '', name: 'X' })).status).toBe(400);
   });

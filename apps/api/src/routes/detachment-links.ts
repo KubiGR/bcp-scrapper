@@ -48,12 +48,12 @@ export function detachmentLinkRoutes(deps: { db: Db; authRequired: boolean }) {
         await keepDetachment(db, faction, name);
         return c.json(await detachmentNames(db));
       })
-      .delete('/detachments/keeps', requireJson, async (c) => {
+      .delete('/detachments/keeps/:faction/:name', async (c) => {
         adminOnly(c.get('user'));
-        const { faction, name } = parseInput(
-          DetachmentKeepRequestSchema,
-          await c.req.json<unknown>().catch(() => null),
-        );
+        const { faction, name } = parseInput(DetachmentKeepRequestSchema, {
+          faction: c.req.param('faction'),
+          name: c.req.param('name'),
+        });
         await unkeepDetachment(db, faction, name);
         return c.json(await detachmentNames(db));
       })
