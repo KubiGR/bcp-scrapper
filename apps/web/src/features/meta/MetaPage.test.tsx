@@ -15,6 +15,28 @@ describe('metaParams', () => {
 });
 
 describe('MetaPage', () => {
+  it('offers the game updates next to the dates', async () => {
+    stubFetchRoutes({
+      'GET /api/meta': metaResponse(),
+      'GET /api/updates': {
+        updates: [
+          {
+            id: 'a',
+            name: 'Sep 2026 · MFM',
+            autoName: 'Sep 2026 · MFM',
+            start: '2026-09-30',
+            autoStart: '2026-09-30',
+            merged: false,
+            hidden: false,
+            events: 4,
+          },
+        ],
+      },
+    });
+    renderWithRouter(<MetaPage search={{}} onSearchChange={vi.fn()} />);
+    expect(await screen.findByRole('combobox', { name: 'Update' })).toBeInTheDocument();
+  });
+
   it('shows archetypes by default, and switches to armies', async () => {
     stubFetchRoutes({ 'GET /api/meta': metaResponse() });
     const onSearchChange = vi.fn();

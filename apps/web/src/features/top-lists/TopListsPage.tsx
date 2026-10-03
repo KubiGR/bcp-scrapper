@@ -32,6 +32,7 @@ import { FOUND_PLAYER_SORT, placingLine } from './player-sort';
 import classes from './TopListsPage.module.css';
 import { topListsQuery, topListsWindow, type TopListsSearch } from './top-lists-queries';
 import { RankBadge } from '../rankings/RankBadge';
+import { UpdatePicker } from '../updates/UpdatePicker';
 
 const LOSS_CHOICES = [0, 1, 2, 3, 4, 5];
 
@@ -101,6 +102,13 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
             value={dates.draft}
             onChange={dates.onRangeChange}
             w={{ base: '100%', xs: 280 }}
+          />
+          <UpdatePicker
+            from={topListsWindow(search, new Date()).from}
+            to={topListsWindow(search, new Date()).to}
+            onChange={(range) => {
+              onSearchChange({ ...search, from: range.from, to: range.to });
+            }}
           />
           <Select
             label="Record"

@@ -12,6 +12,7 @@ import { ReliableText, WinRateText } from './FactionTable';
 import classes from './FactionsPage.module.css';
 import { EVENT_TYPES } from './MetaPage';
 import { metaQuery, metaWindow, sharePercent, type MetaSearch } from './meta-queries';
+import { UpdatePicker } from '../updates/UpdatePicker';
 
 /** The Factions page's URL search: the Meta API's filters only. */
 export type FactionsSearch = Pick<MetaSearch, 'from' | 'to' | 'type'>;
@@ -122,6 +123,13 @@ export function FactionsPage({ search, onSearchChange }: FactionsPageProps) {
           value={dates.draft}
           onChange={dates.onRangeChange}
           w={{ base: '100%', xs: 280 }}
+        />
+        <UpdatePicker
+          from={metaWindow(search, new Date()).from}
+          to={metaWindow(search, new Date()).to}
+          onChange={(range) => {
+            onSearchChange({ ...search, from: range.from, to: range.to });
+          }}
         />
         <SegmentedControl
           aria-label="Event type"

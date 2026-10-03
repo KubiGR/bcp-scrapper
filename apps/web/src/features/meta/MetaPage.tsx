@@ -26,6 +26,7 @@ import {
 } from './meta-queries';
 import { MetaPlayersDrawer } from './MetaPlayersDrawer';
 import { TeamMeta } from './TeamMeta';
+import { UpdatePicker } from '../updates/UpdatePicker';
 
 interface MetaPageProps {
   search: MetaSearch;
@@ -82,6 +83,13 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
           value={dates.draft}
           onChange={dates.onRangeChange}
           w={{ base: '100%', xs: 280 }}
+        />
+        <UpdatePicker
+          from={metaWindow(search, new Date()).from}
+          to={metaWindow(search, new Date()).to}
+          onChange={(range) => {
+            onSearchChange({ ...search, from: range.from, to: range.to });
+          }}
         />
         <SegmentedControl
           aria-label="Event type"

@@ -18,6 +18,7 @@ import {
   type FinderSearch,
   type OnFinderChange,
 } from './finder-search';
+import { UpdatePicker } from '../updates/UpdatePicker';
 
 interface AdvancedSearchProps {
   search: FinderSearch;
@@ -121,6 +122,13 @@ export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps
             allowSingleDateInRange
             value={dates.draft}
             onChange={dates.onRangeChange}
+          />
+          <UpdatePicker
+            from={window.from}
+            to={window.to}
+            onChange={(range) => {
+              onChange(range);
+            }}
           />
           <TextInput
             label="Name"

@@ -17,6 +17,7 @@ import {
   type CrossSearch,
 } from './matchups-queries';
 import { DEFAULT_MATRIX_SETTINGS, hasSideFilter, type MatrixSettings } from './matrix-view';
+import { UpdatePicker } from '../updates/UpdatePicker';
 
 const splitIds = (value: string | undefined): string[] =>
   value === undefined ? [] : value.split(',').filter(Boolean);
@@ -95,6 +96,13 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
           value={dates.draft}
           onChange={dates.onRangeChange}
           w={{ base: '100%', xs: 280 }}
+        />
+        <UpdatePicker
+          from={window.from}
+          to={window.to}
+          onChange={(range) => {
+            onSearchChange({ ...search, from: range.from, to: range.to });
+          }}
         />
         {matchups.data && matchups.data.events.length > 0 && (
           <Button
