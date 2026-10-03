@@ -17,11 +17,13 @@ import { eventRoutes } from './routes/events';
 import { fetchQueueRoutes } from './routes/fetch-queue';
 import { matchupsRoutes } from './routes/matchups';
 import { metaRoutes } from './routes/meta';
+import { bsdataRoutes } from './routes/bsdata';
 import { playersSearchRoutes } from './routes/players-search';
 import { rankingsRoutes } from './routes/rankings';
 import { syncRoutes } from './routes/sync';
 import { userRoutes } from './routes/users';
 import type { SyncRunner } from './sync/runner';
+import type { BsdataClient } from './bsdata/client';
 
 export interface AppDeps {
   db: Db;
@@ -39,6 +41,8 @@ export interface AppDeps {
   auth?: AuthOptions;
   /** The automatic fetching planner, when it runs (not in tests or e2e). */
   autoFetch?: AutoFetchPlanner;
+  /** BSData on GitHub, for detachments; Refresh answers 404 without it. */
+  bsdata?: BsdataClient;
 }
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -115,6 +119,10 @@ export function createApp(deps: AppDeps) {
   app.route('/api', rankingsRoutes({ ...deps, now }));
   app.route('/api', metaRoutes({ ...deps, now }));
   app.route('/api', detachmentLinkRoutes({ db: deps.db, authRequired: auth.required }));
+  app.route(
+    '/api',
+    bsdataRoutes({ db: deps.db, client: deps.bsdata, authRequired: auth.required, now }),
+  );
   app.route(
     '/api',
     autoFetchRoutes({ db: deps.db, planner: deps.autoFetch, authRequired: auth.required }),

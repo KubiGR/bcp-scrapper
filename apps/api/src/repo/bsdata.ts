@@ -1,4 +1,4 @@
-import { parseBsdataCatalogues } from '@bcp/shared';
+import { parseBsdataCatalogues, type BsdataStatus } from '@bcp/shared';
 import { asc, eq, isNotNull, sql } from 'drizzle-orm';
 import type { BsdataClient } from '../bsdata/client';
 import type { Db } from '../db/client';
@@ -6,12 +6,6 @@ import { appSettings, bsdataDetachments, bsdataFiles } from '../db/schema';
 
 const CHECKED_AT = 'bsdataCheckedAt';
 const DAY_MS = 86_400_000;
-
-export interface BsdataStatus {
-  checkedAt: string | null;
-  factions: { faction: string; detachments: number }[];
-  errors: { path: string; error: string }[];
-}
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 

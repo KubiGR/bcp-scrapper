@@ -550,3 +550,11 @@ export const PlayerRankingSchema = z.object({
   history: z.array(PlayerHistoryEntrySchema),
 });
 export type PlayerRanking = z.infer<typeof PlayerRankingSchema>;
+
+/** GET /api/bsdata: when BSData was last checked, its factions' detachment counts, file errors. */
+export const BsdataStatusSchema = z.object({
+  checkedAt: z.iso.datetime().nullable(),
+  factions: z.array(z.object({ faction: z.string(), detachments: z.number().int() })),
+  errors: z.array(z.object({ path: z.string(), error: z.string() })),
+});
+export type BsdataStatus = z.infer<typeof BsdataStatusSchema>;

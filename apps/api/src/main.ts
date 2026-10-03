@@ -8,7 +8,9 @@ import { AutoFetchPlanner } from './fetch-queue/auto-fetch';
 import { FetchQueueWorker } from './fetch-queue/worker';
 import { createLogger } from './logger';
 import { deleteSmallEvents } from './repo/events';
-import { reparseLists } from './repo/lists';
+import { reparseLists, tidyDetachments } from './repo/lists';
+import { bsdataDue, syncBsdata } from './repo/bsdata';
+import { httpBsdataClient } from './bsdata/client';
 import { backfillPlayerUserIds } from './repo/player-accounts';
 import { failInterruptedSyncRuns } from './repo/sync-runs';
 import { serveWebApp } from './static';
@@ -61,6 +63,26 @@ const autoFetch = config.AUTO_FETCH_ENABLED
     })
   : undefined;
 autoFetch?.start();
+
+// BSData (detachments per faction): checked hourly, read again once a day.
+const bsdata = httpBsdataClient();
+const syncBsdataIfDue = async () => {
+  try {
+    if (await bsdataDue(database.db, new Date())) {
+      const status = await syncBsdata(database.db, bsdata, new Date());
+      await tidyDetachments(database.db);
+      logger.info(
+        { factions: status.factions.length, errors: status.errors.length },
+        'Read BSData',
+      );
+    }
+  } catch (error) {
+    logger.warn({ err: error }, 'BSData sync failed; will try again');
+  }
+};
+void syncBsdataIfDue();
+const bsdataTimer = setInterval(() => void syncBsdataIfDue(), 60 * 60 * 1000);
+
 const app = createApp({
   db: database.db,
   runner,
@@ -70,6 +92,7 @@ const app = createApp({
   eventRule,
   allowedHosts: allowedHostsOf(config),
   autoFetch,
+  bsdata,
   auth: { required: config.AUTH_REQUIRED, secret: config.SESSION_SECRET ?? '' },
 });
 if (config.WEB_DIST_DIR !== undefined) serveWebApp(app, config.WEB_DIST_DIR);
@@ -83,6 +106,7 @@ const server = serve({ fetch: app.fetch, port: config.PORT, hostname: config.HOS
 async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'Shutting down');
   server.close();
+  clearInterval(bsdataTimer);
   await autoFetch?.stop();
   // Let a list fetch in flight finish writing before the database closes.
   await fetchQueue.stop();
