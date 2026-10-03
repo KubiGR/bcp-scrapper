@@ -18,6 +18,7 @@ import { fetchQueueRoutes } from './routes/fetch-queue';
 import { matchupsRoutes } from './routes/matchups';
 import { metaRoutes } from './routes/meta';
 import { bsdataRoutes } from './routes/bsdata';
+import { gameUpdateRoutes } from './routes/game-updates';
 import { playersSearchRoutes } from './routes/players-search';
 import { rankingsRoutes } from './routes/rankings';
 import { syncRoutes } from './routes/sync';
@@ -123,6 +124,7 @@ export function createApp(deps: AppDeps) {
     '/api',
     bsdataRoutes({ db: deps.db, client: deps.bsdata, authRequired: auth.required, now }),
   );
+  app.route('/api', gameUpdateRoutes({ db: deps.db, authRequired: auth.required, now }));
   app.route(
     '/api',
     autoFetchRoutes({ db: deps.db, planner: deps.autoFetch, authRequired: auth.required }),

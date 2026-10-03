@@ -4,6 +4,7 @@ import type { BsdataClient } from '../bsdata/client';
 import type { Db } from '../db/client';
 import { ForbiddenError, NotFoundError } from '../errors';
 import { bsdataStatus, syncBsdata } from '../repo/bsdata';
+import { syncUpdateCommits } from '../repo/game-updates';
 import { tidyDetachments } from '../repo/lists';
 
 /** Settings → BSData: its status, and Refresh (with logins on, admins only). */
@@ -22,6 +23,9 @@ export function bsdataRoutes(deps: {
       }
       if (deps.client === undefined) throw new NotFoundError('BSData isn’t set up here');
       const status = await syncBsdata(db, deps.client, deps.now());
+      // The game updates come from the same repository's history; a failure there doesn't
+      // fail the refresh.
+      await syncUpdateCommits(db, deps.client).catch(() => 0);
       // Lists take BSData's spellings straight away.
       await tidyDetachments(db);
       return c.json(status);

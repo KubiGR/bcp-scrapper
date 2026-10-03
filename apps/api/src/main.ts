@@ -10,6 +10,7 @@ import { createLogger } from './logger';
 import { deleteSmallEvents } from './repo/events';
 import { reparseLists, tidyDetachments } from './repo/lists';
 import { bsdataDue, syncBsdata } from './repo/bsdata';
+import { syncUpdateCommits } from './repo/game-updates';
 import { httpBsdataClient } from './bsdata/client';
 import { backfillPlayerUserIds } from './repo/player-accounts';
 import { failInterruptedSyncRuns } from './repo/sync-runs';
@@ -71,6 +72,11 @@ const syncBsdataIfDue = async () => {
   try {
     if (await bsdataDue(database.db, new Date())) {
       const status = await syncBsdata(database.db, bsdata, new Date());
+      const commits = await syncUpdateCommits(database.db, bsdata).catch((error: unknown) => {
+        logger.warn({ err: error }, 'Could not read BSData’s history for game updates');
+        return 0;
+      });
+      if (commits > 0) logger.info({ commits }, 'Read BSData’s history for game updates');
       await tidyDetachments(database.db);
       logger.info(
         { factions: status.factions.length, errors: status.errors.length },
