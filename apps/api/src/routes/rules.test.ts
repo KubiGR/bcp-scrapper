@@ -53,7 +53,7 @@ describe('rules routes', () => {
     const response = await app.request('/api/rules/refresh', { method: 'POST' });
     expect(response.status).toBe(200);
     const status = (await response.json()) as RulesStatus;
-    expect(status.counts).toEqual({ factions: 3, datasheets: 4, weapons: 6 });
+    expect(status.counts).toEqual({ factions: 3, datasheets: 5, weapons: 6 });
   });
 
   it('says when 39k.pro reading isn’t set up', async () => {
@@ -66,14 +66,14 @@ describe('rules routes', () => {
     await app.request('/api/rules/refresh', { method: 'POST' });
     expect(await (await app.request('/api/mathhammer/factions')).json()).toEqual({
       factions: [
-        { faction: 'Orks', units: 2 },
+        { faction: 'Orks', units: 3 },
         { faction: 'Space Marines (Astartes)', units: 2 },
       ],
     });
     const units = (await (
       await app.request('/api/mathhammer/units?faction=Orks')
     ).json()) as MathhammerUnits;
-    expect(units.datasheets.map((d) => d.name)).toEqual(['Boyz', 'Warboss']);
+    expect(units.datasheets.map((d) => d.name)).toEqual(['Boyz', 'Gretchin', 'Warboss']);
     expect((await app.request('/api/mathhammer/units?faction=Nobody')).status).toBe(404);
   });
 });

@@ -94,6 +94,7 @@ export const sampleTables = (): Record<string, unknown[]> => ({
     { id: 'ds-cap', publicationId: 'pub-sm', isLegends: false, ...loc({ name: 'Captain' }) },
     { id: 'ds-boyz', publicationId: 'pub-ork', isLegends: false, ...loc({ name: 'Boyz' }) },
     { id: 'ds-boss', publicationId: 'pub-ork', isLegends: false, ...loc({ name: 'Warboss' }) },
+    { id: 'ds-grot', publicationId: 'pub-ork', isLegends: false, ...loc({ name: 'Gretchin' }) },
     { id: 'ds-cp', publicationId: 'pub-cp', isLegends: false, ...loc({ name: 'Patrol Squad' }) },
   ],
   datasheet_faction_keyword: [
@@ -101,6 +102,7 @@ export const sampleTables = (): Record<string, unknown[]> => ({
     { datasheetId: 'ds-cap', factionKeywordId: 'fk-sm' },
     { datasheetId: 'ds-boyz', factionKeywordId: 'fk-ork' },
     { datasheetId: 'ds-boss', factionKeywordId: 'fk-ork' },
+    { datasheetId: 'ds-grot', factionKeywordId: 'fk-ork' },
     { datasheetId: 'ds-cp', factionKeywordId: 'fk-sm' },
   ],
   miniature: [
@@ -116,6 +118,7 @@ export const sampleTables = (): Record<string, unknown[]> => ({
     model('m-boy', 'ds-boyz', 'Boy', { t: '5', sv: '5+', w: '1' }),
     model('m-nob', 'ds-boyz', 'Nob', { t: '5', sv: '5+', w: '2' }, { displayOrder: 1 }),
     model('m-boss', 'ds-boss', 'Warboss', { t: '6', sv: '4+', w: '6' }),
+    model('m-grot', 'ds-grot', 'Gretchin', { t: '2', sv: '7+', w: '1' }),
     model('m-cp', 'ds-cp', 'Patroller', { t: '4', sv: '3+', w: '2' }),
   ],
   miniature_keyword: [
@@ -127,6 +130,7 @@ export const sampleTables = (): Record<string, unknown[]> => ({
     { miniatureId: 'm-boy', keywordId: 'kw-inf', displayOrder: 1 },
     { miniatureId: 'm-boy', keywordId: 'kw-mob', displayOrder: 2 },
     { miniatureId: 'm-boss', keywordId: 'kw-char', displayOrder: 1 },
+    { miniatureId: 'm-grot', keywordId: 'kw-inf', displayOrder: 1 },
   ],
   keyword: [
     { id: 'kw-inf', ...loc({ name: 'Infantry' }) },
@@ -250,7 +254,7 @@ export const sampleTables = (): Record<string, unknown[]> => ({
     { unitCompositionId: 'uc-int10', miniatureId: 'm-sgt', min: 1, max: 1 },
     { unitCompositionId: 'uc-int10', miniatureId: 'm-int', min: 9, max: 9 },
     { unitCompositionId: 'uc-cap', miniatureId: 'm-cap', min: 1, max: 1 },
-    { unitCompositionId: 'uc-boyz', miniatureId: 'm-boy', min: 9, max: 9 },
+    { unitCompositionId: 'uc-boyz', miniatureId: 'm-boy', min: 9, max: 19 },
     { unitCompositionId: 'uc-boyz', miniatureId: 'm-nob', min: 1, max: 1 },
     { unitCompositionId: 'uc-boss', miniatureId: 'm-boss', min: 1, max: 1 },
   ],
@@ -279,7 +283,9 @@ export const sampleTables = (): Record<string, unknown[]> => ({
     { datasheetBodyguardGroupId: 'bg-cap', datasheetId: 'ds-int' },
   ],
   datasheet_bodyguard_group_keyword: [
+    // A Warboss leads Mob Infantry units: units with all of the group's keywords.
     { datasheetBodyguardGroupId: 'bg-boss', keywordId: 'kw-mob' },
+    { datasheetBodyguardGroupId: 'bg-boss', keywordId: 'kw-inf' },
   ],
 });
 

@@ -20,6 +20,7 @@ describe('extractUnits', () => {
       'Captain',
       'Boyz',
       'Warboss',
+      'Gretchin',
     ]);
   });
 
@@ -119,6 +120,17 @@ describe('extractUnits', () => {
     expect(sheet('Intercessor Squad')?.leads).toEqual([]);
   });
 
+  it('fields the most models a size’s points pay for', () => {
+    expect(sheet('Boyz')?.sizes[0]?.models).toEqual([
+      { modelId: 'm-boy', count: 19 },
+      { modelId: 'm-nob', count: 1 },
+    ]);
+  });
+
+  it('leads by keyword only units with all of the keywords', () => {
+    expect(sheet('Warboss')?.leads).toEqual(['ds-boyz']);
+  });
+
   it('names a missing table', () => {
     const tables = sampleTables();
     delete tables.unit_composition;
@@ -130,7 +142,7 @@ describe('readRulesBundle', () => {
   it('finds the data in the script and its version', () => {
     const { dataVersion, data } = readRulesBundle(sampleBundle());
     expect(dataVersion).toBe(972);
-    expect(data.datasheets).toHaveLength(4);
+    expect(data.datasheets).toHaveLength(5);
   });
 
   it('says when the data isn’t there', () => {

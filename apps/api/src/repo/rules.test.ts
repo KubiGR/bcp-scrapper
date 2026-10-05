@@ -39,7 +39,7 @@ describe('syncRules', () => {
       readAt: NOW.toISOString(),
       bundle: 'https://39k.pro/assets/index-aaa.js',
       dataVersion: 972,
-      counts: { factions: 3, datasheets: 4, weapons: 6 },
+      counts: { factions: 3, datasheets: 5, weapons: 6 },
       error: null,
     });
     const loaded = await loadUnits(db);
@@ -49,6 +49,7 @@ describe('syncRules', () => {
       'Captain',
       'Boyz',
       'Warboss',
+      'Gretchin',
     ]);
   });
 
@@ -80,7 +81,7 @@ describe('syncRules', () => {
     );
     expect(status.error).toMatch(/No rules data/);
     expect(status.readAt).toBe(NOW.toISOString());
-    expect((await loadUnits(db))?.data.datasheets).toHaveLength(4);
+    expect((await loadUnits(db))?.data.datasheets).toHaveLength(5);
   });
 
   it('records a failed download, and clears the error once a read works', async () => {

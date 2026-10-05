@@ -282,7 +282,7 @@ export function extractUnits(tables: Record<string, unknown>): UnitData {
                   .filter(
                     ([other, keywords]) =>
                       other !== id &&
-                      wanted.some((k) => keywords.includes(k)) &&
+                      wanted.every((k) => keywords.includes(k)) &&
                       (factionsById.get(other) ?? []).some((f) => mine.includes(f)),
                   )
                   .map(([other]) => other);
@@ -326,7 +326,10 @@ export function extractUnits(tables: Record<string, unknown>): UnitData {
       .map((composition) => ({
         points: typeof composition.points === 'number' ? composition.points : null,
         models: (compositionModels.get(field(composition, 'id') ?? '') ?? [])
-          .map((row) => ({ modelId: field(row, 'miniatureId') ?? '', count: Number(row.min ?? 0) }))
+          .map((row) => ({
+            modelId: field(row, 'miniatureId') ?? '',
+            count: Number(row.max ?? row.min ?? 0),
+          }))
           .filter((m) => modelIds.has(m.modelId) && m.count > 0),
       }))
       .filter((size) => size.models.length > 0)
