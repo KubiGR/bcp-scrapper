@@ -1,7 +1,6 @@
 import {
   isBigEvent,
   knownDisposition,
-  countedFaction,
   TOP_LISTS_LIMIT,
   type EventSizeRule,
   UNKNOWN_FILTER,
@@ -13,7 +12,7 @@ import { and, desc, gt, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { armyLists, events, players, teams } from '../db/schema';
 import { latestQueueRowsByPlayer } from './fetch-queue';
-import { foreignDetachmentCheck } from './detachment-links';
+import { armyRules, foreignDetachmentCheck } from './detachment-links';
 import { storedCurrentList } from './lists';
 import { listStateOf } from './participants';
 
@@ -64,6 +63,7 @@ export async function searchTopLists(
   rule: EventSizeRule,
   today: Date,
 ): Promise<PlayerSearchResponse> {
+  const rules = await armyRules(db);
   const to = query.to ?? isoDay(today);
   const from = query.from ?? isoDay(new Date(today.getTime() - 90 * DAY_MS));
   const end = new Date(`${to}T00:00:00.000Z`);
@@ -158,7 +158,7 @@ export async function searchTopLists(
 
   const qualifying = rows.map((row) => ({
     row,
-    ...countedFaction(row.faction, row.parsedArmy),
+    ...rules.army(row.faction, row.parsedArmy, row.detachments ?? []),
     disposition: row.disposition ?? knownDisposition(row.parsedDisposition),
     detachments: row.detachments ?? [],
   }));

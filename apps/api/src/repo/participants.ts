@@ -1,6 +1,5 @@
 import {
   knownDisposition,
-  countedFaction,
   type EventCounts,
   type EventPlayer,
   type Player,
@@ -9,6 +8,7 @@ import {
 import { and, count, eq, isNotNull, notInArray, sql } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
+import { armyRules } from './detachment-links';
 import { armyLists, players, teams } from '../db/schema';
 import { isRetryableFailure, latestQueueRowsByPlayer, type LatestQueueRow } from './fetch-queue';
 import { findPlayersMissingLists, storedCurrentList } from './lists';
@@ -109,6 +109,7 @@ export function listStateOf(
 
 /** An event's players, best placing first (unplaced last, by name), with team and list state. */
 export async function listEventPlayers(db: Db, eventId: string): Promise<EventPlayer[]> {
+  const rules = await armyRules(db);
   const [rows, queue] = await Promise.all([
     db
       .select({
@@ -137,7 +138,7 @@ export async function listEventPlayers(db: Db, eventId: string): Promise<EventPl
       teamName,
       teamId: player.teamId,
       teamPlacing,
-      ...countedFaction(player.faction, row.parsedArmy),
+      ...rules.army(player.faction, row.parsedArmy, row.detachments ?? []),
       parentFaction: player.parentFaction,
       placing: player.placing,
       wins: player.wins,

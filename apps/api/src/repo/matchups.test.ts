@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
-import { events, fetchQueue, players } from '../db/schema';
+import { bsdataDetachments, events, fetchQueue, players } from '../db/schema';
 import { enqueueEventPairings } from './fetch-queue';
 import { loadMatchupGames, pairingsStates } from './matchups';
 import { syncEvent } from '../sync/jobs';
@@ -46,6 +46,25 @@ describe('loadMatchupGames', () => {
       factionGuessed: true,
       detachments: ['War Horde'],
     });
+  });
+
+  it('counts a list’s army over BCP’s, and a detachment outside its army’s BSData list as unknown', async () => {
+    await loadBracketEvent();
+    await db.insert(bsdataDetachments).values([
+      { faction: 'World Eaters', name: 'Berzerker Warband' },
+      { faction: 'Adepta Sororitas', name: 'Hallowed Martyrs' },
+    ]);
+    // BCP has PB-B1 as Necrons; the list is World Eaters.
+    await storeList(db, 'PB-B1', gwList('World Eaters', 'Berzerker Warband'));
+    // An Adepta Sororitas list naming a World Eaters detachment.
+    await storeList(db, 'PB-R1', gwList('Adepta Sororitas', 'Berzerker Warband'));
+    const first = (await loadMatchupGames(db, ['EVTBRACKET01'])).find((g) => g.id === 'GB-R1-1');
+    expect(first?.b).toMatchObject({
+      faction: 'World Eaters',
+      factionGuessed: true,
+      detachments: ['Berzerker Warband'],
+    });
+    expect(first?.a).toMatchObject({ faction: 'Adepta Sororitas', detachments: [] });
   });
 
   it('loads each game with both sides’ faction, disposition and team', async () => {

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { bsdataDetachments, players } from '../db/schema';
+import { armyLists, bsdataDetachments, players } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { syncEvent } from '../sync/jobs';
 import { ALL_EVENTS, sampleSource } from '../test/helpers';
@@ -76,6 +76,30 @@ describe('loadMetaRows', () => {
     expect(await orksDetachments()).not.toContainEqual(['Wreckas']);
     await keepDetachment(db, 'Orks', 'Wreckas');
     expect(await orksDetachments()).toContainEqual(['Wreckas']);
+  });
+
+  it('counts a list’s army over BCP’s, or else the one BSData army its detachment belongs to', async () => {
+    await db.insert(bsdataDetachments).values([
+      { faction: 'World Eaters', name: 'Berzerker Warband' },
+      { faction: 'Chaos Knights', name: 'Iconoclast Fiefdom' },
+    ]);
+    await record('PL-ADA', 3, 1);
+    await record('PL-BEN', 2, 2);
+    await db.update(players).set({ faction: 'Chaos Knights' });
+    await storeList(db, 'PL-ADA', gwList('World Eaters', 'Berzerker Warband'));
+    await storeList(db, 'PL-BEN', gwList('World Eaters', 'Berzerker Warband'));
+    // PL-BEN's list names no army.
+    await db.update(armyLists).set({ parsedArmy: null }).where(eq(armyLists.playerId, 'PL-BEN'));
+    const { rows } = await loadMetaRows(db, { ...RANGE, type: 'all' }, ALL_EVENTS, TODAY);
+    const byRecord = (wins: number) => rows.find((r) => r.wins === wins && r.losses + wins === 4);
+    expect(byRecord(3)).toMatchObject({
+      faction: 'World Eaters',
+      detachments: ['Berzerker Warband'],
+    });
+    expect(byRecord(2)).toMatchObject({
+      faction: 'World Eaters',
+      detachments: ['Berzerker Warband'],
+    });
   });
 
   it('gives each player’s disposition: BCP’s, else the one read from their list', async () => {
