@@ -89,6 +89,25 @@ describe('FactionMatrix', () => {
     expect(screen.getByRole('button', { name: /Orks vs Necrons/ })).toBeInTheDocument();
   });
 
+  it('shows a mirror with a win rate (row side filtered) as a result, not a game count', () => {
+    const filtered = matrix();
+    filtered.cells = filtered.cells.map((c) =>
+      c.row === 'Orks' && c.col === 'Orks' ? { ...c, games: 10, wins: 6, winRate: 0.6 } : c,
+    );
+    renderWithProviders(
+      <FactionMatrix
+        matrix={filtered}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 1 }}
+        onCell={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Orks vs Orks: 60% win rate over 10 games' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Necrons vs Necrons: 3 games' })).toBeInTheDocument();
+  });
+
   it('hides a cell under minGames as plain, unclickable text', () => {
     renderWithProviders(
       <FactionMatrix

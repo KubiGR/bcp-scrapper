@@ -125,8 +125,10 @@ export function FactionMatrix({
 
   const renderCell: RenderCell = (cell, col, side) => {
     if (!cell) return <Table.Td key={col} className={classes.cell} />;
-    // A detachment row against its own faction is a real result, not a mirror.
-    const view = cellView(cell, settings, scale, side.detachment === undefined && side.row === col);
+    // A detachment row against its own faction is a real result, not a mirror; so is a mirror the
+    // server gave a win rate (a row-side filter kept only some of its sides).
+    const mirror = side.detachment === undefined && side.row === col && cell.winRate === null;
+    const view = cellView(cell, settings, scale, mirror);
     const who = `${pickLabel(side)} vs ${col}`;
     if (view.tone === 'hidden') {
       return (

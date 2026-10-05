@@ -178,11 +178,16 @@ function tally(
 
 /**
  * Faction-vs-faction results. Each countable game adds one entry per side (row = that side's
- * faction); mirrors land on the diagonal twice and get no win rate.
+ * faction); mirrors land on the diagonal twice and get no win rate, unless a row-side filter
+ * kept only some of their sides.
  */
 export function computeFactionMatrix(games: MatchupGame[], filter: MatchupFilter): FactionMatrix {
   const sided = sidesOf(games, filter);
-  const byRow = tally(sided, (s) => [s.row.faction], false);
+  // Filtering only the row side breaks a mirror's pairs of sides: it is then a real result.
+  const narrowsRows =
+    filter.side === 'row' &&
+    (filter.dispositions.length > 0 || (filter.detachments ?? []).length > 0);
+  const byRow = tally(sided, (s) => [s.row.faction], narrowsRows);
   const az = (names: Iterable<string>) => [...new Set(names)].sort((x, y) => x.localeCompare(y));
   return {
     factions: az(byRow.keys()),

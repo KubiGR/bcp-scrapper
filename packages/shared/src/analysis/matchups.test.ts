@@ -150,6 +150,43 @@ describe('detachment filter', () => {
     expect(cell(m, 'Necrons', 'Orks')?.games).toBe(1);
   });
 
+  it('gives a mirror a win rate when the filter narrows the row side (its sides aren’t pairs)', () => {
+    const mirrors = [
+      game(
+        side('1', 'Orks', null, ['War Horde']),
+        side('2', 'Orks', null, ['Kult of Speed']),
+        15,
+        5,
+        'a_win',
+      ),
+      game(
+        side('3', 'Orks', null, ['War Horde']),
+        side('4', 'Orks', null, ['War Horde']),
+        10,
+        10,
+        'draw',
+      ),
+    ];
+    const row = computeFactionMatrix(mirrors, {
+      dispositions: [],
+      detachments: ['War Horde'],
+      side: 'row',
+    });
+    expect(cell(row, 'Orks', 'Orks')).toMatchObject({
+      games: 3,
+      wins: 1,
+      draws: 2,
+      winRate: 2 / 3,
+    });
+    const both = computeFactionMatrix(mirrors, {
+      dispositions: [],
+      detachments: ['War Horde'],
+      side: 'both',
+    });
+    expect(cell(both, 'Orks', 'Orks')?.winRate).toBeNull();
+    expect(cell(computeFactionMatrix(mirrors, noFilter), 'Orks', 'Orks')?.winRate).toBeNull();
+  });
+
   it('keeps every opponent as a column when the filter narrows the rows', () => {
     const m = computeFactionMatrix(games, {
       dispositions: [],
