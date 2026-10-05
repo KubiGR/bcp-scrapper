@@ -208,8 +208,8 @@ export function computeFactionMatrix(games: MatchupGame[], filter: MatchupFilter
 /**
  * One faction's results split by detachment, against each opponent faction: a list with two
  * detachments counts in both rows; sides without a fetched list are left out. Most games first.
- * Against its own faction a detachment row has a win rate, from games against other detachments
- * (a game against its own detachment is always 50/50).
+ * Against its own faction a detachment row has a win rate (a game against its own detachment adds
+ * a win and a loss) and counts its games played.
  */
 export function detachmentRows(
   games: MatchupGame[],
@@ -217,21 +217,29 @@ export function detachmentRows(
   filter: MatchupFilter,
 ): DetachmentRow[] {
   const sided = sidesOf(games, filter).filter((s) => s.row.faction === faction);
-  // Against its own detachment a game is always 50/50: only other detachments count.
-  const byRow = tally(
-    sided,
-    (s) =>
-      [...new Set(s.row.detachments)].filter(
-        (name) => s.col.faction !== faction || !s.col.detachments.includes(name),
-      ),
-    true,
-  );
+  const byRow = tally(sided, (s) => [...new Set(s.row.detachments)], true);
+  // Against its own faction a game can add two sides to a row (both players on the detachment):
+  // the win rate keeps both, the count is games played.
+  const ownGames = new Map<string, Set<string>>();
+  for (const s of sided) {
+    if (s.col.faction !== faction) continue;
+    for (const name of new Set(s.row.detachments)) {
+      ownGames.set(name, (ownGames.get(name) ?? new Set()).add(s.game.id));
+    }
+  }
   return [...byRow]
-    .map(([key, cells]) => ({
-      detachment: key,
-      games: cells.reduce((sum, cell) => sum + cell.games, 0),
-      cells: cells.sort((x, y) => x.col.localeCompare(y.col)),
-    }))
+    .map(([key, tallied]) => {
+      const cells = tallied
+        .map((cell) =>
+          cell.col === faction ? { ...cell, games: ownGames.get(key)?.size ?? cell.games } : cell,
+        )
+        .sort((x, y) => x.col.localeCompare(y.col));
+      return {
+        detachment: key,
+        games: cells.reduce((sum, cell) => sum + cell.games, 0),
+        cells,
+      };
+    })
     .sort((x, y) => y.games - x.games || x.detachment.localeCompare(y.detachment));
 }
 

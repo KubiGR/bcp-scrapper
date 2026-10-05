@@ -272,8 +272,9 @@ describe('detachmentRows', () => {
     expect(vs('Kult of Speed', 'Orks')).toMatchObject({ games: 1, winRate: 0 });
   });
 
-  it('leaves a detachment’s games against itself out of its row (always 50/50)', () => {
+  it('counts a detachment’s games against its own faction once each, its win rate from both sides', () => {
     const same = [
+      // Each War Horde side counts in the win rate: one win, one loss.
       game(
         side('1', 'Orks', null, ['War Horde']),
         side('2', 'Orks', null, ['War Horde']),
@@ -291,7 +292,7 @@ describe('detachmentRows', () => {
     ];
     const rows = detachmentRows(same, 'Orks', noFilter);
     expect(rows.find((r) => r.detachment === 'War Horde')?.cells).toEqual([
-      expect.objectContaining({ col: 'Orks', games: 1, wins: 1, winRate: 1 }),
+      expect.objectContaining({ col: 'Orks', games: 2, wins: 2, losses: 1, winRate: 2 / 3 }),
     ]);
   });
 
