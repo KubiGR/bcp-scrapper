@@ -340,4 +340,14 @@ describe('speed', () => {
     calculate(setup);
     expect(performance.now() - started).toBeLessThan(300);
   });
+
+  it('seven kinds of model and three weapons in under 300 ms', () => {
+    const gun = weapon({ models: 10, attacks: '2', damage: 'D3' });
+    const groups = [1, 2, 3, 4, 5, 6, 7].map((wounds) => group({ models: 3, wounds, save: 4 }));
+    const setup = calc({ weapons: [gun, gun, gun], defender: defender({ groups }) });
+    const started = performance.now();
+    const result = calculate(setup);
+    expect(performance.now() - started).toBeLessThan(300);
+    expect(result.modelsSlain.reduce((s, p) => s + p, 0)).toBeCloseTo(1);
+  });
 });

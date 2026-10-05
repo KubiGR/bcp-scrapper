@@ -21,7 +21,14 @@ import {
 import { convolve, parseDice, point, type Dist } from './dice';
 import { weaponPool, type PoolRules } from './pool';
 import { capModifier, rollOdds, woundNeeded, type Classify, type Reroll } from './rolls';
-import type { Calculation, CalculationResult, Defender, Situation, Weapon } from './types';
+import type {
+  Calculation,
+  CalculationResult,
+  Defender,
+  DefenderGroup,
+  Situation,
+  Weapon,
+} from './types';
 
 /** A dice expression the engine can't read. */
 export class DiceError extends Error {
@@ -285,6 +292,52 @@ function permutations(items: number[]): number[][] {
   );
 }
 
+/** Orders tried for the defender; beyond this, the order as typed and a sturdiest-first one. */
+const MAX_ORDERS = 24;
+
+/**
+ * The allocation orders the defender may declare (non-CHARACTER groups first), without repeats
+ * of groups with the same profile. With many groups, trying every order would freeze the page,
+ * so only two sensible ones are tried.
+ */
+function allocationOrders(groups: DefenderGroup[]): number[][] {
+  const indices = groups.map((_, i) => i);
+  const others = indices.filter((i) => groups[i]?.character !== true);
+  const characters = indices.filter((i) => groups[i]?.character === true);
+  const signature = (order: number[]) =>
+    order
+      .map((i) => {
+        const g = groups[i];
+        return g === undefined ? '' : [g.toughness, g.save, g.invuln, g.wounds, g.fnp].join('/');
+      })
+      .join('|');
+  const distinct = (orders: number[][]) => {
+    const seen = new Map<string, number[]>();
+    for (const order of orders) if (!seen.has(signature(order))) seen.set(signature(order), order);
+    return [...seen.values()];
+  };
+  const factorial = (n: number): number => (n <= 1 ? 1 : n * factorial(n - 1));
+  const sturdiest = [...others].sort((a, b) => {
+    const x = groups[a];
+    const y = groups[b];
+    if (x === undefined || y === undefined) return 0;
+    return y.wounds - x.wounds || x.save - y.save;
+  });
+  const front =
+    factorial(others.length) <= MAX_ORDERS
+      ? distinct(permutations(others))
+      : distinct([others, sturdiest]);
+  const back =
+    factorial(characters.length) <= MAX_ORDERS ? distinct(permutations(characters)) : [characters];
+  const all = front.flatMap((o) => back.map((c) => [...o, ...c]));
+  return all.length <= MAX_ORDERS
+    ? all
+    : distinct([
+        [...others, ...characters],
+        [...sturdiest, ...characters],
+      ]);
+}
+
 function slainOf(space: Space, vector: Vector, defender: Defender): number {
   let total = 0;
   for (const [id, p] of vector) {
@@ -309,11 +362,8 @@ export function calculate(calculation: Calculation): CalculationResult {
   let wasted = 0;
   const orders: number[][] = [];
   const indices = defender.groups.map((_, i) => i);
-  const others = indices.filter((i) => defender.groups[i]?.character !== true);
   const characters = indices.filter((i) => defender.groups[i]?.character === true);
-  const candidates = permutations(others).flatMap((o) =>
-    permutations(characters).map((c) => [...o, ...c]),
-  );
+  const candidates = allocationOrders(defender.groups);
   // "Re-roll one die" for hits/wounds: the unit's first weapon that has it uses it.
   let hitOneDie = true;
   let woundOneDie = true;
