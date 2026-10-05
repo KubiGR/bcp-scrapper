@@ -1,0 +1,13 @@
+/* The chance of slaying at least that many models. */
+.track {
+  height: 8px;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mantine-color-dark-6);
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mantine-color-neon-5);
+}
