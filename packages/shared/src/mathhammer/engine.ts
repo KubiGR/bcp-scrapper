@@ -89,10 +89,12 @@ function setUp(
     Math.max(2, (weapon.skill ?? 6) + (cover ? 1 : 0) - (ranged && situation.plungingFire ? 1 : 0)),
   );
   const hitModifier = capModifier(
-    m.hitModifier +
-      (weapon.heavy && ranged && !situation.movedOver3 ? 1 : 0) -
-      (situation.attackerDamaged ? 1 : 0) +
+    [
+      m.hitModifier,
+      weapon.heavy && ranged && !situation.movedOver3 ? 1 : 0,
+      situation.attackerDamaged ? -1 : 0,
       defender.hitModifier,
+    ],
     m.hitIgnorePenalties,
   );
   const failUpTo = indirect ? (situation.indirectStationaryVisible ? 3 : 5) : 0;
@@ -109,7 +111,7 @@ function setUp(
   // Wound roll.
   const need = woundNeeded(weapon.strength, toughness);
   const woundModifier = capModifier(
-    m.woundModifier + (weapon.lance && situation.charged ? 1 : 0) + defender.woundModifier,
+    [m.woundModifier, weapon.lance && situation.charged ? 1 : 0, defender.woundModifier],
     m.woundIgnorePenalties,
   );
   const keywords = new Set(defender.keywords.map((k) => k.toUpperCase()));

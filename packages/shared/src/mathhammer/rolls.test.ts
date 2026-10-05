@@ -36,9 +36,11 @@ describe('woundNeeded', () => {
 });
 
 describe('capModifier', () => {
-  it('keeps hit and wound modifiers within ±1, or above 0 when penalties are ignored', () => {
-    expect(capModifier(2, false)).toBe(1);
-    expect(capModifier(-3, false)).toBe(-1);
-    expect(capModifier(-1, true)).toBe(0);
+  it('sums modifiers within ±1, leaving penalties out when they are ignored', () => {
+    expect(capModifier([1, 1], false)).toBe(1);
+    expect(capModifier([-1, -1, -1], false)).toBe(-1);
+    expect(capModifier([1, -1], false)).toBe(0);
+    expect(capModifier([1, -1], true)).toBe(1);
+    expect(capModifier([-1], true)).toBe(0);
   });
 });

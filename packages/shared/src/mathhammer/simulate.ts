@@ -34,7 +34,12 @@ function average(expression: string): number {
   return count * (m[2] === '3' ? 2 : 3.5) + Number(m[3] ?? 0);
 }
 
-const cap = (total: number, ignore: boolean) => Math.max(ignore ? 0 : -1, Math.min(1, total));
+/** ±1 cap on the summed modifiers; ignoring penalties leaves the negative ones out first. */
+const cap = (mods: number[], ignore: boolean) => {
+  let total = 0;
+  for (const m of mods) if (!(ignore && m < 0)) total += m;
+  return Math.max(-1, Math.min(1, total));
+};
 
 /** Rolls the calculation `runs` times; returns P(models slain = n) and P(wounds lost = n). */
 export function simulate(
@@ -147,10 +152,12 @@ export function simulate(
           ),
         );
         const hitMod = cap(
-          m.hitModifier +
-            (weapon.heavy && ranged && !situation.movedOver3 ? 1 : 0) -
-            (situation.attackerDamaged ? 1 : 0) +
+          [
+            m.hitModifier,
+            weapon.heavy && ranged && !situation.movedOver3 ? 1 : 0,
+            situation.attackerDamaged ? -1 : 0,
             defender.hitModifier,
+          ],
           m.hitIgnorePenalties,
         );
         const failUpTo = indirect ? (situation.indirectStationaryVisible ? 3 : 5) : 0;
@@ -214,7 +221,7 @@ export function simulate(
                   ? 6
                   : 5;
         const woundMod = cap(
-          m.woundModifier + (weapon.lance && situation.charged ? 1 : 0) + defender.woundModifier,
+          [m.woundModifier, weapon.lance && situation.charged ? 1 : 0, defender.woundModifier],
           m.woundIgnorePenalties,
         );
         const kws = new Set(defender.keywords.map((k) => k.toUpperCase()));

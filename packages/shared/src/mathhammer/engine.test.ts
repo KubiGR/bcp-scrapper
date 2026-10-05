@@ -50,6 +50,20 @@ describe('calculate', () => {
     ).toBeCloseTo(2);
   });
 
+  it('ignoring penalties drops the -1s and keeps the +1s', () => {
+    const heavy = weapon({ models: 6, heavy: true, mods: { hitIgnorePenalties: true } });
+    const minusOne = { ...crowd, hitModifier: -1 };
+    expect(wounds({ weapons: [heavy], defender: minusOne })).toBeCloseTo(2.5);
+    const lance = weapon({ models: 6, lance: true, mods: { woundIgnorePenalties: true } });
+    expect(
+      wounds({
+        weapons: [lance],
+        defender: { ...crowd, woundModifier: -1 },
+        situation: at({ charged: true }),
+      }),
+    ).toBeCloseTo(6 * (4 / 6) * (4 / 6));
+  });
+
   it('snap shooting hits only on 6s, without criticals or re-rolls', () => {
     const gun = weapon({ models: 6, mods: { sustainedHits: '1', hitReroll: 'failures' } });
     expect(wounds({ weapons: [gun], situation: at({ snapShooting: true }) })).toBeCloseTo(0.5);

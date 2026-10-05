@@ -48,5 +48,15 @@ export function woundNeeded(strength: number, toughness: number): number {
   return 5;
 }
 
-export const capModifier = (total: number, ignorePenalties: boolean) =>
-  Math.max(ignorePenalties ? 0 : -1, Math.min(1, total));
+/**
+ * The modifier to a hit or wound roll: the sum of `modifiers` (each +1/-1/…) capped at ±1; with
+ * `ignorePenalties`, the negative ones are left out before capping.
+ */
+export const capModifier = (modifiers: number[], ignorePenalties: boolean) =>
+  Math.max(
+    -1,
+    Math.min(
+      1,
+      modifiers.reduce((sum, m) => sum + (ignorePenalties && m < 0 ? 0 : m), 0),
+    ),
+  );
