@@ -1,6 +1,7 @@
 import type { FactionMatrix as FactionMatrixData, MatrixCell } from '@bcp/shared';
 import { Group, Stack, Table, Text, UnstyledButton } from '@mantine/core';
-import type { CSSProperties } from 'react';
+import { useRef, type CSSProperties, type SyntheticEvent } from 'react';
+import { CellTip, type CellTipHandle } from './CellTip';
 import classes from './FactionMatrix.module.css';
 import { cellView, type CellTone, type MatrixSettings } from './matrix-view';
 
@@ -38,6 +39,17 @@ export function FactionMatrix({ matrix, scoring, settings, onCell }: FactionMatr
   for (const cell of matrix.cells) cells.set(key(cell.row, cell.col), cell);
   const metricLabel =
     settings.metric === 'points' && scale !== null ? 'average points' : 'win rate';
+  const tip = useRef<CellTipHandle>(null);
+  // Says which factions the cell under the pointer (or keyboard) is.
+  const showTip = (event: SyntheticEvent) => {
+    const cell = (event.target as Element).closest('[data-tip]');
+    const label = cell?.getAttribute('data-tip');
+    if (cell && label) tip.current?.show(label, cell);
+    else tip.current?.hide();
+  };
+  const hideTip = () => {
+    tip.current?.hide();
+  };
 
   return (
     <Stack gap="xs">
@@ -52,8 +64,15 @@ export function FactionMatrix({ matrix, scoring, settings, onCell }: FactionMatr
           </Text>
         ))}
       </Group>
-      <div className={classes.scrollArea}>
-        <Table className={classes.table}>
+      <div className={classes.scrollArea} onScroll={hideTip}>
+        <CellTip ref={tip} />
+        <Table
+          className={classes.table}
+          onMouseOver={showTip}
+          onMouseLeave={hideTip}
+          onFocus={showTip}
+          onBlur={hideTip}
+        >
           <Table.Thead>
             <Table.Tr>
               <Table.Th className={classes.corner} data-testid="matrix-corner" />
@@ -79,7 +98,7 @@ export function FactionMatrix({ matrix, scoring, settings, onCell }: FactionMatr
                       <Table.Td
                         key={col}
                         className={`${classes.cell} ${toneClass.hidden}`}
-                        title={`${view.games} games`}
+                        data-tip={`${row} vs ${col}: ${String(view.games)} games, under the minimum`}
                       >
                         <Text size="sm" c="dimmed" className="numeric">
                           {view.text}
@@ -104,6 +123,7 @@ export function FactionMatrix({ matrix, scoring, settings, onCell }: FactionMatr
                     >
                       <UnstyledButton
                         aria-label={label}
+                        data-tip={label}
                         className={classes.cellButton}
                         onClick={() => {
                           onCell({ row, col });

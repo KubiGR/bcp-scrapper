@@ -1,5 +1,5 @@
 import type { FactionMatrix as FactionMatrixData } from '@bcp/shared';
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/render';
 import { FactionMatrix } from './FactionMatrix';
@@ -134,6 +134,39 @@ describe('FactionMatrix', () => {
     expect(
       screen.getByRole('button', { name: 'Orks vs Necrons: 50% win rate over 3 games' }),
     ).toBeInTheDocument();
+  });
+
+  it('says which factions a cell is when it is hovered', () => {
+    renderWithProviders(
+      <FactionMatrix
+        matrix={matrix()}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 1 }}
+        onCell={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    fireEvent.mouseOver(screen.getByRole('button', { name: /Orks vs Necrons/ }));
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      'Orks vs Necrons: 50% win rate over 3 games',
+    );
+    fireEvent.mouseLeave(screen.getByRole('table'));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('says which factions a hidden cell is, and that it has too few games', () => {
+    renderWithProviders(
+      <FactionMatrix
+        matrix={matrix()}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 5 }}
+        onCell={vi.fn()}
+      />,
+    );
+    const [hidden] = screen.getAllByText('·');
+    if (hidden === undefined) throw new Error('no hidden cell');
+    fireEvent.mouseOver(hidden);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/ vs .*: \d+ games, under the minimum/);
   });
 
   it('calls onCell when a cell is clicked', () => {
