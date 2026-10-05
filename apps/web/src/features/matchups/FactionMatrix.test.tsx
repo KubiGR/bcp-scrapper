@@ -1,8 +1,9 @@
-import type { FactionMatrix as FactionMatrixData } from '@bcp/shared';
-import { fireEvent, screen } from '@testing-library/react';
+import type { DetachmentRowsResponse, FactionMatrix as FactionMatrixData } from '@bcp/shared';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/render';
 import { FactionMatrix } from './FactionMatrix';
+import type { DetachmentRowsQuery } from './matchups-queries';
 import { DEFAULT_MATRIX_SETTINGS } from './matrix-view';
 
 const matrix = (): FactionMatrixData => ({
@@ -258,5 +259,91 @@ describe('FactionMatrix', () => {
     expect(Number(strongCell.style.getPropertyValue('--strength'))).toBeGreaterThan(
       Number(weakCell.style.getPropertyValue('--strength')),
     );
+  });
+
+  describe('detachment rows', () => {
+    const vs = (col: string, games: number, wins: number, losses: number) => ({
+      row: 'Orks',
+      col,
+      games,
+      wins,
+      draws: 0,
+      losses,
+      winRate: wins / games,
+      avgPoints: null,
+    });
+    const orks: DetachmentRowsResponse = {
+      faction: 'Orks',
+      rows: [
+        { detachment: 'War Horde', games: 4, cells: [vs('Necrons', 3, 1, 2), vs('Orks', 1, 1, 0)] },
+        { detachment: null, games: 1, cells: [vs('Necrons', 1, 0, 1)] },
+      ],
+    };
+    const asked: string[] = [];
+    const detachments: DetachmentRowsQuery = (faction) => ({
+      queryKey: ['detachments', faction],
+      queryFn: () => {
+        asked.push(faction);
+        return Promise.resolve(orks);
+      },
+    });
+    const renderMatrix = (onCell = vi.fn()) =>
+      renderWithProviders(
+        <FactionMatrix
+          matrix={matrix()}
+          scoring={{ consistent: true, scale: 20 }}
+          settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 1 }}
+          onCell={onCell}
+          detachments={detachments}
+        />,
+      );
+
+    it('opens a faction’s detachments under its row when its name is clicked, and closes them', async () => {
+      renderMatrix();
+      const orksButton = screen.getByRole('button', { name: 'Orks' });
+      expect(orksButton).toHaveAttribute('aria-expanded', 'false');
+      expect(asked).toEqual([]);
+      fireEvent.click(orksButton);
+      expect(orksButton).toHaveAttribute('aria-expanded', 'true');
+      expect(await screen.findByRole('rowheader', { name: 'War Horde' })).toBeInTheDocument();
+      expect(screen.getByRole('rowheader', { name: 'Detachment unknown' })).toBeInTheDocument();
+      // Under the Orks row, before Necrons.
+      const headers = screen.getAllByRole('rowheader').map((th) => th.textContent);
+      expect(headers.indexOf('War Horde')).toBe(headers.findIndex((h) => h.includes('Orks')) + 1);
+      fireEvent.click(orksButton);
+      expect(screen.queryByRole('rowheader', { name: 'War Horde' })).toBeNull();
+    });
+
+    it('shows each detachment’s result against every opponent, with a win rate against its own faction', async () => {
+      renderMatrix();
+      fireEvent.click(screen.getByRole('button', { name: 'Orks' }));
+      const row = (await screen.findByRole('rowheader', { name: 'War Horde' })).closest('tr');
+      if (row === null) throw new Error('no War Horde row');
+      expect(
+        within(row).getByRole('button', {
+          name: 'Orks · War Horde vs Necrons: 33% win rate over 3 games',
+        }),
+      ).toBeInTheDocument();
+      expect(
+        within(row).getByRole('button', {
+          name: 'Orks · War Horde vs Orks: 100% win rate over 1 games',
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: 'Orks · Detachment unknown vs Necrons: 0% win rate over 1 games',
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it('opens a detachment cell’s games for that detachment', async () => {
+      const onCell = vi.fn();
+      renderMatrix(onCell);
+      fireEvent.click(screen.getByRole('button', { name: 'Orks' }));
+      fireEvent.click(await screen.findByRole('button', { name: /Orks · War Horde vs Necrons/ }));
+      expect(onCell).toHaveBeenCalledWith({ row: 'Orks', col: 'Necrons', detachment: 'War Horde' });
+      fireEvent.click(screen.getByRole('button', { name: /Orks · Detachment unknown vs Necrons/ }));
+      expect(onCell).toHaveBeenLastCalledWith({ row: 'Orks', col: 'Necrons', detachment: null });
+    });
   });
 });

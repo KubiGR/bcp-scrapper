@@ -73,8 +73,9 @@ export function cellView(
   cell: MatrixCell,
   settings: MatrixSettings,
   scale: number | null,
+  /** A detachment row against its own faction is a real result, not a mirror. */
+  isMirror = cell.row === cell.col,
 ): CellView {
-  const isMirror = cell.row === cell.col;
   const games = isMirror ? cell.games / 2 : cell.games;
   if (games < settings.minGames) {
     return { text: '·', value: '·', tone: 'hidden', games, strength: 0 };

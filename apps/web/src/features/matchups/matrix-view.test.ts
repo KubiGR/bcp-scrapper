@@ -190,6 +190,16 @@ describe('cellView strength (graded colour by win rate/points)', () => {
     const mirror = cellView(cell({ row: 'Orks', col: 'Orks', games: 6 }), settings(), null);
     expect(mirror.strength).toBe(0);
   });
+
+  it('shows a detachment against its own faction as a result, not a mirror', () => {
+    const view = cellView(
+      cell({ row: 'Orks', col: 'Orks', games: 4, winRate: 0.75 }),
+      settings(),
+      null,
+      false,
+    );
+    expect(view).toMatchObject({ text: '75%', games: 4, tone: 'good' });
+  });
 });
 
 describe('matrixParams', () => {

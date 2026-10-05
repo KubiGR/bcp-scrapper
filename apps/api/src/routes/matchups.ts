@@ -3,6 +3,7 @@ import {
   cellGames,
   computeFactionMatrix,
   DETACHMENT_SEPARATOR,
+  detachmentRows,
   detachmentsPlayed,
   scalesAgree,
   type MatchupFilter,
@@ -28,6 +29,7 @@ const FilterSchema = z.object({
   side: z.enum(['row', 'both']).default('row'),
 });
 const CellSchema = z.object({ row: z.string().min(1), col: z.string().min(1) });
+const FactionSchema = z.object({ faction: z.string().min(1) });
 const ids = z
   .string()
   .optional()
@@ -127,6 +129,15 @@ export function matchupsRoutes(deps: {
       const { row, col } = parseInput(CellSchema, query);
       return c.json({ games: cellGames(await loadMatchupGames(db, [id]), row, col, filter) });
     })
+    .get('/events/:id/matchups/detachments', async (c) => {
+      const id = c.req.param('id');
+      await requireEvent(db, id);
+      const query = c.req.query();
+      const filter = toFilter(parseInput(FilterSchema, query));
+      const { faction } = parseInput(FactionSchema, query);
+      const rows = detachmentRows(await loadMatchupGames(db, [id]), faction, filter);
+      return c.json({ faction, rows });
+    })
     .get('/matchups', async (c) => {
       const query = c.req.query();
       const filter = toFilter(parseInput(FilterSchema, query));
@@ -147,6 +158,14 @@ export function matchupsRoutes(deps: {
       return c.json({
         games: cellGames(await loadMatchupGames(db, includedIds), row, col, filter),
       });
+    })
+    .get('/matchups/detachments', async (c) => {
+      const query = c.req.query();
+      const filter = toFilter(parseInput(FilterSchema, query));
+      const { faction } = parseInput(FactionSchema, query);
+      const { includedIds } = await selection(query);
+      const rows = detachmentRows(await loadMatchupGames(db, includedIds), faction, filter);
+      return c.json({ faction, rows });
     })
     .post('/pairings-queue', requireJson, async (c) => {
       const { eventIds } = parseInput(

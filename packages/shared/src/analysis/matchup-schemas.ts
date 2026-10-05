@@ -41,6 +41,23 @@ export const MatchupsResponseSchema = z.object({
 });
 export type MatchupsResponse = z.infer<typeof MatchupsResponseSchema>;
 
+/** One detachment's results against each opponent faction (cells' `row` is the faction). */
+export const DetachmentRowSchema = z.object({
+  /** null: players whose list wasn't fetched. */
+  detachment: z.string().nullable(),
+  /** Games counted, from this row's side. */
+  games: count,
+  cells: z.array(MatrixCellSchema),
+});
+export type DetachmentRow = z.infer<typeof DetachmentRowSchema>;
+
+/** GET …/matchups/detachments?faction=: the faction's detachment rows. */
+export const DetachmentRowsResponseSchema = z.object({
+  faction: z.string(),
+  rows: z.array(DetachmentRowSchema),
+});
+export type DetachmentRowsResponse = z.infer<typeof DetachmentRowsResponseSchema>;
+
 export const CellGameSchema = z.object({
   id: z.string(),
   eventId: z.string(),

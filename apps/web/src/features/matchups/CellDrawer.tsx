@@ -3,9 +3,10 @@ import { Drawer, Skeleton, Table, Text } from '@mantine/core';
 import { PlayerLine } from '../../components/PlayerLine';
 import { ErrorState } from '../../components/ErrorState';
 import { formatPoints } from '../analysis/format';
+import { pickLabel, type MatrixPick } from './matrix-pick';
 
 interface CellDrawerProps {
-  cell: { row: string; col: string } | null;
+  cell: MatrixPick | null;
   games: CellGame[] | undefined;
   loading: boolean;
   error: Error | null;
@@ -28,7 +29,17 @@ function PlayerCell({ side }: { side: CellGame['row'] }) {
 
 /** A cell's games: event (only shown when the games span more than one), round, table, both
  * sides (faction, disposition, team), result and points. Loading / error / empty states. */
-export function CellDrawer({ cell, games, loading, error, onClose }: CellDrawerProps) {
+export function CellDrawer({ cell, games: all, loading, error, onClose }: CellDrawerProps) {
+  // From a detachment row: only the games the row side played that detachment in.
+  const detachment = cell?.detachment;
+  const games =
+    detachment === undefined
+      ? all
+      : all?.filter((game) =>
+          detachment === null
+            ? game.row.detachments.length === 0
+            : game.row.detachments.includes(detachment),
+        );
   const crossEvent = games !== undefined && new Set(games.map((g) => g.eventId)).size > 1;
   return (
     <Drawer
@@ -36,7 +47,7 @@ export function CellDrawer({ cell, games, loading, error, onClose }: CellDrawerP
       onClose={onClose}
       position="right"
       size="lg"
-      title={cell ? `${cell.row} vs ${cell.col}` : undefined}
+      title={cell ? `${pickLabel(cell)} vs ${cell.col}` : undefined}
     >
       {loading && <Skeleton height={160} />}
       {!loading && error && <ErrorState error={error} />}

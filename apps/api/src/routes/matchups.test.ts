@@ -2,6 +2,7 @@ import type {
   BulkPairingsResult,
   CellGamesResponse,
   CrossEventMatchupsResponse,
+  DetachmentRowsResponse,
   MatchupsResponse,
 } from '@bcp/shared';
 import { eq } from 'drizzle-orm';
@@ -131,6 +132,26 @@ describe('matchups routes', () => {
       factionGuessed: true,
       detachments: ['Hypercrypt Legion'],
     });
+  });
+
+  it('splits a faction by detachment, for an event and for a range', async () => {
+    await storeList(db, 'PB-R1', gwList('Adepta Sororitas', 'Hallowed Martyrs'));
+    const event = await get<DetachmentRowsResponse>(
+      '/api/events/EVTBRACKET01/matchups/detachments?faction=Adepta%20Sororitas',
+    );
+    expect(event.body.faction).toBe('Adepta Sororitas');
+    expect(event.body.rows.map((r) => r.detachment)).toEqual(['Hallowed Martyrs', null]);
+    const matrix = await get<MatchupsResponse>('/api/events/EVTBRACKET01/matchups');
+    const total = matrix.body.matrix.cells
+      .filter((c) => c.row === 'Adepta Sororitas')
+      .reduce((sum, c) => sum + c.games, 0);
+    expect(event.body.rows.reduce((sum, r) => sum + r.games, 0)).toBe(total);
+
+    const range = await get<DetachmentRowsResponse>(
+      '/api/matchups/detachments?from=2026-01-01&to=2026-12-31&include=EVTBRACKET01&faction=Adepta%20Sororitas',
+    );
+    expect(range.body.rows).toEqual(event.body.rows);
+    expect((await get('/api/matchups/detachments')).status).toBe(400);
   });
 
   it('takes detachments separated by |', async () => {
