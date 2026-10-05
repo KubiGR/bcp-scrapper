@@ -1,6 +1,6 @@
 import type { DetachmentNamesResponse } from '@bcp/shared';
 import { Alert, Badge, Button, Group, Select, Skeleton, Stack, Table, Text } from '@mantine/core';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
@@ -24,6 +24,20 @@ interface LinkRequest {
   target: string | null;
   foreign: boolean;
 }
+interface Pair {
+  faction: string;
+  name: string;
+}
+
+/** The variables of every save of this kind still running (several can run at once). */
+function usePending<T>(mutationKey: string[]): T[] {
+  return useMutationState({
+    filters: { mutationKey, status: 'pending' },
+    select: (mutation) => mutation.state.variables as T,
+  });
+}
+
+const samePair = (a: Pair) => (b: Pair) => a.faction === b.faction && a.name === b.name;
 
 const ALL = '';
 
@@ -66,8 +80,9 @@ interface RowProps {
   /** The picked faction, or ALL (then the row also says which factions play the name). */
   faction: string;
   readOnly: boolean;
-  /** The name being saved, if any. */
-  saving: string | null;
+  /** Links and undos still saving. */
+  linking: LinkRequest[];
+  undoing: string[];
   onLink: (request: LinkRequest) => void;
   onUndo: (name: string) => void;
 }
@@ -79,7 +94,8 @@ function NameRow({
   targets,
   faction,
   readOnly,
-  saving,
+  linking,
+  undoing,
   onLink,
   onUndo,
 }: RowProps & { entry: Unsure; foreign?: Foreign }) {
@@ -87,6 +103,15 @@ function NameRow({
   const link = (request: Omit<LinkRequest, 'name'>) => {
     onLink({ name: entry.name, ...request });
   };
+  // Which of the row's buttons is saving: to a detachment, as its own (or English), or not English.
+  const saving = (to: 'detachment' | 'own' | 'foreign') =>
+    linking.some(
+      (r) =>
+        r.name === entry.name &&
+        (to === 'detachment'
+          ? r.target !== null
+          : r.target === null && r.foreign === (to === 'foreign')),
+    );
   return (
     <Table.Tr>
       <Table.Td>{entry.name}</Table.Td>
@@ -115,7 +140,7 @@ function NameRow({
           <Button
             size="xs"
             disabled={readOnly || target === null}
-            loading={saving === entry.name}
+            loading={saving('detachment')}
             onClick={() => {
               link({ target, foreign: false });
             }}
@@ -129,6 +154,7 @@ function NameRow({
                 variant="subtle"
                 disabled={readOnly}
                 aria-label={`${entry.name} is its own detachment`}
+                loading={saving('own')}
                 onClick={() => {
                   link({ target: null, foreign: false });
                 }}
@@ -141,6 +167,7 @@ function NameRow({
                 color="gray"
                 disabled={readOnly}
                 aria-label={`${entry.name} is not in English`}
+                loading={saving('foreign')}
                 onClick={() => {
                   link({ target: null, foreign: true });
                 }}
@@ -155,6 +182,7 @@ function NameRow({
                 variant="subtle"
                 disabled={readOnly}
                 aria-label={`${entry.name} is English`}
+                loading={saving('own')}
                 onClick={() => {
                   link({ target: null, foreign: false });
                 }}
@@ -168,6 +196,7 @@ function NameRow({
                   color="gray"
                   disabled={readOnly}
                   aria-label={`Undo Not English for ${entry.name}`}
+                  loading={undoing.includes(entry.name)}
                   onClick={() => {
                     onUndo(entry.name);
                   }}
@@ -248,20 +277,29 @@ export function DetachmentNamesCard() {
     });
   };
   const link = useMutation({
+    mutationKey: ['detachment-link'],
     mutationFn: ({ name, target, foreign }: LinkRequest) => linkDetachment(name, target, foreign),
     onSuccess: saved,
   });
-  const unlink = useMutation({ mutationFn: unlinkDetachment, onSuccess: saved });
+  const unlink = useMutation({
+    mutationKey: ['detachment-unlink'],
+    mutationFn: unlinkDetachment,
+    onSuccess: saved,
+  });
   const keep = useMutation({
-    mutationFn: ({ faction, name }: { faction: string; name: string }) =>
-      keepDetachment(faction, name),
+    mutationKey: ['detachment-keep'],
+    mutationFn: ({ faction, name }: Pair) => keepDetachment(faction, name),
     onSuccess: saved,
   });
   const unkeep = useMutation({
-    mutationFn: ({ faction, name }: { faction: string; name: string }) =>
-      unkeepDetachment(faction, name),
+    mutationKey: ['detachment-unkeep'],
+    mutationFn: ({ faction, name }: Pair) => unkeepDetachment(faction, name),
     onSuccess: saved,
   });
+  const linking = usePending<LinkRequest>(['detachment-link']);
+  const undoing = usePending<string>(['detachment-unlink']);
+  const keeping = usePending<Pair>(['detachment-keep']);
+  const unkeeping = usePending<Pair>(['detachment-unkeep']);
   const error = link.error ?? unlink.error ?? keep.error ?? unkeep.error;
   const [picked, setPicked] = useState<string | null>(null);
   const factions = names.data ? factionOptions(names.data) : [];
@@ -287,7 +325,8 @@ export function DetachmentNamesCard() {
     targets: names.data?.targets ?? [],
     faction,
     readOnly,
-    saving: link.isPending ? link.variables.name : null,
+    linking,
+    undoing,
     onLink: (request) => {
       link.mutate(request);
     },
@@ -394,6 +433,7 @@ export function DetachmentNamesCard() {
                     variant="subtle"
                     disabled={readOnly}
                     aria-label={`Keep ${pair.name} for ${pair.faction}`}
+                    loading={keeping.some(samePair(pair))}
                     onClick={() => {
                       keep.mutate({ faction: pair.faction, name: pair.name });
                     }}
@@ -413,6 +453,7 @@ export function DetachmentNamesCard() {
                     variant="subtle"
                     disabled={readOnly}
                     aria-label={`Undo keep ${pair.name} for ${pair.faction}`}
+                    loading={unkeeping.some(samePair(pair))}
                     onClick={() => {
                       unkeep.mutate({ faction: pair.faction, name: pair.name });
                     }}
@@ -444,6 +485,7 @@ export function DetachmentNamesCard() {
                     variant="subtle"
                     disabled={readOnly}
                     aria-label={`${translation.name} is not ${translation.target}`}
+                    loading={linking.some((r) => r.name === translation.name)}
                     onClick={() => {
                       link.mutate({ name: translation.name, target: null, foreign: false });
                     }}
@@ -471,6 +513,7 @@ export function DetachmentNamesCard() {
                     variant="subtle"
                     disabled={readOnly}
                     aria-label={`Undo link for ${linked.name}`}
+                    loading={undoing.includes(linked.name)}
                     onClick={() => {
                       unlink.mutate(linked.name);
                     }}
