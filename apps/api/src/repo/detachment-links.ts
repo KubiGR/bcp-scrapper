@@ -1,6 +1,7 @@
 import {
   ALLEGIANCE_NAMES,
   cleanDetachmentName,
+  countedFaction,
   looksForeign,
   looseDetachmentKey,
   SPACE_MARINES,
@@ -108,6 +109,49 @@ export async function wrongPairCheck(
   db: Db,
 ): Promise<(army: string | null, name: string) => boolean> {
   return (await bsdataRules(db)).wrong;
+}
+
+/** How every page decides a player's army and which of their detachments count. */
+export interface ArmyRules {
+  /** The army a player counts as (see `resolveFaction`), BSData settling a list naming none. */
+  army: (
+    bcpFaction: string | null,
+    parsedArmy: string | null,
+    detachments: string[],
+  ) => { faction: string | null; factionGuessed: boolean };
+  /** The detachments that count: none (detachment unknown) when any isn't English or is outside
+   * the army's BSData list (and wasn't kept). */
+  detachments: (army: string | null, names: string[]) => string[];
+}
+
+export async function armyRules(db: Db): Promise<ArmyRules> {
+  const [{ bsdata, wrong }, foreign] = await Promise.all([
+    bsdataRules(db),
+    foreignDetachmentCheck(db),
+  ]);
+  const owners = new Map<string, Set<string>>();
+  for (const [faction, names] of bsdata) {
+    for (const name of names) {
+      const key = looseDetachmentKey(name);
+      owners.set(key, (owners.get(key) ?? new Set()).add(faction));
+    }
+  }
+  /** The one army all the detachments belong to in BSData, when BCP's army lacks them. */
+  const soleOwner = (bcpFaction: string | null, names: string[]) => {
+    if (names.length === 0) return null;
+    const base = countedFaction(bcpFaction, null).faction;
+    if (base !== null && names.every((name) => !wrong(base, name))) return null;
+    const shared = names
+      .map((name) => owners.get(looseDetachmentKey(name)) ?? new Set<string>())
+      .reduce((all, next) => new Set([...all].filter((army) => next.has(army))));
+    return shared.size === 1 ? ([...shared][0] ?? null) : null;
+  };
+  return {
+    army: (bcpFaction, parsedArmy, names) =>
+      countedFaction(bcpFaction, parsedArmy, soleOwner(bcpFaction, names)),
+    detachments: (army, names) =>
+      names.some((name) => foreign(name) || wrong(army, name)) ? [] : names,
+  };
 }
 
 /** Keeps a detachment for a faction although BSData doesn't list it there. */

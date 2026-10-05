@@ -1,11 +1,13 @@
-import { countedFaction, knownDisposition, type EventAnalysisInput } from '@bcp/shared';
+import { knownDisposition, type EventAnalysisInput } from '@bcp/shared';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
+import { armyRules } from './detachment-links';
 import { armyLists, games, players, teamMatchups, teams } from '../db/schema';
 import { storedCurrentList } from './lists';
 
 /** Everything the analysis functions need about one event, as plain rows. */
 export async function loadEventAnalysis(db: Db, eventId: string): Promise<EventAnalysisInput> {
+  const rules = await armyRules(db);
   const [teamRows, playerRows, matchupRows, gameRows] = await Promise.all([
     db
       .select({ id: teams.id, name: teams.name, placing: teams.placing })
@@ -55,13 +57,17 @@ export async function loadEventAnalysis(db: Db, eventId: string): Promise<EventA
       .from(games)
       .where(eq(games.eventId, eventId)),
   ]);
-  const playerInputs = playerRows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    ...countedFaction(row.faction, row.parsedArmy),
-    teamId: row.teamId,
-    disposition: row.disposition ?? knownDisposition(row.parsedDisposition),
-    detachments: row.detachments ?? [],
-  }));
+  const playerInputs = playerRows.map((row) => {
+    const army = rules.army(row.faction, row.parsedArmy, row.detachments ?? []);
+    return {
+      id: row.id,
+      name: row.name,
+      ...army,
+      teamId: row.teamId,
+      disposition: row.disposition ?? knownDisposition(row.parsedDisposition),
+      // Detachment unknown when one isn't English or is outside the army's BSData list.
+      detachments: rules.detachments(army.faction, row.detachments ?? []),
+    };
+  });
   return { teams: teamRows, players: playerInputs, matchups: matchupRows, games: gameRows };
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   cellGames,
   computeFactionMatrix,
+  detachmentRows,
   scalesAgree,
   type DispositionFilter,
   type MatchupGame,
@@ -61,6 +62,10 @@ describe('computeFactionMatrix', () => {
   ];
   const matrix = computeFactionMatrix(games, noFilter);
 
+  it('has the same factions as rows and columns without a filter', () => {
+    expect(matrix.columns).toEqual(matrix.factions);
+  });
+
   it('counts each game once per side, from the row side', () => {
     expect(cell(matrix, 'Orks', 'Necrons')).toEqual({
       row: 'Orks',
@@ -81,9 +86,9 @@ describe('computeFactionMatrix', () => {
     });
   });
 
-  it('puts mirrors on the diagonal, twice, with no win rate', () => {
+  it('puts mirrors on the diagonal as games played, with no win rate', () => {
     expect(cell(matrix, 'Orks', 'Orks')).toMatchObject({
-      games: 2,
+      games: 1,
       wins: 1,
       losses: 1,
       winRate: null,
@@ -145,6 +150,48 @@ describe('detachment filter', () => {
     expect(cell(m, 'Necrons', 'Orks')?.games).toBe(1);
   });
 
+  it('counts a filtered mirror’s games played, each once', () => {
+    const mirrors = [
+      game(
+        side('1', 'Orks', null, ['War Horde']),
+        side('2', 'Orks', null, ['War Horde']),
+        10,
+        10,
+        'draw',
+      ),
+      game(
+        side('3', 'Orks', null, ['War Horde']),
+        side('4', 'Orks', null, ['Dread Mob']),
+        15,
+        5,
+        'a_win',
+      ),
+      game(
+        side('5', 'Orks', null, ['Dread Mob']),
+        side('6', 'Orks', null, ['Dread Mob']),
+        15,
+        5,
+        'a_win',
+      ),
+    ];
+    const m = computeFactionMatrix(mirrors, {
+      dispositions: [],
+      detachments: ['War Horde'],
+      side: 'row',
+    });
+    expect(cell(m, 'Orks', 'Orks')?.games).toBe(2);
+  });
+
+  it('keeps every opponent as a column when the filter narrows the rows', () => {
+    const m = computeFactionMatrix(games, {
+      dispositions: [],
+      detachments: ['Kult of Speed'],
+      side: 'row',
+    });
+    expect(m.factions).toEqual(['Orks']);
+    expect(m.columns).toEqual(['Necrons']);
+  });
+
   it('both sides: each played one of the listed detachments', () => {
     const m = computeFactionMatrix(games, {
       dispositions: [],
@@ -170,6 +217,108 @@ describe('detachment filter', () => {
       { dispositions: [], detachments: ['War Horde'], side: 'row' },
     );
     expect(m.games).toBe(0);
+  });
+});
+
+describe('detachmentRows', () => {
+  const games = [
+    game(
+      side('1', 'Orks', null, ['War Horde']),
+      side('2', 'Necrons', null, ['Hypercrypt']),
+      15,
+      5,
+      'a_win',
+    ),
+    game(side('3', 'Orks', null, ['War Horde']), side('4', 'Necrons'), 5, 15, 'b_win'),
+    game(side('5', 'Necrons'), side('6', 'Orks', null, ['War Horde']), 10, 10, 'draw'),
+    game(side('7', 'Orks', null, ['Kult of Speed']), side('8', 'Necrons'), 20, 0, 'a_win'),
+    game(side('9', 'Orks'), side('10', 'Necrons'), 0, 20, 'b_win'), // no list
+    // A mirror: each Ork side counts in its own detachment's row.
+    game(
+      side('11', 'Orks', null, ['War Horde']),
+      side('12', 'Orks', null, ['Kult of Speed']),
+      12,
+      8,
+      'a_win',
+    ),
+  ];
+  const rows = detachmentRows(games, 'Orks', noFilter);
+  const rowOf = (detachment: string) => rows.find((r) => r.detachment === detachment);
+  const vs = (detachment: string, col: string) =>
+    rowOf(detachment)?.cells.find((c) => c.col === col);
+
+  it('splits a faction’s results by detachment, most games first, leaving out unknown lists', () => {
+    expect(rows.map((r) => [r.detachment, r.games])).toEqual([
+      ['War Horde', 4],
+      ['Kult of Speed', 2],
+    ]);
+  });
+
+  it('counts wins, draws and losses against each opponent faction', () => {
+    expect(vs('War Horde', 'Necrons')).toMatchObject({
+      row: 'Orks',
+      col: 'Necrons',
+      games: 3,
+      wins: 1,
+      draws: 1,
+      losses: 1,
+      winRate: 0.5,
+      avgPoints: 10,
+    });
+  });
+
+  it('gives a win rate against the faction itself, each side in its own row', () => {
+    expect(vs('War Horde', 'Orks')).toMatchObject({ games: 1, winRate: 1 });
+    expect(vs('Kult of Speed', 'Orks')).toMatchObject({ games: 1, winRate: 0 });
+  });
+
+  it('counts a detachment’s games against its own faction once each, its win rate from both sides', () => {
+    const same = [
+      // Each War Horde side counts in the win rate: one win, one loss.
+      game(
+        side('1', 'Orks', null, ['War Horde']),
+        side('2', 'Orks', null, ['War Horde']),
+        15,
+        5,
+        'a_win',
+      ),
+      game(
+        side('3', 'Orks', null, ['War Horde']),
+        side('4', 'Orks', null, ['Dread Mob']),
+        15,
+        5,
+        'a_win',
+      ),
+    ];
+    const rows = detachmentRows(same, 'Orks', noFilter);
+    expect(rows.find((r) => r.detachment === 'War Horde')?.cells).toEqual([
+      expect.objectContaining({ col: 'Orks', games: 2, wins: 2, losses: 1, winRate: 2 / 3 }),
+    ]);
+  });
+
+  it('counts a list with two detachments in both rows', () => {
+    const two = [
+      game(
+        side('1', 'Orks', null, ['War Horde', 'Dread Mob']),
+        side('2', 'Necrons'),
+        15,
+        5,
+        'a_win',
+      ),
+    ];
+    expect(detachmentRows(two, 'Orks', noFilter).map((r) => r.detachment)).toEqual([
+      'Dread Mob',
+      'War Horde',
+    ]);
+  });
+
+  it('keeps to the filter', () => {
+    const filtered = detachmentRows(games, 'Orks', {
+      dispositions: [],
+      detachments: ['Kult of Speed'],
+      side: 'row',
+    });
+    expect(filtered.map((r) => r.detachment)).toEqual(['Kult of Speed']);
   });
 });
 

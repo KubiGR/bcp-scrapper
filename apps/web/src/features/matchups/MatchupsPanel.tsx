@@ -8,7 +8,12 @@ import { dispositionsOf } from '../event/players-filter';
 import { CellDrawer } from './CellDrawer';
 import { FactionMatrix } from './FactionMatrix';
 import { MatrixControls } from './MatrixControls';
-import { eventCellGamesQuery, eventMatchupsQuery } from './matchups-queries';
+import {
+  eventCellGamesQuery,
+  eventDetachmentRowsQuery,
+  eventMatchupsQuery,
+} from './matchups-queries';
+import type { MatrixPick } from './matrix-pick';
 import { DEFAULT_MATRIX_SETTINGS, hasSideFilter, type MatrixSettings } from './matrix-view';
 
 /** The event's Matchups tab: controls, a one-line summary, the heatmap, and a drill-down drawer
@@ -16,13 +21,13 @@ import { DEFAULT_MATRIX_SETTINGS, hasSideFilter, type MatrixSettings } from './m
  * inconsistent (e.g. after adding events with a different scale). */
 export function MatchupsPanel({ event }: { event: EventDetail }) {
   const [settings, setSettings] = useState<MatrixSettings>(DEFAULT_MATRIX_SETTINGS);
-  const [cell, setCell] = useState<{ row: string; col: string } | null>(null);
+  const [cell, setCell] = useState<MatrixPick | null>(null);
   const live = event.pairings.queued > 0;
 
   const matchups = useQuery(eventMatchupsQuery(event.bcpId, settings, live));
   const players = useQuery(playersQuery(event.bcpId));
   const games = useQuery({
-    ...eventCellGamesQuery(event.bcpId, cell ?? { row: '', col: '' }, settings),
+    ...eventCellGamesQuery(event.bcpId, { row: cell?.row ?? '', col: cell?.col ?? '' }, settings),
     enabled: cell !== null,
   });
 
@@ -86,6 +91,7 @@ export function MatchupsPanel({ event }: { event: EventDetail }) {
               scoring={matrixScoring}
               settings={effectiveSettings}
               onCell={setCell}
+              detachments={eventDetachmentRowsQuery(event.bcpId, settings)}
             />
           </>
         )}

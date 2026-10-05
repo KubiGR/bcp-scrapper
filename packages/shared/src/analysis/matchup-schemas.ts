@@ -6,6 +6,7 @@ const count = z.number().int().nonnegative();
 export const MatrixCellSchema = z.object({
   row: z.string(),
   col: z.string(),
+  /** Sides counted; on the mirror diagonal, games played (each once). */
   games: count,
   wins: count,
   draws: count,
@@ -18,8 +19,10 @@ export const MatrixCellSchema = z.object({
 export type MatrixCell = z.infer<typeof MatrixCellSchema>;
 
 export const FactionMatrixSchema = z.object({
-  /** Factions in alphabetical order. */
+  /** The rows: factions with games from the filtered side, A→Z. */
   factions: z.array(z.string()),
+  /** The columns: every opponent faction those rows played, A→Z. */
+  columns: z.array(z.string()),
   cells: z.array(MatrixCellSchema),
   /** Games counted (each game once, not once per side). */
   games: count,
@@ -40,6 +43,22 @@ export const MatchupsResponseSchema = z.object({
   detachments: z.array(z.string()),
 });
 export type MatchupsResponse = z.infer<typeof MatchupsResponseSchema>;
+
+/** One detachment's results against each opponent faction (cells' `row` is the faction). */
+export const DetachmentRowSchema = z.object({
+  detachment: z.string(),
+  /** Games played. */
+  games: count,
+  cells: z.array(MatrixCellSchema),
+});
+export type DetachmentRow = z.infer<typeof DetachmentRowSchema>;
+
+/** GET …/matchups/detachments?faction=: the faction's detachment rows. */
+export const DetachmentRowsResponseSchema = z.object({
+  faction: z.string(),
+  rows: z.array(DetachmentRowSchema),
+});
+export type DetachmentRowsResponse = z.infer<typeof DetachmentRowsResponseSchema>;
 
 export const CellGameSchema = z.object({
   id: z.string(),

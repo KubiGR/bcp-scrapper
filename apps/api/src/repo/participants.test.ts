@@ -129,12 +129,14 @@ describe('listEventPlayers with parsed lists', () => {
     expect(await find('PL-ADA')).toMatchObject({ faction: null, factionGuessed: false });
   });
 
-  it('keeps BCP’s faction, and fills a missing disposition only with a known one', async () => {
+  it('takes the list’s army over a different one on BCP, and fills a missing disposition only with a known one', async () => {
     await db.update(players).set({ disposition: null }).where(eq(players.id, 'PL-ADA'));
     await storeList(db, 'PL-ADA', gwList('Necrons', 'Awakened Dynasty', 'Purge the Foe'));
-    const ada = await find('PL-ADA');
-    expect(ada).toMatchObject({ factionGuessed: false, disposition: 'Purge the Foe' });
-    expect(ada?.faction).not.toBe('Necrons');
+    expect(await find('PL-ADA')).toMatchObject({
+      faction: 'Necrons',
+      factionGuessed: true,
+      disposition: 'Purge the Foe',
+    });
   });
 
   it('ignores a stored list the player has since replaced on BCP', async () => {

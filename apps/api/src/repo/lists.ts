@@ -16,6 +16,7 @@ import { and, eq, isNotNull, isNull, lt, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
+import { armyRules } from './detachment-links';
 import type { Logger } from '../logger';
 import { armyLists, detachmentLinks, players, teams } from '../db/schema';
 import { bsdataByFaction } from './bsdata';
@@ -332,6 +333,7 @@ export async function listEventArmyLists(db: Db, eventId: string): Promise<Expor
       team: teams.name,
       bcpFaction: players.faction,
       parsedArmy: armyLists.parsedArmy,
+      detachments: armyLists.detachments,
       listId: armyLists.listId,
       text: armyLists.text,
     })
@@ -340,9 +342,10 @@ export async function listEventArmyLists(db: Db, eventId: string): Promise<Expor
     .leftJoin(teams, eq(teams.id, players.teamId))
     .where(eq(players.eventId, eventId))
     .orderBy(sql`${players.placing} asc nulls last`, players.name);
-  return rows.map(({ bcpFaction, parsedArmy, ...row }) => ({
+  const rules = await armyRules(db);
+  return rows.map(({ bcpFaction, parsedArmy, detachments, ...row }) => ({
     ...row,
-    faction: countedFaction(bcpFaction, parsedArmy).faction,
+    faction: rules.army(bcpFaction, parsedArmy, detachments).faction,
   }));
 }
 

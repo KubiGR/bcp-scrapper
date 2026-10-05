@@ -66,16 +66,16 @@ function toneAndStrength(
  * otherwise the chosen metric (win rate, or game points when a `scale` is available) as compact
  * text, with a `strength` in [0, 1] for a graded background so colour intensity tracks how far the
  * value is from even. The game count travels separately (aria-label, tooltip, or a second line) so
- * colour is never the only signal. A mirror's `games` is halved first, since `computeFactionMatrix`
- * counts each side of a mirror game separately.
+ * colour is never the only signal. A mirror's `games` is already its games played.
  */
 export function cellView(
   cell: MatrixCell,
   settings: MatrixSettings,
   scale: number | null,
+  /** A detachment row against its own faction is a real result, not a mirror. */
+  isMirror = cell.row === cell.col,
 ): CellView {
-  const isMirror = cell.row === cell.col;
-  const games = isMirror ? cell.games / 2 : cell.games;
+  const { games } = cell;
   if (games < settings.minGames) {
     return { text: '·', value: '·', tone: 'hidden', games, strength: 0 };
   }

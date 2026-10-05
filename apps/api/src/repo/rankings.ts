@@ -1,7 +1,6 @@
 import {
   addDays,
   computeRankings,
-  countedFaction,
   eventPhase,
   isBigEvent,
   rankingCutoff,
@@ -17,6 +16,7 @@ import {
 } from '@bcp/shared';
 import { and, eq, gt, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
+import { armyRules } from './detachment-links';
 import { armyLists, events, players, teams } from '../db/schema';
 import { storedCurrentList } from './lists';
 
@@ -80,6 +80,7 @@ export async function loadRankings(
   rule: EventSizeRule,
   today: Date,
 ): Promise<RankedPlayer[]> {
+  const rules = await armyRules(db);
   const counted = await countedEvents(db, rule, today);
   if (counted.length === 0) return [];
   const ids = counted.map((event) => event.id);
@@ -111,7 +112,7 @@ export async function loadRankings(
         placing,
         field: n,
         players: event.playerCount,
-        faction: countedFaction(row.faction, row.parsedArmy).faction,
+        faction: rules.army(row.faction, row.parsedArmy, row.detachments ?? []).faction,
       },
     ];
   });
@@ -164,6 +165,7 @@ export async function playerRanking(
   ranked: RankedPlayer[],
   userId: string,
 ): Promise<PlayerRanking | null> {
+  const rules = await armyRules(db);
   const rows = await db
     .select({
       ...resultColumns,
@@ -201,7 +203,7 @@ export async function playerRanking(
         eventStart: isoDay(row.startDate),
         isTeamEvent: row.isTeamEvent,
         teamName: row.isTeamEvent ? row.teamName : null,
-        faction: countedFaction(row.faction, row.parsedArmy).faction,
+        faction: rules.army(row.faction, row.parsedArmy, row.detachments ?? []).faction,
         detachments: row.detachments ?? [],
         placing,
         field: placing === null ? null : n,
