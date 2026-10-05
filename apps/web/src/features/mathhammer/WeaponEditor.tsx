@@ -1,12 +1,17 @@
-import { Button, Group, Paper, Stack, TextInput } from '@mantine/core';
+import type { WeaponMods } from '@bcp/shared';
+import { Button, Group, Paper, Select, Stack, Text, TextInput } from '@mantine/core';
 import type { WeaponRow } from './form-state';
 import { Check, DiceInput, Num } from './inputs';
+import { SwitchesEditor } from './SwitchesEditor';
 
 /** One weapon: its profile on the first line, its keywords on the second. */
 export function WeaponEditor({
   index,
   weapon,
   count,
+  unit,
+  bestName,
+  sitsOut,
   onChange,
   onMove,
   onRemove,
@@ -14,14 +19,33 @@ export function WeaponEditor({
   index: number;
   weapon: WeaponRow;
   count: number;
+  /** The unit's switches, the starting point for the weapon's own. */
+  unit: WeaponMods;
+  /** The profile Best chose, when the weapon is set to Best. */
+  bestName: string | null;
+  /** Why the weapon doesn't attack in this phase; null when it does. */
+  sitsOut: string | null;
   onChange: (patch: Partial<WeaponRow>) => void;
   onMove: (by: -1 | 1) => void;
   onRemove: () => void;
 }) {
   const w = weapon;
+  // With Best, the profile is chosen for the target: its values aren't typed.
+  const picked = w.profile === 'best';
   return (
-    <Paper withBorder p="sm" component="fieldset" aria-label={`Weapon ${String(index + 1)}`}>
+    <Paper
+      withBorder
+      p="sm"
+      component="fieldset"
+      aria-label={`Weapon ${String(index + 1)}`}
+      opacity={sitsOut === null ? 1 : 0.6}
+    >
       <Stack gap="xs">
+        {sitsOut !== null && (
+          <Text size="xs" c="dimmed">
+            {sitsOut}
+          </Text>
+        )}
         <Group gap="xs" align="flex-end">
           <TextInput
             size="xs"
@@ -42,6 +66,7 @@ export function WeaponEditor({
           />
           <DiceInput
             label="Attacks"
+            disabled={picked}
             value={w.attacks}
             onChange={(v) => {
               onChange({ attacks: v });
@@ -49,6 +74,7 @@ export function WeaponEditor({
           />
           <Num
             label={w.melee ? 'WS' : 'BS'}
+            disabled={picked}
             value={w.skill}
             min={2}
             max={6}
@@ -59,6 +85,7 @@ export function WeaponEditor({
           />
           <Num
             label="S"
+            disabled={picked}
             value={w.strength}
             min={1}
             onChange={(v) => {
@@ -67,6 +94,7 @@ export function WeaponEditor({
           />
           <Num
             label="AP"
+            disabled={picked}
             value={w.ap}
             min={-6}
             max={0}
@@ -76,6 +104,7 @@ export function WeaponEditor({
           />
           <DiceInput
             label="D"
+            disabled={picked}
             value={w.damage}
             onChange={(v) => {
               onChange({ damage: v });
@@ -116,6 +145,46 @@ export function WeaponEditor({
             </Button>
           </Group>
         </Group>
+        {w.profiles.length > 1 && (
+          <Group gap="xs" align="flex-end">
+            <Select
+              size="xs"
+              label="Profile"
+              w={200}
+              allowDeselect={false}
+              data={[
+                { value: 'best', label: 'Best' },
+                ...w.profiles.map((p, i) => ({ value: String(i), label: p.name })),
+              ]}
+              value={String(w.profile)}
+              onChange={(next) => {
+                if (next === 'best' || next === null) {
+                  onChange({ profile: 'best' });
+                  return;
+                }
+                const i = Number(next);
+                const p = w.profiles[i];
+                if (p === undefined) return;
+                onChange({
+                  profile: i,
+                  melee: p.melee,
+                  attacks: p.attacks,
+                  skill: p.skill,
+                  strength: p.strength ?? w.strength,
+                  ap: p.ap,
+                  damage: p.damage,
+                  keywordNames: p.keywords,
+                });
+              }}
+            />
+            {picked && bestName !== null && (
+              <Text size="xs" c="dimmed">{`Best here: ${bestName}`}</Text>
+            )}
+          </Group>
+        )}
+        {w.profiles.length > 0 && w.keywordNames.length > 0 && !picked && (
+          <Text size="xs" c="dimmed">{`From datasheet: ${w.keywordNames.join(', ')}`}</Text>
+        )}
         <Group gap="sm" align="flex-end">
           <Check
             label="Torrent"
@@ -236,6 +305,21 @@ export function WeaponEditor({
             }}
           />
         </Group>
+        <Check
+          label="Own switches"
+          checked={w.own !== null}
+          onChange={(on) => {
+            onChange({ own: on ? { ...unit } : null });
+          }}
+        />
+        {w.own !== null && (
+          <SwitchesEditor
+            mods={w.own}
+            onChange={(own) => {
+              onChange({ own });
+            }}
+          />
+        )}
       </Stack>
     </Paper>
   );

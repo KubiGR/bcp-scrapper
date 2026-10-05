@@ -1,7 +1,8 @@
 import { calculate } from '@bcp/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { renderWithProviders } from '../../test/render';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { renderWithProviders, stubFetchRoutes } from '../../test/render';
+import { CAPTAIN, INTERCESSORS } from './unit-fixtures';
 import { defaultForm, toCalculation } from './form-state';
 import { MathhammerPage } from './MathhammerPage';
 import { percent } from './ResultPanel';
@@ -105,5 +106,60 @@ describe('percent', () => {
     expect(percent(0.999)).toBe('>99%');
     expect(percent(1)).toBe('100%');
     expect(percent(0)).toBe('0%');
+  });
+});
+
+describe('picking units', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const choose = async (label: string, option: string) => {
+    fireEvent.click(await screen.findByRole('combobox', { name: label }));
+    fireEvent.click(await screen.findByRole('option', { name: option }));
+  };
+
+  it('fills the attacker from a datasheet with an attached leader', async () => {
+    stubFetchRoutes({
+      'GET /api/mathhammer/factions': {
+        factions: [{ faction: 'Space Marines (Astartes)', units: 2 }],
+      },
+      'GET /api/mathhammer/units': {
+        faction: 'Space Marines (Astartes)',
+        datasheets: [CAPTAIN, INTERCESSORS],
+      },
+    });
+    renderWithProviders(<MathhammerPage />);
+    await choose('Attacker faction', 'Space Marines (Astartes)');
+    await choose('Attacker unit', 'Intercessor Squad');
+    await choose('Attached characters', 'Captain');
+    fireEvent.click(screen.getByRole('button', { name: 'Use' }));
+    expect(
+      await screen.findByText('From datasheet: Intercessor Squad + Captain'),
+    ).toBeInTheDocument();
+    expect(weapon().getByLabelText('Weapon')).toHaveValue('Bolt rifle');
+    expect(weapon().getByLabelText('Models')).toHaveValue('5');
+    const plasma = within(screen.getByRole('group', { name: 'Weapon 2' }));
+    expect(plasma.getByRole('combobox', { name: 'Profile' })).toHaveValue('Best');
+    expect(await plasma.findByText(/^Best here: /)).toBeInTheDocument();
+    const captain = within(screen.getByRole('group', { name: 'Weapon 3' }));
+    expect(captain.getByLabelText('Weapon')).toHaveValue('Captain: Master-crafted power weapon');
+  });
+
+  it('says when the unit data hasn’t been read', async () => {
+    stubFetchRoutes({
+      'GET /api/mathhammer/factions': () =>
+        Response.json(
+          {
+            error: {
+              code: 'NOT_FOUND',
+              message: 'The unit data from 39k.pro hasn’t been read yet: refresh it in Settings',
+            },
+          },
+          { status: 404 },
+        ),
+    });
+    renderWithProviders(<MathhammerPage />);
+    expect((await screen.findAllByText(/refresh it in Settings/)).length).toBeGreaterThan(0);
   });
 });

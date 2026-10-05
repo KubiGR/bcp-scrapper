@@ -3,8 +3,11 @@ import {
   DEFAULT_MODS,
   parseAnti,
   parseDice,
+  readKeywords,
   type Calculation,
   type Situation,
+  type UnitProfile,
+  type WeaponKeywords,
   type WeaponMods,
 } from '@bcp/shared';
 
@@ -38,6 +41,14 @@ export interface WeaponRow {
   melta: number | null;
   /** "INFANTRY 4+, VEHICLE 3+" ("" = none). */
   anti: string;
+  /** A datasheet weapon's profiles (empty when typed by hand). */
+  profiles: UnitProfile[];
+  /** The profile used: its index, or 'best' (the one that slays most against the target). */
+  profile: number | 'best';
+  /** The chosen profile's ability names from the datasheet, read against the target. */
+  keywordNames: string[];
+  /** The weapon's own switches instead of the unit's; null to use the unit's. */
+  own: WeaponMods | null;
 }
 
 /** One kind of model in the target. */
@@ -54,6 +65,8 @@ export interface GroupRow {
 }
 
 export interface DefenderForm {
+  /** The datasheet it was filled from, for the "from datasheet" line; null when typed. */
+  source: string | null;
   groups: GroupRow[];
   /** Comma-separated, for Anti-X. */
   keywords: string;
@@ -67,6 +80,10 @@ export interface DefenderForm {
 }
 
 export interface MathhammerForm {
+  /** The datasheet the attacker was filled from; null when typed. */
+  source: string | null;
+  /** Shooting counts ranged weapons, Fighting melee ones. */
+  phase: 'shooting' | 'fighting';
   weapons: WeaponRow[];
   /** The attacking unit's switches, for all its weapons. */
   unit: WeaponMods;
@@ -120,6 +137,10 @@ export const newWeapon = (): WeaponRow => ({
   cleave: null,
   melta: null,
   anti: '',
+  profiles: [],
+  profile: 0,
+  keywordNames: [],
+  own: null,
 });
 
 export const newGroup = (): GroupRow => ({
@@ -137,9 +158,12 @@ export const newGroup = (): GroupRow => ({
 /** A setup to start from: five bolt rifles into ten Boyz. */
 export function defaultForm(): MathhammerForm {
   return {
+    source: null,
+    phase: 'shooting',
     weapons: [{ ...newWeapon(), name: 'Bolt rifle', models: 5, attacks: '2', ap: -1, heavy: true }],
     unit: DEFAULT_MODS,
     defender: {
+      source: null,
       groups: [{ ...newGroup(), name: 'Boyz', models: 10, toughness: 5, save: 5 }],
       keywords: 'INFANTRY, ORKS',
       attached: false,
@@ -158,70 +182,140 @@ export function defaultForm(): MathhammerForm {
 const optional = (text: string) => (text.trim() === '' ? null : text.trim());
 
 /** The form as an engine calculation, or what can't be read in it. */
+const CLOSE_QUARTERS = /^(close-quarters|pistol)$/i;
+
+/**
+ * Why a weapon sits out this phase, or null when it attacks: Shooting uses ranged weapons and
+ * Fighting melee ones; a datasheet's close-quarters weapons (pistols) sit out while the unit has
+ * other ranged weapons, as each model fires one or the other.
+ */
+export function sitsOut(form: MathhammerForm, row: WeaponRow): string | null {
+  if (form.phase === 'fighting') return row.melee ? null : 'Not used when fighting';
+  if (row.melee) return 'Not used when shooting';
+  const closeQuarters = (w: WeaponRow) => w.keywordNames.some((k) => CLOSE_QUARTERS.test(k.trim()));
+  if (!closeQuarters(row)) return null;
+  const others = form.weapons.some((w) => !w.melee && w.models > 0 && !closeQuarters(w));
+  return others ? 'Not used: the models fire their other guns' : null;
+}
+
+/** A row's profile values: its own fields, or for 'best' the profile being tried. */
+function statsOf(row: WeaponRow, chosen: number): WeaponRow {
+  if (row.profile !== 'best') return row;
+  const p = row.profiles[chosen] ?? row.profiles[0];
+  if (p === undefined) return row;
+  return {
+    ...row,
+    melee: p.melee,
+    attacks: p.attacks,
+    skill: p.skill,
+    strength: p.strength ?? row.strength,
+    ap: p.ap,
+    damage: p.damage,
+    keywordNames: p.keywords,
+  };
+}
+
+const merge = (typed: WeaponKeywords, read: WeaponKeywords): WeaponKeywords => ({
+  torrent: typed.torrent || read.torrent,
+  lethalHits: typed.lethalHits || read.lethalHits,
+  sustainedHits: typed.sustainedHits ?? read.sustainedHits,
+  devastatingWounds: typed.devastatingWounds || read.devastatingWounds,
+  twinLinked: typed.twinLinked || read.twinLinked,
+  heavy: typed.heavy || read.heavy,
+  lance: typed.lance || read.lance,
+  ignoresCover: typed.ignoresCover || read.ignoresCover,
+  precision: typed.precision || read.precision,
+  indirectFire: typed.indirectFire || read.indirectFire,
+  anti: [...typed.anti, ...read.anti],
+  rapidFire: typed.rapidFire ?? read.rapidFire,
+  blast: typed.blast ?? read.blast,
+  cleave: typed.cleave ?? read.cleave,
+  melta: typed.melta ?? read.melta,
+});
+
+/**
+ * The form as an engine calculation, or what can't be read in it. `chosen` gives the profile
+ * tried for each 'best' row (by row key; the first profile otherwise).
+ */
 export function toCalculation(
   form: MathhammerForm,
+  chosen: Record<string, number> = {},
 ): { calculation: Calculation } | { error: string } {
+  const targetKeywords = form.defender.keywords
+    .split(',')
+    .map((k) => k.trim().toUpperCase())
+    .filter((k) => k !== '');
   const problems: string[] = [];
   const dice = (label: string, text: string) => {
     if (parseDice(text) === null)
       problems.push(`${label}: can’t read “${text}” (use 3, D6, 2D6, D6+3…)`);
   };
-  const weapons = form.weapons.map((row) => {
-    dice(`${row.name} attacks`, row.attacks);
-    dice(`${row.name} damage`, row.damage);
-    if (optional(row.sustainedHits) !== null) dice(`${row.name} Sustained Hits`, row.sustainedHits);
-    if (optional(row.rapidFire) !== null) dice(`${row.name} Rapid Fire`, row.rapidFire);
-    const anti = parseAnti(row.anti);
-    if (anti === null)
-      problems.push(`${row.name}: can’t read Anti “${row.anti}” (write e.g. INFANTRY 4+)`);
-    return buildWeapon(
-      {
-        name: row.name,
-        models: row.models,
-        melee: row.melee,
-        attacks: row.attacks,
-        skill: row.skill,
-        strength: row.strength,
-        ap: row.ap,
-        damage: row.damage,
-      },
-      {
-        torrent: row.torrent,
-        lethalHits: row.lethalHits,
-        sustainedHits: optional(row.sustainedHits),
-        devastatingWounds: row.devastatingWounds,
-        twinLinked: row.twinLinked,
-        heavy: row.heavy,
-        lance: row.lance,
-        ignoresCover: row.ignoresCover,
-        precision: row.precision,
-        indirectFire: row.indirectFire,
-        anti: anti ?? [],
-        rapidFire: optional(row.rapidFire),
-        blast: row.blast,
-        cleave: row.cleave,
-        melta: row.melta,
-      },
-      form.unit,
-    );
-  });
+  const weapons = form.weapons
+    .filter((typed) => sitsOut(form, typed) === null)
+    .map((typed) => {
+      const row = statsOf(typed, chosen[typed.key] ?? 0);
+      dice(`${row.name} attacks`, row.attacks);
+      dice(`${row.name} damage`, row.damage);
+      if (optional(row.sustainedHits) !== null)
+        dice(`${row.name} Sustained Hits`, row.sustainedHits);
+      if (optional(row.rapidFire) !== null) dice(`${row.name} Rapid Fire`, row.rapidFire);
+      const anti = parseAnti(row.anti);
+      if (anti === null)
+        problems.push(`${row.name}: can’t read Anti “${row.anti}” (write e.g. INFANTRY 4+)`);
+      return buildWeapon(
+        {
+          name: row.name,
+          models: row.models,
+          melee: row.melee,
+          attacks: row.attacks,
+          skill: row.skill,
+          strength: row.strength,
+          ap: row.ap,
+          damage: row.damage,
+        },
+        merge(
+          {
+            torrent: row.torrent,
+            lethalHits: row.lethalHits,
+            sustainedHits: optional(row.sustainedHits),
+            devastatingWounds: row.devastatingWounds,
+            twinLinked: row.twinLinked,
+            heavy: row.heavy,
+            lance: row.lance,
+            ignoresCover: row.ignoresCover,
+            precision: row.precision,
+            indirectFire: row.indirectFire,
+            anti: anti ?? [],
+            rapidFire: optional(row.rapidFire),
+            blast: row.blast,
+            cleave: row.cleave,
+            melta: row.melta,
+          },
+          readKeywords(row.keywordNames, targetKeywords),
+        ),
+        row.own ?? form.unit,
+      );
+    });
   if (form.unit.sustainedHits !== null) dice('Sustained Hits', form.unit.sustainedHits);
   const flatMortals = optional(form.flatMortals);
   if (flatMortals !== null) dice('Mortal wounds', flatMortals);
   if (form.defender.groups.length === 0)
     problems.push('Add at least one kind of model to the target');
   if (problems.length > 0) return { error: problems.join(' · ') };
-  const { groups, keywords, ...rest } = form.defender;
+  const d = form.defender;
   return {
     calculation: {
       weapons,
       defender: {
-        ...rest,
-        groups: groups.map(({ key: _key, ...group }) => group),
-        keywords: keywords
-          .split(',')
-          .map((k) => k.trim().toUpperCase())
-          .filter((k) => k !== ''),
+        groups: d.groups.map(({ key: _key, ...group }) => group),
+        keywords: targetKeywords,
+        attached: d.attached,
+        stealth: d.stealth,
+        hitModifier: d.hitModifier,
+        woundModifier: d.woundModifier,
+        damageReduction: d.damageReduction,
+        halveDamage: d.halveDamage,
+        savePenaltiesIgnored: d.savePenaltiesIgnored,
       },
       situation: form.situation,
       flatMortals,

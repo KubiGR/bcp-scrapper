@@ -1,9 +1,9 @@
-import { calculate } from '@bcp/shared';
 import { Grid, Stack, Text, Title } from '@mantine/core';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { AttackerPanel } from './AttackerPanel';
 import { DefenderPanel } from './DefenderPanel';
-import { defaultForm, toCalculation } from './form-state';
+import { calculateForm } from './best';
+import { defaultForm } from './form-state';
 import { ResultPanel, type Outcome } from './ResultPanel';
 import { SituationPanel } from './SituationPanel';
 
@@ -12,18 +12,7 @@ export function MathhammerPage() {
   const [form, setForm] = useState(defaultForm);
   // Typing stays quick while a big calculation catches up.
   const settled = useDeferredValue(form);
-  const outcome = useMemo<Outcome>(() => {
-    const read = toCalculation(settled);
-    if ('error' in read) return read;
-    try {
-      return {
-        result: calculate(read.calculation),
-        groupNames: settled.defender.groups.map((g) => g.name),
-      };
-    } catch (error) {
-      return { error: error instanceof Error ? error.message : String(error) };
-    }
-  }, [settled]);
+  const outcome = useMemo<Outcome>(() => calculateForm(settled), [settled]);
 
   return (
     <Stack gap="lg">
@@ -36,7 +25,11 @@ export function MathhammerPage() {
       <Grid gap="lg">
         <Grid.Col span={{ base: 12, lg: 7 }}>
           <Stack gap="lg">
-            <AttackerPanel form={form} onChange={setForm} />
+            <AttackerPanel
+              form={form}
+              best={'best' in outcome ? outcome.best : {}}
+              onChange={setForm}
+            />
             <SituationPanel
               situation={form.situation}
               onChange={(situation) => {

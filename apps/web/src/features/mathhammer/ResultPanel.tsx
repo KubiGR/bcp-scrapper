@@ -23,7 +23,14 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-export type Outcome = { result: CalculationResult; groupNames: string[] } | { error: string };
+export type Outcome =
+  | {
+      result: CalculationResult;
+      groupNames: string[];
+      /** Profile names Best chose, by weapon row key. */
+      best: Record<string, string>;
+    }
+  | { error: string };
 
 /** Averages, the chance of each number of models slain or more, and the allocation used. */
 export function ResultPanel({ outcome }: { outcome: Outcome }) {

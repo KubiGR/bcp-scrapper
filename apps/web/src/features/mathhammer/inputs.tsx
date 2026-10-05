@@ -15,6 +15,7 @@ export function Num({
   max,
   nullable = false,
   w = 72,
+  disabled = false,
 }: {
   label: string;
   value: number | null;
@@ -23,6 +24,7 @@ export function Num({
   max?: number;
   nullable?: boolean;
   w?: number;
+  disabled?: boolean;
 }) {
   const [typing, setTyping] = useState<string | null>(null);
   return (
@@ -33,6 +35,7 @@ export function Num({
       min={min}
       max={max}
       w={w}
+      disabled={disabled}
       allowDecimal={false}
       onBlur={() => {
         setTyping(null);
@@ -58,12 +61,14 @@ export function DiceInput({
   onChange,
   w = 72,
   placeholder,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   w?: number;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
     <TextInput
@@ -71,6 +76,7 @@ export function DiceInput({
       label={label}
       value={value}
       w={w}
+      disabled={disabled}
       placeholder={placeholder}
       onChange={(event) => {
         onChange(event.currentTarget.value);

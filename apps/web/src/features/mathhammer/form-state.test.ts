@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultForm, toCalculation, type MathhammerForm } from './form-state';
+import { defaultForm, newWeapon, sitsOut, toCalculation, type MathhammerForm } from './form-state';
 
 const read = (form: MathhammerForm) => toCalculation(form);
 
@@ -55,5 +55,38 @@ describe('toCalculation', () => {
         error: 'Add at least one kind of model to the target',
       },
     );
+  });
+});
+
+describe('sitsOut', () => {
+  const rifle = { ...newWeapon(), name: 'Bolt rifle', models: 5 };
+  const pistol = {
+    ...newWeapon(),
+    name: 'Bolt pistol',
+    models: 5,
+    keywordNames: ['CLOSE-QUARTERS'],
+  };
+  const fists = { ...newWeapon(), name: 'Fists', models: 5, melee: true };
+  const form: MathhammerForm = { ...defaultForm(), weapons: [rifle, pistol, fists] };
+
+  it('shooting uses guns, pistols only when there are no other guns', () => {
+    expect(form.weapons.map((w) => sitsOut(form, w))).toEqual([
+      null,
+      'Not used: the models fire their other guns',
+      'Not used when shooting',
+    ]);
+    const pistolsOnly = { ...form, weapons: [pistol, fists] };
+    expect(sitsOut(pistolsOnly, pistol)).toBeNull();
+  });
+
+  it('fighting uses melee weapons only, and the calculation leaves the rest out', () => {
+    const fighting = { ...form, phase: 'fighting' as const };
+    expect(fighting.weapons.map((w) => sitsOut(fighting, w))).toEqual([
+      'Not used when fighting',
+      'Not used when fighting',
+      null,
+    ]);
+    const read = toCalculation(fighting);
+    expect('calculation' in read && read.calculation.weapons.map((w) => w.name)).toEqual(['Fists']);
   });
 });

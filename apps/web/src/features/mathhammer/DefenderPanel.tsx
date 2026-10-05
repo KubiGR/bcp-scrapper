@@ -1,7 +1,9 @@
 import { Button, Group, Paper, Stack, Text, TextInput } from '@mantine/core';
 import { Panel } from '../../components/Panel';
+import { defenderFrom } from './datasheet-form';
 import { newGroup, type DefenderForm, type GroupRow } from './form-state';
 import { Check, Num } from './inputs';
+import { UnitPicker } from './UnitPicker';
 
 function GroupEditor({
   index,
@@ -114,6 +116,15 @@ export function DefenderPanel({
   return (
     <Panel title="Defender">
       <Stack gap="md">
+        <UnitPicker
+          label="Defender"
+          onPick={(sheet, size, attached) => {
+            onChange(defenderFrom(sheet, size, attached, defender));
+          }}
+        />
+        {defender.source !== null && (
+          <Text size="xs" c="dimmed">{`From datasheet: ${defender.source}`}</Text>
+        )}
         <Text size="xs" c="dimmed">
           One row per kind of model; a leader is its own row with Character ticked. Sv 7 means no
           save.
