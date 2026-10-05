@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { FetchQueueCard } from '../features/fetch-queue/FetchQueueCard';
 import { AutoFetchCard } from '../features/settings/AutoFetchCard';
 import { BsdataCard } from '../features/settings/BsdataCard';
+import { RulesCard } from '../features/settings/RulesCard';
 import { UpdatesSection } from '../features/updates/UpdatesSection';
 import { BcpStatusCard } from '../features/settings/BcpStatusCard';
 import { DetachmentNamesCard } from '../features/settings/DetachmentNamesCard';
@@ -23,6 +24,7 @@ function SettingsPage() {
             <AutoFetchCard />
             <BsdataCard />
             <UpdatesSection />
+            <RulesCard />
             <UsersCard />
           </Stack>
         </Grid.Col>
