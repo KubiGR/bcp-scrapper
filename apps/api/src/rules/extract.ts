@@ -11,7 +11,7 @@ import {
 import { readJsLiteral } from './js-literal';
 
 /** Bump when the extraction changes: a site holding data read the old way reads it again. */
-export const RULES_FORMAT = 1;
+export const RULES_FORMAT = 2;
 
 /** 39k.pro's data wasn't where or what it should be: the site changed. */
 export class RulesShapeError extends Error {
