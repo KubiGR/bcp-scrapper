@@ -61,18 +61,18 @@ describe('cellView', () => {
     expect(view).toEqual({ text: '·', value: '·', tone: 'hidden', games: 2, strength: 0 });
   });
 
-  it('shows only the count on the mirror diagonal, halved since each mirror game adds two sides', () => {
+  it('shows only the count of games played on the mirror diagonal', () => {
     const view = cellView(
-      cell({ row: 'Orks', col: 'Orks', games: 6, winRate: null }),
+      cell({ row: 'Orks', col: 'Orks', games: 3, winRate: null }),
       settings(),
       null,
     );
     expect(view).toEqual({ text: '3', value: '3', tone: 'mirror', games: 3, strength: 0 });
   });
 
-  it('hides a mirror cell under minGames using the halved count', () => {
+  it('hides a mirror cell under minGames', () => {
     const view = cellView(
-      cell({ row: 'Orks', col: 'Orks', games: 4, winRate: null }),
+      cell({ row: 'Orks', col: 'Orks', games: 2, winRate: null }),
       settings({ minGames: 3 }),
       null,
     );

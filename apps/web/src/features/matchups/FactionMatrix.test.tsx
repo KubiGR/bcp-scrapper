@@ -34,7 +34,7 @@ const matrix = (): FactionMatrixData => ({
     {
       row: 'Orks',
       col: 'Orks',
-      games: 4,
+      games: 2,
       wins: 0,
       draws: 0,
       losses: 0,
@@ -102,7 +102,7 @@ describe('FactionMatrix', () => {
     expect(screen.getAllByText('·').length).toBeGreaterThan(0);
   });
 
-  it('shows only the halved count on a mirror cell (each mirror game adds two sides)', () => {
+  it('shows only the count of games played on a mirror cell', () => {
     renderWithProviders(
       <FactionMatrix
         matrix={matrix()}

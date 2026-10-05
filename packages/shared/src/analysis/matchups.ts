@@ -178,16 +178,29 @@ function tally(
 
 /**
  * Faction-vs-faction results. Each countable game adds one entry per side (row = that side's
- * faction); mirrors land on the diagonal twice and get no win rate.
+ * faction); a mirror's cell counts its games played (each once) and gets no win rate.
  */
 export function computeFactionMatrix(games: MatchupGame[], filter: MatchupFilter): FactionMatrix {
   const sided = sidesOf(games, filter);
   const byRow = tally(sided, (s) => [s.row.faction], false);
+  // A mirror's count is its games played: a game adds a side or two (a row-side filter can keep
+  // just one), so the sides are counted once per game.
+  const mirrorGames = new Map<string, Set<string>>();
+  for (const s of sided) {
+    if (s.row.faction !== s.col.faction) continue;
+    mirrorGames.set(s.row.faction, (mirrorGames.get(s.row.faction) ?? new Set()).add(s.game.id));
+  }
   const az = (names: Iterable<string>) => [...new Set(names)].sort((x, y) => x.localeCompare(y));
   return {
     factions: az(byRow.keys()),
     columns: az(sided.map((s) => s.col.faction)),
-    cells: [...byRow.values()].flat(),
+    cells: [...byRow.values()]
+      .flat()
+      .map((cell) =>
+        cell.row === cell.col
+          ? { ...cell, games: mirrorGames.get(cell.row)?.size ?? cell.games }
+          : cell,
+      ),
     games: new Set(sided.map((s) => s.game.id)).size,
   };
 }
@@ -195,7 +208,8 @@ export function computeFactionMatrix(games: MatchupGame[], filter: MatchupFilter
 /**
  * One faction's results split by detachment, against each opponent faction: a list with two
  * detachments counts in both rows; sides without a fetched list are left out. Most games first.
- * Against its own faction a detachment row has a win rate.
+ * Against its own faction a detachment row has a win rate, from games against other detachments
+ * (a game against its own detachment is always 50/50).
  */
 export function detachmentRows(
   games: MatchupGame[],
@@ -203,7 +217,15 @@ export function detachmentRows(
   filter: MatchupFilter,
 ): DetachmentRow[] {
   const sided = sidesOf(games, filter).filter((s) => s.row.faction === faction);
-  const byRow = tally(sided, (s) => [...new Set(s.row.detachments)], true);
+  // Against its own detachment a game is always 50/50: only other detachments count.
+  const byRow = tally(
+    sided,
+    (s) =>
+      [...new Set(s.row.detachments)].filter(
+        (name) => s.col.faction !== faction || !s.col.detachments.includes(name),
+      ),
+    true,
+  );
   return [...byRow]
     .map(([key, cells]) => ({
       detachment: key,

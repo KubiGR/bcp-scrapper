@@ -6,6 +6,7 @@ const count = z.number().int().nonnegative();
 export const MatrixCellSchema = z.object({
   row: z.string(),
   col: z.string(),
+  /** Sides counted; on the mirror diagonal, games played (each once). */
   games: count,
   wins: count,
   draws: count,
