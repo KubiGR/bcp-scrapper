@@ -197,15 +197,14 @@ describe('detachmentRows', () => {
     ),
   ];
   const rows = detachmentRows(games, 'Orks', noFilter);
-  const rowOf = (detachment: string | null) => rows.find((r) => r.detachment === detachment);
-  const vs = (detachment: string | null, col: string) =>
+  const rowOf = (detachment: string) => rows.find((r) => r.detachment === detachment);
+  const vs = (detachment: string, col: string) =>
     rowOf(detachment)?.cells.find((c) => c.col === col);
 
-  it('splits a faction’s results by detachment, most games first, unknown lists last', () => {
+  it('splits a faction’s results by detachment, most games first, leaving out unknown lists', () => {
     expect(rows.map((r) => [r.detachment, r.games])).toEqual([
       ['War Horde', 4],
       ['Kult of Speed', 2],
-      [null, 1],
     ]);
   });
 
@@ -220,7 +219,6 @@ describe('detachmentRows', () => {
       winRate: 0.5,
       avgPoints: 10,
     });
-    expect(vs(null, 'Necrons')).toMatchObject({ games: 1, winRate: 0 });
   });
 
   it('gives a win rate against the faction itself, each side in its own row', () => {

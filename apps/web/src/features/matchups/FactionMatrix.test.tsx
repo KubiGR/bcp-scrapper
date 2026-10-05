@@ -276,7 +276,11 @@ describe('FactionMatrix', () => {
       faction: 'Orks',
       rows: [
         { detachment: 'War Horde', games: 4, cells: [vs('Necrons', 3, 1, 2), vs('Orks', 1, 1, 0)] },
-        { detachment: null, games: 1, cells: [vs('Necrons', 1, 0, 1)] },
+        {
+          detachment: 'Butchers of Khorne’s Chosen',
+          games: 1,
+          cells: [vs('Necrons', 1, 0, 1)],
+        },
       ],
     };
     const asked: string[] = [];
@@ -306,7 +310,9 @@ describe('FactionMatrix', () => {
       fireEvent.click(orksButton);
       expect(orksButton).toHaveAttribute('aria-expanded', 'true');
       expect(await screen.findByRole('rowheader', { name: 'War Horde' })).toBeInTheDocument();
-      expect(screen.getByRole('rowheader', { name: 'Detachment unknown' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('rowheader', { name: 'Butchers of Khorne’s Chosen' }),
+      ).toBeInTheDocument();
       // Under the Orks row, before Necrons.
       const headers = screen.getAllByRole('rowheader').map((th) => th.textContent);
       expect(headers.indexOf('War Horde')).toBe(headers.findIndex((h) => h.includes('Orks')) + 1);
@@ -329,11 +335,6 @@ describe('FactionMatrix', () => {
           name: 'Orks · War Horde vs Orks: 100% win rate over 1 games',
         }),
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', {
-          name: 'Orks · Detachment unknown vs Necrons: 0% win rate over 1 games',
-        }),
-      ).toBeInTheDocument();
     });
 
     it('opens a detachment cell’s games for that detachment', async () => {
@@ -342,8 +343,6 @@ describe('FactionMatrix', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Orks' }));
       fireEvent.click(await screen.findByRole('button', { name: /Orks · War Horde vs Necrons/ }));
       expect(onCell).toHaveBeenCalledWith({ row: 'Orks', col: 'Necrons', detachment: 'War Horde' });
-      fireEvent.click(screen.getByRole('button', { name: /Orks · Detachment unknown vs Necrons/ }));
-      expect(onCell).toHaveBeenLastCalledWith({ row: 'Orks', col: 'Necrons', detachment: null });
     });
   });
 });

@@ -35,11 +35,7 @@ export function CellDrawer({ cell, games: all, loading, error, onClose }: CellDr
   const games =
     detachment === undefined
       ? all
-      : all?.filter((game) =>
-          detachment === null
-            ? game.row.detachments.length === 0
-            : game.row.detachments.includes(detachment),
-        );
+      : all?.filter((game) => game.row.detachments.includes(detachment));
   const crossEvent = games !== undefined && new Set(games.map((g) => g.eventId)).size > 1;
   return (
     <Drawer

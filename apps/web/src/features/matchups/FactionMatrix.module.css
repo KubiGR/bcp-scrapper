@@ -189,9 +189,14 @@
 }
 
 .detachmentName {
+  /* Whole names, wrapping onto a second line rather than cut short. */
+  display: block;
   padding-left: 14px;
-  max-width: 108px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: var(--mantine-font-size-xs);
   font-style: italic;
+  line-height: 1.2;
 }
 
 .detachmentNote {

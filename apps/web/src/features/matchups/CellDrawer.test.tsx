@@ -45,19 +45,4 @@ describe('CellDrawer', () => {
     expect(screen.getByText('Horde player')).toBeInTheDocument();
     expect(screen.queryByText('Speed player')).toBeNull();
   });
-
-  it('lists the games without a list for Detachment unknown', () => {
-    renderWithProviders(
-      <CellDrawer
-        cell={{ row: 'Orks', col: 'Necrons', detachment: null }}
-        games={games}
-        loading={false}
-        error={null}
-        onClose={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('Orks · Detachment unknown vs Necrons')).toBeInTheDocument();
-    expect(screen.getByText('No list player')).toBeInTheDocument();
-    expect(screen.queryByText('Horde player')).toBeNull();
-  });
 });

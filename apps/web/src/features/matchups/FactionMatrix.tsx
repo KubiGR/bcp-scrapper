@@ -12,7 +12,7 @@ import {
 import { CellTip, type CellTipHandle } from './CellTip';
 import classes from './FactionMatrix.module.css';
 import type { DetachmentRowsQuery } from './matchups-queries';
-import { pickLabel, UNKNOWN_DETACHMENT, type MatrixPick } from './matrix-pick';
+import { pickLabel, type MatrixPick } from './matrix-pick';
 import { cellView, type CellTone, type MatrixSettings } from './matrix-view';
 
 interface FactionMatrixProps {
@@ -56,12 +56,12 @@ function DetachmentRows({
     );
   }
   return rows.data.rows.map((detachmentRow) => {
-    const name = detachmentRow.detachment ?? UNKNOWN_DETACHMENT;
+    const name = detachmentRow.detachment;
     const byCol = new Map(detachmentRow.cells.map((cell) => [cell.col, cell]));
     return (
       <Table.Tr key={name} className={classes.detachmentRow}>
         <Table.Th scope="row" className={classes.stickyRowHeader} title={`${faction} · ${name}`}>
-          <span className={`${classes.truncate} ${classes.detachmentName}`}>{name}</span>
+          <span className={classes.detachmentName}>{name}</span>
         </Table.Th>
         {columns.map((col) =>
           renderCell(byCol.get(col), col, { row: faction, detachment: detachmentRow.detachment }),

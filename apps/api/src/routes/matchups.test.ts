@@ -140,12 +140,14 @@ describe('matchups routes', () => {
       '/api/events/EVTBRACKET01/matchups/detachments?faction=Adepta%20Sororitas',
     );
     expect(event.body.faction).toBe('Adepta Sororitas');
-    expect(event.body.rows.map((r) => r.detachment)).toEqual(['Hallowed Martyrs', null]);
-    const matrix = await get<MatchupsResponse>('/api/events/EVTBRACKET01/matchups');
-    const total = matrix.body.matrix.cells
-      .filter((c) => c.row === 'Adepta Sororitas')
-      .reduce((sum, c) => sum + c.games, 0);
-    expect(event.body.rows.reduce((sum, r) => sum + r.games, 0)).toBe(total);
+    // Players without a fetched list are left out.
+    expect(event.body.rows.map((r) => r.detachment)).toEqual(['Hallowed Martyrs']);
+    const games = await get<CellGamesResponse>(
+      '/api/events/EVTBRACKET01/matchups/games?row=Adepta%20Sororitas&col=Necrons&detachments=Hallowed%20Martyrs',
+    );
+    expect(event.body.rows[0]?.cells.find((c) => c.col === 'Necrons')?.games).toBe(
+      games.body.games.length,
+    );
 
     const range = await get<DetachmentRowsResponse>(
       '/api/matchups/detachments?from=2026-01-01&to=2026-12-31&include=EVTBRACKET01&faction=Adepta%20Sororitas',

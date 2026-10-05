@@ -191,13 +191,10 @@ export function computeFactionMatrix(games: MatchupGame[], filter: MatchupFilter
   };
 }
 
-/** Rows key for a side without a fetched list. */
-const NO_LIST = '\u0000';
-
 /**
  * One faction's results split by detachment, against each opponent faction: a list with two
- * detachments counts in both rows; sides without a fetched list share the `detachment: null` row
- * (last). Most games first. Against its own faction a detachment row has a win rate.
+ * detachments counts in both rows; sides without a fetched list are left out. Most games first.
+ * Against its own faction a detachment row has a win rate.
  */
 export function detachmentRows(
   games: MatchupGame[],
@@ -205,23 +202,14 @@ export function detachmentRows(
   filter: MatchupFilter,
 ): DetachmentRow[] {
   const sided = sidesOf(games, filter).filter((s) => s.row.faction === faction);
-  const byRow = tally(
-    sided,
-    (s) => (s.row.detachments.length === 0 ? [NO_LIST] : [...new Set(s.row.detachments)]),
-    true,
-  );
+  const byRow = tally(sided, (s) => [...new Set(s.row.detachments)], true);
   return [...byRow]
     .map(([key, cells]) => ({
-      detachment: key === NO_LIST ? null : key,
+      detachment: key,
       games: cells.reduce((sum, cell) => sum + cell.games, 0),
       cells: cells.sort((x, y) => x.col.localeCompare(y.col)),
     }))
-    .sort(
-      (x, y) =>
-        Number(x.detachment === null) - Number(y.detachment === null) ||
-        y.games - x.games ||
-        (x.detachment ?? '').localeCompare(y.detachment ?? ''),
-    );
+    .sort((x, y) => y.games - x.games || x.detachment.localeCompare(y.detachment));
 }
 
 /** The most common `pointsA + pointsB` over an event's games with both points; null if none. */
