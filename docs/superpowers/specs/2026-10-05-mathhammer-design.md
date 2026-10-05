@@ -1,7 +1,7 @@
 # Mathhammer — Design Spec
 
 - **Date:** 2026-10-05
-- **Status:** Approved design, pending spec review
+- **Status:** Approved
 - **Builds on:** the app's pages, Settings cards and daily background reads (BSData). The 39k.pro
   reader from the discarded Matchup prep branch is rebuilt here (it was never merged).
 
@@ -204,7 +204,7 @@ A **simulator** (test-only) rolls the same rules with dice to check the engine.
 - **Reader and API** with a small sample bundle in 39k.pro's shape; no network in tests.
 - **Page:** picking units, switches changing results, Best, pinning, highlighting.
 
-## 8. Open point for review
+## 8. Settled in review
 
-- "Save penalties ignored" (from the owner's sheet, _Saves: No Penalties_) is read here as: the
-  save roll ignores modifiers that make it worse, other than the attack's AP. Confirm or correct.
+- "Save penalties ignored" (from the owner's sheet, _Saves: No Penalties_): the save roll ignores
+  modifiers that make it worse, other than the attack's AP. Confirmed by the owner on 2026-10-05.
