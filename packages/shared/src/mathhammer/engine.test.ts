@@ -92,6 +92,9 @@ describe('calculate', () => {
     expect(wounds({ weapons: [anti], defender: { ...crowd, keywords: ['Infantry'] } })).toBeCloseTo(
       2,
     );
+    // '*': an Anti that applies whatever the target (a 'non-' Anti the target qualifies for).
+    const anyTarget = weapon({ models: 6, strength: 3, anti: [{ keyword: '*', value: 4 }] });
+    expect(wounds({ weapons: [anyTarget] })).toBeCloseTo(2);
     const rapid = weapon({ models: 6, rapidFire: '1' });
     expect(wounds({ weapons: [rapid], situation: at({ halfRange: true }) })).toBeCloseTo(4);
     expect(wounds({ weapons: [rapid] })).toBeCloseTo(2);

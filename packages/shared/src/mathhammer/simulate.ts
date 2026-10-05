@@ -227,7 +227,9 @@ export function simulate(
         const kws = new Set(defender.keywords.map((k) => k.toUpperCase()));
         const critOn = Math.min(
           m.critWoundOn,
-          ...weapon.anti.filter((a) => kws.has(a.keyword.toUpperCase())).map((a) => a.value),
+          ...weapon.anti
+            .filter((a) => a.keyword === '*' || kws.has(a.keyword.toUpperCase()))
+            .map((a) => a.value),
         );
         const woundResult = (f: number): number =>
           f === 1 ? 0 : f >= critOn ? 2 : f + woundMod >= need ? 1 : 0;

@@ -124,7 +124,9 @@ function setUp(
   const keywords = new Set(defender.keywords.map((k) => k.toUpperCase()));
   const critWoundOn = Math.min(
     m.critWoundOn,
-    ...weapon.anti.filter((a) => keywords.has(a.keyword.toUpperCase())).map((a) => a.value),
+    ...weapon.anti
+      .filter((a) => a.keyword === '*' || keywords.has(a.keyword.toUpperCase()))
+      .map((a) => a.value),
   );
   const classifyWound: Classify = (face) => {
     if (face === 1) return 0;
