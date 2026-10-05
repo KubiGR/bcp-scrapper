@@ -79,6 +79,54 @@ describe('sitsOut', () => {
     expect(sitsOut(pistolsOnly, pistol)).toBeNull();
   });
 
+  it('pistols sit out only for their own unit’s other guns', () => {
+    const squadPistol = { ...pistol, owner: 'Assault Intercessors' };
+    const captainGun = { ...rifle, owner: 'Captain' };
+    const mixed = { ...form, weapons: [squadPistol, captainGun] };
+    expect(sitsOut(mixed, squadPistol)).toBeNull();
+  });
+
+  it('a weapon with melee and ranged profiles takes part in both phases, with the fitting profile', () => {
+    const spear = {
+      ...newWeapon(),
+      name: 'Guardian spear',
+      models: 5,
+      profile: 'best' as const,
+      profiles: [
+        {
+          name: 'Melee',
+          melee: true,
+          range: 'Melee',
+          attacks: '5',
+          skill: 2,
+          strength: 7,
+          ap: -2,
+          damage: '2',
+          keywords: [],
+        },
+        {
+          name: 'Ranged',
+          melee: false,
+          range: '24"',
+          attacks: '2',
+          skill: 2,
+          strength: 4,
+          ap: -1,
+          damage: '2',
+          keywords: [],
+        },
+      ],
+    };
+    const shooting = { ...defaultForm(), weapons: [spear] };
+    const fighting = { ...shooting, phase: 'fighting' as const };
+    expect(sitsOut(shooting, spear)).toBeNull();
+    expect(sitsOut(fighting, spear)).toBeNull();
+    const shot = toCalculation(shooting);
+    const fought = toCalculation(fighting);
+    expect('calculation' in shot && shot.calculation.weapons[0]?.melee).toBe(false);
+    expect('calculation' in fought && fought.calculation.weapons[0]?.melee).toBe(true);
+  });
+
   it('fighting uses melee weapons only, and the calculation leaves the rest out', () => {
     const fighting = { ...form, phase: 'fighting' as const };
     expect(fighting.weapons.map((w) => sitsOut(fighting, w))).toEqual([

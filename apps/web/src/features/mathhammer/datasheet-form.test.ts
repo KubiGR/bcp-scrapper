@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { attackerRows, defenderFrom } from './datasheet-form';
 import { defaultForm } from './form-state';
-import { CAPTAIN, INTERCESSORS } from './unit-fixtures';
+import { CAPTAIN, INTERCESSORS, KNIGHT } from './unit-fixtures';
 
 describe('attackerRows', () => {
   it('counts every model carrying each weapon of the default loadout', () => {
@@ -27,6 +27,29 @@ describe('attackerRows', () => {
       models: 1,
       melee: true,
     });
+  });
+});
+
+describe('attackerRows, several melee weapons on one model', () => {
+  it('makes them one row to choose from (Best), Extra Attacks apart', () => {
+    const rows = attackerRows(KNIGHT, 0, []);
+    expect(rows.map((r) => [r.name, r.models, r.profile, r.profiles.map((p) => p.name)])).toEqual([
+      [
+        'Reaper chainsword / Thunderstrike gauntlet',
+        1,
+        'best',
+        ['Reaper chainsword: Strike', 'Reaper chainsword: Sweep', 'Thunderstrike gauntlet'],
+      ],
+      ['Titanic feet', 1, 0, ['Titanic feet']],
+    ]);
+  });
+
+  it('marks each row with the unit it belongs to', () => {
+    expect(attackerRows(INTERCESSORS, 0, [CAPTAIN]).map((r) => r.owner)).toEqual([
+      'Intercessor Squad',
+      'Intercessor Squad',
+      'Captain',
+    ]);
   });
 });
 

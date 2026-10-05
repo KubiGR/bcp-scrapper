@@ -49,6 +49,8 @@ export interface WeaponRow {
   keywordNames: string[];
   /** The weapon's own switches instead of the unit's; null to use the unit's. */
   own: WeaponMods | null;
+  /** The unit (or attached character) carrying it; "" when typed by hand. */
+  owner: string;
 }
 
 /** One kind of model in the target. */
@@ -141,6 +143,7 @@ export const newWeapon = (): WeaponRow => ({
   profile: 0,
   keywordNames: [],
   own: null,
+  owner: '',
 });
 
 export const newGroup = (): GroupRow => ({
@@ -184,24 +187,59 @@ const optional = (text: string) => (text.trim() === '' ? null : text.trim());
 /** The form as an engine calculation, or what can't be read in it. */
 const CLOSE_QUARTERS = /^(close-quarters|pistol)$/i;
 
+/** Indices of a Best row's profiles usable in this phase (melee when fighting, else ranged). */
+export function phaseProfiles(row: WeaponRow, phase: MathhammerForm['phase']): number[] {
+  return row.profiles.flatMap((p, i) => (p.melee === (phase === 'fighting') ? [i] : []));
+}
+
+const choosing = (row: WeaponRow) => row.profile === 'best' && row.profiles.length > 0;
+
+/** Whether the row can attack in this phase: a Best row if any profile fits, else its own. */
+const fits = (row: WeaponRow, phase: MathhammerForm['phase']) =>
+  choosing(row) ? phaseProfiles(row, phase).length > 0 : row.melee === (phase === 'fighting');
+
+const isCloseQuarters = (names: string[]) => names.some((k) => CLOSE_QUARTERS.test(k.trim()));
+
+/** A shooting row's close-quarters (pistol) status, from its usable profiles when Best. */
+const closeQuarters = (row: WeaponRow) =>
+  choosing(row)
+    ? row.profiles.filter((p) => !p.melee).some((p) => isCloseQuarters(p.keywords))
+    : isCloseQuarters(row.keywordNames);
+
 /**
  * Why a weapon sits out this phase, or null when it attacks: Shooting uses ranged weapons and
- * Fighting melee ones; a datasheet's close-quarters weapons (pistols) sit out while the unit has
- * other ranged weapons, as each model fires one or the other.
+ * Fighting melee ones; a datasheet's close-quarters weapons (pistols) sit out while the same unit
+ * has other ranged weapons, as each model fires one or the other.
  */
 export function sitsOut(form: MathhammerForm, row: WeaponRow): string | null {
-  if (form.phase === 'fighting') return row.melee ? null : 'Not used when fighting';
-  if (row.melee) return 'Not used when shooting';
-  const closeQuarters = (w: WeaponRow) => w.keywordNames.some((k) => CLOSE_QUARTERS.test(k.trim()));
-  if (!closeQuarters(row)) return null;
-  const others = form.weapons.some((w) => !w.melee && w.models > 0 && !closeQuarters(w));
+  if (!fits(row, form.phase)) {
+    return form.phase === 'fighting' ? 'Not used when fighting' : 'Not used when shooting';
+  }
+  if (form.phase === 'fighting' || !closeQuarters(row)) return null;
+  const others = form.weapons.some(
+    (w) =>
+      w !== row &&
+      w.owner === row.owner &&
+      w.models > 0 &&
+      fits(w, 'shooting') &&
+      !closeQuarters(w),
+  );
   return others ? 'Not used: the models fire their other guns' : null;
 }
 
-/** A row's profile values: its own fields, or for 'best' the profile being tried. */
-function statsOf(row: WeaponRow, chosen: number): WeaponRow {
-  if (row.profile !== 'best') return row;
-  const p = row.profiles[chosen] ?? row.profiles[0];
+/**
+ * A row's profile values: its own fields, or for 'best' the profile being tried (only profiles
+ * usable in this phase; the first of them unless `chosen` names another).
+ */
+function statsOf(
+  row: WeaponRow,
+  chosen: number | undefined,
+  phase: MathhammerForm['phase'],
+): WeaponRow {
+  if (!choosing(row)) return row;
+  const usable = phaseProfiles(row, phase);
+  const index = chosen !== undefined && usable.includes(chosen) ? chosen : usable[0];
+  const p = index === undefined ? undefined : row.profiles[index];
   if (p === undefined) return row;
   return {
     ...row,
@@ -253,7 +291,7 @@ export function toCalculation(
   const weapons = form.weapons
     .filter((typed) => sitsOut(form, typed) === null)
     .map((typed) => {
-      const row = statsOf(typed, chosen[typed.key] ?? 0);
+      const row = statsOf(typed, chosen[typed.key], form.phase);
       dice(`${row.name} attacks`, row.attacks);
       dice(`${row.name} damage`, row.damage);
       if (optional(row.sustainedHits) !== null)

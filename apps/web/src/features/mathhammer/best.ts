@@ -1,5 +1,5 @@
 import { calculate } from '@bcp/shared';
-import { toCalculation, type MathhammerForm } from './form-state';
+import { phaseProfiles, sitsOut, toCalculation, type MathhammerForm } from './form-state';
 import type { Outcome } from './ResultPanel';
 
 /** More than this many combinations: each Best weapon is chosen on its own instead. */
@@ -32,10 +32,19 @@ const better = (a: [number, number], b: [number, number]) =>
  * overkill against this target (then most wounds). `best` names the profiles chosen.
  */
 export function calculateForm(form: MathhammerForm): Outcome {
-  const open = form.weapons.filter((w) => w.profile === 'best' && w.profiles.length > 1);
+  // Weapons with a choice in this phase: Best rows that attack, with 2+ usable profiles.
+  const open = form.weapons.filter(
+    (w) =>
+      w.profile === 'best' && sitsOut(form, w) === null && phaseProfiles(w, form.phase).length > 1,
+  );
   const names = (chosen: Record<string, number>) =>
-    Object.fromEntries(open.map((w) => [w.key, w.profiles[chosen[w.key] ?? 0]?.name ?? '']));
-  const combinations = open.reduce((n, w) => n * w.profiles.length, 1);
+    Object.fromEntries(
+      open.map((w) => [
+        w.key,
+        w.profiles[chosen[w.key] ?? phaseProfiles(w, form.phase)[0] ?? 0]?.name ?? '',
+      ]),
+    );
+  const combinations = open.reduce((n, w) => n * phaseProfiles(w, form.phase).length, 1);
   let chosen: Record<string, number> = {};
   if (combinations <= MAX_COMBINATIONS) {
     let best: { tried: Tried; chosen: Record<string, number> } | null = null;
@@ -47,7 +56,7 @@ export function calculateForm(form: MathhammerForm): Outcome {
         if (best === null || better(tried.score, best.tried.score)) best = { tried, chosen: picks };
         return null;
       }
-      for (let i = 0; i < row.profiles.length; i += 1) {
+      for (const i of phaseProfiles(row, form.phase)) {
         const failed = walk(index + 1, { ...picks, [row.key]: i });
         if (failed !== null) return failed;
       }
@@ -62,7 +71,7 @@ export function calculateForm(form: MathhammerForm): Outcome {
     // Too many combinations: settle each Best weapon in turn, the others as chosen so far.
     for (const row of open) {
       let top: { score: [number, number]; index: number } | null = null;
-      for (let i = 0; i < row.profiles.length; i += 1) {
+      for (const i of phaseProfiles(row, form.phase)) {
         const tried = attempt(form, { ...chosen, [row.key]: i });
         if ('error' in tried) return tried;
         if (top === null || better(tried.score, top.score)) top = { score: tried.score, index: i };

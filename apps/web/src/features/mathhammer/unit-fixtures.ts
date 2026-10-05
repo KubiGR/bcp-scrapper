@@ -104,3 +104,76 @@ export const CAPTAIN = sheet({
   fnp: 6,
   leads: ['ds-int'],
 });
+
+/** A Knight with two melee weapons (it fights with one) and an Extra Attacks one. */
+export const KNIGHT = sheet({
+  id: 'ds-knight',
+  name: 'Knight Gallant',
+  keywords: ['VEHICLE'],
+  models: [
+    { id: 'm-knight', name: 'Knight Gallant', toughness: 11, save: 3, invuln: 5, wounds: 22 },
+  ],
+  sizes: [{ points: 370, models: [{ modelId: 'm-knight', count: 1 }] }],
+  loadout: [
+    { modelId: 'm-knight', weaponId: 'wi-chain', count: 1 },
+    { modelId: 'm-knight', weaponId: 'wi-gaunt', count: 1 },
+    { modelId: 'm-knight', weaponId: 'wi-feet', count: 1 },
+  ],
+  weapons: [
+    {
+      id: 'wi-chain',
+      name: 'Reaper chainsword',
+      profiles: [
+        profile({
+          name: 'Strike',
+          melee: true,
+          range: 'Melee',
+          attacks: '4',
+          strength: 20,
+          ap: -4,
+          damage: '6',
+        }),
+        profile({
+          name: 'Sweep',
+          melee: true,
+          range: 'Melee',
+          attacks: '8',
+          strength: 10,
+          ap: -2,
+          damage: '2',
+        }),
+      ],
+    },
+    {
+      id: 'wi-gaunt',
+      name: 'Thunderstrike gauntlet',
+      profiles: [
+        profile({
+          name: 'Thunderstrike gauntlet',
+          melee: true,
+          range: 'Melee',
+          attacks: '4',
+          strength: 20,
+          ap: -3,
+          damage: '7',
+        }),
+      ],
+    },
+    {
+      id: 'wi-feet',
+      name: 'Titanic feet',
+      profiles: [
+        profile({
+          name: 'Titanic feet',
+          melee: true,
+          range: 'Melee',
+          attacks: '6',
+          strength: 8,
+          ap: -1,
+          damage: '2',
+          keywords: ['EXTRA ATTACKS'],
+        }),
+      ],
+    },
+  ],
+});
