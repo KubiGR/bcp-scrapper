@@ -1,7 +1,7 @@
 import { AppShell, Burger, Container, Group } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Notifications } from '@mantine/notifications';
-import { Link, Outlet } from '@tanstack/react-router';
+import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { FinderSearchSchema } from '../features/finder/finder-search';
 import { AccountMenu } from '../features/auth/AccountMenu';
 import { QueueIndicator } from '../features/fetch-queue/QueueIndicator';
@@ -9,6 +9,9 @@ import classes from './AppLayout.module.css';
 import { Logo } from './Logo';
 
 const FINDER_DEFAULTS = FinderSearchSchema.parse({});
+
+/** Pages that use the whole width (the matchups table), not the centred column. */
+const WIDE_PAGES = new Set(['/analysis/matchups']);
 
 const NAV_ITEMS = [
   { to: '/', label: 'Tournaments' },
@@ -26,6 +29,7 @@ const NAV_BREAKPOINT = 'lg';
 
 export function AppLayout() {
   const [menuOpen, menu] = useDisclosure(false);
+  const wide = useRouterState({ select: (state) => WIDE_PAGES.has(state.location.pathname) });
   return (
     <AppShell
       header={{ height: 60 }}
@@ -84,7 +88,7 @@ export function AppLayout() {
         ))}
       </AppShell.Navbar>
       <AppShell.Main>
-        <Container size="xl" px={{ base: 0, sm: 'md' }}>
+        <Container size="xl" fluid={wide} px={{ base: 0, sm: 'md' }}>
           <Outlet />
         </Container>
       </AppShell.Main>

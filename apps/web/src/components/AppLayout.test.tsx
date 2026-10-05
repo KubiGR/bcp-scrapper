@@ -12,6 +12,19 @@ describe('AppLayout', () => {
     expect(home.querySelector('svg[data-logo]')).not.toBeNull();
   });
 
+  it('lets the matchups table use the whole width, other pages a centred column', async () => {
+    stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/fetch-queue': null });
+    const { unmount } = renderWithRouter(<AppLayout />, '/analysis/matchups');
+    const content = () => screen.getByRole('main').querySelector('.mantine-Container-root');
+    await screen.findByRole('link', { name: 'BCP Analyzer' });
+    expect(content()).toHaveAttribute('data-fluid');
+    unmount();
+
+    renderWithRouter(<AppLayout />, '/analysis/meta');
+    await screen.findByRole('link', { name: 'BCP Analyzer' });
+    expect(content()).not.toHaveAttribute('data-fluid');
+  });
+
   it('opens the page menu from the menu button on phones, and closes it on a pick', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/fetch-queue': null });
     renderWithRouter(<AppLayout />);

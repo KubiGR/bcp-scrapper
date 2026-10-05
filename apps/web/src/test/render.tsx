@@ -29,10 +29,10 @@ export function renderWithProviders(ui: ReactElement) {
  * Like renderWithProviders, inside a memory router whose every path renders `ui`, for components
  * with a `Link`. The router renders asynchronously: query with `findBy…`.
  */
-export function renderWithRouter(ui: ReactElement) {
+export function renderWithRouter(ui: ReactElement, path = '/') {
   const router = createRouter({
     routeTree: createRootRoute({ component: () => ui }),
-    history: createMemoryHistory(),
+    history: createMemoryHistory({ initialEntries: [path] }),
   });
   return renderWithProviders(<RouterProvider router={router} />);
 }
