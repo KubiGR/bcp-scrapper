@@ -241,6 +241,39 @@ describe('DetachmentNamesCard', () => {
     });
   });
 
+  it('keeps each clicked button loading until its own save finishes', async () => {
+    const held = new Map<string, (response: Response) => void>();
+    stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/detachments': names(),
+      'POST /api/detachments/links': (_url: string, init?: RequestInit) =>
+        new Promise<Response>((resolve) => {
+          const { name } = JSON.parse(init?.body as string) as { name: string };
+          held.set(name, resolve);
+        }),
+    });
+    renderWithProviders(<DetachmentNamesCard />);
+    const notEnglish = (name: string) =>
+      screen.getByRole('button', { name: `${name} is not in English` });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Cabalgata del Caos is not in English' }),
+    );
+    fireEvent.click(notEnglish('Legion de Sangre'));
+    await waitFor(() => {
+      expect(held.size).toBe(2);
+    });
+    expect(notEnglish('Cabalgata del Caos')).toHaveAttribute('data-loading');
+    expect(notEnglish('Legion de Sangre')).toHaveAttribute('data-loading');
+    expect(
+      within(rowOf('Cabalgata del Caos')).getByRole('button', { name: 'Link' }),
+    ).not.toHaveAttribute('data-loading');
+    held.get('Cabalgata del Caos')?.(Response.json(names()));
+    await waitFor(() => {
+      expect(notEnglish('Cabalgata del Caos')).not.toHaveAttribute('data-loading');
+    });
+    expect(notEnglish('Legion de Sangre')).toHaveAttribute('data-loading');
+  });
+
   it('lists the faction’s names that aren’t English apart, and can say one is English', async () => {
     const fetchMock = stubFetchRoutes({
       'GET /api/auth/me': authOff,

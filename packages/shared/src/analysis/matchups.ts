@@ -1,6 +1,6 @@
 import type { GameResult } from '../domain';
 import { isAllegiance } from '../factions';
-import type { CellGame, FactionMatrix, MatrixCell } from './matchup-schemas';
+import type { CellGame, DetachmentRow, FactionMatrix, MatrixCell } from './matchup-schemas';
 
 export interface MatchupSide {
   playerId: string;
@@ -113,49 +113,134 @@ function sidesOf(games: MatchupGame[], filter: MatchupFilter): SidedGame[] {
   return sided;
 }
 
+type CellTally = MatrixCell & { pointsSum: number; pointsGames: number };
+
+/**
+ * Results per row and opponent faction: `rowsOf` names the row a sided game counts in (or several).
+ * `mirrorRate`: whether a row against its own faction gets a win rate.
+ */
+function tally(
+  sided: SidedGame[],
+  rowsOf: (s: SidedGame) => string[],
+  mirrorRate: boolean,
+): Map<string, MatrixCell[]> {
+  const cells = new Map<string, CellTally>();
+  const rowKeys = new Map<string, string[]>();
+  for (const s of sided) {
+    for (const rowKey of rowsOf(s)) {
+      const key = `${rowKey}\u0000${s.col.faction}`;
+      let cell = cells.get(key);
+      if (!cell) {
+        cell = {
+          row: s.row.faction,
+          col: s.col.faction,
+          games: 0,
+          wins: 0,
+          draws: 0,
+          losses: 0,
+          winRate: null,
+          avgPoints: null,
+          pointsSum: 0,
+          pointsGames: 0,
+        };
+        cells.set(key, cell);
+        rowKeys.set(rowKey, [...(rowKeys.get(rowKey) ?? []), key]);
+      }
+      cell.games += 1;
+      if (s.outcome === 'win') cell.wins += 1;
+      if (s.outcome === 'draw') cell.draws += 1;
+      if (s.outcome === 'loss') cell.losses += 1;
+      if (s.rowPoints !== null) {
+        cell.pointsSum += s.rowPoints;
+        cell.pointsGames += 1;
+      }
+    }
+  }
+  const finish = ({ pointsSum, pointsGames, ...cell }: CellTally): MatrixCell => ({
+    ...cell,
+    winRate:
+      cell.row === cell.col && !mirrorRate ? null : (cell.wins + cell.draws / 2) / cell.games,
+    avgPoints: pointsGames === 0 ? null : pointsSum / pointsGames,
+  });
+  const byRow = new Map<string, MatrixCell[]>();
+  for (const [rowKey, keys] of rowKeys) {
+    byRow.set(
+      rowKey,
+      keys.map((key) => {
+        const cell = cells.get(key);
+        if (!cell) throw new Error('tally lost a cell');
+        return finish(cell);
+      }),
+    );
+  }
+  return byRow;
+}
+
 /**
  * Faction-vs-faction results. Each countable game adds one entry per side (row = that side's
- * faction); mirrors land on the diagonal twice and get no win rate.
+ * faction); a mirror's cell counts its games played (each once) and gets no win rate.
  */
 export function computeFactionMatrix(games: MatchupGame[], filter: MatchupFilter): FactionMatrix {
   const sided = sidesOf(games, filter);
-  const cells = new Map<string, MatrixCell & { pointsSum: number; pointsGames: number }>();
-  const playedBy = new Map<string, number>();
+  const byRow = tally(sided, (s) => [s.row.faction], false);
+  // A mirror's count is its games played: a game adds a side or two (a row-side filter can keep
+  // just one), so the sides are counted once per game.
+  const mirrorGames = new Map<string, Set<string>>();
   for (const s of sided) {
-    const key = `${s.row.faction}\u0000${s.col.faction}`;
-    const cell = cells.get(key) ?? {
-      row: s.row.faction,
-      col: s.col.faction,
-      games: 0,
-      wins: 0,
-      draws: 0,
-      losses: 0,
-      winRate: null,
-      avgPoints: null,
-      pointsSum: 0,
-      pointsGames: 0,
-    };
-    cell.games += 1;
-    if (s.outcome === 'win') cell.wins += 1;
-    if (s.outcome === 'draw') cell.draws += 1;
-    if (s.outcome === 'loss') cell.losses += 1;
-    if (s.rowPoints !== null) {
-      cell.pointsSum += s.rowPoints;
-      cell.pointsGames += 1;
-    }
-    cells.set(key, cell);
-    playedBy.set(s.row.faction, (playedBy.get(s.row.faction) ?? 0) + 1);
+    if (s.row.faction !== s.col.faction) continue;
+    mirrorGames.set(s.row.faction, (mirrorGames.get(s.row.faction) ?? new Set()).add(s.game.id));
   }
-  const factions = [...playedBy.keys()].sort((x, y) => x.localeCompare(y));
+  const az = (names: Iterable<string>) => [...new Set(names)].sort((x, y) => x.localeCompare(y));
   return {
-    factions,
-    cells: [...cells.values()].map(({ pointsSum, pointsGames, ...cell }) => ({
-      ...cell,
-      winRate: cell.row === cell.col ? null : (cell.wins + cell.draws / 2) / cell.games,
-      avgPoints: pointsGames === 0 ? null : pointsSum / pointsGames,
-    })),
+    factions: az(byRow.keys()),
+    columns: az(sided.map((s) => s.col.faction)),
+    cells: [...byRow.values()]
+      .flat()
+      .map((cell) =>
+        cell.row === cell.col
+          ? { ...cell, games: mirrorGames.get(cell.row)?.size ?? cell.games }
+          : cell,
+      ),
     games: new Set(sided.map((s) => s.game.id)).size,
   };
+}
+
+/**
+ * One faction's results split by detachment, against each opponent faction: a list with two
+ * detachments counts in both rows; sides without a fetched list are left out. Most games first.
+ * Against its own faction a detachment row has a win rate (a game against its own detachment adds
+ * a win and a loss) and counts its games played.
+ */
+export function detachmentRows(
+  games: MatchupGame[],
+  faction: string,
+  filter: MatchupFilter,
+): DetachmentRow[] {
+  const sided = sidesOf(games, filter).filter((s) => s.row.faction === faction);
+  const byRow = tally(sided, (s) => [...new Set(s.row.detachments)], true);
+  // Against its own faction a game can add two sides to a row (both players on the detachment):
+  // the win rate keeps both, the count is games played.
+  const ownGames = new Map<string, Set<string>>();
+  for (const s of sided) {
+    if (s.col.faction !== faction) continue;
+    for (const name of new Set(s.row.detachments)) {
+      ownGames.set(name, (ownGames.get(name) ?? new Set()).add(s.game.id));
+    }
+  }
+  return [...byRow]
+    .map(([key, tallied]) => {
+      const cells = tallied
+        .map((cell) =>
+          cell.col === faction ? { ...cell, games: ownGames.get(key)?.size ?? cell.games } : cell,
+        )
+        .sort((x, y) => x.col.localeCompare(y.col));
+      return {
+        detachment: key,
+        games: cells.reduce((sum, cell) => sum + cell.games, 0),
+        cells,
+      };
+    })
+    .sort((x, y) => y.games - x.games || x.detachment.localeCompare(y.detachment));
 }
 
 /** The most common `pointsA + pointsB` over an event's games with both points; null if none. */

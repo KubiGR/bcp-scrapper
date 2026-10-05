@@ -1,5 +1,4 @@
 import {
-  countedFaction,
   eventPhase,
   isBigEvent,
   knownDisposition,
@@ -10,7 +9,7 @@ import {
 import { and, gt, gte, inArray, lt, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { armyLists, events, players, teams } from '../db/schema';
-import { foreignDetachmentCheck, wrongPairCheck } from './detachment-links';
+import { armyRules } from './detachment-links';
 import { storedCurrentList } from './lists';
 
 const DAY_MS = 86_400_000;
@@ -64,7 +63,7 @@ export async function loadMetaRows(
     inRange.filter((event) => eventPhase(event, today) === 'finished').map((event) => event.id),
   );
 
-  const [loaded, found, foreign, wrongPair] = await Promise.all([
+  const [loaded, found, rules] = await Promise.all([
     db
       .selectDistinct({ eventId: players.eventId })
       .from(players)
@@ -92,15 +91,12 @@ export async function loadMetaRows(
           gt(sql`${players.wins} + ${players.losses} + ${players.draws}`, 0),
         ),
       ),
-    foreignDetachmentCheck(db),
-    wrongPairCheck(db),
+    armyRules(db),
   ]);
 
   const startOf = new Map(inRange.map((event) => [event.id, isoDay(event.startDate)]));
   const rows = found.map((row) => {
-    const { faction } = countedFaction(row.faction, row.parsedArmy);
-    // The army a list's detachments belong to: the one it names, else the counted faction.
-    const army = row.parsedArmy ?? faction;
+    const { faction } = rules.army(row.faction, row.parsedArmy, row.detachments ?? []);
     return {
       eventId: row.eventId,
       isTeamEvent: teamEvents.has(row.eventId),
@@ -112,10 +108,7 @@ export async function loadMetaRows(
       disposition: row.disposition ?? knownDisposition(row.parsedDisposition),
       // A detachment that isn't English can't be told apart from others, and one outside its
       // army's BSData list is most likely a mistake: detachment unknown either way.
-      detachments:
-        row.detachments?.some((name) => foreign(name) || wrongPair(army, name)) === true
-          ? []
-          : (row.detachments ?? []),
+      detachments: rules.detachments(faction, row.detachments ?? []),
       wins: row.wins,
       losses: row.losses,
       draws: row.draws,

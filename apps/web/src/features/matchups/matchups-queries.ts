@@ -3,12 +3,14 @@ import {
   BulkPairingsResultSchema,
   CellGamesResponseSchema,
   CrossEventMatchupsResponseSchema,
+  DetachmentRowsResponseSchema,
   MatchupsResponseSchema,
   toIsoDate,
   type BulkPairingsResult,
   type DateRange,
+  type DetachmentRowsResponse,
 } from '@bcp/shared';
-import { keepPreviousData, queryOptions } from '@tanstack/react-query';
+import { keepPreviousData, queryOptions, type UseQueryOptions } from '@tanstack/react-query';
 import { apiGet, apiPost } from '../../api/client';
 import { matrixParams, type MatrixSettings } from './matrix-view';
 
@@ -48,6 +50,27 @@ export const eventCellGamesQuery = (
     placeholderData: keepPreviousData,
   });
 };
+
+const detachmentRowsOptions = (queryKey: readonly unknown[], url: string) =>
+  queryOptions({
+    queryKey,
+    queryFn: () => apiGet(url, DetachmentRowsResponseSchema),
+    placeholderData: keepPreviousData,
+  });
+/** A faction's detachment rows, asked for when its row is opened. */
+export type DetachmentRowsQuery = (
+  faction: string,
+) => UseQueryOptions<DetachmentRowsResponse, Error, DetachmentRowsResponse>;
+
+export const eventDetachmentRowsQuery =
+  (eventId: string, settings: MatrixSettings): DetachmentRowsQuery =>
+  (faction) => {
+    const params = { faction, ...matrixParams(settings) };
+    return detachmentRowsOptions(
+      ['event', eventId, 'matchups', 'detachments', params],
+      `/api/events/${enc(eventId)}/matchups/detachments${toQuery(params)}`,
+    );
+  };
 
 /** The cross-event page's URL search: a date range, event ticks, and the matrix's display
  * settings. `metric`/`minGames` are display-only (never sent to the API); `dispositions`/`side`
@@ -116,6 +139,14 @@ export const crossCellGamesQuery = (search: CrossSearch, cell: { row: string; co
       ),
     placeholderData: keepPreviousData,
   });
+
+export const crossDetachmentRowsQuery =
+  (search: CrossSearch): DetachmentRowsQuery =>
+  (faction) =>
+    detachmentRowsOptions(
+      ['matchups', crossParams(search), 'detachments', faction],
+      `/api/matchups/detachments?${crossParams(search)}&${new URLSearchParams({ faction }).toString()}`,
+    );
 
 export const queueManyPairings = (eventIds: string[]) =>
   apiPost('/api/pairings-queue', { eventIds }, BulkPairingsResultSchema);

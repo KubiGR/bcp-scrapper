@@ -16,17 +16,23 @@ export function isAllegiance(faction: string): boolean {
 }
 
 /**
- * BCP's faction, or the army read from the player's list (a guess) when BCP has none or only an
- * allegiance.
+ * The army a player counts as. Players sometimes pick the wrong army on BCP (a World Eaters list
+ * registered as Chaos Knights), so a list naming a different army wins, marked as a guess; a list
+ * that only says Space Marines never overrides another army (chapters write that), nor does one
+ * naming just an allegiance. When the list names no army, `soleOwner` (the one BSData army the
+ * list's detachments belong to, given only when BCP's army doesn't have them) settles it.
  */
 export function resolveFaction(
   bcpFaction: string | null,
   parsedArmy: string | null,
+  soleOwner: string | null = null,
 ): { faction: string | null; factionGuessed: boolean } {
   const vague = bcpFaction === null || isAllegiance(bcpFaction);
-  // A list that only names an allegiance says no more than BCP does.
-  if (vague && parsedArmy !== null && !isAllegiance(parsedArmy))
-    return { faction: parsedArmy, factionGuessed: true };
+  const listArmy = parsedArmy !== null && !isAllegiance(parsedArmy) ? parsedArmy : null;
+  if (listArmy !== null && (vague || (listArmy !== bcpFaction && listArmy !== SPACE_MARINES)))
+    return { faction: listArmy, factionGuessed: true };
+  if (listArmy === null && soleOwner !== null && soleOwner !== bcpFaction)
+    return { faction: soleOwner, factionGuessed: true };
   return { faction: bcpFaction, factionGuessed: false };
 }
 
@@ -37,8 +43,9 @@ export function resolveFaction(
 export function countedFaction(
   bcpFaction: string | null,
   parsedArmy: string | null,
+  soleOwner: string | null = null,
 ): { faction: string | null; factionGuessed: boolean } {
-  const resolved = resolveFaction(bcpFaction, parsedArmy);
+  const resolved = resolveFaction(bcpFaction, parsedArmy, soleOwner);
   return resolved.faction !== null && isAllegiance(resolved.faction)
     ? { faction: null, factionGuessed: false }
     : resolved;

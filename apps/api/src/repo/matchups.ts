@@ -1,9 +1,10 @@
 import type { MatchupGame, PairingsState } from '@bcp/shared';
-import { isBigEvent, knownDisposition, resolveFaction, type EventSizeRule } from '@bcp/shared';
+import { isBigEvent, knownDisposition, type EventSizeRule } from '@bcp/shared';
 import { and, desc, eq, gte, inArray, lt } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from '../db/client';
 import { armyLists, events, fetchQueue, games, players, teams } from '../db/schema';
+import { armyRules } from './detachment-links';
 import { eventPairingsJobs } from './fetch-queue';
 import type { EventRow } from './events';
 import { storedPairingsSummary } from './pairings';
@@ -17,6 +18,12 @@ export async function loadMatchupGames(db: Db, eventIds: string[]): Promise<Matc
   const tb = alias(teams, 'tb');
   const la = alias(armyLists, 'la');
   const lb = alias(armyLists, 'lb');
+  const rules = await armyRules(db);
+  /** A side's army, and its detachments when they count (see `armyRules`). */
+  const armyOf = (faction: string | null, army: string | null, detachments: string[] | null) => {
+    const counted = rules.army(faction, army, detachments ?? []);
+    return { ...counted, detachments: rules.detachments(counted.faction, detachments ?? []) };
+  };
   const rows = await db
     .select({
       id: games.id,
@@ -68,9 +75,8 @@ export async function loadMatchupGames(db: Db, eventIds: string[]): Promise<Matc
     a: {
       playerId: row.aId,
       name: row.aName ?? 'Unknown player',
-      ...resolveFaction(row.aFaction ?? null, row.aArmy ?? null),
+      ...armyOf(row.aFaction ?? null, row.aArmy ?? null, row.aDetachments ?? null),
       disposition: row.aDisposition ?? knownDisposition(row.aParsedDisposition ?? null),
-      detachments: row.aDetachments ?? [],
       teamName: row.aTeam ?? null,
     },
     b:
@@ -79,9 +85,8 @@ export async function loadMatchupGames(db: Db, eventIds: string[]): Promise<Matc
         : {
             playerId: row.bId,
             name: row.bName ?? 'Unknown player',
-            ...resolveFaction(row.bFaction ?? null, row.bArmy ?? null),
+            ...armyOf(row.bFaction ?? null, row.bArmy ?? null, row.bDetachments ?? null),
             disposition: row.bDisposition ?? knownDisposition(row.bParsedDisposition ?? null),
-            detachments: row.bDetachments ?? [],
             teamName: row.bTeam ?? null,
           },
   }));

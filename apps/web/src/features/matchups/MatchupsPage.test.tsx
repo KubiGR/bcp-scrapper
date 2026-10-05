@@ -28,6 +28,7 @@ const response = (overrides: Record<string, unknown> = {}) => ({
   events: [anEvent()],
   matrix: {
     factions: ['Orks', 'Necrons'],
+    columns: ['Orks', 'Necrons'],
     games: 3,
     cells: [
       {
@@ -79,7 +80,7 @@ describe('MatchupsPage', () => {
     stubFetchRoutes({
       'GET /api/matchups': response({
         events: [anEvent({ included: false, pairings: 'missing' })],
-        matrix: { factions: [], games: 0, cells: [] },
+        matrix: { factions: [], columns: [], games: 0, cells: [] },
       }),
     });
     renderWithRouter(<MatchupsPage search={{}} onSearchChange={vi.fn()} />);
@@ -91,7 +92,7 @@ describe('MatchupsPage', () => {
 
   it('shows an empty state when included events have zero games', async () => {
     stubFetchRoutes({
-      'GET /api/matchups': response({ matrix: { factions: [], games: 0, cells: [] } }),
+      'GET /api/matchups': response({ matrix: { factions: [], columns: [], games: 0, cells: [] } }),
     });
     renderWithRouter(<MatchupsPage search={{}} onSearchChange={vi.fn()} />);
 
@@ -104,7 +105,7 @@ describe('MatchupsPage', () => {
     stubFetchRoutes({
       'GET /api/matchups': response({
         events: [],
-        matrix: { factions: [], games: 0, cells: [] },
+        matrix: { factions: [], columns: [], games: 0, cells: [] },
       }),
     });
     renderWithRouter(<MatchupsPage search={{}} onSearchChange={vi.fn()} />);
@@ -131,7 +132,7 @@ describe('MatchupsPage', () => {
   it('shows a Clear filter empty state when a disposition filter matches no games', async () => {
     const onSearchChange = vi.fn();
     stubFetchRoutes({
-      'GET /api/matchups': response({ matrix: { factions: [], games: 0, cells: [] } }),
+      'GET /api/matchups': response({ matrix: { factions: [], columns: [], games: 0, cells: [] } }),
     });
     renderWithRouter(
       <MatchupsPage search={{ dispositions: 'Disruption' }} onSearchChange={onSearchChange} />,

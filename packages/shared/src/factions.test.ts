@@ -19,8 +19,39 @@ describe('isAllegiance', () => {
 });
 
 describe('resolveFaction', () => {
-  it('keeps BCP’s faction when it is a real one', () => {
-    expect(resolveFaction('Orks', 'Necrons')).toEqual({ faction: 'Orks', factionGuessed: false });
+  it('keeps BCP’s faction when the list agrees or names none', () => {
+    expect(resolveFaction('Orks', 'Orks')).toEqual({ faction: 'Orks', factionGuessed: false });
+    expect(resolveFaction('Orks', null)).toEqual({ faction: 'Orks', factionGuessed: false });
+  });
+
+  it('takes the list’s army when it names a different one (a slip on BCP)', () => {
+    expect(resolveFaction('Chaos Knights', 'World Eaters')).toEqual({
+      faction: 'World Eaters',
+      factionGuessed: true,
+    });
+  });
+
+  it('never lets a list that only says Space Marines override another army', () => {
+    expect(resolveFaction('Blood Angels', 'Space Marines (Astartes)')).toEqual({
+      faction: 'Blood Angels',
+      factionGuessed: false,
+    });
+  });
+
+  it('takes the one BSData army a list’s detachment belongs to when the list names no army', () => {
+    expect(resolveFaction('Chaos Knights', null, 'World Eaters')).toEqual({
+      faction: 'World Eaters',
+      factionGuessed: true,
+    });
+    // The list's own army comes first.
+    expect(resolveFaction('Chaos Knights', 'Chaos Daemons', 'World Eaters')).toEqual({
+      faction: 'Chaos Daemons',
+      factionGuessed: true,
+    });
+    expect(resolveFaction('World Eaters', null, 'World Eaters')).toEqual({
+      faction: 'World Eaters',
+      factionGuessed: false,
+    });
   });
   it('guesses from the list when BCP has none or only an allegiance', () => {
     expect(resolveFaction(null, 'Necrons')).toEqual({ faction: 'Necrons', factionGuessed: true });

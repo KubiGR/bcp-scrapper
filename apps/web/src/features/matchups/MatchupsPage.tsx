@@ -12,10 +12,12 @@ import { FactionMatrix } from './FactionMatrix';
 import { MatrixControls } from './MatrixControls';
 import {
   crossCellGamesQuery,
+  crossDetachmentRowsQuery,
   crossMatchupsQuery,
   crossWindow,
   type CrossSearch,
 } from './matchups-queries';
+import type { MatrixPick } from './matrix-pick';
 import { DEFAULT_MATRIX_SETTINGS, hasSideFilter, type MatrixSettings } from './matrix-view';
 import { UpdatePicker } from '../updates/UpdatePicker';
 
@@ -36,12 +38,12 @@ interface MatchupsPageProps {
 export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
   const now = new Date();
   const window = crossWindow(search, now);
-  const [cell, setCell] = useState<{ row: string; col: string } | null>(null);
+  const [cell, setCell] = useState<MatrixPick | null>(null);
   const [eventsOpen, setEventsOpen] = useState(false);
 
   const matchups = useQuery(crossMatchupsQuery(search));
   const games = useQuery({
-    ...crossCellGamesQuery(search, cell ?? { row: '', col: '' }),
+    ...crossCellGamesQuery(search, { row: cell?.row ?? '', col: cell?.col ?? '' }),
     enabled: cell !== null,
   });
 
@@ -229,6 +231,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
                         scoring={matchups.data.scoring}
                         settings={effectiveSettings}
                         onCell={setCell}
+                        detachments={crossDetachmentRowsQuery(search)}
                       />
                     </>
                   );
