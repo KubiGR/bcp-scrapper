@@ -7,6 +7,7 @@ import { MatchupsPanel } from './MatchupsPanel';
 const matrix = (overrides: Record<string, unknown> = {}) => ({
   matrix: {
     factions: ['Orks', 'Necrons'],
+    columns: ['Orks', 'Necrons'],
     games: 3,
     cells: [
       {
@@ -44,7 +45,7 @@ describe('MatchupsPanel', () => {
   it('shows an empty state when there are no games with known factions', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/matchups': matrix({
-        matrix: { factions: [], games: 0, cells: [] },
+        matrix: { factions: [], columns: [], games: 0, cells: [] },
       }),
       'GET /api/events/EVT1/players': { items: [] },
     });
@@ -94,7 +95,7 @@ describe('MatchupsPanel', () => {
   it('shows a Clear filter empty state when a disposition filter matches no games', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/matchups': matrix({
-        matrix: { factions: [], games: 0, cells: [] },
+        matrix: { factions: [], columns: [], games: 0, cells: [] },
       }),
       'GET /api/events/EVT1/players': {
         items: [aPlayer({ disposition: 'Disruption' })],

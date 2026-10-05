@@ -8,6 +8,7 @@ import { DEFAULT_MATRIX_SETTINGS } from './matrix-view';
 
 const matrix = (): FactionMatrixData => ({
   factions: ['Orks', 'Necrons'],
+  columns: ['Orks', 'Necrons'],
   games: 16,
   cells: [
     {
@@ -68,6 +69,24 @@ describe('FactionMatrix', () => {
     const button = screen.getByRole('button', { name: /Orks vs Necrons/ });
     expect(button.textContent).toContain('50%');
     expect(button.textContent).toContain('3');
+  });
+
+  it('shows every opponent as a column even when fewer factions are rows', () => {
+    renderWithProviders(
+      <FactionMatrix
+        matrix={{ ...matrix(), factions: ['Orks'], columns: ['Necrons', 'Orks'] }}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 1 }}
+        onCell={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
+      '',
+      'Necrons',
+      'Orks',
+    ]);
+    expect(screen.getAllByRole('rowheader').map((th) => th.textContent)).toEqual(['Orks']);
+    expect(screen.getByRole('button', { name: /Orks vs Necrons/ })).toBeInTheDocument();
   });
 
   it('hides a cell under minGames as plain, unclickable text', () => {
@@ -215,6 +234,7 @@ describe('FactionMatrix', () => {
   it('gives a stronger win rate a stronger background than a weaker one', () => {
     const strongMatrix: FactionMatrixData = {
       factions: ['Orks', 'Necrons'],
+      columns: ['Orks', 'Necrons'],
       games: 6,
       cells: [
         {

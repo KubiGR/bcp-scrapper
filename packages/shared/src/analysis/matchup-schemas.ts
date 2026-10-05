@@ -18,8 +18,10 @@ export const MatrixCellSchema = z.object({
 export type MatrixCell = z.infer<typeof MatrixCellSchema>;
 
 export const FactionMatrixSchema = z.object({
-  /** Factions in alphabetical order. */
+  /** The rows: factions with games from the filtered side, A→Z. */
   factions: z.array(z.string()),
+  /** The columns: every opponent faction those rows played, A→Z. */
+  columns: z.array(z.string()),
   cells: z.array(MatrixCellSchema),
   /** Games counted (each game once, not once per side). */
   games: count,

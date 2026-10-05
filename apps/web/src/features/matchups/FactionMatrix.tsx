@@ -197,7 +197,7 @@ export function FactionMatrix({
           <Table.Thead>
             <Table.Tr>
               <Table.Th className={classes.corner} data-testid="matrix-corner" />
-              {matrix.factions.map((faction) => (
+              {matrix.columns.map((faction) => (
                 <Table.Th key={faction} className={classes.stickyHeader} title={faction}>
                   <span className={classes.headerLabel}>{faction}</span>
                 </Table.Th>
@@ -226,13 +226,13 @@ export function FactionMatrix({
                       <span className={classes.truncate}>{row}</span>
                     )}
                   </Table.Th>
-                  {matrix.factions.map((col) => renderCell(cells.get(key(row, col)), col, { row }))}
+                  {matrix.columns.map((col) => renderCell(cells.get(key(row, col)), col, { row }))}
                 </Table.Tr>
                 {detachments && open.includes(row) && (
                   <DetachmentRows
                     faction={row}
                     query={detachments(row)}
-                    columns={matrix.factions}
+                    columns={matrix.columns}
                     renderCell={renderCell}
                   />
                 )}

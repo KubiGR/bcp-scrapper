@@ -62,6 +62,10 @@ describe('computeFactionMatrix', () => {
   ];
   const matrix = computeFactionMatrix(games, noFilter);
 
+  it('has the same factions as rows and columns without a filter', () => {
+    expect(matrix.columns).toEqual(matrix.factions);
+  });
+
   it('counts each game once per side, from the row side', () => {
     expect(cell(matrix, 'Orks', 'Necrons')).toEqual({
       row: 'Orks',
@@ -144,6 +148,16 @@ describe('detachment filter', () => {
     });
     expect(cell(m, 'Orks', 'Necrons')?.games).toBe(1);
     expect(cell(m, 'Necrons', 'Orks')?.games).toBe(1);
+  });
+
+  it('keeps every opponent as a column when the filter narrows the rows', () => {
+    const m = computeFactionMatrix(games, {
+      dispositions: [],
+      detachments: ['Kult of Speed'],
+      side: 'row',
+    });
+    expect(m.factions).toEqual(['Orks']);
+    expect(m.columns).toEqual(['Necrons']);
   });
 
   it('both sides: each played one of the listed detachments', () => {

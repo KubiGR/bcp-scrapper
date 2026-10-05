@@ -183,9 +183,10 @@ function tally(
 export function computeFactionMatrix(games: MatchupGame[], filter: MatchupFilter): FactionMatrix {
   const sided = sidesOf(games, filter);
   const byRow = tally(sided, (s) => [s.row.faction], false);
-  const factions = [...byRow.keys()].sort((x, y) => x.localeCompare(y));
+  const az = (names: Iterable<string>) => [...new Set(names)].sort((x, y) => x.localeCompare(y));
   return {
-    factions,
+    factions: az(byRow.keys()),
+    columns: az(sided.map((s) => s.col.faction)),
     cells: [...byRow.values()].flat(),
     games: new Set(sided.map((s) => s.game.id)).size,
   };
