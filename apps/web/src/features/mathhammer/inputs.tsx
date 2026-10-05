@@ -1,7 +1,12 @@
 import { Checkbox, NumberInput, Select, TextInput } from '@mantine/core';
 import type { Reroll } from '@bcp/shared';
+import { useState } from 'react';
 
-/** A small whole-number field; with `nullable`, empty means none. */
+/**
+ * A small whole-number field, kept within `min`/`max`; with `nullable`, empty means none.
+ * Half-typed text ("-", or empty in a field that needs a number) stays in the field until it
+ * becomes a number, so the calculation never sees it.
+ */
 export function Num({
   label,
   value,
@@ -19,18 +24,28 @@ export function Num({
   nullable?: boolean;
   w?: number;
 }) {
+  const [typing, setTyping] = useState<string | null>(null);
   return (
     <NumberInput
       size="xs"
       label={label}
-      value={value ?? ''}
+      value={typing ?? value ?? ''}
       min={min}
       max={max}
       w={w}
       allowDecimal={false}
+      onBlur={() => {
+        setTyping(null);
+      }}
       onChange={(next) => {
-        if (next === '') onChange(nullable ? null : (min ?? 0));
-        else onChange(typeof next === 'number' ? next : Number(next));
+        const number = typeof next === 'number' ? next : Number.NaN;
+        if (next === '' && nullable) {
+          setTyping(null);
+          onChange(null);
+        } else if (Number.isFinite(number)) {
+          setTyping(null);
+          onChange(Math.min(max ?? Infinity, Math.max(min ?? -Infinity, number)));
+        } else setTyping(String(next));
       }}
     />
   );

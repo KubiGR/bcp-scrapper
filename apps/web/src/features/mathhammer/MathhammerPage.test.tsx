@@ -36,6 +36,39 @@ describe('MathhammerPage', () => {
     });
   });
 
+  it('waits for a number while a minus sign is typed', async () => {
+    renderWithProviders(<MathhammerPage />);
+    const ap = weapon().getByLabelText('AP');
+    fireEvent.change(ap, { target: { value: '-' } });
+    expect(ap).toHaveValue('-');
+    await waitFor(() => {
+      expect(screen.getByLabelText('Models slain')).toHaveTextContent(
+        expectedSlain(() => undefined),
+      );
+    });
+    fireEvent.change(ap, { target: { value: '-2' } });
+    const want = expectedSlain((form) => {
+      const first = form.weapons[0];
+      if (first !== undefined) form.weapons = [{ ...first, ap: -2 }];
+    });
+    await waitFor(() => {
+      expect(screen.getByLabelText('Models slain')).toHaveTextContent(want);
+    });
+  });
+
+  it('keeps typed numbers within the field’s limits', async () => {
+    renderWithProviders(<MathhammerPage />);
+    const models = within(screen.getByRole('group', { name: 'Models 1' }));
+    fireEvent.change(models.getByLabelText('Sv'), { target: { value: '1' } });
+    const want = expectedSlain((form) => {
+      const first = form.defender.groups[0];
+      if (first !== undefined) form.defender.groups = [{ ...first, save: 2 }];
+    });
+    await waitFor(() => {
+      expect(screen.getByLabelText('Models slain')).toHaveTextContent(want);
+    });
+  });
+
   it('applies the situation', async () => {
     renderWithProviders(<MathhammerPage />);
     fireEvent.click(screen.getByLabelText('In cover (-1 BS for ranged)'));
