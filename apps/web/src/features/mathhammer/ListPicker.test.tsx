@@ -22,7 +22,7 @@ const list: MathhammerList = {
       name: 'Intercessor Squad',
       datasheetId: INTERCESSORS.id,
       attachedTo: null,
-      unread: ['Twin dakkagun'],
+      unread: ['Twin dakkagun', 'Twin dakkagun'],
       groups: [],
     },
     {

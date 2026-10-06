@@ -1,4 +1,4 @@
-import { calculate } from '@bcp/shared';
+import { calculate, type MathhammerList } from '@bcp/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
@@ -144,6 +144,80 @@ describe('picking units', () => {
     expect(await plasma.findByText(/^Best here: /)).toBeInTheDocument();
     const captain = within(screen.getByRole('group', { name: 'Weapon 3' }));
     expect(captain.getByLabelText('Weapon')).toHaveValue('Captain: Master-crafted power weapon');
+  });
+
+  /** Intercessor Squad ×5 (bolt rifles), led by a Captain. */
+  const LIST: MathhammerList = {
+    army: 'Space Marines (Astartes)',
+    datasheets: [INTERCESSORS, CAPTAIN],
+    units: [
+      {
+        label: 'Captain',
+        name: 'Captain',
+        datasheetId: CAPTAIN.id,
+        attachedTo: 1,
+        unread: [],
+        groups: [{ modelId: 'm-cap', models: 1, weapons: [{ weaponId: 'wi-mc', count: 1 }] }],
+      },
+      {
+        label: 'Intercessor Squad ×5',
+        name: 'Intercessor Squad',
+        datasheetId: INTERCESSORS.id,
+        attachedTo: null,
+        unread: [],
+        groups: [
+          { modelId: 'm-sgt', models: 1, weapons: [{ weaponId: 'wi-br', count: 1 }] },
+          { modelId: 'm-int', models: 4, weapons: [{ weaponId: 'wi-br', count: 4 }] },
+        ],
+      },
+    ],
+  };
+  const listRoutes = {
+    'GET /api/mathhammer/factions': {
+      factions: [{ faction: 'Space Marines (Astartes)', units: 2 }],
+    },
+    'POST /api/mathhammer/list': LIST,
+  };
+  const pasteAndUse = async (side: 'Attacker' | 'Defender') => {
+    fireEvent.click(
+      within(screen.getByRole('radiogroup', { name: `${side} source` })).getByRole('radio', {
+        name: 'From a list',
+      }),
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: `${side} list` }), {
+      target: { value: 'list' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Read list' }));
+    await choose(`${side} list unit`, 'Intercessor Squad ×5 + Captain');
+    fireEvent.click(screen.getByRole('button', { name: 'Use' }));
+  };
+
+  it('fills the attacker from a pasted list unit, its attached character’s weapons included', async () => {
+    stubFetchRoutes(listRoutes);
+    renderWithProviders(<MathhammerPage />);
+    await pasteAndUse('Attacker');
+    expect(
+      await screen.findByText('From datasheet: Intercessor Squad + Captain'),
+    ).toBeInTheDocument();
+    expect(weapon().getByLabelText('Weapon')).toHaveValue('Bolt rifle');
+    expect(weapon().getByLabelText('Models')).toHaveValue('5');
+    const captain = within(screen.getByRole('group', { name: 'Weapon 2' }));
+    expect(captain.getByLabelText('Weapon')).toHaveValue('Captain: Master-crafted power weapon');
+  });
+
+  it('fills the defender from a pasted list unit, the character as its own row', async () => {
+    stubFetchRoutes(listRoutes);
+    renderWithProviders(<MathhammerPage />);
+    await pasteAndUse('Defender');
+    expect(
+      await screen.findByText('From datasheet: Intercessor Squad + Captain'),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('group', { name: 'Models 1' })).getByLabelText('How many'),
+    ).toHaveValue('5');
+    expect(
+      within(screen.getByRole('group', { name: 'Models 2' })).getByLabelText('Character'),
+    ).toBeChecked();
   });
 
   it('says when the unit data hasn’t been read', async () => {

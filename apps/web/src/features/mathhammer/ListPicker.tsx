@@ -16,11 +16,14 @@ import { useState } from 'react';
 import { pickableUnits } from './datasheet-form';
 import { readList, storedListQuery, storedListsQuery } from './mathhammer-queries';
 
-/** Names a list unit and its attached characters couldn't read. */
-const unreadOf = (list: MathhammerList, index: number) =>
-  [index, ...list.units.flatMap((u, i) => (u.attachedTo === index ? [i] : []))].flatMap(
-    (i) => list.units[i]?.unread ?? [],
-  );
+/** Names a list unit and its attached characters couldn't read, each once. */
+const unreadOf = (list: MathhammerList, index: number) => [
+  ...new Set(
+    [index, ...list.units.flatMap((u, i) => (u.attachedTo === index ? [i] : []))].flatMap(
+      (i) => list.units[i]?.unread ?? [],
+    ),
+  ),
+];
 
 /**
  * Picks a unit from an army list: pasted (GW app or NewRecruit export) or a stored BCP list found

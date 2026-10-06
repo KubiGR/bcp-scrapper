@@ -1,8 +1,10 @@
 import { Button, Group, SegmentedControl, Stack, Text } from '@mantine/core';
+import { useState } from 'react';
 import { Panel } from '../../components/Panel';
-import { attackerRows } from './datasheet-form';
+import { attackerRows, attackerRowsFromList } from './datasheet-form';
 import { newWeapon, sitsOut, type MathhammerForm, type WeaponRow } from './form-state';
 import { DiceInput } from './inputs';
+import { ListPicker } from './ListPicker';
 import { SwitchesEditor } from './SwitchesEditor';
 import { UnitPicker } from './UnitPicker';
 import { WeaponEditor } from './WeaponEditor';
@@ -18,6 +20,7 @@ export function AttackerPanel({
   best: Record<string, string>;
   onChange: (next: MathhammerForm) => void;
 }) {
+  const [from, setFrom] = useState<'unit' | 'list'>('unit');
   const setWeapons = (weapons: WeaponRow[]) => {
     onChange({ ...form, weapons });
   };
@@ -31,16 +34,42 @@ export function AttackerPanel({
   return (
     <Panel title="Attacker">
       <Stack gap="md">
-        <UnitPicker
-          label="Attacker"
-          onPick={(sheet, size, attached) => {
-            onChange({
-              ...form,
-              source: [sheet.name, ...attached.map((a) => a.name)].join(' + '),
-              weapons: attackerRows(sheet, size, attached),
-            });
+        <SegmentedControl
+          size="xs"
+          aria-label="Attacker source"
+          data={[
+            { value: 'unit', label: 'Any unit' },
+            { value: 'list', label: 'From a list' },
+          ]}
+          value={from}
+          onChange={(value) => {
+            setFrom(value === 'list' ? 'list' : 'unit');
           }}
         />
+        {from === 'unit' ? (
+          <UnitPicker
+            label="Attacker"
+            onPick={(sheet, size, attached) => {
+              onChange({
+                ...form,
+                source: [sheet.name, ...attached.map((a) => a.name)].join(' + '),
+                weapons: attackerRows(sheet, size, attached),
+              });
+            }}
+          />
+        ) : (
+          <ListPicker
+            label="Attacker"
+            onPick={(list, index) => {
+              const attached = list.units.filter((u) => u.attachedTo === index).map((u) => u.name);
+              onChange({
+                ...form,
+                source: [list.units[index]?.name ?? '', ...attached].join(' + '),
+                weapons: attackerRowsFromList(list, index),
+              });
+            }}
+          />
+        )}
         <SegmentedControl
           size="xs"
           aria-label="Phase"

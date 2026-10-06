@@ -1,8 +1,10 @@
-import { Button, Group, Paper, Stack, Text, TextInput } from '@mantine/core';
+import { Button, Group, Paper, SegmentedControl, Stack, Text, TextInput } from '@mantine/core';
+import { useState } from 'react';
 import { Panel } from '../../components/Panel';
-import { defenderFrom } from './datasheet-form';
+import { defenderFrom, defenderFromList } from './datasheet-form';
 import { newGroup, type DefenderForm, type GroupRow } from './form-state';
 import { Check, Num } from './inputs';
+import { ListPicker } from './ListPicker';
 import { UnitPicker } from './UnitPicker';
 
 function GroupEditor({
@@ -110,18 +112,40 @@ export function DefenderPanel({
   defender: DefenderForm;
   onChange: (next: DefenderForm) => void;
 }) {
+  const [from, setFrom] = useState<'unit' | 'list'>('unit');
   const set = (patch: Partial<DefenderForm>) => {
     onChange({ ...defender, ...patch });
   };
   return (
     <Panel title="Defender">
       <Stack gap="md">
-        <UnitPicker
-          label="Defender"
-          onPick={(sheet, size, attached) => {
-            onChange(defenderFrom(sheet, size, attached, defender));
+        <SegmentedControl
+          size="xs"
+          aria-label="Defender source"
+          data={[
+            { value: 'unit', label: 'Any unit' },
+            { value: 'list', label: 'From a list' },
+          ]}
+          value={from}
+          onChange={(value) => {
+            setFrom(value === 'list' ? 'list' : 'unit');
           }}
         />
+        {from === 'unit' ? (
+          <UnitPicker
+            label="Defender"
+            onPick={(sheet, size, attached) => {
+              onChange(defenderFrom(sheet, size, attached, defender));
+            }}
+          />
+        ) : (
+          <ListPicker
+            label="Defender"
+            onPick={(list, index) => {
+              onChange(defenderFromList(list, index, defender));
+            }}
+          />
+        )}
         {defender.source !== null && (
           <Text size="xs" c="dimmed">{`From datasheet: ${defender.source}`}</Text>
         )}
