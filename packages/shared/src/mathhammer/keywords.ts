@@ -62,3 +62,32 @@ export function readKeywords(names: string[], targetKeywords: string[]): WeaponK
   if (out.sustainedHits !== null) out.sustainedHits = out.sustainedHits.toUpperCase();
   return out;
 }
+
+/** Whether read keywords change anything beyond Anti. */
+const changesNumbers = (read: WeaponKeywords) =>
+  JSON.stringify({ ...read, anti: [] }) !== JSON.stringify({ ...NO_KEYWORDS, anti: [] });
+
+/**
+ * What one datasheet keyword does against this target: it applies, it doesn't apply here (Anti
+ * for another keyword, a condition the target fails), or null when it never changes the numbers
+ * (Hazardous, Pistol…).
+ */
+export function keywordEffect(
+  name: string,
+  targetKeywords: string[],
+): 'applies' | 'not here' | null {
+  const target = new Set(targetKeywords.map((k) => k.toUpperCase()));
+  const read = readKeywords([name], targetKeywords);
+  const tidied = tidy(name);
+  if (ANTI.test(tidied)) {
+    return read.anti.some((a) => a.keyword === '*' || target.has(a.keyword))
+      ? 'applies'
+      : 'not here';
+  }
+  if (changesNumbers(read)) return 'applies';
+  const condition = CONDITION.exec(tidied);
+  if (condition !== null && changesNumbers(readKeywords([condition[1] ?? ''], []))) {
+    return 'not here';
+  }
+  return null;
+}

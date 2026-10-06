@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readKeywords } from './keywords';
+import { keywordEffect, readKeywords } from './keywords';
 import { NO_KEYWORDS } from './weapons';
 
 describe('readKeywords', () => {
@@ -81,5 +81,22 @@ describe('readKeywords', () => {
       { keyword: '*', value: 2 },
     ]);
     expect(readKeywords(['ANTI-non-MONSTER/VEHICLE 2+'], ['VEHICLE']).anti).toEqual([]);
+  });
+});
+
+describe('keywordEffect', () => {
+  it('says whether a datasheet keyword applies to this target', () => {
+    expect(keywordEffect('Anti-monster 3+', ['MONSTER', 'CHARACTER'])).toBe('applies');
+    expect(keywordEffect('Anti-monster 3+', ['INFANTRY'])).toBe('not here');
+    expect(keywordEffect('Anti-non-character 4+', ['CHARACTER'])).toBe('not here');
+    expect(keywordEffect('Anti-non-character 4+', ['INFANTRY'])).toBe('applies');
+    expect(keywordEffect('LETHAL HITS: non-MONSTER/VEHICLE', ['VEHICLE'])).toBe('not here');
+    expect(keywordEffect('LETHAL HITS: non-MONSTER/VEHICLE', ['INFANTRY'])).toBe('applies');
+    expect(keywordEffect('Sustained Hits 1', [])).toBe('applies');
+  });
+
+  it('gives nothing for names that change no numbers', () => {
+    expect(keywordEffect('Hazardous', ['INFANTRY'])).toBeNull();
+    expect(keywordEffect('Pistol', [])).toBeNull();
   });
 });

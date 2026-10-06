@@ -2,7 +2,13 @@ import { Button, Group, SegmentedControl, Stack, Text } from '@mantine/core';
 import { useState } from 'react';
 import { Panel } from '../../components/Panel';
 import { attackerRows, attackerRowsFromList } from './datasheet-form';
-import { newWeapon, sitsOut, type MathhammerForm, type WeaponRow } from './form-state';
+import {
+  newWeapon,
+  sitsOut,
+  targetKeywordsOf,
+  type MathhammerForm,
+  type WeaponRow,
+} from './form-state';
 import { DiceInput } from './inputs';
 import { ListPicker } from './ListPicker';
 import { SwitchesEditor } from './SwitchesEditor';
@@ -94,6 +100,7 @@ export function AttackerPanel({
             unit={form.unit}
             bestName={best[weapon.key] ?? null}
             sitsOut={sitsOut(form, weapon)}
+            targetKeywords={targetKeywordsOf(form.defender)}
             onChange={(patch) => {
               setWeapons(form.weapons.map((w) => (w.key === weapon.key ? { ...w, ...patch } : w)));
             }}

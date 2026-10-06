@@ -1,4 +1,4 @@
-import type { WeaponMods } from '@bcp/shared';
+import { keywordEffect, type WeaponMods } from '@bcp/shared';
 import { Button, Group, Paper, Select, Stack, Text, TextInput } from '@mantine/core';
 import type { WeaponRow } from './form-state';
 import { Check, CheckGrid, DiceInput, Num } from './inputs';
@@ -12,6 +12,7 @@ export function WeaponEditor({
   unit,
   bestName,
   sitsOut,
+  targetKeywords,
   onChange,
   onMove,
   onRemove,
@@ -25,6 +26,8 @@ export function WeaponEditor({
   bestName: string | null;
   /** Why the weapon doesn't attack in this phase; null when it does. */
   sitsOut: string | null;
+  /** The defender's keywords, to say which datasheet keywords apply. */
+  targetKeywords: string[];
   onChange: (patch: Partial<WeaponRow>) => void;
   onMove: (by: -1 | 1) => void;
   onRemove: () => void;
@@ -183,7 +186,16 @@ export function WeaponEditor({
           </Group>
         )}
         {w.profiles.length > 0 && w.keywordNames.length > 0 && !picked && (
-          <Text size="xs" c="dimmed">{`From datasheet: ${w.keywordNames.join(', ')}`}</Text>
+          <Text size="xs" c="dimmed">{`From datasheet: ${w.keywordNames
+            .map((name) => {
+              const effect = keywordEffect(name, targetKeywords);
+              return effect === 'applies'
+                ? `${name} ✓`
+                : effect === 'not here'
+                  ? `${name} (not this target)`
+                  : name;
+            })
+            .join(', ')}`}</Text>
         )}
         <CheckGrid>
           <Check
@@ -297,9 +309,9 @@ export function WeaponEditor({
           <TextInput
             size="xs"
             label="Anti"
-            placeholder="INFANTRY 4+"
+            placeholder="Extra, e.g. INFANTRY 4+"
             value={w.anti}
-            w={160}
+            w={190}
             onChange={(event) => {
               onChange({ anti: event.currentTarget.value });
             }}

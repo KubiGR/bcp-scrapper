@@ -274,6 +274,13 @@ const merge = (typed: WeaponKeywords, read: WeaponKeywords): WeaponKeywords => (
   melta: typed.melta ?? read.melta,
 });
 
+/** The defender's keywords, upper-case, from the comma-separated field. */
+export const targetKeywordsOf = (defender: DefenderForm) =>
+  defender.keywords
+    .split(',')
+    .map((k) => k.trim().toUpperCase())
+    .filter((k) => k !== '');
+
 /**
  * The form as an engine calculation, or what can't be read in it. `chosen` gives the profile
  * tried for each 'best' row (by row key; the first profile otherwise).
@@ -282,10 +289,7 @@ export function toCalculation(
   form: MathhammerForm,
   chosen: Record<string, number> = {},
 ): { calculation: Calculation } | { error: string } {
-  const targetKeywords = form.defender.keywords
-    .split(',')
-    .map((k) => k.trim().toUpperCase())
-    .filter((k) => k !== '');
+  const targetKeywords = targetKeywordsOf(form.defender);
   const problems: string[] = [];
   const dice = (label: string, text: string) => {
     if (parseDice(text) === null)
