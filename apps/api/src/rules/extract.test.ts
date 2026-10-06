@@ -114,6 +114,20 @@ describe('extractUnits', () => {
     expect(sheet('Boyz')).toMatchObject({ stealth: true, fnp: null, damaged: null });
   });
 
+  it('reads abilities that reduce or halve the Damage of attacks against the model', () => {
+    expect(sheet('Warboss')?.damageReduction).toEqual({
+      ability: 'Necrodermis',
+      minus: 1,
+      halve: false,
+    });
+    expect(sheet('Captain')?.damageReduction).toEqual({
+      ability: 'Formidably Resilient',
+      minus: 0,
+      halve: true,
+    });
+    expect(sheet('Intercessor Squad')?.damageReduction).toBeNull();
+  });
+
   it('keeps the names of wargear that isn’t a weapon', () => {
     expect(sheet('Captain')?.wargear).toEqual(['Relic Shield']);
     expect(sheet('Intercessor Squad')?.wargear).toEqual([]);

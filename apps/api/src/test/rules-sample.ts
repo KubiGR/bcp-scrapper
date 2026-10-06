@@ -152,6 +152,24 @@ export const sampleTables = (): Record<string, unknown[]> => ({
       abilityType: 'datasheet',
       ...loc({ name: 'Bolter Discipline', rules: 'Re-roll a hit roll of <b>1</b>.' }),
     },
+    {
+      id: 'ab-necro',
+      abilityType: 'datasheet',
+      ...loc({
+        name: 'Necrodermis',
+        rules:
+          'Each time an attack is allocated to this model, subtract 1 from the Damage characteristic of that attack.',
+      }),
+    },
+    {
+      id: 'ab-halve',
+      abilityType: 'datasheet',
+      ...loc({
+        name: 'Formidably Resilient',
+        rules:
+          'Each time an attack is allocated to this model, halve the Damage characteristic of that attack.',
+      }),
+    },
   ],
   datasheet_datasheet_ability: [
     { datasheetId: 'ds-int', datasheetAbilityId: 'ab-bolter', displayOrder: 1 },
@@ -159,6 +177,8 @@ export const sampleTables = (): Record<string, unknown[]> => ({
     { datasheetId: 'ds-boyz', datasheetAbilityId: 'ab-stealth', displayOrder: 1 },
     { datasheetId: 'ds-boss', datasheetAbilityId: 'ab-fnp', displayOrder: 1 },
     { datasheetId: 'ds-boss', datasheetAbilityId: 'ab-damaged', displayOrder: 2 },
+    { datasheetId: 'ds-boss', datasheetAbilityId: 'ab-necro', displayOrder: 3 },
+    { datasheetId: 'ds-cap', datasheetAbilityId: 'ab-halve', displayOrder: 1 },
   ],
   wargear_item: [
     { id: 'wi-br', wargearType: 'weapon', ...loc({ name: 'Bolt rifle' }) },

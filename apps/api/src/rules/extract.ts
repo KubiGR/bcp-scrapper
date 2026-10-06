@@ -11,7 +11,7 @@ import {
 import { readJsLiteral } from './js-literal';
 
 /** Bump when the extraction changes: a site holding data read the old way reads it again. */
-export const RULES_FORMAT = 3;
+export const RULES_FORMAT = 4;
 
 /** 39k.pro's data wasn't where or what it should be: the site changed. */
 export class RulesShapeError extends Error {
@@ -397,6 +397,9 @@ export function extractUnits(tables: Record<string, unknown>): UnitData {
       fnp: fnps.length > 0 ? Math.min(...fnps) : null,
       stealth: coreNames.some((name) => /^Stealth$/i.test(name)),
       damaged: damagedCore[0] ?? damagedText[0] ?? null,
+      damageReduction: damageReductionOf(
+        linked.map((row) => ({ name: enText(row, 'name'), text: enText(row, 'rules') })),
+      ),
       abilities: linked
         .filter(
           (row) => field(row, 'abilityType') !== 'core' && field(row, 'abilityType') !== 'faction',
@@ -408,6 +411,19 @@ export function extractUnits(tables: Record<string, unknown>): UnitData {
   });
 
   return { factions, datasheets: datasheets.filter((d) => d.models.length > 0) };
+}
+
+/**
+ * The first ability that subtracts from ("subtract 1 from the Damage characteristic") or halves
+ * the Damage of attacks against the model, e.g. Necrodermis.
+ */
+function damageReductionOf(abilities: { name: string; text: string }[]) {
+  for (const { name, text } of abilities) {
+    const minus = /subtract (\d+) from the Damage characteristic/i.exec(text);
+    const halve = /halve the Damage characteristic/i.test(text);
+    if (minus !== null || halve) return { ability: name, minus: Number(minus?.[1] ?? 0), halve };
+  }
+  return null;
 }
 
 /** Finds 39k.pro's data in its script, reads it as text (never runs it) and extracts the units. */

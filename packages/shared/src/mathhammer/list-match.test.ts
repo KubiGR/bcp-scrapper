@@ -17,6 +17,7 @@ const sheet = (
   fnp: null,
   stealth: false,
   damaged: null,
+  damageReduction: null,
   abilities: [],
   leads: [],
   supports: [],

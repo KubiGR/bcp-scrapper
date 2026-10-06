@@ -63,6 +63,10 @@ export const UnitDatasheetSchema = z.object({
   wargear: z.array(z.string()),
   fnp: z.number().int().nullable(),
   stealth: z.boolean(),
+  /** An ability subtracting from (or halving) the Damage of attacks allocated to its models. */
+  damageReduction: z
+    .object({ ability: z.string(), minus: z.number().int(), halve: z.boolean() })
+    .nullable(),
   /** Damaged X: the model is damaged at X or fewer wounds left. */
   damaged: z.number().int().nullable(),
   /** The datasheet's own abilities (for reading, step 3). */

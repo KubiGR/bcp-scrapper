@@ -24,6 +24,7 @@ const sheet = (s: Partial<UnitDatasheet> & Pick<UnitDatasheet, 'id' | 'name'>): 
   fnp: null,
   stealth: false,
   damaged: null,
+  damageReduction: null,
   abilities: [],
   leads: [],
   supports: [],
