@@ -1,9 +1,14 @@
-import { factionFamily, type UnitData } from '@bcp/shared';
+import { factionFamily, matchList, readListUnits, type UnitData } from '@bcp/shared';
 import { Hono } from 'hono';
+import { z } from 'zod';
 import type { AuthEnv } from '../auth/middleware';
 import type { Db } from '../db/client';
 import { NotFoundError } from '../errors';
+import { findPlayerList } from '../repo/lists';
+import { searchStoredLists } from '../repo/mathhammer-lists';
 import { loadUnits } from '../repo/rules';
+import { parseInput } from '../validation';
+import { requireJson } from './require-json';
 
 async function unitData(db: Db): Promise<UnitData> {
   const loaded = await loadUnits(db);
@@ -15,7 +20,9 @@ async function unitData(db: Db): Promise<UnitData> {
   return loaded.data;
 }
 
-/** The factions with units, and a faction's datasheets, for Mathhammer's pickers. */
+const PastedListSchema = z.object({ text: z.string().trim().min(1).max(60_000) });
+
+/** The factions with units, a faction's datasheets, and army lists read into units. */
 export function mathhammerRoutes(deps: { db: Db }) {
   return new Hono<AuthEnv>()
     .get('/mathhammer/factions', async (c) => {
@@ -46,5 +53,17 @@ export function mathhammerRoutes(deps: { db: Db }) {
           .filter((d) => d.factions.some((f) => family.includes(f)))
           .sort((a, b) => a.name.localeCompare(b.name)),
       });
+    })
+    .post('/mathhammer/list', requireJson, async (c) => {
+      const { text } = parseInput(PastedListSchema, await c.req.json<unknown>().catch(() => null));
+      return c.json(matchList(readListUnits(text), await unitData(deps.db)));
+    })
+    .get('/mathhammer/lists', async (c) =>
+      c.json({ lists: await searchStoredLists(deps.db, c.req.query('search') ?? '') }),
+    )
+    .get('/mathhammer/lists/:playerId', async (c) => {
+      const text = (await findPlayerList(deps.db, c.req.param('playerId')))?.text ?? null;
+      if (text === null) throw new NotFoundError('No stored list for this player');
+      return c.json(matchList(readListUnits(text), await unitData(deps.db)));
     });
 }

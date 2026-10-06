@@ -189,4 +189,76 @@ describe('matchList', () => {
       { modelId: 'sgt', models: 1, weapons: [] },
     ]);
   });
+
+  it('matches renamed weapons: one weapon containing the name, or a datasheet’s only melee weapon', () => {
+    const melee = {
+      name: 'x',
+      melee: true,
+      range: null,
+      attacks: '1',
+      skill: 3,
+      strength: 4,
+      ap: 0,
+      damage: '1',
+      keywords: [],
+    };
+    const scouts: UnitData = {
+      factions: data.factions,
+      datasheets: [
+        sheet({
+          id: 'sc',
+          name: 'Scout Squad',
+          weapons: [
+            { id: 'cs', name: 'Chainsword', profiles: [melee] },
+            { id: 'ck', name: 'Combat Knife', profiles: [melee] },
+            { id: 'bg', name: 'Boltgun', profiles: [] },
+          ],
+        }),
+        sheet({
+          id: 'ls',
+          name: 'Land Speeder',
+          weapons: [
+            { id: 'hb', name: 'Heavy Bolter', profiles: [] },
+            { id: 'ah', name: 'Armoured Hull', profiles: [melee] },
+          ],
+        }),
+      ],
+    };
+    const list = matchList(
+      {
+        army: null,
+        units: [
+          {
+            name: 'Scout Squad',
+            points: 70,
+            attachedTo: null,
+            groups: [
+              {
+                name: null,
+                count: 5,
+                wargear: [
+                  { name: 'Astartes chainsword', count: 1 },
+                  { name: 'Close combat weapon', count: 4 },
+                ],
+              },
+            ],
+          },
+          {
+            name: 'Land Speeder',
+            points: 70,
+            attachedTo: null,
+            groups: [
+              { name: null, count: 1, wargear: [{ name: 'Close combat weapon', count: 1 }] },
+            ],
+          },
+        ],
+      },
+      scouts,
+    );
+    // The scouts have two melee weapons, so "Close combat weapon" stays unread there.
+    expect(list.units[0]?.groups[0]?.weapons).toEqual([{ weaponId: 'cs', count: 1 }]);
+    expect(list.units[0]?.unread).toEqual(['Close combat weapon']);
+    expect(list.units[1]?.groups[0]?.weapons).toEqual([{ weaponId: 'ah', count: 1 }]);
+    expect(list.units[1]?.unread).toEqual([]);
+  });
 });

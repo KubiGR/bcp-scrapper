@@ -115,6 +115,17 @@ export type MatchedGroup = z.infer<typeof MatchedGroupSchema>;
 export type MatchedUnit = z.infer<typeof MatchedUnitSchema>;
 export type MathhammerList = z.infer<typeof MathhammerListSchema>;
 
+/** GET /api/mathhammer/lists?search=: stored lists by player or event. */
+export const StoredListSchema = z.object({
+  playerId: z.string(),
+  player: z.string(),
+  event: z.string(),
+  faction: z.string().nullable(),
+  date: z.iso.datetime(),
+});
+export const MathhammerListsSchema = z.object({ lists: z.array(StoredListSchema) });
+export type StoredList = z.infer<typeof StoredListSchema>;
+
 /** GET /api/rules: the data read from 39k.pro, when, and the last check's error. */
 export const RulesStatusSchema = z.object({
   checkedAt: z.iso.datetime().nullable(),

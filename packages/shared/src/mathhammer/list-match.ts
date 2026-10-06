@@ -56,6 +56,26 @@ function findSheet(name: string, family: UnitDatasheet[], all: UnitDatasheet[]) 
 const byName = <T extends { name: string }>(items: T[], name: string) =>
   items.find((i) => loose(i.name) === loose(name));
 
+/**
+ * A weapon written under an older name (lists from older GW data): the only weapon whose name
+ * contains it or is contained in it ("Astartes chainsword" → "Chainsword"), or, for a "close
+ * combat weapon", the datasheet's only melee weapon ("Combat Knife", "Armoured Hull").
+ */
+function renamedWeapon(sheet: UnitDatasheet, name: string) {
+  const key = loose(name);
+  if (/^close[- ]?combat weapons?$/i.test(name.trim())) {
+    const melee = sheet.weapons.filter(
+      (w) => w.profiles.length > 0 && w.profiles.every((p) => p.melee),
+    );
+    return melee.length === 1 ? melee[0] : undefined;
+  }
+  const near = sheet.weapons.filter((w) => {
+    const other = loose(w.name);
+    return Math.min(other.length, key.length) >= 5 && (other.includes(key) || key.includes(other));
+  });
+  return near.length === 1 ? near[0] : undefined;
+}
+
 /** The model counts of the smallest size with this total, else all to the most numerous kind. */
 function countsFor(sheet: UnitDatasheet, total: number): { modelId: string; count: number }[] {
   const size = sheet.sizes.find((s) => s.models.reduce((sum, m) => sum + m.count, 0) === total);
@@ -75,7 +95,7 @@ function matchGroups(groups: ListModels[], sheet: UnitDatasheet) {
     const weapons: MatchedGroup['weapons'] = [];
     const extraModels: MatchedGroup[] = [];
     for (const item of group.wargear) {
-      const weapon = byName(sheet.weapons, item.name);
+      const weapon = byName(sheet.weapons, item.name) ?? renamedWeapon(sheet, item.name);
       if (weapon) {
         weapons.push({ weaponId: weapon.id, count: item.count });
         continue;
