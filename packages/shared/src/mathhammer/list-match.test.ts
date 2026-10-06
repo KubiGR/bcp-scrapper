@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { UnitData, UnitDatasheet } from './data';
 import { matchList } from './list-match';
+import { readListUnits } from './list-reader';
 
 const sheet = (
   over: Partial<UnitDatasheet> & Pick<UnitDatasheet, 'id' | 'name'>,
@@ -160,33 +161,44 @@ describe('matchList', () => {
     ]);
   });
 
-  it('turns a wargear name that is a model kind into models of that kind', () => {
+  it('turns a wargear name that is a model kind into models of that kind, within the unit’s count', () => {
     const list = matchList(
-      {
-        army: null,
-        units: [
-          {
-            name: 'Intercessor Squad',
-            points: 80,
-            attachedTo: null,
-            groups: [
-              {
-                name: null,
-                count: 4,
-                wargear: [
-                  { name: 'Intercessor Sergeant', count: 1 },
-                  { name: 'Bolt rifle', count: 4 },
-                ],
-              },
-            ],
-          },
-        ],
-      },
+      readListUnits(
+        `+ FACTION KEYWORD: Imperium - Space Marines\n\n5x Intercessor Squad (80 pts): Intercessor Sergeant, 4 with Bolt rifle\n`,
+      ),
       data,
     );
     expect(list.units[0]?.groups).toEqual([
       { modelId: 'int-m', models: 4, weapons: [{ weaponId: 'br', count: 4 }] },
       { modelId: 'sgt', models: 1, weapons: [] },
+    ]);
+  });
+
+  it('never counts a unit-level wargear line as a model', () => {
+    const list = matchList(
+      readListUnits(`T (2000 points)
+
+Space Marines
+Gladius Task Force (3 Detachment Points)
+Take and Hold
+Strike Force (2000 points)
+
+Intercessor Squad (80 points)
+  • 1x Auspex
+  • 1x Power fist
+  • 1x Intercessor Sergeant
+    • 1x Bolt rifle
+  • 4x Intercessor
+    • 4x Bolt rifle
+`),
+      data,
+    );
+    const groups = list.units[0]?.groups ?? [];
+    expect(groups.reduce((sum, g) => sum + g.models, 0)).toBe(5);
+    expect(groups.flatMap((g) => g.weapons)).toEqual([
+      { weaponId: 'pf', count: 1 },
+      { weaponId: 'br', count: 1 },
+      { weaponId: 'br', count: 4 },
     ]);
   });
 

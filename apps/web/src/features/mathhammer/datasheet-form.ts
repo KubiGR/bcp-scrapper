@@ -88,8 +88,8 @@ function listCarry(unit: UnitDatasheet, groups: MatchedGroup[]): Carry[] {
 
 /**
  * Weapon rows for groups of models: one row per weapon, counting every one carried. A model
- * fights with one melee weapon (plus Extra Attacks ones), so a group's several melee weapons
- * become one row whose profiles are all of theirs (Best).
+ * fights with one melee weapon (plus Extra Attacks ones), so melee weapons each model carries
+ * several of become one row whose profiles are all of theirs (Best).
  */
 function rowsOf(unit: UnitDatasheet, carry: Carry[], prefix: string): WeaponRow[] {
   const rows = new Map<string, { name: string; profiles: UnitProfile[]; models: number }>();
@@ -101,7 +101,10 @@ function rowsOf(unit: UnitDatasheet, carry: Carry[], prefix: string): WeaponRow[
   for (const group of carry) {
     const carried = group.weapons.filter(({ weapon }) => weapon.profiles.length > 0);
     const melee = carried.filter(({ weapon }) => meleeOnly(weapon));
-    const merged = melee.length > 1;
+    // Several melee weapons are a choice only when each model carries more than one (a list
+    // giving 7 chainblades and 2 eviscerators to 9 models gives each model one).
+    const meleeCarried = melee.reduce((sum, m) => sum + m.count, 0);
+    const merged = melee.length > 1 && meleeCarried > group.models;
     let mergedAdded = false;
     for (const { weapon, count } of carried) {
       if (!merged || !meleeOnly(weapon)) {

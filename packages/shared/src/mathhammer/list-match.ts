@@ -91,6 +91,10 @@ function matchGroups(groups: ListModels[], sheet: UnitDatasheet) {
   const out: MatchedGroup[] = [];
   const unread: string[] = [];
   const onlyKind = sheet.models.length === 1 ? sheet.models[0]?.id : undefined;
+  // A unit with model lines (GW app) writes unit-wide wargear in unnamed lines beside them.
+  const hasModelLines = groups.some(
+    (g) => g.name !== null && byName(sheet.models, g.name) !== undefined,
+  );
   for (const group of groups) {
     const weapons: MatchedGroup['weapons'] = [];
     const extraModels: MatchedGroup[] = [];
@@ -115,12 +119,33 @@ function matchGroups(groups: ListModels[], sheet: UnitDatasheet) {
       if (!sheet.wargear.some((w) => loose(w) === loose(item.name))) unread.push(item.name);
     }
     const named = group.name === null ? undefined : byName(sheet.models, group.name);
-    if (named || onlyKind !== undefined) {
-      out.push({ modelId: named?.id ?? onlyKind ?? null, models: group.count, weapons });
+    // Models named as wargear ("Intercessor Sergeant, 4 with …") are part of the unit's count.
+    const models = Math.max(0, group.count - extraModels.reduce((sum, m) => sum + m.models, 0));
+    if (named) {
+      out.push({ modelId: named.id, models: group.count, weapons });
+    } else if (hasModelLines || models === 0) {
+      // Wargear the list writes for the whole unit (a line beside the model lines): no models.
+      if (weapons.length > 0) out.push({ modelId: null, models: 0, weapons });
+    } else if (onlyKind !== undefined) {
+      out.push({ modelId: onlyKind, models, weapons });
     } else {
-      // Unnamed models of several kinds: counts from the size, the weapons on the biggest kind.
-      const kinds = countsFor(sheet, group.count);
-      const biggest = [...kinds].sort((a, b) => b.count - a.count)[0]?.modelId;
+      // Unnamed models of several kinds: counts from the size (or, beside models named as
+      // wargear, all of the most numerous other kind), the weapons on the biggest kind.
+      const others = extraModels.map((m) => m.modelId);
+      const kinds =
+        others.length === 0
+          ? countsFor(sheet, models)
+          : countsFor(
+              {
+                ...sheet,
+                sizes: sheet.sizes.map((size) => ({
+                  ...size,
+                  models: size.models.filter((m) => !others.includes(m.modelId)),
+                })),
+              },
+              models,
+            );
+      const biggest = [...kinds].sort((x, y) => y.count - x.count)[0]?.modelId;
       for (const k of kinds) {
         out.push({
           modelId: k.modelId,

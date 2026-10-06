@@ -133,3 +133,59 @@ describe('list units', () => {
     expect(defender.attached).toBe(true);
   });
 });
+
+describe('list melee weapons', () => {
+  const knights = (groups: MathhammerList['units'][number]['groups']): MathhammerList => ({
+    army: null,
+    datasheets: [KNIGHT],
+    units: [
+      {
+        label: 'Knights',
+        name: 'Knights',
+        datasheetId: KNIGHT.id,
+        attachedTo: null,
+        unread: [],
+        groups,
+      },
+    ],
+  });
+
+  it('keeps each melee weapon’s own row when the list gives them to different models', () => {
+    const rows = attackerRowsFromList(
+      knights([
+        {
+          modelId: 'm-knight',
+          models: 3,
+          weapons: [
+            { weaponId: 'wi-chain', count: 2 },
+            { weaponId: 'wi-gaunt', count: 1 },
+          ],
+        },
+      ]),
+      0,
+    );
+    expect(rows.map((r) => [r.name, r.models])).toEqual([
+      ['Reaper chainsword', 2],
+      ['Thunderstrike gauntlet', 1],
+    ]);
+  });
+
+  it('makes one Best row when every model carries several melee weapons', () => {
+    const rows = attackerRowsFromList(
+      knights([
+        {
+          modelId: 'm-knight',
+          models: 1,
+          weapons: [
+            { weaponId: 'wi-chain', count: 1 },
+            { weaponId: 'wi-gaunt', count: 1 },
+          ],
+        },
+      ]),
+      0,
+    );
+    expect(rows.map((r) => [r.name, r.models, r.profile])).toEqual([
+      ['Reaper chainsword / Thunderstrike gauntlet', 1, 'best'],
+    ]);
+  });
+});
