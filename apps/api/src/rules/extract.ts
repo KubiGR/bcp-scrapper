@@ -11,7 +11,7 @@ import {
 import { readJsLiteral } from './js-literal';
 
 /** Bump when the extraction changes: a site holding data read the old way reads it again. */
-export const RULES_FORMAT = 2;
+export const RULES_FORMAT = 3;
 
 /** 39k.pro's data wasn't where or what it should be: the site changed. */
 export class RulesShapeError extends Error {
@@ -358,6 +358,12 @@ export function extractUnits(tables: Record<string, unknown>): UnitData {
         ? [weaponOf(itemId, item)]
         : [];
     });
+    const wargear = weaponIds.flatMap((itemId) => {
+      const item = items.get(itemId);
+      return item !== undefined && field(item, 'wargearType') !== 'weapon'
+        ? [enText(item, 'name')]
+        : [];
+    });
     const linked = [...(abilityLinks.get(id) ?? [])].sort(byOrder).flatMap((link) => {
       const row = ability.get(field(link, 'datasheetAbilityId'));
       return row === undefined ? [] : [row];
@@ -387,6 +393,7 @@ export function extractUnits(tables: Record<string, unknown>): UnitData {
       sizes,
       loadout,
       weapons,
+      wargear,
       fnp: fnps.length > 0 ? Math.min(...fnps) : null,
       stealth: coreNames.some((name) => /^Stealth$/i.test(name)),
       damaged: damagedCore[0] ?? damagedText[0] ?? null,

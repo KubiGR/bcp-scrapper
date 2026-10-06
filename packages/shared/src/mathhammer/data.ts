@@ -59,6 +59,8 @@ export const UnitDatasheetSchema = z.object({
     z.object({ modelId: z.string(), weaponId: z.string(), count: z.number().int() }),
   ),
   weapons: z.array(UnitWeaponSchema),
+  /** Wargear that isn't a weapon (Relic Shield, Vexilla): known, never "couldn't read". */
+  wargear: z.array(z.string()),
   fnp: z.number().int().nullable(),
   stealth: z.boolean(),
   /** Damaged X: the model is damaged at X or fewer wounds left. */

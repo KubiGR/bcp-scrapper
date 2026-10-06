@@ -114,6 +114,11 @@ describe('extractUnits', () => {
     expect(sheet('Boyz')).toMatchObject({ stealth: true, fnp: null, damaged: null });
   });
 
+  it('keeps the names of wargear that isn’t a weapon', () => {
+    expect(sheet('Captain')?.wargear).toEqual(['Relic Shield']);
+    expect(sheet('Intercessor Squad')?.wargear).toEqual([]);
+  });
+
   it('knows which units a character can lead, by name or by keyword', () => {
     expect(sheet('Captain')?.leads).toEqual(['ds-int']);
     expect(sheet('Warboss')?.leads).toEqual(['ds-boyz']);

@@ -20,6 +20,7 @@ const sheet = (s: Partial<UnitDatasheet> & Pick<UnitDatasheet, 'id' | 'name'>): 
   sizes: [],
   loadout: [],
   weapons: [],
+  wargear: [],
   fnp: null,
   stealth: false,
   damaged: null,
