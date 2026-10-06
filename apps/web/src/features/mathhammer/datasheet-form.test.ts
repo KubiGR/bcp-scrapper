@@ -62,7 +62,7 @@ describe('attackerRows, several melee weapons on one model', () => {
 
 describe('defenderFrom', () => {
   it('makes one row per profile, a Character row per leader, and keeps the switches', () => {
-    const previous = { ...defaultForm().defender, damageReduction: 1 };
+    const previous = { ...defaultForm().defender, hitModifier: -1, damageReduction: 1 };
     const defender = defenderFrom(INTERCESSORS, 0, [CAPTAIN], previous);
     expect(defender.groups.map((g) => [g.name, g.models, g.invuln, g.fnp, g.character])).toEqual([
       ['Intercessor / Intercessor Sergeant', 5, null, null, false],
@@ -72,7 +72,34 @@ describe('defenderFrom', () => {
       source: 'Intercessor Squad + Captain',
       attached: true,
       keywords: 'INFANTRY, CHARACTER',
+      hitModifier: -1,
+      // The datasheets have no damage reduction: the old value goes.
+      damageReduction: 0,
+      damageNote: null,
+    });
+  });
+
+  it('ticks the unit’s own damage reduction and says which ability it is', () => {
+    const ctan = {
+      ...KNIGHT,
+      damageReduction: { ability: 'Necrodermis', minus: 1, halve: false },
+    };
+    expect(defenderFrom(ctan, 0, [], defaultForm().defender)).toMatchObject({
       damageReduction: 1,
+      halveDamage: false,
+      damageNote: 'Damage −1: Necrodermis',
+    });
+  });
+
+  it('only names an attached character’s damage reduction (it protects that model alone)', () => {
+    const captain = {
+      ...CAPTAIN,
+      damageReduction: { ability: 'Formidably Resilient', minus: 0, halve: true },
+    };
+    expect(defenderFrom(INTERCESSORS, 0, [captain], defaultForm().defender)).toMatchObject({
+      halveDamage: false,
+      damageReduction: 0,
+      damageNote: 'Captain only: Formidably Resilient (halve Damage), not ticked',
     });
   });
 });

@@ -149,6 +149,11 @@ export function DefenderPanel({
         {defender.source !== null && (
           <Text size="xs" c="dimmed">{`From datasheet: ${defender.source}`}</Text>
         )}
+        {defender.damageNote !== null && (
+          <Text size="xs" c="dimmed">
+            {defender.damageNote}
+          </Text>
+        )}
         <Text size="xs" c="dimmed">
           One row per kind of model; a leader is its own row with Character ticked. Sv 7 means no
           save.

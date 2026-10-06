@@ -194,6 +194,39 @@ function groupsOf(
   return rows;
 }
 
+const reductionText = (r: NonNullable<UnitDatasheet['damageReduction']>) =>
+  [r.halve ? 'halve Damage' : null, r.minus > 0 ? `Damage −${String(r.minus)}` : null]
+    .filter(Boolean)
+    .join(', ');
+
+/**
+ * The defender's damage switches from the unit's own ability (Necrodermis: Damage −1); an attached
+ * character's protects only that model, so it is named but not ticked.
+ */
+function damageFrom(
+  sheet: UnitDatasheet,
+  characters: UnitDatasheet[],
+): Pick<DefenderForm, 'damageReduction' | 'halveDamage' | 'damageNote'> {
+  const own = sheet.damageReduction;
+  const notes = [
+    ...(own === null ? [] : [`${capitalised(reductionText(own))}: ${own.ability}`]),
+    ...characters.flatMap((c) =>
+      c.damageReduction === null
+        ? []
+        : [
+            `${c.name} only: ${c.damageReduction.ability} (${reductionText(c.damageReduction)}), not ticked`,
+          ],
+    ),
+  ];
+  return {
+    damageReduction: own?.minus ?? 0,
+    halveDamage: own?.halve ?? false,
+    damageNote: notes.length === 0 ? null : notes.join('; '),
+  };
+}
+
+const capitalised = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
 /** The defender filled from a unit of this size and its attached characters; switches kept. */
 export function defenderFrom(
   sheet: UnitDatasheet,
@@ -212,6 +245,7 @@ export function defenderFrom(
     keywords: [...new Set(all.flatMap((unit) => unit.keywords))].join(', '),
     attached: attached.length > 0,
     stealth: all.every((unit) => unit.stealth),
+    ...damageFrom(sheet, attached),
   };
 }
 
@@ -281,5 +315,9 @@ export function defenderFromList(
     keywords: [...new Set(all.flatMap((s) => s.keywords))].join(', '),
     attached: characters.length > 0,
     stealth: all.every((s) => s.stealth),
+    ...damageFrom(
+      sheet,
+      characters.map((c) => c.sheet),
+    ),
   };
 }

@@ -78,6 +78,8 @@ export interface DefenderForm {
   woundModifier: number;
   damageReduction: number;
   halveDamage: boolean;
+  /** Where a picked datasheet's damage reduction came from (shown, never calculated). */
+  damageNote: string | null;
   savePenaltiesIgnored: boolean;
 }
 
@@ -175,6 +177,7 @@ export function defaultForm(): MathhammerForm {
       woundModifier: 0,
       damageReduction: 0,
       halveDamage: false,
+      damageNote: null,
       savePenaltiesIgnored: false,
     },
     situation: NO_SITUATION,
