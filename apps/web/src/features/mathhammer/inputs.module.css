@@ -1,0 +1,14 @@
+.checkCell {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--mantine-color-dark-4);
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mantine-color-dark-7);
+}
+
+.checkCell:has(input:checked) {
+  border-color: var(--mantine-color-blue-7);
+  background: color-mix(in srgb, var(--mantine-color-blue-9) 35%, var(--mantine-color-dark-7));
+}

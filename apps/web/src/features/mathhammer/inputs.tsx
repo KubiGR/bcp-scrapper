@@ -1,6 +1,7 @@
 import { Checkbox, NumberInput, Select, SimpleGrid, TextInput } from '@mantine/core';
 import type { Reroll } from '@bcp/shared';
-import { useState, type ReactNode } from 'react';
+import { Children, useState, type ReactNode } from 'react';
+import classes from './inputs.module.css';
 
 /**
  * A small whole-number field, kept within `min`/`max`; with `nullable`, empty means none.
@@ -188,11 +189,13 @@ export function CritSelect({
   );
 }
 
-/** Checkboxes in even columns, so their labels line up in rows. */
+/** Checkboxes in even columns, each in its own box (highlighted when ticked). */
 export function CheckGrid({ children }: { children: ReactNode }) {
   return (
-    <SimpleGrid cols={{ base: 2, xs: 3, md: 5 }} spacing="xs" verticalSpacing={6}>
-      {children}
+    <SimpleGrid cols={{ base: 2, xs: 3, md: 5 }} spacing="xs" verticalSpacing="xs">
+      {Children.map(children, (child) =>
+        child === null || child === false ? null : <div className={classes.checkCell}>{child}</div>,
+      )}
     </SimpleGrid>
   );
 }
