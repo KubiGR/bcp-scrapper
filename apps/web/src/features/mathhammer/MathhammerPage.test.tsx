@@ -25,6 +25,12 @@ describe('MathhammerPage', () => {
     expect(screen.getByRole('table', { name: 'Models slain, at least' })).toBeInTheDocument();
   });
 
+  it('shows each weapon step by step under the result', () => {
+    renderWithProviders(<MathhammerPage />);
+    const steps = within(screen.getByRole('table', { name: 'Step by step' }));
+    expect(steps.getAllByRole('rowheader').length).toBeGreaterThan(0);
+  });
+
   it('recalculates when a weapon changes', async () => {
     renderWithProviders(<MathhammerPage />);
     fireEvent.change(weapon().getByLabelText('Attacks'), { target: { value: '4' } });
