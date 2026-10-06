@@ -1520,7 +1520,7 @@ describe('ListPicker', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalled();
     });
-    const unit = await screen.findByRole('textbox', { name: 'Attacker list unit' });
+    const unit = await screen.findByRole('combobox', { name: 'Attacker list unit' });
     fireEvent.click(unit);
     fireEvent.click(await screen.findByRole('option', { name: 'Intercessor Squad ×5 + Captain' }));
     expect(screen.getByText('Couldn’t read: Twin dakkagun, Relic shield')).toBeInTheDocument();
@@ -1559,7 +1559,7 @@ describe('ListPicker', () => {
     const search = screen.getByRole('textbox', { name: 'Attacker BCP list' });
     fireEvent.change(search, { target: { value: 'Ada' } });
     fireEvent.click(await screen.findByRole('option', { name: /Ada · Big GT/ }));
-    expect(await screen.findByRole('textbox', { name: 'Attacker list unit' })).toBeInTheDocument();
+    expect(await screen.findByRole('combobox', { name: 'Attacker list unit' })).toBeInTheDocument();
   });
 });
 ```
@@ -1793,7 +1793,7 @@ it('fills the attacker from a pasted list unit, its attached character’s weapo
     target: { value: 'list' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Read list' }));
-  fireEvent.click(await screen.findByRole('textbox', { name: 'Attacker list unit' }));
+  fireEvent.click(await screen.findByRole('combobox', { name: 'Attacker list unit' }));
   fireEvent.click(await screen.findByRole('option', { name: 'Intercessor Squad ×5 + Captain' }));
   fireEvent.click(screen.getByRole('button', { name: 'Use' }));
   expect(
