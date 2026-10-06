@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Panel } from '../../components/Panel';
 import { defenderFrom, defenderFromList } from './datasheet-form';
 import { newGroup, type DefenderForm, type GroupRow } from './form-state';
-import { Check, Num } from './inputs';
+import { Check, CheckGrid, Num } from './inputs';
 import { ListPicker } from './ListPicker';
 import { UnitPicker } from './UnitPicker';
 
@@ -193,7 +193,7 @@ export function DefenderPanel({
             set({ keywords: event.currentTarget.value });
           }}
         />
-        <Group gap="sm" align="flex-end">
+        <CheckGrid>
           <Check
             label="Attached unit"
             checked={defender.attached}
@@ -236,16 +236,16 @@ export function DefenderPanel({
               set({ savePenaltiesIgnored: v });
             }}
           />
-          <Num
-            label="Damage -"
-            value={defender.damageReduction}
-            min={0}
-            w={80}
-            onChange={(v) => {
-              set({ damageReduction: v ?? 0 });
-            }}
-          />
-        </Group>
+        </CheckGrid>
+        <Num
+          label="Damage -"
+          value={defender.damageReduction}
+          min={0}
+          w={80}
+          onChange={(v) => {
+            set({ damageReduction: v ?? 0 });
+          }}
+        />
       </Stack>
     </Panel>
   );

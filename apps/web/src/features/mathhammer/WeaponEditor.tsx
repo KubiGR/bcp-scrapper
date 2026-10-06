@@ -1,7 +1,7 @@
 import type { WeaponMods } from '@bcp/shared';
 import { Button, Group, Paper, Select, Stack, Text, TextInput } from '@mantine/core';
 import type { WeaponRow } from './form-state';
-import { Check, DiceInput, Num } from './inputs';
+import { Check, CheckGrid, DiceInput, Num } from './inputs';
 import { SwitchesEditor } from './SwitchesEditor';
 
 /** One weapon: its profile on the first line, its keywords on the second. */
@@ -185,7 +185,7 @@ export function WeaponEditor({
         {w.profiles.length > 0 && w.keywordNames.length > 0 && !picked && (
           <Text size="xs" c="dimmed">{`From datasheet: ${w.keywordNames.join(', ')}`}</Text>
         )}
-        <Group gap="sm" align="flex-end">
+        <CheckGrid>
           <Check
             label="Torrent"
             checked={w.torrent}
@@ -249,7 +249,7 @@ export function WeaponEditor({
               onChange({ indirectFire: v });
             }}
           />
-        </Group>
+        </CheckGrid>
         <Group gap="xs" align="flex-end">
           <DiceInput
             label="Sustained Hits"
