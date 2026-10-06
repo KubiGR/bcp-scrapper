@@ -1,5 +1,12 @@
+import type { MathhammerList } from '@bcp/shared';
 import { describe, expect, it } from 'vitest';
-import { attackerRows, defenderFrom } from './datasheet-form';
+import {
+  attackerRows,
+  attackerRowsFromList,
+  defenderFrom,
+  defenderFromList,
+  pickableUnits,
+} from './datasheet-form';
 import { defaultForm } from './form-state';
 import { CAPTAIN, INTERCESSORS, KNIGHT } from './unit-fixtures';
 
@@ -67,5 +74,62 @@ describe('defenderFrom', () => {
       keywords: 'INFANTRY, CHARACTER',
       damageReduction: 1,
     });
+  });
+});
+
+describe('list units', () => {
+  const list: MathhammerList = {
+    army: 'Space Marines (Astartes)',
+    datasheets: [INTERCESSORS, CAPTAIN],
+    units: [
+      {
+        label: 'Captain',
+        name: 'Captain',
+        datasheetId: CAPTAIN.id,
+        attachedTo: 1,
+        unread: [],
+        groups: [
+          {
+            modelId: CAPTAIN.models[0]?.id ?? null,
+            models: 1,
+            weapons: [{ weaponId: CAPTAIN.weapons[0]?.id ?? '', count: 1 }],
+          },
+        ],
+      },
+      {
+        label: 'Intercessor Squad ×5',
+        name: 'Intercessor Squad',
+        datasheetId: INTERCESSORS.id,
+        attachedTo: null,
+        unread: ['Twin dakkagun'],
+        groups: INTERCESSORS.models.map((m, i) => ({
+          modelId: m.id,
+          models: i === 0 ? 1 : 4,
+          weapons: [{ weaponId: INTERCESSORS.weapons[0]?.id ?? '', count: i === 0 ? 1 : 4 }],
+        })),
+      },
+    ],
+  };
+
+  it('offers units, not the characters attached to them', () => {
+    expect(pickableUnits(list)).toEqual([{ index: 1, label: 'Intercessor Squad ×5 + Captain' }]);
+  });
+
+  it('makes one weapon row per weapon with the list’s total, plus the attached character’s', () => {
+    const rows = attackerRowsFromList(list, 1);
+    expect(rows.map((r) => [r.name, r.models])).toEqual([
+      [INTERCESSORS.weapons[0]?.name, 5],
+      [`Captain: ${CAPTAIN.weapons[0]?.name ?? ''}`, 1],
+    ]);
+  });
+
+  it('makes defender rows from the list’s model counts, the character as a CHARACTER row', () => {
+    const defender = defenderFromList(list, 1, defaultForm().defender);
+    expect(defender.groups.map((g) => [g.models, g.character])).toEqual([
+      [5, false],
+      [1, true],
+    ]);
+    expect(defender.source).toBe('Intercessor Squad + Captain');
+    expect(defender.attached).toBe(true);
   });
 });
