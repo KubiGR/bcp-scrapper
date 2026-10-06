@@ -88,6 +88,33 @@ export const UnitDataSchema = z.object({
 });
 export type UnitData = z.infer<typeof UnitDataSchema>;
 
+export const MatchedGroupSchema = z.object({
+  /** The datasheet model kind; null only when the datasheet has none. */
+  modelId: z.string().nullable(),
+  models: z.number().int(),
+  weapons: z.array(z.object({ weaponId: z.string(), count: z.number().int() })),
+});
+export const MatchedUnitSchema = z.object({
+  /** As written, with the model count: "Custodian Wardens ×5". */
+  label: z.string(),
+  name: z.string(),
+  datasheetId: z.string().nullable(),
+  groups: z.array(MatchedGroupSchema),
+  attachedTo: z.number().int().nullable(),
+  /** Wargear (or the unit) not found in the data. */
+  unread: z.array(z.string()),
+});
+/** POST /api/mathhammer/list, GET /api/mathhammer/lists/:playerId. */
+export const MathhammerListSchema = z.object({
+  army: z.string().nullable(),
+  units: z.array(MatchedUnitSchema),
+  /** The datasheets the units use. */
+  datasheets: z.array(UnitDatasheetSchema),
+});
+export type MatchedGroup = z.infer<typeof MatchedGroupSchema>;
+export type MatchedUnit = z.infer<typeof MatchedUnitSchema>;
+export type MathhammerList = z.infer<typeof MathhammerListSchema>;
+
 /** GET /api/rules: the data read from 39k.pro, when, and the last check's error. */
 export const RulesStatusSchema = z.object({
   checkedAt: z.iso.datetime().nullable(),
