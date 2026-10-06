@@ -38,7 +38,7 @@ function StepRow({ step, strong = false }: { step: WeaponStep; strong?: boolean 
       <Cell
         value={two(step.hits)}
         detail={parts([
-          [step.critHits, 'crit'],
+          [step.critHits, 'critical hits'],
           [step.sustainedHits, '+sustained'],
           [step.lethalHits, 'lethal'],
         ])}
@@ -46,7 +46,7 @@ function StepRow({ step, strong = false }: { step: WeaponStep; strong?: boolean 
       <Cell
         value={two(step.wounds)}
         detail={parts([
-          [step.critWounds, 'crit'],
+          [step.critWounds, 'critical wounds'],
           [step.devastating, 'devastating'],
         ])}
       />
@@ -110,7 +110,8 @@ export function Breakdown({ steps }: { steps: WeaponStep[] }) {
         </Table>
       </Table.ScrollContainer>
       <Text size="xs" c="dimmed">
-        Averages. Damage dealt is wounds the target lost, after damage reduction, Feel No Pain and
+        Averages. Critical hits are unmodified 6s to hit; critical wounds are 6s to wound, or lower
+        with Anti. Damage dealt is wounds the target lost, after damage reduction, Feel No Pain and
         overkill; each weapon counts after the ones above it.
         {approximate &&
           ' ≈: the target’s models save differently, so unsaved wounds use the save of the models hit first.'}

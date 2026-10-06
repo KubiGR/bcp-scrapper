@@ -62,8 +62,10 @@ describe('Breakdown', () => {
     expect(screen.getByRole('table', { name: 'Step by step' })).toBeInTheDocument();
     const rifle = row('Bolt rifle');
     expect(rifle.getByText('8.33')).toBeInTheDocument();
-    expect(rifle.getByText('1.67 crit · +1.67 sustained · 1.67 lethal')).toBeInTheDocument();
-    expect(rifle.getByText('1.11 crit')).toBeInTheDocument();
+    expect(
+      rifle.getByText('1.67 critical hits · +1.67 sustained · 1.67 lethal'),
+    ).toBeInTheDocument();
+    expect(rifle.getByText('1.11 critical wounds')).toBeInTheDocument();
     const fist = row('Power fist');
     expect(fist.getByText('0.25 devastating')).toBeInTheDocument();
     // Saves that differ between the target's models: the first allocated's save, marked.

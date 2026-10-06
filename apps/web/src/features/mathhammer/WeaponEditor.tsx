@@ -5,6 +5,14 @@ import { Check, CheckGrid, DiceInput, Num } from './inputs';
 import { SwitchesEditor } from './SwitchesEditor';
 
 /** One weapon: its profile on the first line, its keywords on the second. */
+/** The Anti box's hint: the datasheet's Anti (always applied), the box being for more. */
+const antiHint = (keywordNames: string[]) => {
+  const anti = keywordNames.filter((name) => /^anti/i.test(name.trim()));
+  return anti.length === 0
+    ? 'Extra, e.g. INFANTRY 4+'
+    : `Datasheet: ${anti.join(', ')}; add more here`;
+};
+
 export function WeaponEditor({
   index,
   weapon,
@@ -309,9 +317,9 @@ export function WeaponEditor({
           <TextInput
             size="xs"
             label="Anti"
-            placeholder="Extra, e.g. INFANTRY 4+"
+            placeholder={antiHint(w.keywordNames)}
             value={w.anti}
-            w={190}
+            w={w.keywordNames.some((name) => /^anti/i.test(name.trim())) ? 340 : 190}
             onChange={(event) => {
               onChange({ anti: event.currentTarget.value });
             }}

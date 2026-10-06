@@ -51,8 +51,11 @@ describe('WeaponEditor', () => {
     ).toBeInTheDocument();
   });
 
-  it('says the Anti box is for extra Anti', () => {
+  it('shows the datasheet’s Anti in the Anti box, which takes extra ones', () => {
     editor([]);
-    expect(screen.getByLabelText('Anti')).toHaveAttribute('placeholder', 'Extra, e.g. INFANTRY 4+');
+    expect(screen.getByLabelText('Anti')).toHaveAttribute(
+      'placeholder',
+      'Datasheet: Anti-monster 3+, Anti-vehicle 3+; add more here',
+    );
   });
 });
