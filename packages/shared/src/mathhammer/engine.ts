@@ -1,5 +1,6 @@
 import {
   faceClasses,
+  failChance,
   type Allocation,
   type DamageModel,
   type SaveProfile,
@@ -19,7 +20,7 @@ import {
   type Vector,
 } from './resolve';
 import { convolve, parseDice, point, type Dist } from './dice';
-import { weaponPool, type PoolRules } from './pool';
+import { poolAverages, weaponPool, type PoolRules } from './pool';
 import { capModifier, rollOdds, woundNeeded, type Classify, type Reroll } from './rolls';
 import type {
   Calculation,
@@ -28,6 +29,7 @@ import type {
   DefenderGroup,
   Situation,
   Weapon,
+  WeaponStep,
 } from './types';
 
 /** A dice expression the engine can't read. */
@@ -198,7 +200,7 @@ function resolveWeapon(
   priority: number[],
   oneDie: { hit: boolean; wound: boolean },
   prepared: Map<string, Prepared>,
-): { vector: Vector; wasted: number } {
+): { vector: Vector; wasted: number; parts: { mass: number; setup: WeaponSetup }[] } {
   const { defender, situation } = calculation;
   const allocation: Allocation = { groups: defender.groups, priority, precision: weapon.precision };
   const parts = new Map<
@@ -222,6 +224,7 @@ function resolveWeapon(
     addTo(part.vector, id, p);
   }
   let wasted = 0;
+  const used: { mass: number; setup: WeaponSetup }[] = [];
   for (const part of parts.values()) {
     let ready = prepared.get(part.key);
     if (ready === undefined) {
@@ -239,6 +242,9 @@ function resolveWeapon(
       prepared.set(part.key, ready);
     }
     const { setup, entries } = ready;
+    let mass = 0;
+    for (const p of part.vector.values()) mass += p;
+    used.push({ mass, setup });
     // Each pool's save faces class by class from the lowest; the first class pass shares its
     // steps between counts, since they all start from this part's states.
     const pass = (from: Tagged | null, profile: SaveProfile): Tagged => {
@@ -284,7 +290,59 @@ function resolveWeapon(
       wasted += result.wasted;
     }
   }
-  return { vector: out, wasted };
+  return { vector: out, wasted, parts: used };
+}
+
+/**
+ * A weapon's averages before saves, from each kind of target it met (the states where the target
+ * is wiped out add nothing), and its unsaved wounds against the first group allocated.
+ */
+function stepOf(
+  weapon: Weapon,
+  defender: Defender,
+  priority: number[],
+  parts: { mass: number; setup: WeaponSetup }[],
+): Omit<WeaponStep, 'damage' | 'wasted' | 'slain'> {
+  const first = defender.groups[priority[0] ?? 0];
+  const fail = (profile: SaveProfile) => (first === undefined ? 1 : failChance(first, profile));
+  const same = (profile: SaveProfile) =>
+    defender.groups.every((g) => failChance(g, profile) === fail(profile));
+  const step = {
+    name: weapon.name,
+    attacks: 0,
+    hits: 0,
+    critHits: 0,
+    sustainedHits: 0,
+    lethalHits: 0,
+    wounds: 0,
+    critWounds: 0,
+    devastating: 0,
+    unsaved: 0,
+    unsavedExact: true,
+  };
+  for (const { mass, setup } of parts) {
+    const a = poolAverages(setup.pool);
+    step.attacks += mass * a.attacks;
+    step.hits += mass * a.hits;
+    step.critHits += mass * a.critHits;
+    step.sustainedHits += mass * a.sustainedHits;
+    step.lethalHits += mass * a.lethalHits;
+    step.wounds += mass * a.wounds;
+    step.critWounds += mass * a.critWounds;
+    if (setup.devastating !== null) {
+      step.devastating += mass * a.critWounds;
+      step.unsaved += mass * (a.wounds - a.critWounds) * fail(setup.normal);
+    } else if (setup.critical !== null) {
+      step.unsaved +=
+        mass *
+        (a.critWounds * fail(setup.critical) + (a.wounds - a.critWounds) * fail(setup.normal));
+      step.unsavedExact &&= same(setup.critical);
+    } else {
+      step.unsaved += mass * a.wounds * fail(setup.normal);
+    }
+    step.unsavedExact &&= same(setup.normal);
+  }
+  return step;
 }
 
 function permutations(items: number[]): number[][] {
@@ -366,6 +424,12 @@ export function calculate(calculation: Calculation): CalculationResult {
   const indices = defender.groups.map((_, i) => i);
   const characters = indices.filter((i) => defender.groups[i]?.character === true);
   const candidates = allocationOrders(defender.groups);
+  const breakdown: WeaponStep[] = [];
+  const lostOf = (v: Vector) => {
+    let total = 0;
+    for (const [id, p] of v) total += p * woundsOf(space.state(id), defender);
+    return total;
+  };
   // "Re-roll one die" for hits/wounds: the unit's first weapon that has it uses it.
   let hitOneDie = true;
   let woundOneDie = true;
@@ -383,6 +447,7 @@ export function calculate(calculation: Calculation): CalculationResult {
       priority: number[];
       vector: Vector;
       wasted: number;
+      parts: { mass: number; setup: WeaponSetup }[];
       score: [number, number];
     } | null = null;
     for (const priority of candidates) {
@@ -394,12 +459,27 @@ export function calculate(calculation: Calculation): CalculationResult {
         best === null ||
         score[0] < best.score[0] - 1e-12 ||
         (Math.abs(score[0] - best.score[0]) <= 1e-12 && score[1] < best.score[1] - 1e-12);
-      if (better) best = { priority, vector: result.vector, wasted: result.wasted, score };
+      if (better) {
+        best = {
+          priority,
+          vector: result.vector,
+          wasted: result.wasted,
+          parts: result.parts,
+          score,
+        };
+      }
     }
     if (best === null) continue;
+    const before = { slain: slainOf(space, vector, defender), wounds: lostOf(vector) };
     vector = best.vector;
     wasted += best.wasted;
     orders.push(best.priority);
+    breakdown.push({
+      ...stepOf(weapon, defender, best.priority, best.parts),
+      damage: lostOf(vector) - before.wounds,
+      wasted: best.wasted,
+      slain: slainOf(space, vector, defender) - before.slain,
+    });
   }
   if (calculation.flatMortals !== null) {
     // Each mortal wound is one wound lost (Feel No Pain applies), to the mortal-wound model.
@@ -409,9 +489,26 @@ export function calculate(calculation: Calculation): CalculationResult {
       priority: orders.at(-1) ?? candidates[0] ?? [],
       precision: false,
     };
+    const before = { slain: slainOf(space, vector, defender), wounds: lostOf(vector) };
     const result = repeat(vector, hitStep(space, mortal, one, null), dice(calculation.flatMortals));
     vector = result.vector;
     wasted += result.wasted;
+    breakdown.push({
+      name: 'Mortal wounds',
+      attacks: 0,
+      hits: 0,
+      critHits: 0,
+      sustainedHits: 0,
+      lethalHits: 0,
+      wounds: 0,
+      critWounds: 0,
+      devastating: 0,
+      unsaved: 0,
+      unsavedExact: true,
+      damage: lostOf(vector) - before.wounds,
+      wasted: result.wasted,
+      slain: slainOf(space, vector, defender) - before.slain,
+    });
   }
   const slain: number[] = [];
   const wounds: number[] = [];
@@ -437,5 +534,6 @@ export function calculate(calculation: Calculation): CalculationResult {
     leaderSlain: characters.length > 0 ? leaderSlain : null,
     averages: { modelsSlain: average(slain), woundsDealt: average(wounds), wasted },
     orders,
+    breakdown,
   };
 }

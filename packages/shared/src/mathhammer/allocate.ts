@@ -145,6 +145,13 @@ export function saved(face: number, group: DefenderGroup, profile: SaveProfile):
   return face + profile.ap - profile.saveModifier >= group.save;
 }
 
+/** The chance a wound against this group fails its save (face 1 to 6, as allocation rolls). */
+export function failChance(group: DefenderGroup, profile: SaveProfile): number {
+  let fails = 0;
+  for (let face = 1; face <= 6; face += 1) if (!saved(face, group, profile)) fails += 1;
+  return fails / 6;
+}
+
 /**
  * Save faces grouped by which groups they hurt, lowest first. 11e resolves save rolls from the
  * lowest result up, so only the order *between* these classes matters: within one, every roll

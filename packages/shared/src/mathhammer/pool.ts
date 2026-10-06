@@ -86,9 +86,9 @@ export interface PoolRules {
   critSpecial: boolean;
 }
 
-/** The weapon's exact joint count of (normal wounds, special wounds). */
-export function weaponPool(rules: PoolRules): Joint {
-  // Stage 1: one attack die → (hits that roll to wound, automatic wounds).
+/** Stage 1, all attack dice: the joint count of (hits that roll to wound, automatic wounds). */
+function hitStage(rules: PoolRules): Joint {
+  // One attack die → (hits that roll to wound, automatic wounds).
   const hitKernel = (odds: RollOdds | null): Kernel => {
     const joint: Joint = [];
     if (odds === null) {
@@ -117,6 +117,12 @@ export function weaponPool(rules: PoolRules): Joint {
     }
     addInto(afterHits, hits(n), p);
   });
+  return afterHits;
+}
+
+/** The weapon's exact joint count of (normal wounds, special wounds). */
+export function weaponPool(rules: PoolRules): Joint {
+  const afterHits = hitStage(rules);
 
   // Stage 2: each hit rolls to wound → (normal wounds, special wounds).
   const woundKernel = (odds: RollOdds): Kernel => {
@@ -142,3 +148,69 @@ export function weaponPool(rules: PoolRules): Joint {
 }
 
 export { each as eachJoint };
+
+/** A weapon's average counts at each stage (hits include Sustained extras and Lethal ones). */
+export interface PoolAverages {
+  attacks: number;
+  hits: number;
+  critHits: number;
+  sustainedHits: number;
+  /** Critical hits that wound automatically (Lethal Hits). */
+  lethalHits: number;
+  /** Wounds, Lethal Hits' included. */
+  wounds: number;
+  critWounds: number;
+}
+
+const mean = (dist: Dist) => dist.reduce((sum, p, value) => sum + p * value, 0);
+
+/** The chance that some of n dice (n from `counts`) failed without a re-roll. */
+const someFreeFail = (counts: number[], freeFail: number) =>
+  counts.reduce((sum, p, n) => sum + p * (1 - (1 - freeFail) ** n), 0);
+
+/**
+ * Exact averages of `weaponPool`'s stages. Averages add up die by die; "re-roll one die" adds a
+ * fresh roll whenever some die failed without a re-roll.
+ */
+export function poolAverages(rules: PoolRules): PoolAverages {
+  const attacks = mean(rules.attacks);
+  const extra = rules.sustained === null ? 0 : mean(rules.sustained);
+  const perHitDie = (odds: RollOdds) => ({
+    hits: odds.success + odds.crit * (1 + extra),
+    crit: odds.crit,
+    sustained: odds.crit * extra,
+    lethal: rules.lethal ? odds.crit : 0,
+  });
+  let hit = { hits: attacks, crit: 0, sustained: 0, lethal: 0 };
+  if (rules.hit !== null) {
+    const die = perHitDie(rules.hit);
+    const again = rules.hitOneDie === null ? 0 : someFreeFail(rules.attacks, rules.hit.freeFail);
+    const fresh = rules.hitOneDie === null ? die : perHitDie(rules.hitOneDie);
+    hit = {
+      hits: attacks * die.hits + again * fresh.hits,
+      crit: attacks * die.crit + again * fresh.crit,
+      sustained: attacks * die.sustained + again * fresh.sustained,
+      lethal: attacks * die.lethal + again * fresh.lethal,
+    };
+  }
+  // Hits that roll to wound: their count's distribution, for "re-roll one wound".
+  const rolls: number[] = [];
+  hitStage(rules).forEach((row, n) => {
+    rolls[n] = row.reduce((sum, p) => sum + p, 0);
+  });
+  const rolled = mean(rolls);
+  const again = rules.woundOneDie === null ? 0 : someFreeFail(rolls, rules.wound.freeFail);
+  const fresh = rules.woundOneDie ?? rules.wound;
+  return {
+    attacks,
+    hits: hit.hits,
+    critHits: hit.crit,
+    sustainedHits: hit.sustained,
+    lethalHits: hit.lethal,
+    wounds:
+      rolled * (rules.wound.success + rules.wound.crit) +
+      again * (fresh.success + fresh.crit) +
+      hit.lethal,
+    critWounds: rolled * rules.wound.crit + again * fresh.crit,
+  };
+}

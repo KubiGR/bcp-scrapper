@@ -109,6 +109,30 @@ export interface Calculation {
   flatMortals: string | null;
 }
 
+/** One weapon's average step by step (after the weapons before it), or the flat mortal wounds. */
+export interface WeaponStep {
+  name: string;
+  attacks: number;
+  /** Hits, Sustained Hits' extra hits and Lethal Hits included. */
+  hits: number;
+  critHits: number;
+  sustainedHits: number;
+  lethalHits: number;
+  /** Wounds, Lethal Hits' automatic ones included. */
+  wounds: number;
+  critWounds: number;
+  /** Critical wounds that became mortal wounds (Devastating Wounds). */
+  devastating: number;
+  /** Wounds that failed their save (mortal wounds aside). */
+  unsaved: number;
+  /** False when the target's models save differently: counted with the first allocated. */
+  unsavedExact: boolean;
+  /** Wounds the target lost (after damage reduction, Feel No Pain and overkill). */
+  damage: number;
+  wasted: number;
+  slain: number;
+}
+
 export interface CalculationResult {
   /** P(models slain = n). */
   modelsSlain: number[];
@@ -120,6 +144,8 @@ export interface CalculationResult {
   averages: { modelsSlain: number; woundsDealt: number; wasted: number };
   /** For each weapon, the defender's group order used (group indices, first allocated first). */
   orders: number[][];
+  /** Each weapon's averages step by step, in firing order. */
+  breakdown: WeaponStep[];
 }
 
 export const DEFAULT_MODS: WeaponMods = {
