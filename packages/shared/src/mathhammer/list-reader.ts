@@ -193,7 +193,9 @@ export function readListUnits(text: string): ListRead {
   const lines = text
     .replace(/\r\n?/g, '\n')
     .replace(/\u00a0/g, ' ')
-    .split('\n');
+    .split('\n')
+    // Some GW app versions write sub-bullets as "◦".
+    .map((line) => line.replace(/^(\s*)\u25e6/, '$1•'));
   const army = parseArmyList(text).army;
   const oneLine = lines.some((line) => NR_UNIT.test(line.trim()));
   if (oneLine && lines.some((line) => /^\+\s*FACTION KEYWORD:/i.test(line))) {

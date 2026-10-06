@@ -262,6 +262,50 @@ describe('readListUnits: NewRecruit in blocks', () => {
   });
 });
 
+const GW_HOLLOW = `Khorne (2000 Points)
+
+World Eaters
+Berzerker Warband (3 Detachment Points)
+Take and Hold
+Strike Force (2000 Points)
+
+Attached units
+
+Attached unit 3
+
+Slaughterbound (110 Points)
+  • Attached as: Leader (Character)
+  • 1x Lacerator and daemonic claw
+  • Enhancements: Violent Demise
+
+Exalted Eightbound (130 Points)
+  • Attached as: Bodyguard
+  • 1x Exalted Eightbound Champion
+     ◦ 1x Chainblades
+  • 2x Exalted Eightbound
+     ◦ 2x Chainblades
+
+CHARACTERS
+`;
+
+describe('readListUnits: GW app with hollow sub-bullets', () => {
+  it('reads "◦" weapon lines under model lines', () => {
+    const read = readListUnits(GW_HOLLOW);
+    expect(read.units.map((u) => [u.name, u.attachedTo])).toEqual([
+      ['Slaughterbound', 1],
+      ['Exalted Eightbound', null],
+    ]);
+    expect(read.units[1]?.groups).toEqual([
+      {
+        name: 'Exalted Eightbound Champion',
+        count: 1,
+        wargear: [{ name: 'Chainblades', count: 1 }],
+      },
+      { name: 'Exalted Eightbound', count: 2, wargear: [{ name: 'Chainblades', count: 2 }] },
+    ]);
+  });
+});
+
 describe('readListUnits: other text', () => {
   it('finds no units in formats it can’t read', () => {
     expect(

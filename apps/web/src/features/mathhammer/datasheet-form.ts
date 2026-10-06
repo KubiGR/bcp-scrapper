@@ -53,7 +53,11 @@ interface Carry {
 
 /** A size's model kinds with their default loadout. */
 function defaultCarry(unit: UnitDatasheet, sizeIndex: number): Carry[] {
-  const howMany = counts(unit, sizeIndex);
+  return loadoutCarry(unit, counts(unit, sizeIndex));
+}
+
+/** These many models of each kind with the datasheet's default loadout. */
+function loadoutCarry(unit: UnitDatasheet, howMany: Map<string, number>): Carry[] {
   const weapons = new Map(unit.weapons.map((w) => [w.id, w]));
   return unit.models.flatMap((model) => {
     const models = howMany.get(model.id) ?? 0;
@@ -73,8 +77,12 @@ function defaultCarry(unit: UnitDatasheet, sizeIndex: number): Carry[] {
   });
 }
 
-/** A list unit's groups with their weapons looked up. */
+/**
+ * A list unit's groups with their weapons looked up; a list that names none of the unit's
+ * weapons (some exports leave them out) gets the default loadout for its models.
+ */
 function listCarry(unit: UnitDatasheet, groups: MatchedGroup[]): Carry[] {
+  if (groups.every((g) => g.weapons.length === 0)) return loadoutCarry(unit, countsOf(groups));
   const weapons = new Map(unit.weapons.map((w) => [w.id, w]));
   return groups.map((g) => ({
     modelId: g.modelId,

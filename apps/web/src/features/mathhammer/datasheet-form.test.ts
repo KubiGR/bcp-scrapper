@@ -189,3 +189,27 @@ describe('list melee weapons', () => {
     ]);
   });
 });
+
+describe('list units without weapons', () => {
+  it('fall back to the datasheet’s default loadout for the listed models', () => {
+    const list: MathhammerList = {
+      army: null,
+      datasheets: [INTERCESSORS],
+      units: [
+        {
+          label: 'Intercessor Squad ×10',
+          name: 'Intercessor Squad',
+          datasheetId: INTERCESSORS.id,
+          attachedTo: null,
+          unread: [],
+          groups: [
+            { modelId: 'm-sgt', models: 1, weapons: [] },
+            { modelId: 'm-int', models: 9, weapons: [] },
+          ],
+        },
+      ],
+    };
+    const rows = attackerRowsFromList(list, 0);
+    expect(rows.find((r) => r.name === 'Bolt rifle')?.models).toBe(10);
+  });
+});
