@@ -6,6 +6,7 @@ import { CAPTAIN, INTERCESSORS } from './unit-fixtures';
 import { defaultForm, toCalculation } from './form-state';
 import { MathhammerPage } from './MathhammerPage';
 import { percent } from './ResultPanel';
+import { expected } from './expected';
 
 /** The engine's average models slain for a form, as the page shows it. */
 function expectedSlain(change: (form: ReturnType<typeof defaultForm>) => void): string {
@@ -23,6 +24,18 @@ describe('MathhammerPage', () => {
     renderWithProviders(<MathhammerPage />);
     expect(screen.getByLabelText('Models slain')).toHaveTextContent(expectedSlain(() => undefined));
     expect(screen.getByRole('table', { name: 'Models slain, at least' })).toBeInTheDocument();
+  });
+
+  it('leads with the median, a whole number of models, with the average and the most likely', () => {
+    renderWithProviders(<MathhammerPage />);
+    const read = toCalculation(defaultForm());
+    if (!('calculation' in read)) throw new Error(read.error);
+    const { modelsSlain, averages } = calculate(read.calculation);
+    const want = expected(modelsSlain);
+    const slain = screen.getByLabelText('Models slain');
+    expect(within(slain).getByText(String(want.median))).toBeInTheDocument();
+    expect(slain).toHaveTextContent(`average ${averages.modelsSlain.toFixed(2)}`);
+    expect(slain).toHaveTextContent(`most likely ${String(want.mode)}`);
   });
 
   it('hides weapons not used in the phase behind one line, and shows them on request', () => {

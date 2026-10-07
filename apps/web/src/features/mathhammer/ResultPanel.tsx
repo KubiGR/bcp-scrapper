@@ -3,6 +3,7 @@ import { Alert, Group, Stack, Table, Text } from '@mantine/core';
 import { Panel } from '../../components/Panel';
 import { Breakdown } from './Breakdown';
 import { DamageChart } from './DamageChart';
+import { expected } from './expected';
 import type { MathhammerForm } from './form-state';
 import { ShareResult } from './ShareResult';
 import classes from './ResultPanel.module.css';
@@ -14,17 +15,31 @@ export function percent(p: number): string {
   return `${String(Math.round(p * 100))}%`;
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <Stack gap={0}>
+    <Stack gap={0} aria-label={label}>
       <Text size="xs" c="dimmed">
         {label}
       </Text>
-      <Text size="lg" fw={600} className="numeric" aria-label={label}>
+      <Text size="lg" fw={600} className="numeric">
         {value}
       </Text>
+      {note !== undefined && (
+        <Text size="xs" c="dimmed" className="numeric">
+          {note}
+        </Text>
+      )}
     </Stack>
   );
+}
+
+/** A whole-number result: the median leads (it can happen); the average and most likely below. */
+export function expectedStat(dist: number[], mean: number): { value: string; note: string } {
+  const e = expected(dist);
+  return {
+    value: String(e.median),
+    note: `average ${mean.toFixed(2)} · most likely ${String(e.mode)}`,
+  };
 }
 
 export type Outcome =
@@ -69,8 +84,14 @@ export function ResultPanel({
           <ShareResult form={form} calculation={outcome.calculation} result={result} />
         </Group>
         <Group gap="xl">
-          <Stat label="Models slain" value={result.averages.modelsSlain.toFixed(2)} />
-          <Stat label="Wounds dealt" value={result.averages.woundsDealt.toFixed(2)} />
+          <Stat
+            label="Models slain"
+            {...expectedStat(result.modelsSlain, result.averages.modelsSlain)}
+          />
+          <Stat
+            label="Wounds dealt"
+            {...expectedStat(result.woundsDealt, result.averages.woundsDealt)}
+          />
           <Stat label="Wasted damage" value={result.averages.wasted.toFixed(2)} />
           <Stat label="Wipe" value={percent(result.wipe)} />
           {result.leaderSlain !== null && (

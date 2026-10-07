@@ -34,10 +34,10 @@ describe('ShareResult', () => {
     expect(card.getByText('A 2 · BS 3+ · S 4 · AP -1 · D 1')).toBeInTheDocument();
     expect(card.getByText(/Lethal Hits/)).toBeInTheDocument();
     expect(card.getByText('10× Boyz · T 5 · Sv 5+ · W 1')).toBeInTheDocument();
-    // One-wound Boyz: wounds dealt and models slain are the same number (and the table repeats it).
-    expect(card.getAllByText(result.averages.woundsDealt.toFixed(2)).length).toBeGreaterThanOrEqual(
-      2,
-    );
+    // Whole numbers lead, with the average and most likely beside them.
+    expect(
+      card.getAllByText(`average ${result.averages.modelsSlain.toFixed(2)}`, { exact: false }),
+    ).toHaveLength(2);
     expect(card.getByRole('img', { name: /^Damage dealt/ })).toBeInTheDocument();
     // The maths step by step, and what was set on top of the datasheets.
     expect(card.getByRole('table', { name: 'Step by step' })).toBeInTheDocument();

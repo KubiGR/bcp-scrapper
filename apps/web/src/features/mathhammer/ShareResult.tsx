@@ -3,9 +3,9 @@ import { Alert, Button, Group, Modal, Stack, Text } from '@mantine/core';
 import { toBlob } from 'html-to-image';
 import { useRef, useState } from 'react';
 import { Breakdown } from './Breakdown';
-import { DamageChart, quartiles } from './DamageChart';
+import { DamageChart } from './DamageChart';
 import type { MathhammerForm } from './form-state';
-import { percent } from './ResultPanel';
+import { expectedStat, percent } from './ResultPanel';
 import classes from './ShareResult.module.css';
 import {
   appliedModifiers,
@@ -32,12 +32,10 @@ function ShareCard({ form, calculation, result }: ShareProps) {
   // The unit's own switches are listed once, under Modifiers applied, not on every weapon.
   const unitLabels = new Set(modLabels(form.unit));
   const situation = situationLabels(calculation.situation);
-  const qs = quartiles(result.woundsDealt);
-  const numbers: [string, string][] = [
-    ['Wounds dealt', result.averages.woundsDealt.toFixed(2)],
-    ['Models slain', result.averages.modelsSlain.toFixed(2)],
-    ['Wipe', percent(result.wipe)],
-    ['Median damage', String(qs[1])],
+  const numbers: [string, { value: string; note?: string }][] = [
+    ['Models slain', expectedStat(result.modelsSlain, result.averages.modelsSlain)],
+    ['Wounds dealt', expectedStat(result.woundsDealt, result.averages.woundsDealt)],
+    ['Wipe', { value: percent(result.wipe) }],
   ];
   return (
     <Stack gap="sm">
@@ -102,7 +100,7 @@ function ShareCard({ form, calculation, result }: ShareProps) {
         </div>
       )}
       <Group gap="xl">
-        {numbers.map(([label, value]) => (
+        {numbers.map(([label, { value, note }]) => (
           <div key={label}>
             <Text size="xs" c="dimmed">
               {label}
@@ -110,6 +108,11 @@ function ShareCard({ form, calculation, result }: ShareProps) {
             <Text size="lg" fw={700} className="numeric">
               {value}
             </Text>
+            {note !== undefined && (
+              <Text size="xs" c="dimmed" className="numeric">
+                {note}
+              </Text>
+            )}
           </div>
         ))}
       </Group>
