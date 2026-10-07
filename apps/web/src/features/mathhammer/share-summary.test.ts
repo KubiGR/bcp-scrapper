@@ -80,4 +80,13 @@ describe('share summary', () => {
       'Target in cover',
     ]);
   });
+
+  it('names the characteristic changes', () => {
+    const changed = {
+      ...weapon,
+      anti: [],
+      mods: { ...DEFAULT_MODS, attacksModifier: 1, skillModifier: 1, strengthModifier: -1 },
+    };
+    expect(weaponSummary(changed).tags).toEqual(['Attacks +1', 'BS/WS +1', 'Strength -1']);
+  });
 });

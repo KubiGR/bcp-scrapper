@@ -53,6 +53,12 @@ export interface WeaponMods {
   critDamage: number;
   devastatingWounds: boolean;
   /** Improve AP by this (e.g. 1: AP -1 becomes -2). */
+  /** Added to each model's Attacks (never below 1). */
+  attacksModifier: number;
+  /** BS/WS made better by this (3+ → 2+ for 1; negative makes it worse), between 2+ and 6+. */
+  skillModifier: number;
+  /** Added to Strength (never below 1). */
+  strengthModifier: number;
   apImprove: number;
   /** Worsen the target's save rolls by this. */
   saveModifier: number;
@@ -166,6 +172,9 @@ export const DEFAULT_MODS: WeaponMods = {
   critAp: 0,
   critDamage: 0,
   devastatingWounds: false,
+  attacksModifier: 0,
+  skillModifier: 0,
+  strengthModifier: 0,
   apImprove: 0,
   saveModifier: 0,
   damageReroll: false,

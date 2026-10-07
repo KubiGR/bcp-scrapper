@@ -16,6 +16,9 @@ function modLabels(mods: WeaponMods): string[] {
   const add = (when: boolean, label: string) => {
     if (when) out.push(label);
   };
+  add(mods.attacksModifier !== 0, `Attacks ${signed(mods.attacksModifier)}`);
+  add(mods.skillModifier !== 0, `BS/WS ${signed(mods.skillModifier)}`);
+  add(mods.strengthModifier !== 0, `Strength ${signed(mods.strengthModifier)}`);
   add(mods.torrent, 'Torrent');
   add(mods.hitReroll !== d.hitReroll, `Re-roll hits: ${REROLL[mods.hitReroll] ?? mods.hitReroll}`);
   add(mods.hitRerollOneDie, 'Re-roll one hit');

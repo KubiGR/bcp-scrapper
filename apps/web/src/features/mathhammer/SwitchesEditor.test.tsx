@@ -48,6 +48,23 @@ describe('SwitchesEditor', () => {
     ).toBeInTheDocument();
   });
 
+  it('groups the characteristic changes (A, BS/WS, S, AP, D) and lets them go up or down', () => {
+    const onChange = vi.fn();
+    renderWithProviders(<SwitchesEditor mods={DEFAULT_MODS} onChange={onChange} />);
+    const section = within(screen.getByRole('group', { name: 'Characteristics' }));
+    for (const label of [
+      'Attacks +',
+      'BS/WS better by',
+      'Strength +',
+      'Improve AP by',
+      'Damage +',
+    ]) {
+      expect(section.getByLabelText(label)).toBeInTheDocument();
+    }
+    fireEvent.change(section.getByLabelText('Strength +'), { target: { value: '-1' } });
+    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_MODS, strengthModifier: -1 });
+  });
+
   it('keeps its reset in place, greyed out, while nothing is changed (the page never jumps)', () => {
     renderWithProviders(<SwitchesEditor mods={DEFAULT_MODS} onChange={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Reset modifiers' })).toBeDisabled();

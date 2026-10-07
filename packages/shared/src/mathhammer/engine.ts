@@ -78,8 +78,16 @@ function setUp(
 ): WeaponSetup {
   const m = weapon.mods;
   const ranged = !weapon.melee;
-  // Attacks: A, plus Rapid Fire at half range, Blast and Cleave per five target models.
-  let perModel = dice(weapon.attacks);
+  // Attacks: A changed by the unit's modifier (never below 1), plus Rapid Fire at half range,
+  // Blast and Cleave per five target models.
+  const written = dice(weapon.attacks);
+  const changed = (value: number) =>
+    m.attacksModifier === 0 ? value : Math.max(1, value + m.attacksModifier);
+  let perModel: Dist = new Array<number>(changed(written.length - 1) + 1).fill(0);
+  written.forEach((p, value) => {
+    const at = changed(value);
+    perModel[at] = (perModel[at] ?? 0) + p;
+  });
   if (ranged && situation.halfRange && weapon.rapidFire !== null) {
     perModel = convolve(perModel, dice(weapon.rapidFire));
   }
@@ -95,7 +103,12 @@ function setUp(
   const cover = ranged && !m.ignoresCover && (situation.cover || defender.stealth || indirect);
   const skill = Math.min(
     6,
-    Math.max(2, (weapon.skill ?? 6) + (cover ? 1 : 0) - (ranged && situation.plungingFire ? 1 : 0)),
+    Math.max(
+      2,
+      (weapon.skill === null ? 6 : Math.min(6, Math.max(2, weapon.skill - m.skillModifier))) +
+        (cover ? 1 : 0) -
+        (ranged && situation.plungingFire ? 1 : 0),
+    ),
   );
   const hitModifier = capModifier(
     [
@@ -118,7 +131,7 @@ function setUp(
   const hitReroll: Reroll = hitRerolls ? m.hitReroll : 'none';
 
   // Wound roll.
-  const need = woundNeeded(weapon.strength, toughness);
+  const need = woundNeeded(Math.max(1, weapon.strength + m.strengthModifier), toughness);
   const woundModifier = capModifier(
     [m.woundModifier, weapon.lance && situation.charged ? 1 : 0, defender.woundModifier],
     m.woundIgnorePenalties,
