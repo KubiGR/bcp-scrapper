@@ -1,6 +1,7 @@
 import {
   faceClasses,
   failChance,
+  losses,
   type Allocation,
   type DamageModel,
   type SaveProfile,
@@ -226,11 +227,13 @@ function resolveWeapon(
     { key: string; toughness: number; models: number; vector: Vector }
   >();
   const out: Vector = new Map();
+  let gone = 0;
   for (const [id, p] of vector) {
     const state = space.state(id);
     const models = modelsOf(state, defender);
     if (models === 0) {
       addTo(out, id, p);
+      gone += p;
       continue;
     }
     const toughness = toughnessOf(state, defender);
@@ -309,7 +312,38 @@ function resolveWeapon(
       wasted += result.wasted;
     }
   }
+  // Where the target is already gone the weapon still fires: what would have got through the
+  // first models allocated is wasted.
+  if (gone > 0) wasted += gone * volleyAtNothing(weapon, calculation, priority, oneDie);
   return { vector: out, wasted, parts: used };
+}
+
+const meanLost = (model: DamageModel) =>
+  losses(model, null, false).reduce((sum, l) => sum + l.p * l.lost, 0);
+
+/** The damage a volley would do through the first allocated models' saves: all of it wasted. */
+function volleyAtNothing(
+  weapon: Weapon,
+  calculation: Calculation,
+  priority: number[],
+  oneDie: { hit: boolean; wound: boolean },
+): number {
+  const { defender, situation } = calculation;
+  const first = defender.groups[priority[0] ?? 0];
+  if (first === undefined) return 0;
+  const setup = setUp(weapon, defender, situation, first.toughness, 0, oneDie);
+  const a = poolWithAverages(setup.pool).averages;
+  const through = (wounds: number, profile: SaveProfile) =>
+    wounds * failChance(first, profile) * meanLost(profile.damage);
+  if (setup.devastating !== null) {
+    return (
+      a.critWounds * meanLost(setup.devastating) + through(a.wounds - a.critWounds, setup.normal)
+    );
+  }
+  if (setup.critical !== null) {
+    return through(a.critWounds, setup.critical) + through(a.wounds - a.critWounds, setup.normal);
+  }
+  return through(a.wounds, setup.normal);
 }
 
 /**
@@ -527,12 +561,13 @@ export function calculate(calculation: Calculation): CalculationResult {
       median: medianSlainOf(space, vector, defender),
       wounds: lostOf(vector),
     };
+    const damage = lostOf(best.vector) - before.wounds;
     vector = best.vector;
     wasted += best.wasted;
     orders.push(best.priority);
     breakdown.push({
       ...stepOf(weapon, defender, best.priority, best.parts),
-      damage: lostOf(vector) - before.wounds,
+      damage,
       wasted: best.wasted,
       slain: slainOf(space, vector, defender) - before.slain,
       slainMedian: medianSlainOf(space, vector, defender) - before.median,

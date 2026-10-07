@@ -98,4 +98,28 @@ describe('step-by-step breakdown', () => {
     // What it adds still counts only the games where something was left to kill.
     expect(second?.slain ?? 1).toBeLessThan(1 - (result.breakdown[0]?.slain ?? 0) + 1e-9);
   });
+
+  it('counts damage after the target is wiped out as wasted, so each row adds up', () => {
+    // Two 2-wound models, no save, a 2-damage gun with plenty of shots: often a wipe with wounds
+    // to spare. Every unsaved wound's damage is dealt or wasted.
+    const result = calculate(
+      calc({
+        weapons: [weapon({ attacks: '8', damage: '2' })],
+        defender: defender({ groups: [group({ models: 2, save: 7, wounds: 2 })] }),
+      }),
+    );
+    const step = result.breakdown[0];
+    close((step?.damage ?? 0) + (step?.wasted ?? 0), (step?.unsaved ?? 0) * 2);
+  });
+
+  it('counts a later weapon’s volley at a wiped-out target as wasted too', () => {
+    const result = calculate(
+      calc({
+        weapons: [weapon({ attacks: '6' }), weapon({ name: 'Second', attacks: '8' })],
+        defender: defender({ groups: [group({ models: 1, save: 7, wounds: 1 })] }),
+      }),
+    );
+    const second = result.breakdown[1];
+    close((second?.damage ?? 0) + (second?.wasted ?? 0), second?.unsaved ?? 0);
+  });
 });

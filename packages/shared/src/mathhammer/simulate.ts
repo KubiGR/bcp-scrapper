@@ -118,10 +118,14 @@ export function simulate(
         const priority = orders[index] ?? groups.map((_, i) => i);
         const ranged = !weapon.melee;
         const live = groups.map((_, g) => g).filter((g) => (alive[g] ?? 0) > 0);
-        if (live.length === 0) return;
+        // A wiped-out target still takes the volley (all of it wasted), as the first allocated.
+        const first = groups[priority[0] ?? 0];
         const bodyguard = live.filter((g) => groups[g]?.character !== true);
         const tPool = defender.attached && bodyguard.length > 0 ? bodyguard : live;
-        const toughness = Math.max(...tPool.map((g) => groups[g]?.toughness ?? 0));
+        const toughness =
+          live.length === 0
+            ? (first?.toughness ?? 0)
+            : Math.max(...tPool.map((g) => groups[g]?.toughness ?? 0));
         const models = live.reduce((sum, g) => sum + (alive[g] ?? 0), 0);
         const useHitOneDie = hitOneDie && m.hitRerollOneDie;
         const useWoundOneDie = woundOneDie && m.woundRerollOneDie;
@@ -260,14 +264,14 @@ export function simulate(
           faces.sort((a, b) => a - b);
           for (const f of faces) {
             const g = pick(priority, weapon.precision);
-            if (g < 0) return;
-            const group = groups[g];
+            const group = g < 0 ? first : groups[g];
             if (group === undefined) return;
             const ok =
               f !== 1 &&
               ((group.invuln !== null && f >= group.invuln) || f + ap - saveMod >= group.save);
             if (ok) continue;
-            lose(g, damageRoll(weapon, extraDamage, false));
+            if (g < 0) wasted += damageRoll(weapon, extraDamage, false);
+            else lose(g, damageRoll(weapon, extraDamage, false));
           }
         };
         if (special && !m.devastatingWounds) savePool(crits, apOf(m.critAp), m.critDamage);
@@ -275,8 +279,8 @@ export function simulate(
         if (m.devastatingWounds) {
           for (let i = 0; i < crits; i += 1) {
             const g = pick(priority, false);
-            if (g < 0) break;
-            lose(g, damageRoll(weapon, m.critDamage, true));
+            if (g < 0) wasted += damageRoll(weapon, m.critDamage, true);
+            else lose(g, damageRoll(weapon, m.critDamage, true));
           }
         }
       });
@@ -286,8 +290,8 @@ export function simulate(
       const priority = orders.at(-1) ?? groups.map((_, i) => i);
       for (let i = 0; i < count; i += 1) {
         const g = pick(priority, false);
-        if (g < 0) break;
-        lose(g, 1);
+        if (g < 0) wasted += 1;
+        else lose(g, 1);
       }
     }
 
