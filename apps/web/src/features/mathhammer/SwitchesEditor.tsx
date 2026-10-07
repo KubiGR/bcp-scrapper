@@ -1,6 +1,14 @@
-import type { WeaponMods } from '@bcp/shared';
-import { Group, Stack, Text } from '@mantine/core';
-import { Check, CritSelect, DiceInput, ModifierSelect, Num, RerollSelect } from './inputs';
+import { DEFAULT_MODS, type Reroll, type WeaponMods } from '@bcp/shared';
+import { Button, Group, Stack, Text } from '@mantine/core';
+import {
+  Check,
+  CritSelect,
+  DiceInput,
+  ModifierSelect,
+  Num,
+  RerollSelect,
+  rerollLabel,
+} from './inputs';
 
 /** Hit, wound, save and damage switches: the unit's, or a weapon's own. */
 export function SwitchesEditor({
@@ -13,13 +21,45 @@ export function SwitchesEditor({
   const set = (patch: Partial<WeaponMods>) => {
     onChange({ ...unit, ...patch });
   };
+  /** The default, as the field shows it, when the switch differs from it; null when not. */
+  const changed = (
+    key: keyof WeaponMods,
+    kind: 'reroll' | 'modifier' | 'crit' | 'flag' | 'number' | 'text',
+  ): string | null => {
+    const value = DEFAULT_MODS[key];
+    if (unit[key] === value) return null;
+    if (kind === 'reroll') return rerollLabel(value as Reroll);
+    if (kind === 'crit') return `${String(value)}+`;
+    if (kind === 'flag') return value === true ? 'on' : 'off';
+    if (kind === 'modifier') return Number(value) > 0 ? `+${String(value)}` : String(value);
+    return value === null || value === '' ? '–' : String(value);
+  };
+  const anyChanged = (Object.keys(DEFAULT_MODS) as (keyof WeaponMods)[]).some(
+    (key) => unit[key] !== DEFAULT_MODS[key],
+  );
   return (
     <Stack gap="xs">
+      {anyChanged && (
+        <Group>
+          <Button
+            size="compact-xs"
+            variant="subtle"
+            color="yellow"
+            onClick={() => {
+              onChange(DEFAULT_MODS);
+            }}
+          >
+            Reset modifiers
+          </Button>
+        </Group>
+      )}
       <Text size="sm" fw={600}>
         Hit roll
       </Text>
       <Group gap="xs" align="flex-end">
         <RerollSelect
+          original={changed('hitReroll', 'reroll')}
+          from="Default"
           label="Re-roll hits"
           value={unit.hitReroll}
           onChange={(v) => {
@@ -27,6 +67,9 @@ export function SwitchesEditor({
           }}
         />
         <Check
+          original={changed('hitRerollOneDie', 'flag')}
+          from="Default"
+          boxed
           label="Re-roll one hit"
           checked={unit.hitRerollOneDie}
           onChange={(v) => {
@@ -34,6 +77,8 @@ export function SwitchesEditor({
           }}
         />
         <ModifierSelect
+          original={changed('hitModifier', 'modifier')}
+          from="Default"
           label="To hit"
           value={unit.hitModifier}
           onChange={(v) => {
@@ -41,6 +86,9 @@ export function SwitchesEditor({
           }}
         />
         <Check
+          original={changed('hitIgnorePenalties', 'flag')}
+          from="Default"
+          boxed
           label="Ignore hit penalties"
           checked={unit.hitIgnorePenalties}
           onChange={(v) => {
@@ -48,6 +96,8 @@ export function SwitchesEditor({
           }}
         />
         <CritSelect
+          original={changed('critHitOn', 'crit')}
+          from="Default"
           label="Critical hit"
           value={unit.critHitOn}
           onChange={(v) => {
@@ -55,6 +105,8 @@ export function SwitchesEditor({
           }}
         />
         <DiceInput
+          original={changed('sustainedHits', 'text')}
+          from="Default"
           label="Sustained Hits"
           value={unit.sustainedHits ?? ''}
           w={96}
@@ -63,6 +115,9 @@ export function SwitchesEditor({
           }}
         />
         <Check
+          original={changed('lethalHits', 'flag')}
+          from="Default"
+          boxed
           label="Lethal Hits"
           checked={unit.lethalHits}
           onChange={(v) => {
@@ -70,6 +125,9 @@ export function SwitchesEditor({
           }}
         />
         <Check
+          original={changed('ignoresCover', 'flag')}
+          from="Default"
+          boxed
           label="Ignores Cover"
           checked={unit.ignoresCover}
           onChange={(v) => {
@@ -82,6 +140,8 @@ export function SwitchesEditor({
       </Text>
       <Group gap="xs" align="flex-end">
         <RerollSelect
+          original={changed('woundReroll', 'reroll')}
+          from="Default"
           label="Re-roll wounds"
           value={unit.woundReroll}
           onChange={(v) => {
@@ -89,6 +149,9 @@ export function SwitchesEditor({
           }}
         />
         <Check
+          original={changed('woundRerollOneDie', 'flag')}
+          from="Default"
+          boxed
           label="Re-roll one wound"
           checked={unit.woundRerollOneDie}
           onChange={(v) => {
@@ -96,6 +159,8 @@ export function SwitchesEditor({
           }}
         />
         <ModifierSelect
+          original={changed('woundModifier', 'modifier')}
+          from="Default"
           label="To wound"
           value={unit.woundModifier}
           onChange={(v) => {
@@ -103,6 +168,9 @@ export function SwitchesEditor({
           }}
         />
         <Check
+          original={changed('woundIgnorePenalties', 'flag')}
+          from="Default"
+          boxed
           label="Ignore wound penalties"
           checked={unit.woundIgnorePenalties}
           onChange={(v) => {
@@ -110,6 +178,8 @@ export function SwitchesEditor({
           }}
         />
         <CritSelect
+          original={changed('critWoundOn', 'crit')}
+          from="Default"
           label="Critical wound"
           value={unit.critWoundOn}
           onChange={(v) => {
@@ -117,6 +187,8 @@ export function SwitchesEditor({
           }}
         />
         <Num
+          original={changed('critAp', 'number')}
+          from="Default"
           label="Critical AP +"
           value={unit.critAp}
           min={0}
@@ -126,6 +198,8 @@ export function SwitchesEditor({
           }}
         />
         <Num
+          original={changed('critDamage', 'number')}
+          from="Default"
           label="Critical D +"
           value={unit.critDamage}
           min={0}
@@ -135,6 +209,9 @@ export function SwitchesEditor({
           }}
         />
         <Check
+          original={changed('devastatingWounds', 'flag')}
+          from="Default"
+          boxed
           label="Devastating Wounds"
           checked={unit.devastatingWounds}
           onChange={(v) => {
@@ -147,6 +224,8 @@ export function SwitchesEditor({
       </Text>
       <Group gap="xs" align="flex-end">
         <Num
+          original={changed('apImprove', 'number')}
+          from="Default"
           label="Improve AP by"
           value={unit.apImprove}
           min={0}
@@ -156,6 +235,8 @@ export function SwitchesEditor({
           }}
         />
         <Num
+          original={changed('saveModifier', 'number')}
+          from="Default"
           label="Worsen saves by"
           value={unit.saveModifier}
           min={0}
@@ -165,6 +246,9 @@ export function SwitchesEditor({
           }}
         />
         <Check
+          original={changed('damageReroll', 'flag')}
+          from="Default"
+          boxed
           label="Re-roll damage"
           checked={unit.damageReroll}
           onChange={(v) => {
@@ -172,6 +256,9 @@ export function SwitchesEditor({
           }}
         />
         <Check
+          original={changed('damageRerollOneDie', 'flag')}
+          from="Default"
+          boxed
           label="Re-roll one damage"
           checked={unit.damageRerollOneDie}
           onChange={(v) => {
@@ -179,6 +266,8 @@ export function SwitchesEditor({
           }}
         />
         <Num
+          original={changed('damageModifier', 'number')}
+          from="Default"
           label="Damage +"
           value={unit.damageModifier}
           min={-3}
@@ -188,6 +277,9 @@ export function SwitchesEditor({
           }}
         />
         <Check
+          original={changed('ignoreDamageReduction', 'flag')}
+          from="Default"
+          boxed
           label="Ignore damage reduction"
           checked={unit.ignoreDamageReduction}
           onChange={(v) => {

@@ -7,10 +7,10 @@ import classes from './inputs.module.css';
  * Marks a field changed from what the datasheet filled in (`original`: its value there), with an
  * amber outline and the datasheet's value as its hint; nothing when unchanged.
  */
-const changedProps = (original: string | null | undefined) =>
+const changedProps = (original: string | null | undefined, from = 'Datasheet') =>
   original === null || original === undefined
     ? {}
-    : { 'data-changed': true, title: `Datasheet: ${original}` };
+    : { 'data-changed': true, title: `${from}: ${original}` };
 
 /**
  * A small whole-number field, kept within `min`/`max`; with `nullable`, empty means none.
@@ -27,6 +27,7 @@ export function Num({
   w = 72,
   disabled = false,
   original,
+  from,
 }: {
   label: string;
   value: number | null;
@@ -38,6 +39,8 @@ export function Num({
   disabled?: boolean;
   /** The datasheet's value when this field was changed from it. */
   original?: string | null;
+  /** What `original` is ("Datasheet", "Default"). */
+  from?: string;
 }) {
   const [typing, setTyping] = useState<string | null>(null);
   return (
@@ -51,7 +54,7 @@ export function Num({
       disabled={disabled}
       allowDecimal={false}
       classNames={{ input: classes.field }}
-      {...changedProps(original)}
+      {...changedProps(original, from)}
       onBlur={() => {
         setTyping(null);
       }}
@@ -78,6 +81,7 @@ export function DiceInput({
   placeholder,
   disabled = false,
   original,
+  from,
 }: {
   label: string;
   value: string;
@@ -87,6 +91,7 @@ export function DiceInput({
   disabled?: boolean;
   /** The datasheet's value when this field was changed from it. */
   original?: string | null;
+  from?: string;
 }) {
   return (
     <TextInput
@@ -97,7 +102,7 @@ export function DiceInput({
       disabled={disabled}
       placeholder={placeholder}
       classNames={{ input: classes.field }}
-      {...changedProps(original)}
+      {...changedProps(original, from)}
       onChange={(event) => {
         onChange(event.currentTarget.value);
       }}
@@ -111,24 +116,30 @@ export function Check({
   checked,
   onChange,
   original,
+  from,
+  boxed = false,
 }: {
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   /** The datasheet's value ("on"/"off") when this box was changed from it. */
   original?: string | null;
+  from?: string;
+  /** In its own box, as in a CheckGrid (for a checkbox among other fields). */
+  boxed?: boolean;
 }) {
-  return (
+  const box = (
     <Checkbox
       size="xs"
       label={label}
       checked={checked}
-      {...changedProps(original)}
+      {...changedProps(original, from)}
       onChange={(event) => {
         onChange(event.currentTarget.checked);
       }}
     />
   );
+  return boxed ? <div className={classes.checkCell}>{box}</div> : box;
 }
 
 const REROLLS: { value: Reroll; label: string }[] = [
@@ -138,14 +149,23 @@ const REROLLS: { value: Reroll; label: string }[] = [
   { value: 'fish', label: 'Re-roll non-criticals' },
 ];
 
+/** How a re-roll choice reads: "No re-roll", "Re-roll 1s"… */
+export const rerollLabel = (value: Reroll) =>
+  REROLLS.find((r) => r.value === value)?.label ?? value;
+
 export function RerollSelect({
   label,
   value,
   onChange,
+  original,
+  from,
 }: {
   label: string;
   value: Reroll;
   onChange: (value: Reroll) => void;
+  /** The default (or datasheet) value when changed from it. */
+  original?: string | null;
+  from?: string;
 }) {
   return (
     <Select
@@ -155,6 +175,8 @@ export function RerollSelect({
       value={value}
       w={170}
       allowDeselect={false}
+      classNames={{ input: classes.field }}
+      {...changedProps(original, from)}
       onChange={(next) => {
         const found = REROLLS.find((r) => r.value === next);
         if (found !== undefined) onChange(found.value);
@@ -168,10 +190,15 @@ export function ModifierSelect({
   label,
   value,
   onChange,
+  original,
+  from,
 }: {
   label: string;
   value: number;
   onChange: (value: number) => void;
+  /** The default (or datasheet) value when changed from it. */
+  original?: string | null;
+  from?: string;
 }) {
   return (
     <Select
@@ -181,6 +208,8 @@ export function ModifierSelect({
       value={value > 0 ? '+1' : String(value)}
       w={80}
       allowDeselect={false}
+      classNames={{ input: classes.field }}
+      {...changedProps(original, from)}
       onChange={(next) => {
         onChange(Number(next ?? '0'));
       }}
@@ -193,10 +222,15 @@ export function CritSelect({
   label,
   value,
   onChange,
+  original,
+  from,
 }: {
   label: string;
   value: number;
   onChange: (value: number) => void;
+  /** The default (or datasheet) value when changed from it. */
+  original?: string | null;
+  from?: string;
 }) {
   return (
     <Select
@@ -206,6 +240,8 @@ export function CritSelect({
       value={String(value)}
       w={80}
       allowDeselect={false}
+      classNames={{ input: classes.field }}
+      {...changedProps(original, from)}
       onChange={(next) => {
         onChange(Number(next ?? '6'));
       }}

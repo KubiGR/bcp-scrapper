@@ -1,6 +1,7 @@
 import type { Situation } from '@bcp/shared';
-import { SimpleGrid, Stack, Text } from '@mantine/core';
+import { Button, Group, SimpleGrid, Stack, Text } from '@mantine/core';
 import { Panel } from '../../components/Panel';
+import { NO_SITUATION } from './form-state';
 import { Check } from './inputs';
 
 /** The situation of the whole calculation: weapon rules apply only when theirs is ticked. */
@@ -15,6 +16,9 @@ export function SituationPanel({
     <Check
       label={label}
       checked={situation[key]}
+      boxed
+      from="Default"
+      original={situation[key] === NO_SITUATION[key] ? null : NO_SITUATION[key] ? 'on' : 'off'}
       onChange={(v) => {
         onChange({ ...situation, [key]: v });
       }}
@@ -22,6 +26,22 @@ export function SituationPanel({
   );
   return (
     <Panel title="Situation">
+      {(Object.keys(NO_SITUATION) as (keyof Situation)[]).some(
+        (key) => situation[key] !== NO_SITUATION[key],
+      ) && (
+        <Group mb="xs">
+          <Button
+            size="compact-xs"
+            variant="subtle"
+            color="yellow"
+            onClick={() => {
+              onChange(NO_SITUATION);
+            }}
+          >
+            Clear situation
+          </Button>
+        </Group>
+      )}
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
         <Stack gap={6}>
           <Text size="sm" fw={600}>
