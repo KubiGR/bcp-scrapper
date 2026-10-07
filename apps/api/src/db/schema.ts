@@ -1,4 +1,4 @@
-import type { ApiErrorCode } from '@bcp/shared';
+import type { ApiErrorCode, UnitData } from '@bcp/shared';
 import { desc, sql } from 'drizzle-orm';
 import {
   boolean,
@@ -385,3 +385,17 @@ export const gameUpdates = pgTable('game_updates', {
   hidden: boolean('hidden').notNull().default(false),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 });
+
+/** The unit data read from 39k.pro (one row): replaced whole by each successful read. */
+export const rulesSnapshot = pgTable(
+  'rules_snapshot',
+  {
+    id: integer('id').primaryKey().default(1),
+    /** The script's address the data came from; the same address isn't read again. */
+    bundle: text('bundle').notNull(),
+    dataVersion: integer('data_version'),
+    readAt: timestamptz('read_at').notNull(),
+    data: jsonb('data').$type<UnitData>().notNull(),
+  },
+  (t) => [check('rules_snapshot_single_row', sql`${t.id} = 1`)],
+);

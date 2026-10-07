@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { to: '/players', label: 'Players' },
   { to: '/analysis/meta', label: 'Meta' },
   { to: '/analysis/top-lists', label: 'Top lists' },
+  { to: '/mathhammer', label: 'Mathhammer' },
   { to: '/queue', label: 'Queue' },
   { to: '/settings', label: 'Settings' },
 ] as const;

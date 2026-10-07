@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MathhammerRouteImport } from './routes/mathhammer'
 import { Route as QueueRouteImport } from './routes/queue'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AnalysisFactionsRouteImport } from './routes/analysis.factions'
@@ -30,6 +31,11 @@ const IndexRoute = IndexRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MathhammerRoute = MathhammerRouteImport.update({
+  id: '/mathhammer',
+  path: '/mathhammer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QueueRoute = QueueRouteImport.update({
@@ -87,6 +93,7 @@ const EventsEventIdTeamsTeamIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/mathhammer': typeof MathhammerRoute
   '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/analysis/factions': typeof AnalysisFactionsRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/mathhammer': typeof MathhammerRoute
   '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/analysis/factions': typeof AnalysisFactionsRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/mathhammer': typeof MathhammerRoute
   '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/analysis/factions': typeof AnalysisFactionsRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/mathhammer'
     | '/queue'
     | '/settings'
     | '/analysis/factions'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/mathhammer'
     | '/queue'
     | '/settings'
     | '/analysis/factions'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/login'
+    | '/mathhammer'
     | '/queue'
     | '/settings'
     | '/analysis/factions'
@@ -175,6 +187,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  MathhammerRoute: typeof MathhammerRoute
   QueueRoute: typeof QueueRoute
   SettingsRoute: typeof SettingsRoute
   AnalysisFactionsRoute: typeof AnalysisFactionsRoute
@@ -201,6 +214,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mathhammer': {
+      id: '/mathhammer'
+      path: '/mathhammer'
+      fullPath: '/mathhammer'
+      preLoaderRoute: typeof MathhammerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/queue': {
@@ -279,6 +299,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  MathhammerRoute: MathhammerRoute,
   QueueRoute: QueueRoute,
   SettingsRoute: SettingsRoute,
   AnalysisFactionsRoute: AnalysisFactionsRoute,

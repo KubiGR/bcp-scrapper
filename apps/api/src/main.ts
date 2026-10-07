@@ -12,6 +12,8 @@ import { reparseLists, tidyDetachments } from './repo/lists';
 import { bsdataDue, syncBsdata } from './repo/bsdata';
 import { syncUpdateCommits } from './repo/game-updates';
 import { httpBsdataClient } from './bsdata/client';
+import { httpRulesClient } from './rules/client';
+import { rulesDue, syncRules } from './repo/rules';
 import { backfillPlayerUserIds } from './repo/player-accounts';
 import { failInterruptedSyncRuns } from './repo/sync-runs';
 import { serveWebApp } from './static';
@@ -90,6 +92,26 @@ const syncBsdataIfDue = async () => {
 void syncBsdataIfDue();
 const bsdataTimer = setInterval(() => void syncBsdataIfDue(), 60 * 60 * 1000);
 
+// 39k.pro (Mathhammer's unit data): checked hourly, read again once a day.
+const rules = config.RULES_ENABLED ? httpRulesClient() : undefined;
+const syncRulesIfDue = async () => {
+  if (rules === undefined) return;
+  try {
+    if (await rulesDue(database.db, new Date())) {
+      const status = await syncRules(database.db, rules, new Date());
+      if (status.error === null) {
+        logger.info({ dataVersion: status.dataVersion }, 'Read the unit data from 39k.pro');
+      } else {
+        logger.warn({ error: status.error }, 'Could not read the unit data from 39k.pro');
+      }
+    }
+  } catch (error) {
+    logger.warn({ err: error }, 'Unit data check failed; will try again');
+  }
+};
+void syncRulesIfDue();
+const rulesTimer = setInterval(() => void syncRulesIfDue(), 60 * 60 * 1000);
+
 const app = createApp({
   db: database.db,
   runner,
@@ -100,6 +122,7 @@ const app = createApp({
   allowedHosts: allowedHostsOf(config),
   autoFetch,
   bsdata,
+  rules,
   auth: { required: config.AUTH_REQUIRED, secret: config.SESSION_SECRET ?? '' },
 });
 if (config.WEB_DIST_DIR !== undefined) serveWebApp(app, config.WEB_DIST_DIR);
@@ -114,6 +137,7 @@ async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'Shutting down');
   server.close();
   clearInterval(bsdataTimer);
+  clearInterval(rulesTimer);
   await autoFetch?.stop();
   // Let a list fetch in flight finish writing before the database closes.
   await fetchQueue.stop();

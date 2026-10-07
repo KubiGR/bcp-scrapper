@@ -18,6 +18,8 @@ import { fetchQueueRoutes } from './routes/fetch-queue';
 import { matchupsRoutes } from './routes/matchups';
 import { metaRoutes } from './routes/meta';
 import { bsdataRoutes } from './routes/bsdata';
+import { mathhammerRoutes } from './routes/mathhammer';
+import { rulesRoutes } from './routes/rules';
 import { gameUpdateRoutes } from './routes/game-updates';
 import { playersSearchRoutes } from './routes/players-search';
 import { rankingsRoutes } from './routes/rankings';
@@ -25,6 +27,7 @@ import { syncRoutes } from './routes/sync';
 import { userRoutes } from './routes/users';
 import type { SyncRunner } from './sync/runner';
 import type { BsdataClient } from './bsdata/client';
+import type { RulesClient } from './rules/client';
 
 export interface AppDeps {
   db: Db;
@@ -44,6 +47,8 @@ export interface AppDeps {
   autoFetch?: AutoFetchPlanner;
   /** BSData on GitHub, for detachments; Refresh answers 404 without it. */
   bsdata?: BsdataClient;
+  /** 39k.pro, for Mathhammer's unit data; Refresh answers 404 without it. */
+  rules?: RulesClient;
 }
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -124,6 +129,11 @@ export function createApp(deps: AppDeps) {
     '/api',
     bsdataRoutes({ db: deps.db, client: deps.bsdata, authRequired: auth.required, now }),
   );
+  app.route(
+    '/api',
+    rulesRoutes({ db: deps.db, client: deps.rules, authRequired: auth.required, now }),
+  );
+  app.route('/api', mathhammerRoutes({ db: deps.db }));
   app.route('/api', gameUpdateRoutes({ db: deps.db, authRequired: auth.required, now }));
   app.route(
     '/api',
