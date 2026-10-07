@@ -55,8 +55,9 @@ describe('SwitchesEditor', () => {
 });
 
 describe('SituationPanel', () => {
-  it('starts at half range, the usual case', () => {
+  it('starts at half range with the target in cover, the usual case', () => {
     expect(DEFAULT_SITUATION.halfRange).toBe(true);
+    expect(DEFAULT_SITUATION.cover).toBe(true);
     expect(defaultForm().situation).toEqual(DEFAULT_SITUATION);
   });
 

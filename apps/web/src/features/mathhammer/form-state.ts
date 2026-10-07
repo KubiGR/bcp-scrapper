@@ -120,8 +120,8 @@ export const NO_SITUATION: Situation = {
   armourOfContempt: false,
 };
 
-/** Where a calculation starts: within half range, the usual case for Rapid Fire and Melta. */
-export const DEFAULT_SITUATION: Situation = { ...NO_SITUATION, halfRange: true };
+/** Where a calculation starts: within half range (Rapid Fire, Melta), the target in cover. */
+export const DEFAULT_SITUATION: Situation = { ...NO_SITUATION, halfRange: true, cover: true };
 
 let counter = 0;
 const nextKey = () => {
