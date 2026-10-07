@@ -1,0 +1,11 @@
+/* The header's other items give way first: the account's name is never cut to make room. */
+.account {
+  flex-shrink: 0;
+}
+
+/* On a phone there isn't room for a long email: it ends in an ellipsis instead. */
+@media (max-width: 36em) {
+  .account {
+    max-width: 9rem;
+  }
+}

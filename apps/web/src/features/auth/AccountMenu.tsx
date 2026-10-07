@@ -3,6 +3,7 @@ import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { meQuery } from './auth-queries';
+import classes from './AccountMenu.module.css';
 import { ChangePasswordForm } from './ChangePasswordForm';
 import { useLogout } from './use-logout';
 
@@ -24,6 +25,7 @@ export function AccountMenu() {
             variant="subtle"
             color="gray"
             size="compact-sm"
+            className={classes.account}
             aria-label={`Account: ${user.username}`}
           >
             {user.username}
