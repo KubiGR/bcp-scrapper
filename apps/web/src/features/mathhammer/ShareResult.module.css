@@ -1,6 +1,6 @@
 /* The shared image: the page's panel colours, a fixed width so the picture looks the same. */
 .card {
-  width: 700px;
+  width: 800px;
   max-width: 100%;
   padding: 20px;
   border-radius: var(--mantine-radius-md);

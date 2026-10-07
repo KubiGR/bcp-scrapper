@@ -1,16 +1,17 @@
 import type { WeaponStep } from '@bcp/shared';
 import { Stack, Table, Text } from '@mantine/core';
+import type { ReactNode } from 'react';
 
 const two = (n: number) => n.toFixed(2);
 
-/** "1.67 crit · +1.67 sustained": the parts that aren't zero. */
-const parts = (items: [number, string][]) =>
+/** "1.67 crit · +1.67 sustained": the parts that aren't zero (one per line with `lines`). */
+const parts = (items: [number, string][], lines = false) =>
   items
     .filter(([n]) => n > 0.005)
     .map(([n, label]) =>
       label.startsWith('+') ? `+${two(n)} ${label.slice(1)}` : `${two(n)} ${label}`,
     )
-    .join(' · ');
+    .join(lines ? '\n' : ' · ');
 
 function Cell({ value, detail }: { value: string; detail?: string }) {
   return (
@@ -18,7 +19,7 @@ function Cell({ value, detail }: { value: string; detail?: string }) {
       <Stack gap={0} align="flex-end">
         <span>{value}</span>
         {detail !== undefined && detail !== '' && (
-          <Text size="xs" c="dimmed" span>
+          <Text size="xs" c="dimmed" span style={{ whiteSpace: 'pre-line' }}>
             {detail}
           </Text>
         )}
@@ -30,25 +31,39 @@ function Cell({ value, detail }: { value: string; detail?: string }) {
 const sum = (steps: WeaponStep[], key: keyof Omit<WeaponStep, 'name' | 'unsavedExact'>) =>
   steps.reduce((total, step) => total + step[key], 0);
 
-function StepRow({ step, strong = false }: { step: WeaponStep; strong?: boolean }) {
+function StepRow({
+  step,
+  strong = false,
+  fit = false,
+}: {
+  step: WeaponStep;
+  strong?: boolean;
+  fit?: boolean;
+}) {
   return (
     <Table.Tr fw={strong ? 600 : undefined}>
       <Table.Th scope="row">{step.name}</Table.Th>
       <Cell value={two(step.attacks)} />
       <Cell
         value={two(step.hits)}
-        detail={parts([
-          [step.critHits, 'critical hits'],
-          [step.sustainedHits, '+sustained'],
-          [step.lethalHits, 'lethal'],
-        ])}
+        detail={parts(
+          [
+            [step.critHits, 'critical hits'],
+            [step.sustainedHits, '+sustained'],
+            [step.lethalHits, 'lethal'],
+          ],
+          fit,
+        )}
       />
       <Cell
         value={two(step.wounds)}
-        detail={parts([
-          [step.critWounds, 'critical wounds'],
-          [step.devastating, 'devastating'],
-        ])}
+        detail={parts(
+          [
+            [step.critWounds, 'critical wounds'],
+            [step.devastating, 'devastating'],
+          ],
+          fit,
+        )}
       />
       <Cell value={`${step.unsavedExact ? '' : '≈'}${two(step.unsaved)}`} />
       <Cell value={two(step.damage)} />
@@ -63,7 +78,14 @@ function StepRow({ step, strong = false }: { step: WeaponStep; strong?: boolean 
  * failed their save, wounds the target lost, damage lost to overkill, and models slain (each
  * weapon after the ones before it).
  */
-export function Breakdown({ steps }: { steps: WeaponStep[] }) {
+export function Breakdown({
+  steps,
+  fit = false,
+}: {
+  steps: WeaponStep[];
+  /** For a picture: the whole table, its notes one per line, instead of a scroll box. */
+  fit?: boolean;
+}) {
   if (steps.length === 0) return null;
   const combined: WeaponStep = {
     name: 'Combined',
@@ -82,13 +104,21 @@ export function Breakdown({ steps }: { steps: WeaponStep[] }) {
     slain: sum(steps, 'slain'),
   };
   const approximate = steps.some((step) => !step.unsavedExact);
+  const wrap = (table: ReactNode) =>
+    fit ? (
+      table
+    ) : (
+      <Table.ScrollContainer minWidth={640} data-scroll>
+        {table}
+      </Table.ScrollContainer>
+    );
   return (
     <Stack gap={4}>
       <Text size="sm" fw={600}>
         Step by step
       </Text>
-      <Table.ScrollContainer minWidth={640}>
-        <Table aria-label="Step by step" verticalSpacing={4}>
+      {wrap(
+        <Table aria-label="Step by step" verticalSpacing={4} fz={fit ? 'xs' : undefined}>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Weapon</Table.Th>
@@ -103,12 +133,12 @@ export function Breakdown({ steps }: { steps: WeaponStep[] }) {
           </Table.Thead>
           <Table.Tbody>
             {steps.map((step, index) => (
-              <StepRow key={`${step.name}-${String(index)}`} step={step} />
+              <StepRow key={`${step.name}-${String(index)}`} step={step} fit={fit} />
             ))}
-            {steps.length > 1 && <StepRow step={combined} strong />}
+            {steps.length > 1 && <StepRow step={combined} strong fit={fit} />}
           </Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
+        </Table>,
+      )}
       <Text size="xs" c="dimmed">
         Averages. Critical hits are unmodified 6s to hit; critical wounds are 6s to wound, or lower
         with Anti. Damage dealt is wounds the target lost, after damage reduction, Feel No Pain and

@@ -6,7 +6,6 @@ import {
   type WeaponMods,
 } from '@bcp/shared';
 import {
-  DEFAULT_SITUATION,
   defenderChanges,
   defenderOriginalText,
   groupChanges,
@@ -179,11 +178,6 @@ const valueText = (value: unknown) =>
 const change = (field: string, now: unknown, was: string | null) =>
   `${FIELD_LABELS[field] ?? field} ${valueText(now)} (was ${was ?? '–'})`;
 
-const NOT_SITUATION: Partial<Record<keyof Situation, string>> = {
-  halfRange: 'Not at half range',
-  cover: 'Not in cover',
-};
-
 /**
  * What was set on top of the datasheets and the starting setup, one line per part: the unit's
  * modifiers, the situation, each weapon's and the defender's edited fields.
@@ -192,13 +186,8 @@ export function appliedModifiers(form: MathhammerForm): string[] {
   const lines: string[] = [];
   const unit = modLabels(form.unit);
   if (unit.length > 0) lines.push(`Unit: ${unit.join(' · ')}`);
-  const situation = (Object.keys(SITUATION_LABELS) as (keyof Situation)[])
-    .filter((key) => form.situation[key] !== DEFAULT_SITUATION[key])
-    .map((key) =>
-      form.situation[key]
-        ? SITUATION_LABELS[key]
-        : (NOT_SITUATION[key] ?? `Not ${SITUATION_LABELS[key].toLowerCase()}`),
-    );
+  // Every box ticked, the starting ones (half range, cover) too: the picture says what was used.
+  const situation = situationLabels(form.situation);
   if (situation.length > 0) lines.push(`Situation: ${situation.join(' · ')}`);
   for (const w of form.weapons) {
     if (w.original === null) {

@@ -102,13 +102,13 @@ describe('appliedModifiers', () => {
     form.defender = { ...form.defender, stealth: true };
     expect(appliedModifiers(form)).toEqual([
       'Unit: Strength +1 · Lethal Hits',
-      'Situation: Charged · Not in cover',
+      'Situation: Half range · Charged',
       'Bolt rifle: Attacks 3 (was 2)',
       'Defender: Stealth on (was off)',
     ]);
   });
 
-  it('is empty for an untouched setup', () => {
-    expect(appliedModifiers(defaultForm())).toEqual([]);
+  it('lists the situation as it is, even when it’s the starting one', () => {
+    expect(appliedModifiers(defaultForm())).toEqual(['Situation: Half range · Target in cover']);
   });
 });

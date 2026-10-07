@@ -7,13 +7,7 @@ import { DamageChart } from './DamageChart';
 import type { MathhammerForm } from './form-state';
 import { expectedStat, percent } from './ResultPanel';
 import classes from './ShareResult.module.css';
-import {
-  appliedModifiers,
-  defenderSummary,
-  modLabels,
-  situationLabels,
-  weaponSummary,
-} from './share-summary';
+import { appliedModifiers, defenderSummary, modLabels, weaponSummary } from './share-summary';
 
 interface ShareProps {
   /** The page's form: names, phase, and what was changed from the datasheets. */
@@ -31,7 +25,6 @@ function ShareCard({ form, calculation, result }: ShareProps) {
   const applied = appliedModifiers(form);
   // The unit's own switches are listed once, under Modifiers applied, not on every weapon.
   const unitLabels = new Set(modLabels(form.unit));
-  const situation = situationLabels(calculation.situation);
   const numbers: [string, { value: string; note?: string }][] = [
     ['Models slain', expectedStat(result.modelsSlain, result.averages.modelsSlain)],
     ['Wounds dealt', expectedStat(result.woundsDealt, result.averages.woundsDealt)],
@@ -42,7 +35,7 @@ function ShareCard({ form, calculation, result }: ShareProps) {
       <div>
         <Text fw={700} size="lg">{`${attacker} → ${defender}`}</Text>
         <Text size="xs" c="dimmed">
-          {[phase === 'fighting' ? 'Fighting' : 'Shooting', ...situation].join(' · ')}
+          {phase === 'fighting' ? 'Fighting' : 'Shooting'}
         </Text>
       </div>
       <div className={classes.section}>
@@ -117,7 +110,7 @@ function ShareCard({ form, calculation, result }: ShareProps) {
         ))}
       </Group>
       <DamageChart woundsDealt={result.woundsDealt} />
-      <Breakdown steps={result.breakdown} />
+      <Breakdown steps={result.breakdown} fit />
       <Text size="xs" c="dimmed" ta="right">
         BCP Analyzer · Mathhammer · exact chances
       </Text>
@@ -171,7 +164,7 @@ export function ShareResult(props: ShareProps) {
           setOpen(false);
         }}
         title="Share result"
-        size={760}
+        size={860}
       >
         <Stack gap="md">
           <div ref={card} className={classes.card} data-testid="share-card">

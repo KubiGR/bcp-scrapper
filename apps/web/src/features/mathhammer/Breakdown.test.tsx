@@ -79,4 +79,14 @@ describe('Breakdown', () => {
     expect(combined.getByText('3.17')).toBeInTheDocument(); // damage
     expect(combined.getByText('2.00')).toBeInTheDocument(); // slain
   });
+
+  it('shows the whole table, without a scroll box, for a picture', () => {
+    const scroll = '[data-scroll]';
+    const page = renderWithProviders(<Breakdown steps={steps} />);
+    expect(page.container.querySelector(scroll)).not.toBeNull();
+    page.unmount();
+    const { container } = renderWithProviders(<Breakdown steps={steps} fit />);
+    expect(container.querySelector(scroll)).toBeNull();
+    expect(screen.getByRole('table', { name: 'Step by step' })).toBeInTheDocument();
+  });
 });
