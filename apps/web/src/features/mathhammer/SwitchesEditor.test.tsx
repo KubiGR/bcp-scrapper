@@ -1,5 +1,5 @@
 import { DEFAULT_MODS } from '@bcp/shared';
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/render';
 import { NO_SITUATION } from './form-state';
@@ -29,6 +29,23 @@ describe('SwitchesEditor', () => {
     expect(screen.getByLabelText('Re-roll one hit')).not.toHaveAttribute('data-changed');
     fireEvent.click(screen.getByRole('button', { name: 'Reset modifiers' }));
     expect(onChange).toHaveBeenCalledWith(DEFAULT_MODS);
+  });
+
+  it('groups the switches into titled sections', () => {
+    renderWithProviders(<SwitchesEditor mods={DEFAULT_MODS} onChange={vi.fn()} />);
+    expect(
+      within(screen.getByRole('group', { name: 'Hit roll' })).getByLabelText('Lethal Hits'),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('group', { name: 'Wound roll' })).getByLabelText(
+        'Devastating Wounds',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('group', { name: 'Saves and damage' })).getByLabelText(
+        'Re-roll damage',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('offers no reset while nothing is changed', () => {
