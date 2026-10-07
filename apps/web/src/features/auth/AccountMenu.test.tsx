@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { stubFetchRoutes } from '../../test/render';
 import { AccountMenu } from './AccountMenu';
-import { aUser, authOff, loggedIn, loggedOut, renderAtRoutes } from './auth-test-utils';
+import { aUser, authOff, loggedIn, loggedOut, renderAtRoutes, viaAccess } from './auth-test-utils';
 
 describe('AccountMenu', () => {
   it('shows who is logged in, and Log out returns to the login page', async () => {
@@ -38,6 +38,17 @@ describe('AccountMenu', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Account: kubi' }));
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Change password' }));
     expect(await screen.findByLabelText('Current password')).toBeInTheDocument();
+  });
+
+  it('through Cloudflare Access: no password change, and Sign out goes to Cloudflare', async () => {
+    stubFetchRoutes({ 'GET /api/auth/me': viaAccess(aUser({ username: 'ana@example.com' })) });
+    renderAtRoutes({ initial: '/', page: <AccountMenu />, login: <p>login page</p> });
+    fireEvent.click(await screen.findByRole('button', { name: 'Account: ana@example.com' }));
+    expect(screen.queryByRole('menuitem', { name: 'Change password' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('menuitem', { name: 'Sign out' })).toHaveAttribute(
+      'href',
+      '/cdn-cgi/access/logout',
+    );
   });
 
   it('is not there when logins are off', async () => {

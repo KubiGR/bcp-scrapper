@@ -19,6 +19,8 @@ export type User = z.infer<typeof UserSchema>;
 export const MeResponseSchema = z.object({
   authRequired: z.boolean(),
   user: UserSchema.nullable(),
+  /** True when Cloudflare Access does the signing in: no passwords or accounts to manage here. */
+  access: z.boolean().optional(),
 });
 export type MeResponse = z.infer<typeof MeResponseSchema>;
 

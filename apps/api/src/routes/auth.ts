@@ -42,12 +42,17 @@ export function authRoutes(deps: {
 
   app.get('/auth/me', (c) => {
     const user = c.get('user');
-    const body: MeResponse = { authRequired: options.required, user: user ?? null };
+    const body: MeResponse = {
+      authRequired: options.required,
+      user: user ?? null,
+      ...(options.access === undefined ? {} : { access: true }),
+    };
     return c.json(body);
   });
 
-  // Without logins (local development) there is nothing else here.
-  if (!options.required) return app;
+  // Without logins (local development), or with Cloudflare Access doing them, there is nothing
+  // else here.
+  if (!options.required || options.access !== undefined) return app;
 
   app.post('/auth/login', requireJson, async (c) => {
     const { username, password } = parseInput(
