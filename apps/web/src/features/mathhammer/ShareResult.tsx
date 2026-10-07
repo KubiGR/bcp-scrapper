@@ -99,7 +99,7 @@ function ShareCard({ form, calculation, result }: ShareProps) {
           ))}
         </div>
       )}
-      <Group gap="xl">
+      <Group gap="xl" align="flex-start">
         {numbers.map(([label, { value, note }]) => (
           <div key={label}>
             <Text size="xs" c="dimmed">

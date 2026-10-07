@@ -83,7 +83,7 @@ export function ResultPanel({
         <Group justify="flex-end">
           <ShareResult form={form} calculation={outcome.calculation} result={result} />
         </Group>
-        <Group gap="xl">
+        <Group gap="xl" align="flex-start">
           <Stat
             label="Models slain"
             {...expectedStat(result.modelsSlain, result.averages.modelsSlain)}
