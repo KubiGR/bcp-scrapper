@@ -2,7 +2,7 @@ import { DEFAULT_MODS } from '@bcp/shared';
 import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/render';
-import { NO_SITUATION } from './form-state';
+import { DEFAULT_SITUATION, defaultForm } from './form-state';
 import { SituationPanel } from './SituationPanel';
 import { SwitchesEditor } from './SwitchesEditor';
 
@@ -52,23 +52,36 @@ describe('SwitchesEditor', () => {
     renderWithProviders(<SwitchesEditor mods={DEFAULT_MODS} onChange={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Reset modifiers' })).toBeDisabled();
   });
-
-  it('keeps Clear situation in place, greyed out, while nothing is ticked', () => {
-    renderWithProviders(<SituationPanel situation={NO_SITUATION} onChange={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Clear situation' })).toBeDisabled();
-  });
 });
 
 describe('SituationPanel', () => {
-  it('marks ticked situations, boxes them, and clears them', () => {
+  it('starts at half range, the usual case', () => {
+    expect(DEFAULT_SITUATION.halfRange).toBe(true);
+    expect(defaultForm().situation).toEqual(DEFAULT_SITUATION);
+  });
+
+  it('marks situations changed from the defaults, boxes them, and resets them', () => {
     const onChange = vi.fn();
     renderWithProviders(
-      <SituationPanel situation={{ ...NO_SITUATION, charged: true }} onChange={onChange} />,
+      <SituationPanel
+        situation={{ ...DEFAULT_SITUATION, charged: true, halfRange: false }}
+        onChange={onChange}
+      />,
     );
     const charged = screen.getByLabelText('Charged (Lance)');
     expect(charged).toHaveAttribute('title', 'Default: off');
     expect(charged.closest('[class*="checkCell"]')).not.toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Clear situation' }));
-    expect(onChange).toHaveBeenCalledWith(NO_SITUATION);
+    expect(screen.getByLabelText('Half range (Rapid Fire, Melta)')).toHaveAttribute(
+      'title',
+      'Default: on',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Reset situation' }));
+    expect(onChange).toHaveBeenCalledWith(DEFAULT_SITUATION);
+  });
+
+  it('keeps Reset situation in place, greyed out, at the defaults', () => {
+    renderWithProviders(<SituationPanel situation={DEFAULT_SITUATION} onChange={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Reset situation' })).toBeDisabled();
+    expect(screen.getByLabelText('Half range (Rapid Fire, Melta)')).not.toHaveAttribute('title');
   });
 });

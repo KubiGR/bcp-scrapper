@@ -120,6 +120,9 @@ export const NO_SITUATION: Situation = {
   armourOfContempt: false,
 };
 
+/** Where a calculation starts: within half range, the usual case for Rapid Fire and Melta. */
+export const DEFAULT_SITUATION: Situation = { ...NO_SITUATION, halfRange: true };
+
 let counter = 0;
 const nextKey = () => {
   counter += 1;
@@ -325,7 +328,7 @@ export function defaultForm(): MathhammerForm {
         halveDamage: false,
       },
     },
-    situation: NO_SITUATION,
+    situation: DEFAULT_SITUATION,
     flatMortals: '',
   };
 }

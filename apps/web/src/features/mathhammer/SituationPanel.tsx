@@ -1,7 +1,7 @@
 import type { Situation } from '@bcp/shared';
 import { Button, Group, SimpleGrid, Stack, Text } from '@mantine/core';
 import { Panel } from '../../components/Panel';
-import { NO_SITUATION } from './form-state';
+import { DEFAULT_SITUATION } from './form-state';
 import { Check } from './inputs';
 
 /** The situation of the whole calculation: weapon rules apply only when theirs is ticked. */
@@ -18,7 +18,9 @@ export function SituationPanel({
       checked={situation[key]}
       boxed
       from="Default"
-      original={situation[key] === NO_SITUATION[key] ? null : NO_SITUATION[key] ? 'on' : 'off'}
+      original={
+        situation[key] === DEFAULT_SITUATION[key] ? null : DEFAULT_SITUATION[key] ? 'on' : 'off'
+      }
       onChange={(v) => {
         onChange({ ...situation, [key]: v });
       }}
@@ -29,18 +31,18 @@ export function SituationPanel({
       <Group mb="xs">
         <Button
           disabled={
-            !(Object.keys(NO_SITUATION) as (keyof Situation)[]).some(
-              (key) => situation[key] !== NO_SITUATION[key],
+            !(Object.keys(DEFAULT_SITUATION) as (keyof Situation)[]).some(
+              (key) => situation[key] !== DEFAULT_SITUATION[key],
             )
           }
           size="compact-xs"
           variant="subtle"
           color="yellow"
           onClick={() => {
-            onChange(NO_SITUATION);
+            onChange(DEFAULT_SITUATION);
           }}
         >
-          Clear situation
+          Reset situation
         </Button>
       </Group>
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
