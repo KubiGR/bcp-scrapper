@@ -7,15 +7,15 @@ import classes from './AccountMenu.module.css';
 import { ChangePasswordForm } from './ChangePasswordForm';
 import { useLogout } from './use-logout';
 
-/** The logged-in user in the header, with Change password and Log out (only when logins are on). */
+/** The logged-in user in the header, with Change password and Log out (only with the app's own logins). */
 export function AccountMenu() {
   const { data } = useQuery(meQuery);
   const logout = useLogout();
   const [changing, setChanging] = useState(false);
 
-  const user = data?.authRequired === true ? data.user : null;
+  // Through Cloudflare Access there is nothing to show or change here: it knows who you are.
+  const user = data?.authRequired === true && data.access !== true ? data.user : null;
   if (user === null) return null;
-  const access = data?.access === true;
 
   return (
     <>
@@ -32,29 +32,20 @@ export function AccountMenu() {
           </Button>
         </Menu.Target>
         <Menu.Dropdown>
-          {access ? (
-            // Cloudflare ends its own session; the page it returns to asks for the email again.
-            <Menu.Item component="a" href="/cdn-cgi/access/logout">
-              Sign out
-            </Menu.Item>
-          ) : (
-            <>
-              <Menu.Item
-                onClick={() => {
-                  setChanging(true);
-                }}
-              >
-                Change password
-              </Menu.Item>
-              <Menu.Item
-                onClick={() => {
-                  logout.mutate();
-                }}
-              >
-                Log out
-              </Menu.Item>
-            </>
-          )}
+          <Menu.Item
+            onClick={() => {
+              setChanging(true);
+            }}
+          >
+            Change password
+          </Menu.Item>
+          <Menu.Item
+            onClick={() => {
+              logout.mutate();
+            }}
+          >
+            Log out
+          </Menu.Item>
         </Menu.Dropdown>
       </Menu>
       <Modal

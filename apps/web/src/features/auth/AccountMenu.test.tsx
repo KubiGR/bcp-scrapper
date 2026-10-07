@@ -40,15 +40,28 @@ describe('AccountMenu', () => {
     expect(await screen.findByLabelText('Current password')).toBeInTheDocument();
   });
 
-  it('through Cloudflare Access: no password change, and Sign out goes to Cloudflare', async () => {
-    stubFetchRoutes({ 'GET /api/auth/me': viaAccess(aUser({ username: 'ana@example.com' })) });
-    renderAtRoutes({ initial: '/', page: <AccountMenu />, login: <p>login page</p> });
-    fireEvent.click(await screen.findByRole('button', { name: 'Account: ana@example.com' }));
-    expect(screen.queryByRole('menuitem', { name: 'Change password' })).not.toBeInTheDocument();
-    expect(await screen.findByRole('menuitem', { name: 'Sign out' })).toHaveAttribute(
-      'href',
-      '/cdn-cgi/access/logout',
-    );
+  it('is not there through Cloudflare Access: no name, no password change, no sign out', async () => {
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': viaAccess(aUser({ username: 'ana@example.com' })),
+    });
+    renderAtRoutes({
+      initial: '/',
+      page: (
+        <>
+          <AccountMenu />
+          <p>page</p>
+        </>
+      ),
+      login: <p>login page</p>,
+    });
+    await screen.findByText('page');
+    // Let the "who am I" answer arrive and render before looking.
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByRole('button', { name: /Account/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('ana@example.com')).not.toBeInTheDocument();
   });
 
   it('is not there when logins are off', async () => {
