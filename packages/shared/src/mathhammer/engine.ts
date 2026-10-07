@@ -1,6 +1,7 @@
 import {
   faceClasses,
   failChance,
+  losses,
   type Allocation,
   type DamageModel,
   type SaveProfile,
@@ -78,8 +79,16 @@ function setUp(
 ): WeaponSetup {
   const m = weapon.mods;
   const ranged = !weapon.melee;
-  // Attacks: A, plus Rapid Fire at half range, Blast and Cleave per five target models.
-  let perModel = dice(weapon.attacks);
+  // Attacks: A changed by the unit's modifier (never below 1), plus Rapid Fire at half range,
+  // Blast and Cleave per five target models.
+  const written = dice(weapon.attacks);
+  const changed = (value: number) =>
+    m.attacksModifier === 0 ? value : Math.max(1, value + m.attacksModifier);
+  let perModel: Dist = new Array<number>(changed(written.length - 1) + 1).fill(0);
+  written.forEach((p, value) => {
+    const at = changed(value);
+    perModel[at] = (perModel[at] ?? 0) + p;
+  });
   if (ranged && situation.halfRange && weapon.rapidFire !== null) {
     perModel = convolve(perModel, dice(weapon.rapidFire));
   }
@@ -95,7 +104,12 @@ function setUp(
   const cover = ranged && !m.ignoresCover && (situation.cover || defender.stealth || indirect);
   const skill = Math.min(
     6,
-    Math.max(2, (weapon.skill ?? 6) + (cover ? 1 : 0) - (ranged && situation.plungingFire ? 1 : 0)),
+    Math.max(
+      2,
+      (weapon.skill === null ? 6 : Math.min(6, Math.max(2, weapon.skill - m.skillModifier))) +
+        (cover ? 1 : 0) -
+        (ranged && situation.plungingFire ? 1 : 0),
+    ),
   );
   const hitModifier = capModifier(
     [
@@ -118,7 +132,7 @@ function setUp(
   const hitReroll: Reroll = hitRerolls ? m.hitReroll : 'none';
 
   // Wound roll.
-  const need = woundNeeded(weapon.strength, toughness);
+  const need = woundNeeded(Math.max(1, weapon.strength + m.strengthModifier), toughness);
   const woundModifier = capModifier(
     [m.woundModifier, weapon.lance && situation.charged ? 1 : 0, defender.woundModifier],
     m.woundIgnorePenalties,
@@ -213,11 +227,13 @@ function resolveWeapon(
     { key: string; toughness: number; models: number; vector: Vector }
   >();
   const out: Vector = new Map();
+  let gone = 0;
   for (const [id, p] of vector) {
     const state = space.state(id);
     const models = modelsOf(state, defender);
     if (models === 0) {
       addTo(out, id, p);
+      gone += p;
       continue;
     }
     const toughness = toughnessOf(state, defender);
@@ -296,19 +312,51 @@ function resolveWeapon(
       wasted += result.wasted;
     }
   }
+  // Where the target is already gone the weapon still fires: what would have got through the
+  // first models allocated is wasted.
+  if (gone > 0) wasted += gone * volleyAtNothing(weapon, calculation, priority, oneDie);
   return { vector: out, wasted, parts: used };
 }
 
+const meanLost = (model: DamageModel) =>
+  losses(model, null, false).reduce((sum, l) => sum + l.p * l.lost, 0);
+
+/** The damage a volley would do through the first allocated models' saves: all of it wasted. */
+function volleyAtNothing(
+  weapon: Weapon,
+  calculation: Calculation,
+  priority: number[],
+  oneDie: { hit: boolean; wound: boolean },
+): number {
+  const { defender, situation } = calculation;
+  const first = defender.groups[priority[0] ?? 0];
+  if (first === undefined) return 0;
+  const setup = setUp(weapon, defender, situation, first.toughness, 0, oneDie);
+  const a = poolWithAverages(setup.pool).averages;
+  const through = (wounds: number, profile: SaveProfile) =>
+    wounds * failChance(first, profile) * meanLost(profile.damage);
+  if (setup.devastating !== null) {
+    return (
+      a.critWounds * meanLost(setup.devastating) + through(a.wounds - a.critWounds, setup.normal)
+    );
+  }
+  if (setup.critical !== null) {
+    return through(a.critWounds, setup.critical) + through(a.wounds - a.critWounds, setup.normal);
+  }
+  return through(a.wounds, setup.normal);
+}
+
 /**
- * A weapon's averages before saves, from each kind of target it met (the states where the target
- * is wiped out add nothing), and its unsaved wounds against the first group allocated.
+ * A weapon's averages before saves for a whole volley: over the games where it has something to
+ * shoot at (a target the weapons before it wiped out takes no attacks), from each kind of target
+ * it met; and its unsaved wounds against the first group allocated.
  */
 function stepOf(
   weapon: Weapon,
   defender: Defender,
   priority: number[],
   parts: { mass: number; setup: WeaponSetup; averages: PoolAverages }[],
-): Omit<WeaponStep, 'damage' | 'wasted' | 'slain'> {
+): Omit<WeaponStep, 'damage' | 'wasted' | 'slain' | 'slainMedian'> {
   const first = defender.groups[priority[0] ?? 0];
   const fail = (profile: SaveProfile) => (first === undefined ? 1 : failChance(first, profile));
   const same = (profile: SaveProfile) =>
@@ -346,6 +394,23 @@ function stepOf(
       step.unsaved += mass * a.wounds * fail(setup.normal);
     }
     step.unsavedExact &&= same(setup.normal);
+  }
+  // Per volley: the games where the target was already gone don't lower the weapon's attacks.
+  const fired = parts.reduce((sum, part) => sum + part.mass, 0);
+  if (fired > 0) {
+    for (const key of [
+      'attacks',
+      'hits',
+      'critHits',
+      'sustainedHits',
+      'lethalHits',
+      'wounds',
+      'critWounds',
+      'devastating',
+      'unsaved',
+    ] as const) {
+      step[key] /= fired;
+    }
   }
   return step;
 }
@@ -412,6 +477,22 @@ function slainOf(space: Space, vector: Vector, defender: Defender): number {
   return total;
 }
 
+/** The median models slain: the fewest slain at least half the time. */
+function medianSlainOf(space: Space, vector: Vector, defender: Defender): number {
+  const dist: number[] = [];
+  for (const [id, p] of vector) {
+    const state = space.state(id);
+    const killed = defender.groups.reduce((sum, g, i) => sum + g.models - (state[i * 2] ?? 0), 0);
+    dist[killed] = (dist[killed] ?? 0) + p;
+  }
+  let sum = 0;
+  for (let n = 0; n < dist.length; n += 1) {
+    sum += dist[n] ?? 0;
+    if (sum >= 0.5 - 1e-9) return n;
+  }
+  return Math.max(0, dist.length - 1);
+}
+
 function woundsOf(state: State, defender: Defender): number {
   return defender.groups.reduce(
     (sum, g, i) => sum + (g.models - (state[i * 2] ?? 0)) * g.wounds + (state[i * 2 + 1] ?? 0),
@@ -475,15 +556,21 @@ export function calculate(calculation: Calculation): CalculationResult {
       }
     }
     if (best === null) continue;
-    const before = { slain: slainOf(space, vector, defender), wounds: lostOf(vector) };
+    const before = {
+      slain: slainOf(space, vector, defender),
+      median: medianSlainOf(space, vector, defender),
+      wounds: lostOf(vector),
+    };
+    const damage = lostOf(best.vector) - before.wounds;
     vector = best.vector;
     wasted += best.wasted;
     orders.push(best.priority);
     breakdown.push({
       ...stepOf(weapon, defender, best.priority, best.parts),
-      damage: lostOf(vector) - before.wounds,
+      damage,
       wasted: best.wasted,
       slain: slainOf(space, vector, defender) - before.slain,
+      slainMedian: medianSlainOf(space, vector, defender) - before.median,
     });
   }
   if (calculation.flatMortals !== null) {
@@ -494,7 +581,11 @@ export function calculate(calculation: Calculation): CalculationResult {
       priority: orders.at(-1) ?? candidates[0] ?? [],
       precision: false,
     };
-    const before = { slain: slainOf(space, vector, defender), wounds: lostOf(vector) };
+    const before = {
+      slain: slainOf(space, vector, defender),
+      median: medianSlainOf(space, vector, defender),
+      wounds: lostOf(vector),
+    };
     const result = repeat(vector, hitStep(space, mortal, one, null), dice(calculation.flatMortals));
     vector = result.vector;
     wasted += result.wasted;
@@ -513,6 +604,7 @@ export function calculate(calculation: Calculation): CalculationResult {
       damage: lostOf(vector) - before.wounds,
       wasted: result.wasted,
       slain: slainOf(space, vector, defender) - before.slain,
+      slainMedian: medianSlainOf(space, vector, defender) - before.median,
     });
   }
   const slain: number[] = [];

@@ -6,6 +6,7 @@ import type {
   UnitWeapon,
 } from '@bcp/shared';
 import {
+  keywordBoxes,
   newGroup,
   newWeapon,
   withDefenderOriginal,
@@ -38,6 +39,8 @@ function rowFrom(name: string, owner: string, models: number, profiles: UnitProf
     damage: first?.damage ?? '1',
     profiles,
     profile: profiles.length > 1 ? 'best' : 0,
+    // One profile: its keywords fill the weapon's boxes (Best rows use each profile's own).
+    ...(profiles.length > 1 ? {} : keywordBoxes(first?.keywords ?? [])),
     keywordNames: first?.keywords ?? [],
   });
 }
@@ -144,6 +147,25 @@ function rowsOf(unit: UnitDatasheet, carry: Carry[], prefix: string): WeaponRow[
 }
 
 /**
+ * The weapons the datasheet offers beyond its default loadout (wargear options): one row each,
+ * with no models, so they count only once chosen.
+ */
+function optionRows(unit: UnitDatasheet, prefix: string): WeaponRow[] {
+  const loadout = new Set(unit.loadout.map((entry) => entry.weaponId));
+  return unit.weapons
+    .filter((weapon) => !loadout.has(weapon.id) && weapon.profiles.length > 0)
+    .map((weapon) => ({
+      ...rowFrom(
+        `${prefix}${weapon.name}`,
+        prefix === '' ? unit.name : prefix.replace(/: $/, ''),
+        0,
+        weapon.profiles,
+      ),
+      option: true,
+    }));
+}
+
+/**
  * The attacker's weapons for a unit of this size, with its attached characters' (named after
  * them), each row marked with the unit it belongs to.
  */
@@ -154,9 +176,11 @@ export function attackerRows(
 ): WeaponRow[] {
   return [
     ...rowsOf(sheet, defaultCarry(sheet, sizeIndex), ''),
-    ...attached.flatMap((character) =>
-      rowsOf(character, defaultCarry(character, 0), `${character.name}: `),
-    ),
+    ...optionRows(sheet, ''),
+    ...attached.flatMap((character) => [
+      ...rowsOf(character, defaultCarry(character, 0), `${character.name}: `),
+      ...optionRows(character, `${character.name}: `),
+    ]),
   ];
 }
 

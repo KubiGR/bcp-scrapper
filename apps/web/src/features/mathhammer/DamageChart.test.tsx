@@ -47,6 +47,17 @@ describe('DamageChart', () => {
     expect(tip).toHaveTextContent('Q1: 1 · Q2: 2 · Q3: 3');
   });
 
+  it('leaves out the totals that can’t happen, like the odd ones of 2-damage hits', () => {
+    // 2 damage a wound: only 0, 2 and 4 are possible.
+    renderWithProviders(<DamageChart woundsDealt={[0.25, 0, 0.5, 0, 0.25]} />);
+    expect(screen.getAllByTestId('damage-bar')).toHaveLength(3);
+    expect(screen.getAllByTestId('at-least-point')).toHaveLength(3);
+    fireEvent.mouseEnter(screen.getAllByTestId('damage-bar')[1] as Element);
+    expect(screen.getByRole('tooltip')).toHaveTextContent('2: 50%');
+    expect(screen.getByRole('tooltip')).toHaveTextContent('2+: 75%');
+    expect(screen.getByTestId('quartile-Q2')).toHaveAttribute('data-total', '2');
+  });
+
   it('reads the numbers out in a table for screen readers', () => {
     renderWithProviders(<DamageChart woundsDealt={dist} />);
     expect(screen.getByRole('cell', { name: '40%' }).closest('tr')?.textContent).toBe('240%70%');

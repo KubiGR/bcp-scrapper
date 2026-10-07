@@ -1,4 +1,4 @@
-import { Checkbox, NumberInput, Select, SimpleGrid, TextInput } from '@mantine/core';
+import { Checkbox, NumberInput, Select, TextInput } from '@mantine/core';
 import type { Reroll } from '@bcp/shared';
 import { Children, useState, type ReactNode } from 'react';
 import classes from './inputs.module.css';
@@ -252,11 +252,12 @@ export function CritSelect({
 /** Checkboxes in even columns, each in its own box (highlighted when ticked). */
 export function CheckGrid({ children }: { children: ReactNode }) {
   return (
-    <SimpleGrid cols={{ base: 2, xs: 3, md: 5 }} spacing="xs" verticalSpacing="xs">
+    // Sized by its own panel, not the window: each box as wide as its label, wrapping as needed.
+    <div className={classes.checkGrid}>
       {Children.map(children, (child) =>
         child === null || child === false ? null : <div className={classes.checkCell}>{child}</div>,
       )}
-    </SimpleGrid>
+    </div>
   );
 }
 

@@ -87,9 +87,53 @@ describe('WeaponEditor', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ attacks: '4' }));
   });
 
+  it('folds away the keyword boxes of a datasheet weapon left as it is', () => {
+    editor([], withOriginal(chainblades));
+    expect(screen.queryByLabelText('Torrent')).toBeNull();
+    expect(screen.queryByLabelText('Blast')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit keywords' }));
+    expect(screen.getByLabelText('Torrent')).toBeInTheDocument();
+    expect(screen.getByLabelText('Blast')).toBeInTheDocument();
+  });
+
+  it('keeps the keyword boxes open while one differs from the datasheet', () => {
+    editor([], { ...withOriginal(chainblades), lance: true });
+    expect(screen.getByLabelText('Lance')).toBeChecked();
+    expect(screen.queryByRole('button', { name: 'Edit keywords' })).toBeNull();
+  });
+
   it('tags a weapon added by hand, and offers no Reset', () => {
     editor([], { ...newWeapon(), name: 'Mine' });
     expect(screen.getByText('Added')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reset' })).toBeNull();
+  });
+
+  it('tags a wargear option, and says how to use it while it has no models', () => {
+    editor([], { ...withOriginal({ ...chainblades, models: 0 }), option: true });
+    expect(screen.getByText('Option')).toBeInTheDocument();
+    expect(screen.getByText('Not taken: set Weapons to use it')).toBeInTheDocument();
+  });
+
+  it('counts weapons, not models (two cannons on one Defiler are 2)', () => {
+    editor([]);
+    expect(screen.getByLabelText('Weapons')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Models')).toBeNull();
+  });
+
+  it('heads the weapon’s box with its name and a red ✕ Remove, above its stats', () => {
+    editor([]);
+    const remove = screen.getByRole('button', { name: 'Remove weapon' });
+    expect(remove).toHaveTextContent('✕');
+    const header = remove.closest('[data-row="header"]');
+    expect(header).not.toBeNull();
+    expect(screen.getByLabelText('Weapon').closest('[data-row="header"]')).toBe(header);
+    const stats = screen.getByLabelText('Attacks').closest('[data-row="stats"]');
+    expect(stats?.contains(remove)).toBe(false);
+    expect(stats?.contains(screen.getByLabelText('Weapon'))).toBe(false);
+    // The header comes first in the box.
+    expect(
+      remove.compareDocumentPosition(screen.getByLabelText('Attacks')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

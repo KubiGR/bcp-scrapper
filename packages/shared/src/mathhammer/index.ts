@@ -7,3 +7,4 @@ export type { Reroll } from './rolls';
 export * from './keywords';
 export * from './list-reader';
 export * from './list-match';
+export { simulate } from './simulate';

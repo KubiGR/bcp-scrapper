@@ -6,6 +6,7 @@ import { CAPTAIN, INTERCESSORS } from './unit-fixtures';
 import { defaultForm, toCalculation } from './form-state';
 import { MathhammerPage } from './MathhammerPage';
 import { percent } from './ResultPanel';
+import { expected } from './expected';
 
 /** The engine's average models slain for a form, as the page shows it. */
 function expectedSlain(change: (form: ReturnType<typeof defaultForm>) => void): string {
@@ -25,6 +26,18 @@ describe('MathhammerPage', () => {
     expect(screen.getByRole('table', { name: 'Models slain, at least' })).toBeInTheDocument();
   });
 
+  it('leads with the median, a whole number of models, with the average and the most likely', () => {
+    renderWithProviders(<MathhammerPage />);
+    const read = toCalculation(defaultForm());
+    if (!('calculation' in read)) throw new Error(read.error);
+    const { modelsSlain, averages } = calculate(read.calculation);
+    const want = expected(modelsSlain);
+    const slain = screen.getByLabelText('Models slain');
+    expect(within(slain).getByText(String(want.median))).toBeInTheDocument();
+    expect(slain).toHaveTextContent(`average ${averages.modelsSlain.toFixed(2)}`);
+    expect(slain).toHaveTextContent(`most likely ${String(want.mode)}`);
+  });
+
   it('hides weapons not used in the phase behind one line, and shows them on request', () => {
     renderWithProviders(<MathhammerPage />);
     fireEvent.click(screen.getByRole('radio', { name: 'Fighting' }));
@@ -36,9 +49,23 @@ describe('MathhammerPage', () => {
     expect(screen.queryByRole('group', { name: 'Weapon 1' })).toBeNull();
   });
 
+  it('offers to share the result as an image', () => {
+    renderWithProviders(<MathhammerPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    expect(screen.getByTestId('share-card')).toBeInTheDocument();
+  });
+
   it('charts the chance of each total of damage dealt', () => {
     renderWithProviders(<MathhammerPage />);
     expect(screen.getByRole('img', { name: /^Damage dealt: / })).toBeInTheDocument();
+  });
+
+  it('leaves out totals of models slain with less than a 1% chance', () => {
+    renderWithProviders(<MathhammerPage />);
+    const table = within(screen.getByRole('table', { name: 'Models slain, at least' }));
+    expect(table.queryByText('<1%')).toBeNull();
+    const last = table.getAllByRole('row').at(-1)?.textContent ?? '';
+    expect(Number(/(\d+)%/.exec(last)?.[1])).toBeGreaterThanOrEqual(1);
   });
 
   it('shows each weapon step by step under the result', () => {
@@ -92,11 +119,11 @@ describe('MathhammerPage', () => {
     });
   });
 
-  it('applies the situation', async () => {
+  it('applies the situation (the target starts in cover; unticking it removes cover)', async () => {
     renderWithProviders(<MathhammerPage />);
     fireEvent.click(screen.getByLabelText('In cover (-1 BS for ranged)'));
     const want = expectedSlain((form) => {
-      form.situation = { ...form.situation, cover: true };
+      form.situation = { ...form.situation, cover: false };
     });
     await waitFor(() => {
       expect(screen.getByLabelText('Models slain')).toHaveTextContent(want);
@@ -160,7 +187,7 @@ describe('picking units', () => {
       await screen.findByText('From datasheet: Intercessor Squad + Captain'),
     ).toBeInTheDocument();
     expect(weapon().getByLabelText('Weapon')).toHaveValue('Bolt rifle');
-    expect(weapon().getByLabelText('Models')).toHaveValue('5');
+    expect(weapon().getByLabelText('Weapons')).toHaveValue('5');
     const plasma = within(screen.getByRole('group', { name: 'Weapon 2' }));
     expect(plasma.getByRole('combobox', { name: 'Profile' })).toHaveValue('Best');
     expect(await plasma.findByText(/^Best here: /)).toBeInTheDocument();
@@ -224,7 +251,7 @@ describe('picking units', () => {
       await screen.findByText('From datasheet: Intercessor Squad + Captain'),
     ).toBeInTheDocument();
     expect(weapon().getByLabelText('Weapon')).toHaveValue('Bolt rifle');
-    expect(weapon().getByLabelText('Models')).toHaveValue('5');
+    expect(weapon().getByLabelText('Weapons')).toHaveValue('5');
     // The Captain's melee weapon sits out while shooting: shown on request.
     fireEvent.click(screen.getByRole('button', { name: 'Show' }));
     const captain = within(screen.getByRole('group', { name: 'Weapon 2' }));

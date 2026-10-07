@@ -14,7 +14,10 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
   ],
   server: {
-    port: 5173,
+    // Not Vite's default 5173: other projects on this machine (js-icp) use it. Fails loudly
+    // instead of moving to another port when this one is taken.
+    port: 5273,
+    strictPort: true,
     // The e2e test runs its own API on another port.
     proxy: { '/api': process.env.API_PROXY_TARGET ?? 'http://127.0.0.1:3401' },
   },

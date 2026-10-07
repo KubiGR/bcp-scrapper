@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { keywordEffect, readKeywords } from './keywords';
+import { isConditional, keywordEffect, keywordFields, readKeywords } from './keywords';
 import { NO_KEYWORDS } from './weapons';
 
 describe('readKeywords', () => {
@@ -98,5 +98,36 @@ describe('keywordEffect', () => {
   it('gives nothing for names that change no numbers', () => {
     expect(keywordEffect('Hazardous', ['INFANTRY'])).toBeNull();
     expect(keywordEffect('Pistol', [])).toBeNull();
+  });
+});
+
+describe('keywordFields', () => {
+  const names = [
+    'Sustained Hits 1',
+    'Twin-linked',
+    'Anti-monster 3+',
+    'Anti-vehicle 3+',
+    'LETHAL HITS: non-MONSTER/VEHICLE',
+    'Anti-non-character 4+',
+    'Hazardous',
+  ];
+
+  it('reads the keywords that hold whatever the target, for the weapon’s own boxes', () => {
+    expect(keywordFields(names)).toMatchObject({
+      sustainedHits: '1',
+      twinLinked: true,
+      lethalHits: false,
+      anti: [
+        { keyword: 'MONSTER', value: 3 },
+        { keyword: 'VEHICLE', value: 3 },
+      ],
+    });
+  });
+
+  it('leaves out the ones that depend on the target', () => {
+    expect(names.filter(isConditional)).toEqual([
+      'LETHAL HITS: non-MONSTER/VEHICLE',
+      'Anti-non-character 4+',
+    ]);
   });
 });

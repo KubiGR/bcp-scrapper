@@ -1,9 +1,17 @@
 import { keywordEffect, type WeaponMods } from '@bcp/shared';
 import { Badge, Button, Group, Paper, Select, Stack, Text, TextInput } from '@mantine/core';
-import { originalText, resetWeapon, weaponChanges, type WeaponRow } from './form-state';
+import {
+  keywordBoxes,
+  originalText,
+  resetWeapon,
+  weaponChanges,
+  type WeaponRow,
+} from './form-state';
 import { Check, CheckGrid, changedProps, DiceInput, Num } from './inputs';
 import inputClasses from './inputs.module.css';
+import { useState } from 'react';
 import { SwitchesEditor } from './SwitchesEditor';
+import classes from './WeaponEditor.module.css';
 
 /** One weapon: its profile on the first line, its keywords on the second. */
 /** The Anti box's hint: the datasheet's Anti (always applied), the box being for more. */
@@ -13,6 +21,24 @@ const antiHint = (keywordNames: string[]) => {
     ? 'Extra, e.g. INFANTRY 4+'
     : `Datasheet: ${anti.join(', ')}; add more here`;
 };
+
+const KEYWORD_FIELDS = new Set<string>([
+  'torrent',
+  'lethalHits',
+  'devastatingWounds',
+  'twinLinked',
+  'heavy',
+  'lance',
+  'ignoresCover',
+  'precision',
+  'indirectFire',
+  'sustainedHits',
+  'rapidFire',
+  'blast',
+  'cleave',
+  'melta',
+  'anti',
+]);
 
 export function WeaponEditor({
   index,
@@ -44,35 +70,69 @@ export function WeaponEditor({
   const w = weapon;
   // With Best, the profile is chosen for the target: its values aren't typed.
   const picked = w.profile === 'best';
+  // A datasheet weapon whose keywords are as the datasheet has them folds its keyword boxes away.
+  const keywordsChanged = weaponChanges(w).some((field) => KEYWORD_FIELDS.has(field));
+  const [openKeywords, setOpenKeywords] = useState(false);
+  const foldable = w.original !== null && !keywordsChanged;
+  const showKeywords = !foldable || openKeywords;
   return (
     <Paper
       withBorder
       p="sm"
+      pt={26}
+      mt={18}
       component="fieldset"
       aria-label={`Weapon ${String(index + 1)}`}
       opacity={sitsOut === null ? 1 : 0.6}
+      className={classes.box}
     >
       <Stack gap="xs">
+        {/* Sits on the box's top border, like a section title. */}
+        <Group
+          justify="space-between"
+          align="center"
+          wrap="nowrap"
+          data-row="header"
+          className={classes.header}
+        >
+          <TextInput
+            classNames={{ input: inputClasses.field }}
+            {...changedProps(originalText(w, 'name'))}
+            size="xs"
+            aria-label="Weapon"
+            placeholder="Weapon name"
+            value={w.name}
+            w={{ base: 180, xs: 280 }}
+            onChange={(event) => {
+              onChange({ name: event.currentTarget.value });
+            }}
+          />
+          <Button
+            size="xs"
+            h={30}
+            color="red"
+            variant="light"
+            aria-label="Remove weapon"
+            leftSection={<span aria-hidden>✕</span>}
+            onClick={onRemove}
+          >
+            Remove
+          </Button>
+        </Group>
         {sitsOut !== null && (
           <Text size="xs" c="dimmed">
             {sitsOut}
           </Text>
         )}
-        <Group gap="xs" align="flex-end">
-          <TextInput
-            classNames={{ input: inputClasses.field }}
-            {...changedProps(originalText(w, 'name'))}
-            size="xs"
-            label="Weapon"
-            value={w.name}
-            w={150}
-            onChange={(event) => {
-              onChange({ name: event.currentTarget.value });
-            }}
-          />
+        {w.option && w.models === 0 && (
+          <Text size="xs" c="dimmed">
+            Not taken: set Weapons to use it
+          </Text>
+        )}
+        <Group gap="xs" align="flex-end" data-row="stats">
           <Num
             original={originalText(w, 'models')}
-            label="Models"
+            label="Weapons"
             value={w.models}
             min={0}
             onChange={(v) => {
@@ -162,9 +222,11 @@ export function WeaponEditor({
             >
               ↓
             </Button>
-            <Button size="compact-xs" variant="subtle" color="red" onClick={onRemove}>
-              Remove
-            </Button>
+            {w.option && (
+              <Badge size="xs" variant="light" color="blue">
+                Option
+              </Badge>
+            )}
             {w.original === null ? (
               <Badge size="xs" variant="light" color="gray">
                 Added
@@ -202,7 +264,8 @@ export function WeaponEditor({
               value={String(w.profile)}
               onChange={(next) => {
                 if (next === 'best' || next === null) {
-                  onChange({ profile: 'best' });
+                  // Best uses each profile's own keywords: the boxes start empty.
+                  onChange({ profile: 'best', ...keywordBoxes([]) });
                   return;
                 }
                 const i = Number(next);
@@ -217,6 +280,7 @@ export function WeaponEditor({
                   ap: p.ap,
                   damage: p.damage,
                   keywordNames: p.keywords,
+                  ...keywordBoxes(p.keywords),
                 });
               }}
             />
@@ -237,142 +301,159 @@ export function WeaponEditor({
             })
             .join(', ')}`}</Text>
         )}
-        <CheckGrid>
-          <Check
-            original={originalText(w, 'torrent')}
-            label="Torrent"
-            checked={w.torrent}
-            onChange={(v) => {
-              onChange({ torrent: v });
-            }}
-          />
-          <Check
-            original={originalText(w, 'lethalHits')}
-            label="Lethal Hits"
-            checked={w.lethalHits}
-            onChange={(v) => {
-              onChange({ lethalHits: v });
-            }}
-          />
-          <Check
-            original={originalText(w, 'devastatingWounds')}
-            label="Devastating Wounds"
-            checked={w.devastatingWounds}
-            onChange={(v) => {
-              onChange({ devastatingWounds: v });
-            }}
-          />
-          <Check
-            original={originalText(w, 'twinLinked')}
-            label="Twin-linked"
-            checked={w.twinLinked}
-            onChange={(v) => {
-              onChange({ twinLinked: v });
-            }}
-          />
-          <Check
-            original={originalText(w, 'heavy')}
-            label="Heavy"
-            checked={w.heavy}
-            onChange={(v) => {
-              onChange({ heavy: v });
-            }}
-          />
-          <Check
-            original={originalText(w, 'lance')}
-            label="Lance"
-            checked={w.lance}
-            onChange={(v) => {
-              onChange({ lance: v });
-            }}
-          />
-          <Check
-            original={originalText(w, 'ignoresCover')}
-            label="Ignores Cover"
-            checked={w.ignoresCover}
-            onChange={(v) => {
-              onChange({ ignoresCover: v });
-            }}
-          />
-          <Check
-            original={originalText(w, 'precision')}
-            label="Precision"
-            checked={w.precision}
-            onChange={(v) => {
-              onChange({ precision: v });
-            }}
-          />
-          <Check
-            original={originalText(w, 'indirectFire')}
-            label="Indirect Fire"
-            checked={w.indirectFire}
-            onChange={(v) => {
-              onChange({ indirectFire: v });
-            }}
-          />
-        </CheckGrid>
-        <Group gap="xs" align="flex-end">
-          <DiceInput
-            original={originalText(w, 'sustainedHits')}
-            label="Sustained Hits"
-            value={w.sustainedHits}
-            w={96}
-            onChange={(v) => {
-              onChange({ sustainedHits: v });
-            }}
-          />
-          <DiceInput
-            original={originalText(w, 'rapidFire')}
-            label="Rapid Fire"
-            value={w.rapidFire}
-            w={80}
-            onChange={(v) => {
-              onChange({ rapidFire: v });
-            }}
-          />
-          <Num
-            original={originalText(w, 'blast')}
-            label="Blast"
-            value={w.blast}
-            min={1}
-            nullable
-            onChange={(v) => {
-              onChange({ blast: v });
-            }}
-          />
-          <Num
-            original={originalText(w, 'cleave')}
-            label="Cleave"
-            value={w.cleave}
-            min={1}
-            nullable
-            onChange={(v) => {
-              onChange({ cleave: v });
-            }}
-          />
-          <Num
-            original={originalText(w, 'melta')}
-            label="Melta"
-            value={w.melta}
-            min={1}
-            nullable
-            onChange={(v) => {
-              onChange({ melta: v });
-            }}
-          />
-          <TextInput
-            classNames={{ input: inputClasses.field }}
-            {...changedProps(originalText(w, 'anti'))}
-            size="xs"
-            label="Anti"
-            placeholder={antiHint(w.keywordNames)}
-            value={w.anti}
-            w={w.keywordNames.some((name) => /^anti/i.test(name.trim())) ? 340 : 190}
-            onChange={(event) => {
-              onChange({ anti: event.currentTarget.value });
-            }}
-          />
-        </Group>
+        {foldable && (
+          <Group>
+            <Button
+              size="compact-xs"
+              variant="subtle"
+              onClick={() => {
+                setOpenKeywords(!openKeywords);
+              }}
+            >
+              {openKeywords ? 'Hide keywords' : 'Edit keywords'}
+            </Button>
+          </Group>
+        )}
+        {showKeywords && (
+          <>
+            <CheckGrid>
+              <Check
+                original={originalText(w, 'torrent')}
+                label="Torrent"
+                checked={w.torrent}
+                onChange={(v) => {
+                  onChange({ torrent: v });
+                }}
+              />
+              <Check
+                original={originalText(w, 'lethalHits')}
+                label="Lethal Hits"
+                checked={w.lethalHits}
+                onChange={(v) => {
+                  onChange({ lethalHits: v });
+                }}
+              />
+              <Check
+                original={originalText(w, 'devastatingWounds')}
+                label="Devastating Wounds"
+                checked={w.devastatingWounds}
+                onChange={(v) => {
+                  onChange({ devastatingWounds: v });
+                }}
+              />
+              <Check
+                original={originalText(w, 'twinLinked')}
+                label="Twin-linked"
+                checked={w.twinLinked}
+                onChange={(v) => {
+                  onChange({ twinLinked: v });
+                }}
+              />
+              <Check
+                original={originalText(w, 'heavy')}
+                label="Heavy"
+                checked={w.heavy}
+                onChange={(v) => {
+                  onChange({ heavy: v });
+                }}
+              />
+              <Check
+                original={originalText(w, 'lance')}
+                label="Lance"
+                checked={w.lance}
+                onChange={(v) => {
+                  onChange({ lance: v });
+                }}
+              />
+              <Check
+                original={originalText(w, 'ignoresCover')}
+                label="Ignores Cover"
+                checked={w.ignoresCover}
+                onChange={(v) => {
+                  onChange({ ignoresCover: v });
+                }}
+              />
+              <Check
+                original={originalText(w, 'precision')}
+                label="Precision"
+                checked={w.precision}
+                onChange={(v) => {
+                  onChange({ precision: v });
+                }}
+              />
+              <Check
+                original={originalText(w, 'indirectFire')}
+                label="Indirect Fire"
+                checked={w.indirectFire}
+                onChange={(v) => {
+                  onChange({ indirectFire: v });
+                }}
+              />
+            </CheckGrid>
+            <Group gap="xs" align="flex-end">
+              <DiceInput
+                original={originalText(w, 'sustainedHits')}
+                label="Sustained Hits"
+                value={w.sustainedHits}
+                w={96}
+                onChange={(v) => {
+                  onChange({ sustainedHits: v });
+                }}
+              />
+              <DiceInput
+                original={originalText(w, 'rapidFire')}
+                label="Rapid Fire"
+                value={w.rapidFire}
+                w={80}
+                onChange={(v) => {
+                  onChange({ rapidFire: v });
+                }}
+              />
+              <Num
+                original={originalText(w, 'blast')}
+                label="Blast"
+                value={w.blast}
+                min={1}
+                nullable
+                onChange={(v) => {
+                  onChange({ blast: v });
+                }}
+              />
+              <Num
+                original={originalText(w, 'cleave')}
+                label="Cleave"
+                value={w.cleave}
+                min={1}
+                nullable
+                onChange={(v) => {
+                  onChange({ cleave: v });
+                }}
+              />
+              <Num
+                original={originalText(w, 'melta')}
+                label="Melta"
+                value={w.melta}
+                min={1}
+                nullable
+                onChange={(v) => {
+                  onChange({ melta: v });
+                }}
+              />
+              <TextInput
+                classNames={{ input: inputClasses.field }}
+                {...changedProps(originalText(w, 'anti'))}
+                size="xs"
+                label="Anti"
+                placeholder={antiHint(w.keywordNames)}
+                value={w.anti}
+                w={w.keywordNames.some((name) => /^anti/i.test(name.trim())) ? 340 : 190}
+                onChange={(event) => {
+                  onChange({ anti: event.currentTarget.value });
+                }}
+              />
+            </Group>
+          </>
+        )}
         <Check
           label="Own switches"
           checked={w.own !== null}

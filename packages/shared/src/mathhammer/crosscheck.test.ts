@@ -40,6 +40,24 @@ const SCENARIOS: [string, Calculation][] = [
     }),
   ],
   [
+    'Attacks, BS and Strength modifiers, into cover',
+    calc({
+      weapons: [
+        weapon({
+          models: 2,
+          attacks: 'D6',
+          skill: 3,
+          strength: 6,
+          ap: -1,
+          damage: '2',
+          mods: { attacksModifier: 1, skillModifier: 1, strengthModifier: 1, apImprove: 1 },
+        }),
+      ],
+      defender: defender({ groups: [group({ models: 10, toughness: 5, save: 3, wounds: 2 })] }),
+      situation: { ...S, cover: true },
+    }),
+  ],
+  [
     'Sustained 2 + Lethal, re-roll ones',
     calc({
       weapons: [

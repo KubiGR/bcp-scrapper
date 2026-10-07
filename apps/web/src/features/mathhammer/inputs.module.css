@@ -1,5 +1,12 @@
+.checkGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+  gap: var(--mantine-spacing-xs);
+}
+
 .checkCell {
   display: flex;
+  white-space: nowrap;
   align-items: center;
   min-height: 36px;
   padding: 6px 10px;

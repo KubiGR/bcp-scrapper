@@ -1,4 +1,4 @@
-/* Bars #00a3bf and line #cc7f12: checked apart for colour-blind readers on the dark panel. */
+/* The legend and tooltip; the chart's own colours are on its SVG (see DamageChart.tsx). */
 .frame {
   position: relative;
 }
@@ -49,72 +49,6 @@
   height: 8px;
   border-radius: 50%;
   background: #cc7f12;
-}
-
-.middle {
-  fill: var(--mantine-color-dark-5);
-  opacity: 0.55;
-}
-
-.grid {
-  stroke: var(--mantine-color-dark-5);
-  stroke-width: 1;
-  stroke-dasharray: 4 4;
-}
-
-.baseline {
-  stroke: var(--mantine-color-dark-3);
-  stroke-width: 1;
-}
-
-.axis {
-  fill: var(--mantine-color-dimmed);
-  font-size: 11px;
-  font-family: var(--mantine-font-family-monospace);
-}
-
-.axisTitle {
-  fill: var(--mantine-color-dimmed);
-  font-size: 11px;
-}
-
-.bar {
-  fill: #00a3bf;
-}
-
-.barHover {
-  fill: #26c0db;
-}
-
-.quartile {
-  stroke: var(--mantine-color-dark-2);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
-}
-
-.median {
-  stroke: var(--mantine-color-white);
-  stroke-width: 2;
-}
-
-.medianLabel {
-  fill: var(--mantine-color-white);
-  font-size: 11px;
-  font-weight: 600;
-  font-family: var(--mantine-font-family-monospace);
-}
-
-.line {
-  fill: none;
-  stroke: #cc7f12;
-  stroke-width: 2;
-}
-
-/* A ring of the panel's colour keeps each point clear of the bars behind it. */
-.point {
-  fill: #cc7f12;
-  stroke: var(--mantine-color-dark-6);
-  stroke-width: 2;
 }
 
 .tip {

@@ -53,6 +53,75 @@ export function SwitchesEditor({
           Reset modifiers
         </Button>
       </Group>
+      <Fieldset
+        legend="Characteristics"
+        variant="filled"
+        p="sm"
+        classNames={{ legend: classes.legend }}
+      >
+        <Group gap="xs" align="flex-end">
+          <Num
+            original={changed('attacksModifier', 'number')}
+            from="Default"
+            label="Attacks +"
+            value={unit.attacksModifier}
+            min={-3}
+            max={6}
+            w={90}
+            onChange={(v) => {
+              set({ attacksModifier: v ?? 0 });
+            }}
+          />
+          <Num
+            original={changed('skillModifier', 'number')}
+            from="Default"
+            label="BS/WS better by"
+            value={unit.skillModifier}
+            min={-4}
+            max={4}
+            w={120}
+            onChange={(v) => {
+              set({ skillModifier: v ?? 0 });
+            }}
+          />
+          <Num
+            original={changed('strengthModifier', 'number')}
+            from="Default"
+            label="Strength +"
+            value={unit.strengthModifier}
+            min={-6}
+            max={12}
+            w={96}
+            onChange={(v) => {
+              set({ strengthModifier: v ?? 0 });
+            }}
+          />
+          <Num
+            original={changed('apImprove', 'number')}
+            from="Default"
+            label="Improve AP by"
+            value={unit.apImprove}
+            min={-3}
+            max={6}
+            w={96}
+            onChange={(v) => {
+              set({ apImprove: v ?? 0 });
+            }}
+          />
+          <Num
+            original={changed('damageModifier', 'number')}
+            from="Default"
+            label="Damage +"
+            value={unit.damageModifier}
+            min={-3}
+            max={6}
+            w={80}
+            onChange={(v) => {
+              set({ damageModifier: v ?? 0 });
+            }}
+          />
+        </Group>
+      </Fieldset>
       <Fieldset legend="Hit roll" variant="filled" p="sm" classNames={{ legend: classes.legend }}>
         <Group gap="xs" align="flex-end">
           <RerollSelect
@@ -225,17 +294,6 @@ export function SwitchesEditor({
       >
         <Group gap="xs" align="flex-end">
           <Num
-            original={changed('apImprove', 'number')}
-            from="Default"
-            label="Improve AP by"
-            value={unit.apImprove}
-            min={0}
-            w={96}
-            onChange={(v) => {
-              set({ apImprove: v ?? 0 });
-            }}
-          />
-          <Num
             original={changed('saveModifier', 'number')}
             from="Default"
             label="Worsen saves by"
@@ -264,17 +322,6 @@ export function SwitchesEditor({
             checked={unit.damageRerollOneDie}
             onChange={(v) => {
               set({ damageRerollOneDie: v });
-            }}
-          />
-          <Num
-            original={changed('damageModifier', 'number')}
-            from="Default"
-            label="Damage +"
-            value={unit.damageModifier}
-            min={-3}
-            w={80}
-            onChange={(v) => {
-              set({ damageModifier: v ?? 0 });
             }}
           />
           <Check

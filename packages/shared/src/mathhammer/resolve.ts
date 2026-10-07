@@ -73,7 +73,13 @@ export function hitStep(
     const g = currentGroup(state, allocation);
     const group = space.groups[g];
     let outcomes: Outcome[];
-    if (group === undefined || (hurts !== null && !hurts.has(g))) {
+    if (group === undefined) {
+      // The target is wiped out: the attack's damage is wasted, when it would have got through
+      // (saves as the first models allocated would make them).
+      const through = hurts === null || hurts.has(allocation.priority[0] ?? 0);
+      const lost = losses(damage, null, false).reduce((sum, l) => sum + l.p * l.lost, 0);
+      outcomes = [{ to: id, p: 1, wasted: through ? lost : 0 }];
+    } else if (hurts !== null && !hurts.has(g)) {
       outcomes = [{ to: id, p: 1, wasted: 0 }];
     } else {
       outcomes = losses(damage, group.fnp, state[last] === 1).map((loss) => {

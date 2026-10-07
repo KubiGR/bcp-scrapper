@@ -11,6 +11,28 @@ const TOP = 26;
 const BOTTOM = 40;
 const PLOT_W = WIDTH - LEFT - RIGHT;
 const PLOT_H = HEIGHT - TOP - BOTTOM;
+/**
+ * The chart's colours and type, written onto the SVG itself (not through classes) so a copied image
+ * of it (Share) looks the same. Bars #00a3bf and line #cc7f12: checked apart for colour-blind
+ * readers on the dark panel; the greys are the theme's dark steps.
+ */
+const MONO = '"JetBrains Mono Variable", ui-monospace, monospace';
+const SANS = '"Exo 2 Variable", system-ui, sans-serif';
+const SVG = {
+  middle: { fill: '#2a3656', fillOpacity: 0.55 },
+  grid: { stroke: '#2a3656', strokeWidth: 1, strokeDasharray: '4 4' },
+  baseline: { stroke: '#5a6a8e', strokeWidth: 1 },
+  axis: { fill: '#7f8fb0', fontSize: 11, fontFamily: MONO },
+  axisTitle: { fill: '#7f8fb0', fontSize: 11, fontFamily: SANS },
+  bar: { fill: '#00a3bf' },
+  barHover: { fill: '#26c0db' },
+  quartile: { stroke: '#7f8fb0', strokeWidth: 1, strokeDasharray: '3 3' },
+  median: { stroke: '#ffffff', strokeWidth: 2 },
+  medianLabel: { fill: '#ffffff', fontSize: 11, fontWeight: 600, fontFamily: MONO },
+  line: { fill: 'none', stroke: '#cc7f12', strokeWidth: 2 },
+  point: { fill: '#cc7f12', stroke: '#1b2440', strokeWidth: 2 },
+} as const;
+
 /** Totals less likely than this at the high end are left off. */
 const TAIL = 0.0005;
 /** Gridlines: both axes share them, the left in fifths of its top, the right in 20% steps. */
@@ -45,10 +67,17 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
   const exactly = woundsDealt.slice(0, last + 1);
   if (exactly.length === 0) return null;
   // At least n: everything from n up (the trimmed tail included).
-  const atLeast = exactly.map((_, n) => woundsDealt.slice(n).reduce((sum, p) => sum + p, 0));
+  const atLeastOf = exactly.map((_, n) => woundsDealt.slice(n).reduce((sum, p) => sum + p, 0));
+  // Only the totals that can happen get a column: 2-damage hits make no odd totals, so no gaps.
+  const totals = exactly.flatMap((p, n) => (p > 0 || n === 0 ? [n] : []));
+  const at = (total: number) =>
+    Math.max(
+      0,
+      totals.findIndex((t) => t >= total),
+    );
   const step = STEPS.find((s) => s * LINES >= Math.max(...exactly) - 1e-9) ?? 0.2;
   const top = step * LINES;
-  const slot = PLOT_W / exactly.length;
+  const slot = PLOT_W / totals.length;
   const barW = Math.max(2, Math.min(40, slot - 4));
   const center = (n: number) => LEFT + n * slot + slot / 2;
   const yLeft = (p: number) => TOP + PLOT_H - (Math.min(p, top) / top) * PLOT_H;
@@ -57,7 +86,7 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
   const qs = quartiles(woundsDealt.slice(0, last + 1));
   const labels = new Map<number, string[]>();
   qs.forEach((total, i) => labels.set(total, [...(labels.get(total) ?? []), `Q${String(i + 1)}`]));
-  const labelEvery = Math.ceil(exactly.length / 16);
+  const labelEvery = Math.ceil(totals.length / 16);
   const mean = exactly.reduce((sum, p, n) => sum + p * n, 0);
   const quartileText = `Q1: ${String(qs[0])} · Q2: ${String(qs[1])} · Q3: ${String(qs[2])}`;
 
@@ -94,27 +123,21 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
         >
           {/* The middle half of results. */}
           <rect
-            x={LEFT + qs[0] * slot}
+            x={LEFT + at(qs[0]) * slot}
             y={TOP}
-            width={(qs[2] - qs[0] + 1) * slot}
+            width={(at(qs[2]) - at(qs[0]) + 1) * slot}
             height={PLOT_H}
-            className={classes.middle}
+            {...SVG.middle}
           />
           {lines.map((i) => {
             const y = TOP + PLOT_H - (i / LINES) * PLOT_H;
             return (
               <g key={i}>
-                <line x1={LEFT} x2={WIDTH - RIGHT} y1={y} y2={y} className={classes.grid} />
-                <text
-                  data-axis="left"
-                  x={LEFT - 6}
-                  y={y + 4}
-                  textAnchor="end"
-                  className={classes.axis}
-                >
+                <line x1={LEFT} x2={WIDTH - RIGHT} y1={y} y2={y} {...SVG.grid} />
+                <text data-axis="left" x={LEFT - 6} y={y + 4} textAnchor="end" {...SVG.axis}>
                   {`${String(Math.round(step * i * 100))}%`}
                 </text>
-                <text data-axis="right" x={WIDTH - RIGHT + 6} y={y + 4} className={classes.axis}>
+                <text data-axis="right" x={WIDTH - RIGHT + 6} y={y + 4} {...SVG.axis}>
                   {`${String((i * 100) / LINES)}%`}
                 </text>
               </g>
@@ -125,11 +148,11 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
             x2={WIDTH - RIGHT}
             y1={TOP + PLOT_H}
             y2={TOP + PLOT_H}
-            className={classes.baseline}
+            {...SVG.baseline}
           />
-          {exactly.map((p, n) => (
+          {totals.map((total, n) => (
             <g
-              key={n}
+              key={total}
               onMouseEnter={() => {
                 setHover(n);
               }}
@@ -139,20 +162,15 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
               <rect
                 data-testid="damage-bar"
                 x={center(n) - barW / 2}
-                y={yLeft(p)}
+                y={yLeft(exactly[total] ?? 0)}
                 width={barW}
-                height={Math.max(0, TOP + PLOT_H - yLeft(p))}
+                height={Math.max(0, TOP + PLOT_H - yLeft(exactly[total] ?? 0))}
                 rx={Math.min(4, barW / 2)}
-                className={hover === n ? classes.barHover : classes.bar}
+                {...(hover === n ? SVG.barHover : SVG.bar)}
               />
               {n % labelEvery === 0 && (
-                <text
-                  x={center(n)}
-                  y={TOP + PLOT_H + 16}
-                  textAnchor="middle"
-                  className={classes.axis}
-                >
-                  {n}
+                <text x={center(n)} y={TOP + PLOT_H + 16} textAnchor="middle" {...SVG.axis}>
+                  {total}
                 </text>
               )}
             </g>
@@ -162,50 +180,47 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
               key={i}
               data-testid={`quartile-Q${String(i + 1)}`}
               data-total={total}
-              x1={center(total)}
-              x2={center(total)}
+              x1={center(at(total))}
+              x2={center(at(total))}
               y1={TOP}
               y2={TOP + PLOT_H}
-              className={i === 1 ? classes.median : classes.quartile}
+              {...(i === 1 ? SVG.median : SVG.quartile)}
             />
           ))}
           {[...labels].map(([total, names]) => (
             <text
               key={total}
-              x={center(total)}
+              x={center(at(total))}
               y={TOP - 8}
               textAnchor="middle"
-              className={names.includes('Q2') ? classes.medianLabel : classes.axis}
+              {...(names.includes('Q2') ? SVG.medianLabel : SVG.axis)}
             >
               {names.join(' ')}
             </text>
           ))}
           <polyline
-            points={atLeast.map((p, n) => `${String(center(n))},${String(yRight(p))}`).join(' ')}
-            className={classes.line}
+            points={totals
+              .map((total, n) => `${String(center(n))},${String(yRight(atLeastOf[total] ?? 0))}`)
+              .join(' ')}
+            {...SVG.line}
           />
-          {atLeast.map((p, n) => (
+          {totals.map((total, n) => (
             <circle
-              key={n}
+              key={total}
               data-testid="at-least-point"
               cx={center(n)}
-              cy={yRight(p)}
+              cy={yRight(atLeastOf[total] ?? 0)}
               r={hover === n ? 5 : 4}
-              className={classes.point}
+              {...SVG.point}
             />
           ))}
-          <text x={LEFT - 6} y={HEIGHT - 4} textAnchor="end" className={classes.axisTitle}>
+          <text x={4} y={HEIGHT - 4} {...SVG.axisTitle}>
             Exactly
           </text>
-          <text
-            x={LEFT + PLOT_W / 2}
-            y={HEIGHT - 4}
-            textAnchor="middle"
-            className={classes.axisTitle}
-          >
+          <text x={LEFT + PLOT_W / 2} y={HEIGHT - 4} textAnchor="middle" {...SVG.axisTitle}>
             Damage dealt
           </text>
-          <text x={WIDTH - RIGHT + 6} y={HEIGHT - 4} className={classes.axisTitle}>
+          <text x={WIDTH - 4} y={HEIGHT - 4} textAnchor="end" {...SVG.axisTitle}>
             At least
           </text>
         </svg>
@@ -217,11 +232,11 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
           >
             <div>
               <span className={classes.swatchBar} aria-hidden />
-              {`${String(hover)}: ${percent(exactly[hover] ?? 0)}`}
+              {`${String(totals[hover] ?? 0)}: ${percent(exactly[totals[hover] ?? 0] ?? 0)}`}
             </div>
             <div>
               <span className={classes.swatchLine} aria-hidden />
-              {`${String(hover)}+: ${percent(atLeast[hover] ?? 0)}`}
+              {`${String(totals[hover] ?? 0)}+: ${percent(atLeastOf[totals[hover] ?? 0] ?? 0)}`}
             </div>
             <div className={classes.tipQuartiles}>{quartileText}</div>
           </div>
@@ -242,11 +257,11 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
             </tr>
           </thead>
           <tbody>
-            {exactly.map((p, n) => (
-              <tr key={n}>
-                <td>{n}</td>
-                <td>{percent(p)}</td>
-                <td>{percent(atLeast[n] ?? 0)}</td>
+            {totals.map((total) => (
+              <tr key={total}>
+                <td>{total}</td>
+                <td>{percent(exactly[total] ?? 0)}</td>
+                <td>{percent(atLeastOf[total] ?? 0)}</td>
               </tr>
             ))}
           </tbody>

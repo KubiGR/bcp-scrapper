@@ -22,6 +22,7 @@
     "@tanstack/react-router": "^1.170.38",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.23",
+    "html-to-image": "^1.11.13",
     "mantine-datatable": "^9.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

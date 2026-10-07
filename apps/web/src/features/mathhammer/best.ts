@@ -17,7 +17,12 @@ function attempt(form: MathhammerForm, chosen: Record<string, number>): Tried | 
     const result = calculate(read.calculation);
     return {
       score: [result.averages.modelsSlain, result.averages.woundsDealt],
-      outcome: { result, groupNames: form.defender.groups.map((g) => g.name), best: {} },
+      outcome: {
+        result,
+        calculation: read.calculation,
+        groupNames: form.defender.groups.map((g) => g.name),
+        best: {},
+      },
     };
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error) };

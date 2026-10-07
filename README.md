@@ -19,7 +19,7 @@ nvm use && corepack enable
 pnpm install
 cp .env.example .env
 pnpm db:up          # Postgres 17 in Docker, on localhost:5434
-pnpm dev            # API on :3401, web on http://localhost:5173
+pnpm dev            # API on :3401, web on http://localhost:5273
 ```
 
 `pnpm db:up` starts Postgres in Docker and maps it to **host port 5434** (not the default 5432),

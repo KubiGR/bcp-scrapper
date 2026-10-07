@@ -126,7 +126,15 @@ function GroupEditor({
             onChange({ character: v });
           }}
         />
-        <Button size="compact-xs" variant="subtle" color="red" onClick={onRemove}>
+        <Button
+          size="xs"
+          h={30}
+          color="red"
+          variant="light"
+          aria-label="Remove models"
+          leftSection={<span aria-hidden>✕</span>}
+          onClick={onRemove}
+        >
           Remove
         </Button>
         {g.original === null ? (

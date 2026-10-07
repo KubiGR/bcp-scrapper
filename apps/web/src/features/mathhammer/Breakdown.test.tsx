@@ -18,6 +18,7 @@ const step = (s: Partial<WeaponStep> & Pick<WeaponStep, 'name'>): WeaponStep => 
   damage: 0,
   wasted: 0,
   slain: 0,
+  slainMedian: 0,
   ...s,
 });
 
@@ -34,6 +35,7 @@ const steps = [
     unsaved: 5 / 3,
     damage: 5 / 3,
     slain: 1.5,
+    slainMedian: 2,
   }),
   step({
     name: 'Power fist',
@@ -62,14 +64,20 @@ describe('Breakdown', () => {
     expect(screen.getByRole('table', { name: 'Step by step' })).toBeInTheDocument();
     const rifle = row('Bolt rifle');
     expect(rifle.getByText('8.33')).toBeInTheDocument();
-    expect(
-      rifle.getByText('1.67 critical hits · +1.67 sustained · 1.67 lethal'),
-    ).toBeInTheDocument();
-    expect(rifle.getByText('1.11 critical wounds')).toBeInTheDocument();
+    expect(rifle.getByText('1.67 crits · +1.67 sus · 1.67 lethals')).toBeInTheDocument();
+    expect(rifle.getByText('1.11 crits')).toBeInTheDocument();
     const fist = row('Power fist');
     expect(fist.getByText('0.25 devastating')).toBeInTheDocument();
     // Saves that differ between the target's models: the first allocated's save, marked.
     expect(fist.getByText('≈0.75')).toBeInTheDocument();
+  });
+
+  it('counts models slain in whole models (the median’s rise), the average beneath', () => {
+    renderWithProviders(<Breakdown steps={steps} />);
+    const rifle = row('Bolt rifle');
+    expect(rifle.getByText('2')).toBeInTheDocument();
+    expect(rifle.getByText('avg 1.50')).toBeInTheDocument();
+    expect(row('Power fist').getByText('0')).toBeInTheDocument();
   });
 
   it('adds every weapon up in a Combined row', () => {
@@ -77,6 +85,23 @@ describe('Breakdown', () => {
     const combined = row('Combined');
     expect(combined.getByText('13.00')).toBeInTheDocument(); // attacks
     expect(combined.getByText('3.17')).toBeInTheDocument(); // damage
-    expect(combined.getByText('2.00')).toBeInTheDocument(); // slain
+    expect(combined.getByText('2')).toBeInTheDocument(); // slain, whole
+    expect(combined.getByText('avg 2.00')).toBeInTheDocument();
+  });
+
+  it('shows the whole table, without a scroll box, for a picture', () => {
+    const scroll = '[data-scroll]';
+    const page = renderWithProviders(<Breakdown steps={steps} />);
+    expect(page.container.querySelector(scroll)).not.toBeNull();
+    page.unmount();
+    const { container } = renderWithProviders(<Breakdown steps={steps} fit />);
+    expect(container.querySelector(scroll)).toBeNull();
+    expect(screen.getByRole('table', { name: 'Step by step' })).toBeInTheDocument();
+  });
+
+  it('has no paragraph of notes under it, only the ≈ explained when it’s used', () => {
+    renderWithProviders(<Breakdown steps={steps} />);
+    expect(screen.queryByText(/Averages\./)).toBeNull();
+    expect(screen.getByText('≈ uses the save of the models hit first')).toBeInTheDocument();
   });
 });

@@ -14,6 +14,7 @@ import {
   newWeapon,
   originalText,
   resetWeapon,
+  toCalculation,
   weaponChanges,
 } from './form-state';
 import { CAPTAIN, INTERCESSORS, KNIGHT } from './unit-fixtures';
@@ -285,5 +286,66 @@ describe('changes from the datasheet', () => {
     expect(form.weapons.flatMap(weaponChanges)).toEqual([]);
     expect(form.defender.groups.flatMap(groupChanges)).toEqual([]);
     expect(defenderChanges(form.defender)).toEqual([]);
+  });
+});
+
+describe('datasheet keywords in the weapon’s boxes', () => {
+  it('fills a weapon’s boxes from its datasheet keywords', () => {
+    const [rifle] = attackerRows(INTERCESSORS, 0, []);
+    expect(rifle?.rapidFire).toBe('1');
+  });
+
+  it('lets an unticked datasheet keyword stop counting', () => {
+    const [rifle] = attackerRows(INTERCESSORS, 0, []);
+    if (rifle === undefined) throw new Error('no rifle');
+    const form = {
+      ...defaultForm(),
+      weapons: [{ ...rifle, keywordNames: ['Twin-linked'], twinLinked: false }],
+    };
+    const read = toCalculation(form);
+    if (!('calculation' in read)) throw new Error(read.error);
+    expect(read.calculation.weapons[0]?.mods.woundReroll).toBe('none');
+    const ticked = toCalculation({
+      ...form,
+      weapons: [{ ...rifle, keywordNames: ['Twin-linked'], twinLinked: true }],
+    });
+    if (!('calculation' in ticked)) throw new Error(ticked.error);
+    expect(ticked.calculation.weapons[0]?.mods.woundReroll).toBe('failures');
+  });
+});
+
+describe('wargear options', () => {
+  const withOption = {
+    ...INTERCESSORS,
+    weapons: [
+      ...INTERCESSORS.weapons,
+      {
+        id: 'wi-ab',
+        name: 'Auto bolt rifle',
+        profiles: [
+          { ...(INTERCESSORS.weapons[0]?.profiles[0] ?? ({} as never)), name: 'Auto bolt rifle' },
+        ],
+      },
+    ],
+  };
+
+  it('adds every weapon the datasheet can take, the options not counted until chosen', () => {
+    const rows = attackerRows(withOption, 0, []);
+    expect(rows.map((r) => [r.name, r.models, r.option])).toEqual([
+      ['Bolt rifle', 5, false],
+      ['Plasma gun', 1, false],
+      ['Auto bolt rifle', 0, true],
+    ]);
+  });
+
+  it('adds an attached character’s options too, under its name', () => {
+    const rows = attackerRows(INTERCESSORS, 0, [
+      { ...CAPTAIN, weapons: [...CAPTAIN.weapons, ...withOption.weapons.slice(-1)] },
+    ]);
+    expect(rows.at(-1)).toMatchObject({
+      name: 'Captain: Auto bolt rifle',
+      models: 0,
+      option: true,
+    });
   });
 });
