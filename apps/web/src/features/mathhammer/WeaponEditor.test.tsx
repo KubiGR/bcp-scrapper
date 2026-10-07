@@ -87,6 +87,21 @@ describe('WeaponEditor', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ attacks: '4' }));
   });
 
+  it('folds away the keyword boxes of a datasheet weapon left as it is', () => {
+    editor([], withOriginal(chainblades));
+    expect(screen.queryByLabelText('Torrent')).toBeNull();
+    expect(screen.queryByLabelText('Blast')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit keywords' }));
+    expect(screen.getByLabelText('Torrent')).toBeInTheDocument();
+    expect(screen.getByLabelText('Blast')).toBeInTheDocument();
+  });
+
+  it('keeps the keyword boxes open while one differs from the datasheet', () => {
+    editor([], { ...withOriginal(chainblades), lance: true });
+    expect(screen.getByLabelText('Lance')).toBeChecked();
+    expect(screen.queryByRole('button', { name: 'Edit keywords' })).toBeNull();
+  });
+
   it('tags a weapon added by hand, and offers no Reset', () => {
     editor([], { ...newWeapon(), name: 'Mine' });
     expect(screen.getByText('Added')).toBeInTheDocument();
