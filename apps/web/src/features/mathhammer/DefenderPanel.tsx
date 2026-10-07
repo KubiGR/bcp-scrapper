@@ -1,9 +1,29 @@
-import { Button, Group, Paper, SegmentedControl, Stack, Text, TextInput } from '@mantine/core';
+import {
+  Badge,
+  Button,
+  Group,
+  Paper,
+  SegmentedControl,
+  Stack,
+  Text,
+  TextInput,
+} from '@mantine/core';
 import { useState } from 'react';
 import { Panel } from '../../components/Panel';
 import { defenderFrom, defenderFromList } from './datasheet-form';
-import { newGroup, type DefenderForm, type GroupRow } from './form-state';
-import { Check, CheckGrid, Num } from './inputs';
+import {
+  defenderChanges,
+  defenderOriginalText,
+  groupChanges,
+  groupOriginalText,
+  newGroup,
+  resetDefender,
+  resetGroup,
+  type DefenderForm,
+  type GroupRow,
+} from './form-state';
+import { Check, CheckGrid, changedProps, Num } from './inputs';
+import inputClasses from './inputs.module.css';
 import { ListPicker } from './ListPicker';
 import { UnitPicker } from './UnitPicker';
 
@@ -23,6 +43,8 @@ function GroupEditor({
     <Paper withBorder p="sm" component="fieldset" aria-label={`Models ${String(index + 1)}`}>
       <Group gap="xs" align="flex-end">
         <TextInput
+          classNames={{ input: inputClasses.field }}
+          {...changedProps(groupOriginalText(g, 'name'))}
           size="xs"
           label="Models"
           value={g.name}
@@ -32,6 +54,7 @@ function GroupEditor({
           }}
         />
         <Num
+          original={groupOriginalText(g, 'models')}
           label="How many"
           value={g.models}
           min={1}
@@ -40,6 +63,7 @@ function GroupEditor({
           }}
         />
         <Num
+          original={groupOriginalText(g, 'toughness')}
           label="T"
           value={g.toughness}
           min={1}
@@ -49,6 +73,7 @@ function GroupEditor({
           }}
         />
         <Num
+          original={groupOriginalText(g, 'save')}
           label="Sv"
           value={g.save}
           min={2}
@@ -59,6 +84,7 @@ function GroupEditor({
           }}
         />
         <Num
+          original={groupOriginalText(g, 'invuln')}
           label="InSv"
           value={g.invuln}
           min={2}
@@ -70,6 +96,7 @@ function GroupEditor({
           }}
         />
         <Num
+          original={groupOriginalText(g, 'wounds')}
           label="W"
           value={g.wounds}
           min={1}
@@ -79,6 +106,7 @@ function GroupEditor({
           }}
         />
         <Num
+          original={groupOriginalText(g, 'fnp')}
           label="FNP"
           value={g.fnp}
           min={2}
@@ -90,6 +118,7 @@ function GroupEditor({
           }}
         />
         <Check
+          original={groupOriginalText(g, 'character')}
           label="Character"
           checked={g.character}
           onChange={(v) => {
@@ -99,6 +128,25 @@ function GroupEditor({
         <Button size="compact-xs" variant="subtle" color="red" onClick={onRemove}>
           Remove
         </Button>
+        {g.original === null ? (
+          <Badge size="xs" variant="light" color="gray">
+            Added
+          </Badge>
+        ) : (
+          groupChanges(g).length > 0 && (
+            <Button
+              size="compact-xs"
+              variant="subtle"
+              color="yellow"
+              title="Put these models back to the datasheet’s values"
+              onClick={() => {
+                onChange(resetGroup(g));
+              }}
+            >
+              Reset
+            </Button>
+          )
+        )}
       </Group>
     </Paper>
   );
@@ -185,6 +233,8 @@ export function DefenderPanel({
           </Button>
         </Group>
         <TextInput
+          classNames={{ input: inputClasses.field }}
+          {...changedProps(defenderOriginalText(defender, 'keywords'))}
           size="xs"
           label="Keywords"
           description="For Anti-X, e.g. INFANTRY, ORKS"
@@ -193,8 +243,23 @@ export function DefenderPanel({
             set({ keywords: event.currentTarget.value });
           }}
         />
+        {defenderChanges(defender).length > 0 && (
+          <Group>
+            <Button
+              size="compact-xs"
+              variant="subtle"
+              color="yellow"
+              onClick={() => {
+                onChange(resetDefender(defender));
+              }}
+            >
+              Reset switches
+            </Button>
+          </Group>
+        )}
         <CheckGrid>
           <Check
+            original={defenderOriginalText(defender, 'attached')}
             label="Attached unit"
             checked={defender.attached}
             onChange={(v) => {
@@ -202,6 +267,7 @@ export function DefenderPanel({
             }}
           />
           <Check
+            original={defenderOriginalText(defender, 'stealth')}
             label="Stealth"
             checked={defender.stealth}
             onChange={(v) => {
@@ -223,6 +289,7 @@ export function DefenderPanel({
             }}
           />
           <Check
+            original={defenderOriginalText(defender, 'halveDamage')}
             label="Halve damage"
             checked={defender.halveDamage}
             onChange={(v) => {
@@ -238,6 +305,7 @@ export function DefenderPanel({
           />
         </CheckGrid>
         <Num
+          original={defenderOriginalText(defender, 'damageReduction')}
           label="Damage -"
           value={defender.damageReduction}
           min={0}

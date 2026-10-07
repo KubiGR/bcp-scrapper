@@ -1,7 +1,8 @@
 import { keywordEffect, type WeaponMods } from '@bcp/shared';
-import { Button, Group, Paper, Select, Stack, Text, TextInput } from '@mantine/core';
-import type { WeaponRow } from './form-state';
-import { Check, CheckGrid, DiceInput, Num } from './inputs';
+import { Badge, Button, Group, Paper, Select, Stack, Text, TextInput } from '@mantine/core';
+import { originalText, resetWeapon, weaponChanges, type WeaponRow } from './form-state';
+import { Check, CheckGrid, changedProps, DiceInput, Num } from './inputs';
+import inputClasses from './inputs.module.css';
 import { SwitchesEditor } from './SwitchesEditor';
 
 /** One weapon: its profile on the first line, its keywords on the second. */
@@ -59,6 +60,8 @@ export function WeaponEditor({
         )}
         <Group gap="xs" align="flex-end">
           <TextInput
+            classNames={{ input: inputClasses.field }}
+            {...changedProps(originalText(w, 'name'))}
             size="xs"
             label="Weapon"
             value={w.name}
@@ -68,6 +71,7 @@ export function WeaponEditor({
             }}
           />
           <Num
+            original={originalText(w, 'models')}
             label="Models"
             value={w.models}
             min={0}
@@ -76,6 +80,7 @@ export function WeaponEditor({
             }}
           />
           <DiceInput
+            original={originalText(w, 'attacks')}
             label="Attacks"
             disabled={picked}
             value={w.attacks}
@@ -84,6 +89,7 @@ export function WeaponEditor({
             }}
           />
           <Num
+            original={originalText(w, 'skill')}
             label={w.melee ? 'WS' : 'BS'}
             disabled={picked}
             value={w.skill}
@@ -95,6 +101,7 @@ export function WeaponEditor({
             }}
           />
           <Num
+            original={originalText(w, 'strength')}
             label="S"
             disabled={picked}
             value={w.strength}
@@ -104,6 +111,7 @@ export function WeaponEditor({
             }}
           />
           <Num
+            original={originalText(w, 'ap')}
             label="AP"
             disabled={picked}
             value={w.ap}
@@ -114,6 +122,7 @@ export function WeaponEditor({
             }}
           />
           <DiceInput
+            original={originalText(w, 'damage')}
             label="D"
             disabled={picked}
             value={w.damage}
@@ -122,6 +131,7 @@ export function WeaponEditor({
             }}
           />
           <Check
+            original={originalText(w, 'melee')}
             label="Melee"
             checked={w.melee}
             onChange={(v) => {
@@ -154,11 +164,32 @@ export function WeaponEditor({
             <Button size="compact-xs" variant="subtle" color="red" onClick={onRemove}>
               Remove
             </Button>
+            {w.original === null ? (
+              <Badge size="xs" variant="light" color="gray">
+                Added
+              </Badge>
+            ) : (
+              weaponChanges(w).length > 0 && (
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  color="yellow"
+                  title="Put this weapon back to the datasheet’s values"
+                  onClick={() => {
+                    onChange(resetWeapon(w));
+                  }}
+                >
+                  Reset
+                </Button>
+              )
+            )}
           </Group>
         </Group>
         {w.profiles.length > 1 && (
           <Group gap="xs" align="flex-end">
             <Select
+              classNames={{ input: inputClasses.field }}
+              {...changedProps(originalText(w, 'profile'))}
               size="xs"
               label="Profile"
               w={200}
@@ -207,6 +238,7 @@ export function WeaponEditor({
         )}
         <CheckGrid>
           <Check
+            original={originalText(w, 'torrent')}
             label="Torrent"
             checked={w.torrent}
             onChange={(v) => {
@@ -214,6 +246,7 @@ export function WeaponEditor({
             }}
           />
           <Check
+            original={originalText(w, 'lethalHits')}
             label="Lethal Hits"
             checked={w.lethalHits}
             onChange={(v) => {
@@ -221,6 +254,7 @@ export function WeaponEditor({
             }}
           />
           <Check
+            original={originalText(w, 'devastatingWounds')}
             label="Devastating Wounds"
             checked={w.devastatingWounds}
             onChange={(v) => {
@@ -228,6 +262,7 @@ export function WeaponEditor({
             }}
           />
           <Check
+            original={originalText(w, 'twinLinked')}
             label="Twin-linked"
             checked={w.twinLinked}
             onChange={(v) => {
@@ -235,6 +270,7 @@ export function WeaponEditor({
             }}
           />
           <Check
+            original={originalText(w, 'heavy')}
             label="Heavy"
             checked={w.heavy}
             onChange={(v) => {
@@ -242,6 +278,7 @@ export function WeaponEditor({
             }}
           />
           <Check
+            original={originalText(w, 'lance')}
             label="Lance"
             checked={w.lance}
             onChange={(v) => {
@@ -249,6 +286,7 @@ export function WeaponEditor({
             }}
           />
           <Check
+            original={originalText(w, 'ignoresCover')}
             label="Ignores Cover"
             checked={w.ignoresCover}
             onChange={(v) => {
@@ -256,6 +294,7 @@ export function WeaponEditor({
             }}
           />
           <Check
+            original={originalText(w, 'precision')}
             label="Precision"
             checked={w.precision}
             onChange={(v) => {
@@ -263,6 +302,7 @@ export function WeaponEditor({
             }}
           />
           <Check
+            original={originalText(w, 'indirectFire')}
             label="Indirect Fire"
             checked={w.indirectFire}
             onChange={(v) => {
@@ -272,6 +312,7 @@ export function WeaponEditor({
         </CheckGrid>
         <Group gap="xs" align="flex-end">
           <DiceInput
+            original={originalText(w, 'sustainedHits')}
             label="Sustained Hits"
             value={w.sustainedHits}
             w={96}
@@ -280,6 +321,7 @@ export function WeaponEditor({
             }}
           />
           <DiceInput
+            original={originalText(w, 'rapidFire')}
             label="Rapid Fire"
             value={w.rapidFire}
             w={80}
@@ -288,6 +330,7 @@ export function WeaponEditor({
             }}
           />
           <Num
+            original={originalText(w, 'blast')}
             label="Blast"
             value={w.blast}
             min={1}
@@ -297,6 +340,7 @@ export function WeaponEditor({
             }}
           />
           <Num
+            original={originalText(w, 'cleave')}
             label="Cleave"
             value={w.cleave}
             min={1}
@@ -306,6 +350,7 @@ export function WeaponEditor({
             }}
           />
           <Num
+            original={originalText(w, 'melta')}
             label="Melta"
             value={w.melta}
             min={1}
@@ -315,6 +360,8 @@ export function WeaponEditor({
             }}
           />
           <TextInput
+            classNames={{ input: inputClasses.field }}
+            {...changedProps(originalText(w, 'anti'))}
             size="xs"
             label="Anti"
             placeholder={antiHint(w.keywordNames)}

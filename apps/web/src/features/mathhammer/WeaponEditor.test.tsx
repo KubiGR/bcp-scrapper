@@ -1,13 +1,18 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/render';
-import { defaultForm, newWeapon } from './form-state';
+import { defaultForm, newWeapon, withOriginal, type WeaponRow } from './form-state';
 import { WeaponEditor } from './WeaponEditor';
 
 const chainblades = {
   ...newWeapon(),
   name: 'Chainblades',
   melee: true,
+  attacks: '4',
+  skill: 3,
+  strength: 8,
+  ap: -3,
+  damage: '2',
   profiles: [
     {
       name: 'Chainblades',
@@ -25,17 +30,21 @@ const chainblades = {
   keywordNames: ['Anti-monster 3+', 'Anti-vehicle 3+', 'Hazardous'],
 };
 
-const editor = (targetKeywords: string[]) =>
+const editor = (
+  targetKeywords: string[],
+  weapon: WeaponRow = chainblades,
+  onChange: (patch: Partial<WeaponRow>) => void = vi.fn(),
+) =>
   renderWithProviders(
     <WeaponEditor
       index={0}
-      weapon={chainblades}
+      weapon={weapon}
       count={1}
       unit={defaultForm().unit}
       bestName={null}
       sitsOut={null}
       targetKeywords={targetKeywords}
-      onChange={vi.fn()}
+      onChange={onChange}
       onMove={vi.fn()}
       onRemove={vi.fn()}
     />,
@@ -57,5 +66,30 @@ describe('WeaponEditor', () => {
       'placeholder',
       'Datasheet: Anti-monster 3+, Anti-vehicle 3+; add more here',
     );
+  });
+
+  it('marks a field changed from the datasheet, with the datasheet’s value', () => {
+    const filled = withOriginal(chainblades);
+    editor([], { ...filled, attacks: '6', lance: true });
+    const attacks = screen.getByLabelText('Attacks');
+    expect(attacks).toHaveAttribute('data-changed');
+    expect(attacks).toHaveAttribute('title', 'Datasheet: 4');
+    expect(screen.getByLabelText('Lance').closest('[data-changed]')).not.toBeNull();
+    expect(screen.getByLabelText('Torrent').closest('[data-changed]')).toBeNull();
+    expect(screen.getByLabelText('S')).not.toHaveAttribute('data-changed');
+  });
+
+  it('puts a changed weapon back to the datasheet', () => {
+    const onChange = vi.fn();
+    const filled = withOriginal(chainblades);
+    editor([], { ...filled, attacks: '6' }, onChange);
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ attacks: '4' }));
+  });
+
+  it('tags a weapon added by hand, and offers no Reset', () => {
+    editor([], { ...newWeapon(), name: 'Mine' });
+    expect(screen.getByText('Added')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reset' })).toBeNull();
   });
 });

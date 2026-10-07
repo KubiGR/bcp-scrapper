@@ -4,6 +4,15 @@ import { Children, useState, type ReactNode } from 'react';
 import classes from './inputs.module.css';
 
 /**
+ * Marks a field changed from what the datasheet filled in (`original`: its value there), with an
+ * amber outline and the datasheet's value as its hint; nothing when unchanged.
+ */
+const changedProps = (original: string | null | undefined) =>
+  original === null || original === undefined
+    ? {}
+    : { 'data-changed': true, title: `Datasheet: ${original}` };
+
+/**
  * A small whole-number field, kept within `min`/`max`; with `nullable`, empty means none.
  * Half-typed text ("-", or empty in a field that needs a number) stays in the field until it
  * becomes a number, so the calculation never sees it.
@@ -17,6 +26,7 @@ export function Num({
   nullable = false,
   w = 72,
   disabled = false,
+  original,
 }: {
   label: string;
   value: number | null;
@@ -26,6 +36,8 @@ export function Num({
   nullable?: boolean;
   w?: number;
   disabled?: boolean;
+  /** The datasheet's value when this field was changed from it. */
+  original?: string | null;
 }) {
   const [typing, setTyping] = useState<string | null>(null);
   return (
@@ -38,6 +50,8 @@ export function Num({
       w={w}
       disabled={disabled}
       allowDecimal={false}
+      classNames={{ input: classes.field }}
+      {...changedProps(original)}
       onBlur={() => {
         setTyping(null);
       }}
@@ -63,6 +77,7 @@ export function DiceInput({
   w = 72,
   placeholder,
   disabled = false,
+  original,
 }: {
   label: string;
   value: string;
@@ -70,6 +85,8 @@ export function DiceInput({
   w?: number;
   placeholder?: string;
   disabled?: boolean;
+  /** The datasheet's value when this field was changed from it. */
+  original?: string | null;
 }) {
   return (
     <TextInput
@@ -79,6 +96,8 @@ export function DiceInput({
       w={w}
       disabled={disabled}
       placeholder={placeholder}
+      classNames={{ input: classes.field }}
+      {...changedProps(original)}
       onChange={(event) => {
         onChange(event.currentTarget.value);
       }}
@@ -86,20 +105,25 @@ export function DiceInput({
   );
 }
 
+/** A checkbox; marked when changed from the datasheet. */
 export function Check({
   label,
   checked,
   onChange,
+  original,
 }: {
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  /** The datasheet's value ("on"/"off") when this box was changed from it. */
+  original?: string | null;
 }) {
   return (
     <Checkbox
       size="xs"
       label={label}
       checked={checked}
+      {...changedProps(original)}
       onChange={(event) => {
         onChange(event.currentTarget.checked);
       }}
@@ -199,3 +223,5 @@ export function CheckGrid({ children }: { children: ReactNode }) {
     </SimpleGrid>
   );
 }
+
+export { changedProps };

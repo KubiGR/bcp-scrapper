@@ -12,3 +12,14 @@
   border-color: var(--mantine-color-blue-7);
   background: color-mix(in srgb, var(--mantine-color-blue-9) 35%, var(--mantine-color-dark-7));
 }
+
+/* Changed from the datasheet: amber, the chart's line colour (checked apart from the blue). */
+.field[data-changed] {
+  border-color: #cc7f12;
+  box-shadow: 0 0 0 1px #cc7f12;
+}
+
+.checkCell:has(input[data-changed]) {
+  border-color: #cc7f12;
+  box-shadow: 0 0 0 1px #cc7f12;
+}
