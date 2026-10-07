@@ -1,5 +1,6 @@
 import { serve } from '@hono/node-server';
 import { createApp } from './app';
+import { accessOptionsOf } from './auth/access';
 import { ensureAdmin } from './auth/bootstrap';
 import { createSource } from './bcp/create-source';
 import { allowedHostsOf, loadConfig } from './config';
@@ -112,6 +113,7 @@ const syncRulesIfDue = async () => {
 void syncRulesIfDue();
 const rulesTimer = setInterval(() => void syncRulesIfDue(), 60 * 60 * 1000);
 
+const access = accessOptionsOf(config);
 const app = createApp({
   db: database.db,
   runner,
@@ -123,13 +125,17 @@ const app = createApp({
   autoFetch,
   bsdata,
   rules,
-  auth: { required: config.AUTH_REQUIRED, secret: config.SESSION_SECRET ?? '' },
+  auth: {
+    required: config.AUTH_REQUIRED || access !== undefined,
+    secret: config.SESSION_SECRET ?? '',
+    access,
+  },
 });
 if (config.WEB_DIST_DIR !== undefined) serveWebApp(app, config.WEB_DIST_DIR);
 
 const server = serve({ fetch: app.fetch, port: config.PORT, hostname: config.HOST }, (info) => {
   logger.info(
-    `API listening on http://${config.HOST}:${info.port} (source: ${config.TOURNAMENT_SOURCE}, logins ${config.AUTH_REQUIRED ? 'on' : 'off'})`,
+    `API listening on http://${config.HOST}:${info.port} (source: ${config.TOURNAMENT_SOURCE}, logins ${access !== undefined ? 'via Cloudflare Access' : config.AUTH_REQUIRED ? 'on' : 'off'})`,
   );
 });
 

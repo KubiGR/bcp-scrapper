@@ -57,6 +57,12 @@ const EnvSchema = z.object({
     .transform((value) => value === 'true' || value === '1'),
   /** Keys the session id hashes; at least 32 characters. Required when AUTH_REQUIRED is on. */
   SESSION_SECRET: z.string().min(32).optional(),
+  /** With both set, sign-in is Cloudflare Access's: its token says who the visitor is. */
+  ACCESS_TEAM_DOMAIN: z.string().min(1).optional(),
+  /** The Access application's audience (AUD) tag, from the Cloudflare dashboard. */
+  ACCESS_AUD: z.string().min(1).optional(),
+  /** Emails of the admins when signing in through Access, comma-separated. */
+  ADMIN_EMAILS: z.string().optional(),
   /** The first admin, created on start while there are no users yet. */
   ADMIN_USERNAME: z.string().min(1).optional(),
   ADMIN_PASSWORD: z.string().min(1).optional(),
@@ -73,7 +79,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (!result.success) {
     throw new Error(`Invalid environment:\n${z.prettifyError(result.error)}`);
   }
-  if (result.data.AUTH_REQUIRED && result.data.SESSION_SECRET === undefined) {
+  const { ACCESS_TEAM_DOMAIN: team, ACCESS_AUD: aud } = result.data;
+  if ((team === undefined) !== (aud === undefined)) {
+    throw new Error('Invalid environment:\nACCESS_TEAM_DOMAIN and ACCESS_AUD must be set together');
+  }
+  const viaAccess = team !== undefined;
+  if (result.data.AUTH_REQUIRED && !viaAccess && result.data.SESSION_SECRET === undefined) {
     throw new Error('Invalid environment:\nSESSION_SECRET is required when AUTH_REQUIRED is true');
   }
   return result.data;

@@ -2,7 +2,7 @@ import type { User } from '@bcp/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
-import { aUser, authOff, loggedIn } from '../auth/auth-test-utils';
+import { aUser, authOff, loggedIn, viaAccess } from '../auth/auth-test-utils';
 import { UsersCard } from './UsersCard';
 
 const me = aUser({ id: 1, username: 'kubi', role: 'admin' });
@@ -23,6 +23,17 @@ function rowOf(name: string): HTMLElement {
 }
 
 describe('UsersCard', () => {
+  it('is not shown when Cloudflare Access does the login', async () => {
+    const fetchMock = stubFetchRoutes({ 'GET /api/auth/me': viaAccess(me) });
+    renderWithProviders(<UsersCard />);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Add user/ })).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/users')).toBe(false);
+  });
+
   it('lists the users with role and status', async () => {
     stubUsers([me, { ...ana, disabled: true }]);
     renderWithProviders(<UsersCard />);

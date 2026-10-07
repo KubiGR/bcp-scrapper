@@ -105,6 +105,25 @@ application → Self-hosted**, domain `bcp.example.com`, policy **Allow** with t
 of the people you invite (login method: one-time PIN). Visitors then prove their email to
 Cloudflare before they can even see the app.
 
+### Sign in with Access only (no second login)
+
+With Access in front you can drop the app's own login: the app then trusts Cloudflare's signed
+token for who the visitor is. Add these to the stack's variables and redeploy:
+
+| Variable             | Value                                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------- |
+| `ACCESS_TEAM_DOMAIN` | Your team domain, e.g. `myteam.cloudflareaccess.com` (Zero Trust → Settings → Custom pages)        |
+| `ACCESS_AUD`         | The application's **Application Audience (AUD) Tag** (Access → Applications → your app → Overview) |
+| `ADMIN_EMAILS`       | Comma-separated emails of the admins; everyone else Access lets in is a member                     |
+
+- Anyone Access's policy admits gets an account on first visit; **remove people in Cloudflare's
+  policy**, not in the app (its Users card and password pages are hidden in this mode).
+- How long you stay signed in is Cloudflare's **Session Duration** (the application's settings,
+  and Settings → Authentication → global session timeout); the app has no session of its own.
+- A request without a valid token for this application is refused, so a wrong value locks everyone
+  out rather than letting anyone in: fix the variable and redeploy.
+- `SESSION_SECRET`, `ADMIN_USERNAME` and `ADMIN_PASSWORD` are not needed.
+
 ## Troubleshooting
 
 - **403 "Unexpected Host header":** `PUBLIC_HOSTNAME` doesn't match the address in the browser.

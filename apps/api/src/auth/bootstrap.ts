@@ -7,6 +7,8 @@ import { hashPassword } from './passwords';
 
 /** Creates the first admin from ADMIN_USERNAME / ADMIN_PASSWORD while there are no users yet. */
 export async function ensureAdmin(db: Db, config: Config, logger: Logger): Promise<void> {
+  // Through Cloudflare Access there are no passwords: admins are named in ADMIN_EMAILS.
+  if (config.ACCESS_TEAM_DOMAIN !== undefined) return;
   if ((await countUsers(db)) > 0) return;
   const { ADMIN_USERNAME: username, ADMIN_PASSWORD: password } = config;
   if (username === undefined || password === undefined) {

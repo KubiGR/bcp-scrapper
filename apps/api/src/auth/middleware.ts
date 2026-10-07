@@ -4,6 +4,8 @@ import { getCookie } from 'hono/cookie';
 import { createMiddleware } from 'hono/factory';
 import type { Db } from '../db/client';
 import { ForbiddenError, UnauthorizedError } from '../errors';
+import { findOrCreateAccessUser } from '../repo/users';
+import { ACCESS_JWT_HEADER, verifyAccessToken, type AccessOptions } from './access';
 import { resolveSession, type SessionUser } from './sessions';
 
 export const SESSION_COOKIE = 'bcp_session';
@@ -13,6 +15,8 @@ export interface AuthOptions {
   required: boolean;
   /** Keys the stored session hashes (SESSION_SECRET). */
   secret: string;
+  /** Sign-in through Cloudflare Access: no passwords, sessions or login routes of our own. */
+  access?: AccessOptions;
 }
 
 /** What the auth middleware leaves in the Hono context for the routes. */
@@ -63,6 +67,18 @@ export function authMiddleware(deps: {
     const method = c.req.method;
     if (!SAFE_METHODS.has(method) && !originAllowed(c.req.header('origin'), allowedHosts)) {
       throw new ForbiddenError('Request from another site refused');
+    }
+    if (options.access !== undefined) {
+      const jwt = c.req.header(ACCESS_JWT_HEADER);
+      const email = jwt === undefined ? null : await verifyAccessToken(jwt, options.access);
+      if (email === null) throw new UnauthorizedError();
+      const role = options.access.adminEmails.includes(email) ? 'admin' : 'member';
+      const user = await findOrCreateAccessUser(db, email, role);
+      if (user.disabled) throw new ForbiddenError('This account is disabled');
+      // The environment decides who is an admin, whatever was stored.
+      c.set('user', { ...user, role, mustChangePassword: false });
+      await next();
+      return;
     }
     const isLogin = method === 'POST' && path === '/api/auth/login';
     const isMe = method === 'GET' && path === '/api/auth/me';

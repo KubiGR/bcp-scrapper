@@ -77,6 +77,23 @@ describe('loadConfig', () => {
     );
   });
 
+  it('takes Cloudflare Access as the login, needing no session secret', () => {
+    const config = loadConfig({
+      AUTH_REQUIRED: 'true',
+      ACCESS_TEAM_DOMAIN: 'myteam.cloudflareaccess.com',
+      ACCESS_AUD: 'abc',
+      ADMIN_EMAILS: 'a@x.com, B@x.com',
+    });
+    expect(config.ACCESS_TEAM_DOMAIN).toBe('myteam.cloudflareaccess.com');
+    expect(config.ADMIN_EMAILS).toBe('a@x.com, B@x.com');
+    expect(() => loadConfig({ ACCESS_TEAM_DOMAIN: 'myteam.cloudflareaccess.com' })).toThrow(
+      'ACCESS_TEAM_DOMAIN and ACCESS_AUD must be set together',
+    );
+    expect(() => loadConfig({ ACCESS_AUD: 'abc' })).toThrow(
+      'ACCESS_TEAM_DOMAIN and ACCESS_AUD must be set together',
+    );
+  });
+
   it('reads the web build directory and the first admin', () => {
     const config = loadConfig({
       WEB_DIST_DIR: '/app/web',

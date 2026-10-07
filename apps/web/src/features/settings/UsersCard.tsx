@@ -44,7 +44,8 @@ function statusOf(user: User): string {
 /** Admins manage who can log in (only shown when logins are on). */
 export function UsersCard() {
   const me = useQuery(meQuery);
-  const self = me.data?.authRequired === true ? me.data.user : null;
+  // Through Cloudflare Access there are no accounts here: admins are named in the server's settings.
+  const self = me.data?.authRequired === true && me.data.access !== true ? me.data.user : null;
   const isAdmin = self?.role === 'admin';
   const users = useQuery({ ...usersQuery, enabled: isAdmin });
   const queryClient = useQueryClient();

@@ -113,7 +113,7 @@ export function createApp(deps: AppDeps) {
     perIp: new LoginLimiter({ limit: 50, windowMs: LOGIN_WINDOW_MS, now }),
   };
   app.route('/api', authRoutes({ db: deps.db, options: auth, limiters, now }));
-  if (auth.required) app.route('/api', userRoutes({ db: deps.db }));
+  if (auth.required && auth.access === undefined) app.route('/api', userRoutes({ db: deps.db }));
   app.route('/api', eventRoutes({ ...deps, now }));
   app.route('/api', syncRoutes(deps));
   app.route('/api', bcpRoutes(deps));

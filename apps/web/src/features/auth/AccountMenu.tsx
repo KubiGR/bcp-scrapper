@@ -14,6 +14,7 @@ export function AccountMenu() {
 
   const user = data?.authRequired === true ? data.user : null;
   if (user === null) return null;
+  const access = data?.access === true;
 
   return (
     <>
@@ -29,20 +30,29 @@ export function AccountMenu() {
           </Button>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Item
-            onClick={() => {
-              setChanging(true);
-            }}
-          >
-            Change password
-          </Menu.Item>
-          <Menu.Item
-            onClick={() => {
-              logout.mutate();
-            }}
-          >
-            Log out
-          </Menu.Item>
+          {access ? (
+            // Cloudflare ends its own session; the page it returns to asks for the email again.
+            <Menu.Item component="a" href="/cdn-cgi/access/logout">
+              Sign out
+            </Menu.Item>
+          ) : (
+            <>
+              <Menu.Item
+                onClick={() => {
+                  setChanging(true);
+                }}
+              >
+                Change password
+              </Menu.Item>
+              <Menu.Item
+                onClick={() => {
+                  logout.mutate();
+                }}
+              >
+                Log out
+              </Menu.Item>
+            </>
+          )}
         </Menu.Dropdown>
       </Menu>
       <Modal

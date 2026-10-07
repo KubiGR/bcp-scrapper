@@ -24,6 +24,12 @@ export function aUser(overrides: Partial<User> = {}): User {
 export const loggedOut: MeResponse = { authRequired: true, user: null };
 export const authOff: MeResponse = { authRequired: false, user: null };
 export const loggedIn = (user: User = aUser()): MeResponse => ({ authRequired: true, user });
+/** Signed in through Cloudflare Access: no passwords or accounts of the app's own. */
+export const viaAccess = (user: User = aUser()): MeResponse => ({
+  authRequired: true,
+  access: true,
+  user,
+});
 
 /**
  * A memory router with `/login` rendering `login` and every other path rendering `page`, starting

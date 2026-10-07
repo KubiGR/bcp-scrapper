@@ -28,6 +28,20 @@ describe('ensureAdmin', () => {
     expect(await verifyPassword('first password 1', rows[0]?.passwordHash ?? '')).toBe(true);
   });
 
+  it('creates no password admin when Cloudflare Access does the login', async () => {
+    await ensureAdmin(
+      db,
+      loadConfig({
+        ADMIN_USERNAME: 'kubi',
+        ADMIN_PASSWORD: 'first password 1',
+        ACCESS_TEAM_DOMAIN: 'myteam.cloudflareaccess.com',
+        ACCESS_AUD: 'abc',
+      }),
+      silentLogger,
+    );
+    expect(await db.select().from(users)).toHaveLength(0);
+  });
+
   it('ignores the variables once users exist', async () => {
     await ensureAdmin(
       db,

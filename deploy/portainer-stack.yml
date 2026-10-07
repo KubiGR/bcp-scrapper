@@ -34,7 +34,13 @@ services:
     environment:
       DATABASE_URL: postgres://bcp:${POSTGRES_PASSWORD}@db:5432/bcp
       AUTH_REQUIRED: 'true'
-      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+      # Own logins: needs SESSION_SECRET. Signing in through Cloudflare Access instead: set the
+      # ACCESS_* variables and ADMIN_EMAILS (see docs/deploy/portainer.md); SESSION_SECRET and
+      # ADMIN_PASSWORD are then unused.
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      ACCESS_TEAM_DOMAIN: ${ACCESS_TEAM_DOMAIN:-}
+      ACCESS_AUD: ${ACCESS_AUD:-}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       PUBLIC_HOSTNAME: ${PUBLIC_HOSTNAME:?set PUBLIC_HOSTNAME}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-}
