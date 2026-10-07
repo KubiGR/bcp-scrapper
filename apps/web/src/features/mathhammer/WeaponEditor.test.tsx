@@ -96,6 +96,21 @@ describe('WeaponEditor', () => {
   it('tags a wargear option, and says how to use it while it has no models', () => {
     editor([], { ...withOriginal({ ...chainblades, models: 0 }), option: true });
     expect(screen.getByText('Option')).toBeInTheDocument();
-    expect(screen.getByText('Not taken: set Models to use it')).toBeInTheDocument();
+    expect(screen.getByText('Not taken: set Weapons to use it')).toBeInTheDocument();
+  });
+
+  it('counts weapons, not models (two cannons on one Defiler are 2)', () => {
+    editor([]);
+    expect(screen.getByLabelText('Weapons')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Models')).toBeNull();
+  });
+
+  it('puts a red Remove with an ✕ in the top row, beside the stats', () => {
+    editor([]);
+    const remove = screen.getByRole('button', { name: 'Remove weapon' });
+    expect(remove).toHaveTextContent('✕');
+    expect(remove.closest('[data-row="stats"]')).toBe(
+      screen.getByLabelText('Weapon').closest('[data-row="stats"]'),
+    );
   });
 });

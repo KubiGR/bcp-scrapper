@@ -166,7 +166,7 @@ describe('picking units', () => {
       await screen.findByText('From datasheet: Intercessor Squad + Captain'),
     ).toBeInTheDocument();
     expect(weapon().getByLabelText('Weapon')).toHaveValue('Bolt rifle');
-    expect(weapon().getByLabelText('Models')).toHaveValue('5');
+    expect(weapon().getByLabelText('Weapons')).toHaveValue('5');
     const plasma = within(screen.getByRole('group', { name: 'Weapon 2' }));
     expect(plasma.getByRole('combobox', { name: 'Profile' })).toHaveValue('Best');
     expect(await plasma.findByText(/^Best here: /)).toBeInTheDocument();
@@ -230,7 +230,7 @@ describe('picking units', () => {
       await screen.findByText('From datasheet: Intercessor Squad + Captain'),
     ).toBeInTheDocument();
     expect(weapon().getByLabelText('Weapon')).toHaveValue('Bolt rifle');
-    expect(weapon().getByLabelText('Models')).toHaveValue('5');
+    expect(weapon().getByLabelText('Weapons')).toHaveValue('5');
     // The Captain's melee weapon sits out while shooting: shown on request.
     fireEvent.click(screen.getByRole('button', { name: 'Show' }));
     const captain = within(screen.getByRole('group', { name: 'Weapon 2' }));

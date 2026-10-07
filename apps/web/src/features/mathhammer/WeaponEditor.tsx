@@ -66,10 +66,10 @@ export function WeaponEditor({
         )}
         {w.option && w.models === 0 && (
           <Text size="xs" c="dimmed">
-            Not taken: set Models to use it
+            Not taken: set Weapons to use it
           </Text>
         )}
-        <Group gap="xs" align="flex-end">
+        <Group gap="xs" align="flex-end" data-row="stats">
           <TextInput
             classNames={{ input: inputClasses.field }}
             {...changedProps(originalText(w, 'name'))}
@@ -83,7 +83,7 @@ export function WeaponEditor({
           />
           <Num
             original={originalText(w, 'models')}
-            label="Models"
+            label="Weapons"
             value={w.models}
             min={0}
             onChange={(v) => {
@@ -141,6 +141,17 @@ export function WeaponEditor({
               onChange({ damage: v });
             }}
           />
+          <Button
+            size="xs"
+            h={30}
+            color="red"
+            variant="light"
+            aria-label="Remove weapon"
+            leftSection={<span aria-hidden>✕</span>}
+            onClick={onRemove}
+          >
+            Remove
+          </Button>
           <Check
             original={originalText(w, 'melee')}
             label="Melee"
@@ -172,9 +183,6 @@ export function WeaponEditor({
               }}
             >
               ↓
-            </Button>
-            <Button size="compact-xs" variant="subtle" color="red" onClick={onRemove}>
-              Remove
             </Button>
             {w.option && (
               <Badge size="xs" variant="light" color="blue">
