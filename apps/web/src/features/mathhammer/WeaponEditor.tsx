@@ -10,6 +10,7 @@ import {
 import { Check, CheckGrid, changedProps, DiceInput, Num } from './inputs';
 import inputClasses from './inputs.module.css';
 import { SwitchesEditor } from './SwitchesEditor';
+import classes from './WeaponEditor.module.css';
 
 /** One weapon: its profile on the first line, its keywords on the second. */
 /** The Anti box's hint: the datasheet's Anti (always applied), the box being for more. */
@@ -54,17 +55,28 @@ export function WeaponEditor({
     <Paper
       withBorder
       p="sm"
+      pt={26}
+      mt={18}
       component="fieldset"
       aria-label={`Weapon ${String(index + 1)}`}
       opacity={sitsOut === null ? 1 : 0.6}
+      className={classes.box}
     >
       <Stack gap="xs">
-        <Group justify="space-between" align="flex-end" wrap="nowrap" data-row="header">
+        {/* Sits on the box's top border, like a section title. */}
+        <Group
+          justify="space-between"
+          align="center"
+          wrap="nowrap"
+          data-row="header"
+          className={classes.header}
+        >
           <TextInput
             classNames={{ input: inputClasses.field }}
             {...changedProps(originalText(w, 'name'))}
             size="xs"
-            label="Weapon"
+            aria-label="Weapon"
+            placeholder="Weapon name"
             value={w.name}
             w={{ base: 180, xs: 280 }}
             onChange={(event) => {

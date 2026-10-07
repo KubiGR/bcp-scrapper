@@ -84,7 +84,12 @@ export function ResultPanel({
           )}
         </Group>
         <DamageChart woundsDealt={result.woundsDealt} />
-        <Table aria-label="Models slain, at least" withRowBorders={false}>
+        <Table
+          aria-label="Models slain, at least"
+          withRowBorders={false}
+          verticalSpacing={2}
+          fz="xs"
+        >
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Models slain</Table.Th>

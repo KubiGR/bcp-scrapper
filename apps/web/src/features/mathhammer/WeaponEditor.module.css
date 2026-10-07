@@ -1,0 +1,11 @@
+/* The weapon's name and Remove sit on its box's top border line. */
+.box {
+  position: relative;
+}
+
+.header {
+  position: absolute;
+  top: -15px;
+  left: 12px;
+  right: 12px;
+}
