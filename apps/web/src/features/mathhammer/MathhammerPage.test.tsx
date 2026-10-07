@@ -25,6 +25,17 @@ describe('MathhammerPage', () => {
     expect(screen.getByRole('table', { name: 'Models slain, at least' })).toBeInTheDocument();
   });
 
+  it('hides weapons not used in the phase behind one line, and shows them on request', () => {
+    renderWithProviders(<MathhammerPage />);
+    fireEvent.click(screen.getByRole('radio', { name: 'Fighting' }));
+    expect(screen.queryByRole('group', { name: 'Weapon 1' })).toBeNull();
+    expect(screen.getByText('Not used when fighting: Bolt rifle')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show' }));
+    expect(screen.getByRole('group', { name: 'Weapon 1' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Hide' }));
+    expect(screen.queryByRole('group', { name: 'Weapon 1' })).toBeNull();
+  });
+
   it('shows each weapon step by step under the result', () => {
     renderWithProviders(<MathhammerPage />);
     const steps = within(screen.getByRole('table', { name: 'Step by step' }));
@@ -148,6 +159,8 @@ describe('picking units', () => {
     const plasma = within(screen.getByRole('group', { name: 'Weapon 2' }));
     expect(plasma.getByRole('combobox', { name: 'Profile' })).toHaveValue('Best');
     expect(await plasma.findByText(/^Best here: /)).toBeInTheDocument();
+    // The Captain's melee weapon sits out while shooting: shown on request.
+    fireEvent.click(screen.getByRole('button', { name: 'Show' }));
     const captain = within(screen.getByRole('group', { name: 'Weapon 3' }));
     expect(captain.getByLabelText('Weapon')).toHaveValue('Captain: Master-crafted power weapon');
   });
@@ -207,6 +220,8 @@ describe('picking units', () => {
     ).toBeInTheDocument();
     expect(weapon().getByLabelText('Weapon')).toHaveValue('Bolt rifle');
     expect(weapon().getByLabelText('Models')).toHaveValue('5');
+    // The Captain's melee weapon sits out while shooting: shown on request.
+    fireEvent.click(screen.getByRole('button', { name: 'Show' }));
     const captain = within(screen.getByRole('group', { name: 'Weapon 2' }));
     expect(captain.getByLabelText('Weapon')).toHaveValue('Captain: Master-crafted power weapon');
   });

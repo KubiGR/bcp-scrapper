@@ -27,6 +27,13 @@ export function AttackerPanel({
   onChange: (next: MathhammerForm) => void;
 }) {
   const [from, setFrom] = useState<'unit' | 'list'>('unit');
+  // Weapons that sit out stay hidden behind one line per reason, unless asked for.
+  const [showIdle, setShowIdle] = useState(false);
+  const idle = new Map<string, string[]>();
+  for (const weapon of form.weapons) {
+    const why = sitsOut(form, weapon);
+    if (why !== null) idle.set(why, [...(idle.get(why) ?? []), weapon.name || 'Unnamed weapon']);
+  }
   const setWeapons = (weapons: WeaponRow[]) => {
     onChange({ ...form, weapons });
   };
@@ -91,27 +98,49 @@ export function AttackerPanel({
         {form.source !== null && (
           <Text size="xs" c="dimmed">{`From datasheet: ${form.source}`}</Text>
         )}
-        {form.weapons.map((weapon, index) => (
-          <WeaponEditor
-            key={weapon.key}
-            index={index}
-            weapon={weapon}
-            count={form.weapons.length}
-            unit={form.unit}
-            bestName={best[weapon.key] ?? null}
-            sitsOut={sitsOut(form, weapon)}
-            targetKeywords={targetKeywordsOf(form.defender)}
-            onChange={(patch) => {
-              setWeapons(form.weapons.map((w) => (w.key === weapon.key ? { ...w, ...patch } : w)));
-            }}
-            onMove={(by) => {
-              move(index, by);
-            }}
-            onRemove={() => {
-              setWeapons(form.weapons.filter((w) => w.key !== weapon.key));
-            }}
-          />
-        ))}
+        {idle.size > 0 && (
+          <Group gap="xs" align="center">
+            <Stack gap={0}>
+              {[...idle].map(([why, names]) => (
+                <Text key={why} size="xs" c="dimmed">{`${why}: ${names.join(', ')}`}</Text>
+              ))}
+            </Stack>
+            <Button
+              size="compact-xs"
+              variant="subtle"
+              onClick={() => {
+                setShowIdle(!showIdle);
+              }}
+            >
+              {showIdle ? 'Hide' : 'Show'}
+            </Button>
+          </Group>
+        )}
+        {form.weapons.map((weapon, index) =>
+          !showIdle && sitsOut(form, weapon) !== null ? null : (
+            <WeaponEditor
+              key={weapon.key}
+              index={index}
+              weapon={weapon}
+              count={form.weapons.length}
+              unit={form.unit}
+              bestName={best[weapon.key] ?? null}
+              sitsOut={sitsOut(form, weapon)}
+              targetKeywords={targetKeywordsOf(form.defender)}
+              onChange={(patch) => {
+                setWeapons(
+                  form.weapons.map((w) => (w.key === weapon.key ? { ...w, ...patch } : w)),
+                );
+              }}
+              onMove={(by) => {
+                move(index, by);
+              }}
+              onRemove={() => {
+                setWeapons(form.weapons.filter((w) => w.key !== weapon.key));
+              }}
+            />
+          ),
+        )}
         <Group>
           <Button
             size="xs"
