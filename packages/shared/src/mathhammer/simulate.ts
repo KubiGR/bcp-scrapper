@@ -136,7 +136,8 @@ export function simulate(
         let attacks = 0;
         const fives = Math.floor(models / 5);
         for (let i = 0; i < weapon.models; i += 1) {
-          attacks += rollExpr(weapon.attacks, d6);
+          const rolled = rollExpr(weapon.attacks, d6);
+          attacks += m.attacksModifier === 0 ? rolled : Math.max(1, rolled + m.attacksModifier);
           if (ranged && situation.halfRange && weapon.rapidFire !== null) {
             attacks += rollExpr(weapon.rapidFire, d6);
           }
@@ -152,7 +153,9 @@ export function simulate(
           6,
           Math.max(
             2,
-            (weapon.skill ?? 6) + (cover ? 1 : 0) - (ranged && situation.plungingFire ? 1 : 0),
+            (weapon.skill === null ? 6 : Math.min(6, Math.max(2, weapon.skill - m.skillModifier))) +
+              (cover ? 1 : 0) -
+              (ranged && situation.plungingFire ? 1 : 0),
           ),
         );
         const hitMod = cap(
@@ -214,14 +217,15 @@ export function simulate(
 
         // Wounds.
         const sv = toughness;
+        const strength = Math.max(1, weapon.strength + m.strengthModifier);
         const need =
-          weapon.strength >= sv * 2
+          strength >= sv * 2
             ? 2
-            : weapon.strength > sv
+            : strength > sv
               ? 3
-              : weapon.strength === sv
+              : strength === sv
                 ? 4
-                : weapon.strength * 2 <= sv
+                : strength * 2 <= sv
                   ? 6
                   : 5;
         const woundMod = cap(
