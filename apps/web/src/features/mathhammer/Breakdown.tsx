@@ -4,12 +4,12 @@ import type { ReactNode } from 'react';
 
 const two = (n: number) => n.toFixed(2);
 
-/** "1.67 crit · +1.67 sustained": the parts that aren't zero (one per line with `lines`). */
+/** "1.67 crits · +1.67 sus": the parts that aren't zero (one per line with `lines`), each kept whole. */
 const parts = (items: [number, string][], lines = false) =>
   items
     .filter(([n]) => n > 0.005)
     .map(([n, label]) =>
-      label.startsWith('+') ? `+${two(n)} ${label.slice(1)}` : `${two(n)} ${label}`,
+      label.startsWith('+') ? `+${two(n)}\u00a0${label.slice(1)}` : `${two(n)}\u00a0${label}`,
     )
     .join(lines ? '\n' : ' · ');
 
@@ -48,9 +48,9 @@ function StepRow({
         value={two(step.hits)}
         detail={parts(
           [
-            [step.critHits, 'critical hits'],
-            [step.sustainedHits, '+sustained'],
-            [step.lethalHits, 'lethal'],
+            [step.critHits, 'crits'],
+            [step.sustainedHits, '+sus'],
+            [step.lethalHits, 'lethals'],
           ],
           fit,
         )}
@@ -59,7 +59,7 @@ function StepRow({
         value={two(step.wounds)}
         detail={parts(
           [
-            [step.critWounds, 'critical wounds'],
+            [step.critWounds, 'crits'],
             [step.devastating, 'devastating'],
           ],
           fit,
@@ -140,8 +140,9 @@ export function Breakdown({
         </Table>,
       )}
       <Text size="xs" c="dimmed">
-        Averages. Critical hits are unmodified 6s to hit; critical wounds are 6s to wound, or lower
-        with Anti. Damage dealt is wounds the target lost, after damage reduction, Feel No Pain and
+        Averages. Crits: critical hits (unmodified 6s to hit) and critical wounds (6s to wound, or
+        lower with Anti); sus: extra hits from Sustained Hits; lethals: hits that wound by Lethal
+        Hits. Damage dealt is wounds the target lost, after damage reduction, Feel No Pain and
         overkill; each weapon counts after the ones above it.
         {approximate &&
           ' ≈: the target’s models save differently, so unsaved wounds use the save of the models hit first.'}

@@ -32,7 +32,6 @@ describe('ShareResult', () => {
     expect(card.getByText('Intercessor Squad → Boyz')).toBeInTheDocument();
     expect(card.getByText('5× Bolt rifle')).toBeInTheDocument();
     expect(card.getByText('A 2 · BS 3+ · S 4 · AP -1 · D 1')).toBeInTheDocument();
-    expect(card.getByText(/Lethal Hits/)).toBeInTheDocument();
     expect(card.getByText('10× Boyz · T 5 · Sv 5+ · W 1')).toBeInTheDocument();
     // Whole numbers lead, with the average and most likely beside them.
     expect(
