@@ -20,7 +20,7 @@ import {
   type Vector,
 } from './resolve';
 import { convolve, parseDice, point, type Dist } from './dice';
-import { poolAverages, weaponPool, type PoolRules } from './pool';
+import { poolWithAverages, type PoolAverages, type PoolRules } from './pool';
 import { capModifier, rollOdds, woundNeeded, type Classify, type Reroll } from './rolls';
 import type {
   Calculation,
@@ -189,6 +189,7 @@ function setUp(
 /** A weapon's attacks for one toughness / model count: the same whatever order is tried. */
 interface Prepared {
   setup: WeaponSetup;
+  averages: PoolAverages;
   entries: { rolls: number; later: number; q: number }[];
 }
 
@@ -200,7 +201,11 @@ function resolveWeapon(
   priority: number[],
   oneDie: { hit: boolean; wound: boolean },
   prepared: Map<string, Prepared>,
-): { vector: Vector; wasted: number; parts: { mass: number; setup: WeaponSetup }[] } {
+): {
+  vector: Vector;
+  wasted: number;
+  parts: { mass: number; setup: WeaponSetup; averages: PoolAverages }[];
+} {
   const { defender, situation } = calculation;
   const allocation: Allocation = { groups: defender.groups, priority, precision: weapon.precision };
   const parts = new Map<
@@ -224,27 +229,28 @@ function resolveWeapon(
     addTo(part.vector, id, p);
   }
   let wasted = 0;
-  const used: { mass: number; setup: WeaponSetup }[] = [];
+  const used: { mass: number; setup: WeaponSetup; averages: PoolAverages }[] = [];
   for (const part of parts.values()) {
     let ready = prepared.get(part.key);
     if (ready === undefined) {
       const setup = setUp(weapon, defender, situation, part.toughness, part.models, oneDie);
       // Every count starts from this part's states: the first class pass shares its steps.
       const entries: { rolls: number; later: number; q: number }[] = [];
-      weaponPool(setup.pool).forEach((row, normal) => {
+      const { joint, averages } = poolWithAverages(setup.pool);
+      joint.forEach((row, normal) => {
         row.forEach((q, specials) => {
           if (q < 1e-15) return;
           if (setup.critical !== null) entries.push({ rolls: specials, later: normal, q });
           else entries.push({ rolls: normal, later: specials, q });
         });
       });
-      ready = { setup, entries };
+      ready = { setup, averages, entries };
       prepared.set(part.key, ready);
     }
-    const { setup, entries } = ready;
+    const { setup, averages, entries } = ready;
     let mass = 0;
     for (const p of part.vector.values()) mass += p;
-    used.push({ mass, setup });
+    used.push({ mass, setup, averages });
     // Each pool's save faces class by class from the lowest; the first class pass shares its
     // steps between counts, since they all start from this part's states.
     const pass = (from: Tagged | null, profile: SaveProfile): Tagged => {
@@ -301,7 +307,7 @@ function stepOf(
   weapon: Weapon,
   defender: Defender,
   priority: number[],
-  parts: { mass: number; setup: WeaponSetup }[],
+  parts: { mass: number; setup: WeaponSetup; averages: PoolAverages }[],
 ): Omit<WeaponStep, 'damage' | 'wasted' | 'slain'> {
   const first = defender.groups[priority[0] ?? 0];
   const fail = (profile: SaveProfile) => (first === undefined ? 1 : failChance(first, profile));
@@ -320,8 +326,7 @@ function stepOf(
     unsaved: 0,
     unsavedExact: true,
   };
-  for (const { mass, setup } of parts) {
-    const a = poolAverages(setup.pool);
+  for (const { mass, setup, averages: a } of parts) {
     step.attacks += mass * a.attacks;
     step.hits += mass * a.hits;
     step.critHits += mass * a.critHits;
@@ -447,7 +452,7 @@ export function calculate(calculation: Calculation): CalculationResult {
       priority: number[];
       vector: Vector;
       wasted: number;
-      parts: { mass: number; setup: WeaponSetup }[];
+      parts: { mass: number; setup: WeaponSetup; averages: PoolAverages }[];
       score: [number, number];
     } | null = null;
     for (const priority of candidates) {

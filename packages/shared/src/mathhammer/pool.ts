@@ -121,9 +121,7 @@ function hitStage(rules: PoolRules): Joint {
 }
 
 /** The weapon's exact joint count of (normal wounds, special wounds). */
-export function weaponPool(rules: PoolRules): Joint {
-  const afterHits = hitStage(rules);
-
+export function weaponPool(rules: PoolRules, afterHits: Joint = hitStage(rules)): Joint {
   // Stage 2: each hit rolls to wound → (normal wounds, special wounds).
   const woundKernel = (odds: RollOdds): Kernel => {
     const joint: Joint = [];
@@ -172,7 +170,7 @@ const someFreeFail = (counts: number[], freeFail: number) =>
  * Exact averages of `weaponPool`'s stages. Averages add up die by die; "re-roll one die" adds a
  * fresh roll whenever some die failed without a re-roll.
  */
-export function poolAverages(rules: PoolRules): PoolAverages {
+export function poolAverages(rules: PoolRules, afterHits: Joint = hitStage(rules)): PoolAverages {
   const attacks = mean(rules.attacks);
   const extra = rules.sustained === null ? 0 : mean(rules.sustained);
   const perHitDie = (odds: RollOdds) => ({
@@ -195,7 +193,7 @@ export function poolAverages(rules: PoolRules): PoolAverages {
   }
   // Hits that roll to wound: their count's distribution, for "re-roll one wound".
   const rolls: number[] = [];
-  hitStage(rules).forEach((row, n) => {
+  afterHits.forEach((row, n) => {
     rolls[n] = row.reduce((sum, p) => sum + p, 0);
   });
   const rolled = mean(rolls);
@@ -213,4 +211,10 @@ export function poolAverages(rules: PoolRules): PoolAverages {
       hit.lethal,
     critWounds: rolled * rules.wound.crit + again * fresh.crit,
   };
+}
+
+/** The pool and its averages, sharing the hit stage. */
+export function poolWithAverages(rules: PoolRules): { joint: Joint; averages: PoolAverages } {
+  const afterHits = hitStage(rules);
+  return { joint: weaponPool(rules, afterHits), averages: poolAverages(rules, afterHits) };
 }
