@@ -59,6 +59,30 @@ export function WeaponEditor({
       opacity={sitsOut === null ? 1 : 0.6}
     >
       <Stack gap="xs">
+        <Group justify="space-between" align="flex-end" wrap="nowrap" data-row="header">
+          <TextInput
+            classNames={{ input: inputClasses.field }}
+            {...changedProps(originalText(w, 'name'))}
+            size="xs"
+            label="Weapon"
+            value={w.name}
+            w={{ base: 180, xs: 280 }}
+            onChange={(event) => {
+              onChange({ name: event.currentTarget.value });
+            }}
+          />
+          <Button
+            size="xs"
+            h={30}
+            color="red"
+            variant="light"
+            aria-label="Remove weapon"
+            leftSection={<span aria-hidden>✕</span>}
+            onClick={onRemove}
+          >
+            Remove
+          </Button>
+        </Group>
         {sitsOut !== null && (
           <Text size="xs" c="dimmed">
             {sitsOut}
@@ -70,17 +94,6 @@ export function WeaponEditor({
           </Text>
         )}
         <Group gap="xs" align="flex-end" data-row="stats">
-          <TextInput
-            classNames={{ input: inputClasses.field }}
-            {...changedProps(originalText(w, 'name'))}
-            size="xs"
-            label="Weapon"
-            value={w.name}
-            w={150}
-            onChange={(event) => {
-              onChange({ name: event.currentTarget.value });
-            }}
-          />
           <Num
             original={originalText(w, 'models')}
             label="Weapons"
@@ -141,17 +154,6 @@ export function WeaponEditor({
               onChange({ damage: v });
             }}
           />
-          <Button
-            size="xs"
-            h={30}
-            color="red"
-            variant="light"
-            aria-label="Remove weapon"
-            leftSection={<span aria-hidden>✕</span>}
-            onClick={onRemove}
-          >
-            Remove
-          </Button>
           <Check
             original={originalText(w, 'melee')}
             label="Melee"

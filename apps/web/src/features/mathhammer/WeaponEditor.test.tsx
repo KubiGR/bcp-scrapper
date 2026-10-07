@@ -105,12 +105,20 @@ describe('WeaponEditor', () => {
     expect(screen.queryByLabelText('Models')).toBeNull();
   });
 
-  it('puts a red Remove with an ✕ in the top row, beside the stats', () => {
+  it('heads the weapon’s box with its name and a red ✕ Remove, above its stats', () => {
     editor([]);
     const remove = screen.getByRole('button', { name: 'Remove weapon' });
     expect(remove).toHaveTextContent('✕');
-    expect(remove.closest('[data-row="stats"]')).toBe(
-      screen.getByLabelText('Weapon').closest('[data-row="stats"]'),
-    );
+    const header = remove.closest('[data-row="header"]');
+    expect(header).not.toBeNull();
+    expect(screen.getByLabelText('Weapon').closest('[data-row="header"]')).toBe(header);
+    const stats = screen.getByLabelText('Attacks').closest('[data-row="stats"]');
+    expect(stats?.contains(remove)).toBe(false);
+    expect(stats?.contains(screen.getByLabelText('Weapon'))).toBe(false);
+    // The header comes first in the box.
+    expect(
+      remove.compareDocumentPosition(screen.getByLabelText('Attacks')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
