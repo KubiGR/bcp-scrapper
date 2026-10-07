@@ -7,7 +7,15 @@ import {
   defenderFromList,
   pickableUnits,
 } from './datasheet-form';
-import { defaultForm } from './form-state';
+import {
+  defaultForm,
+  defenderChanges,
+  groupChanges,
+  newWeapon,
+  originalText,
+  resetWeapon,
+  weaponChanges,
+} from './form-state';
 import { CAPTAIN, INTERCESSORS, KNIGHT } from './unit-fixtures';
 
 describe('attackerRows', () => {
@@ -238,5 +246,44 @@ describe('list units without weapons', () => {
     };
     const rows = attackerRowsFromList(list, 0);
     expect(rows.find((r) => r.name === 'Bolt rifle')?.models).toBe(10);
+  });
+});
+
+describe('changes from the datasheet', () => {
+  it('keeps what the datasheet filled in, and says which fields differ from it', () => {
+    const [rifle] = attackerRows(INTERCESSORS, 0, []);
+    if (rifle === undefined) throw new Error('no rifle');
+    expect(weaponChanges(rifle)).toEqual([]);
+    const edited = { ...rifle, attacks: '3', heavy: true };
+    expect(weaponChanges(edited)).toEqual(['attacks', 'heavy']);
+    expect(originalText(edited, 'attacks')).toBe('2');
+    expect(originalText(edited, 'heavy')).toBe('off');
+    // Typed back to the datasheet's value: no longer a change.
+    expect(weaponChanges({ ...edited, attacks: '2', heavy: false })).toEqual([]);
+  });
+
+  it('marks rows added by hand, and puts a row back to the datasheet', () => {
+    expect(newWeapon().original).toBeNull();
+    const [rifle] = attackerRows(INTERCESSORS, 0, []);
+    if (rifle === undefined) throw new Error('no rifle');
+    expect(resetWeapon({ ...rifle, attacks: '9', models: 1 })).toMatchObject({
+      attacks: rifle.attacks,
+      models: rifle.models,
+    });
+  });
+
+  it('keeps the datasheet’s model rows and defender switches too', () => {
+    const defender = defenderFrom(INTERCESSORS, 0, [], defaultForm().defender);
+    const [row] = defender.groups;
+    if (row === undefined) throw new Error('no row');
+    expect(groupChanges({ ...row, save: 2 })).toEqual(['save']);
+    expect(defenderChanges({ ...defender, stealth: true })).toEqual(['stealth']);
+  });
+
+  it('starts the page with nothing marked as changed', () => {
+    const form = defaultForm();
+    expect(form.weapons.flatMap(weaponChanges)).toEqual([]);
+    expect(form.defender.groups.flatMap(groupChanges)).toEqual([]);
+    expect(defenderChanges(form.defender)).toEqual([]);
   });
 });

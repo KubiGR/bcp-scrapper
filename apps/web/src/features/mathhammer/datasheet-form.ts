@@ -8,6 +8,9 @@ import type {
 import {
   newGroup,
   newWeapon,
+  withDefenderOriginal,
+  withGroupOriginal,
+  withOriginal,
   type DefenderForm,
   type GroupRow,
   type WeaponRow,
@@ -22,7 +25,7 @@ function counts(sheet: UnitDatasheet, sizeIndex: number): Map<string, number> {
 /** A weapon row from datasheet profiles; with several profiles, Best is chosen. */
 function rowFrom(name: string, owner: string, models: number, profiles: UnitProfile[]): WeaponRow {
   const first = profiles[0];
-  return {
+  return withOriginal({
     ...newWeapon(),
     name,
     owner,
@@ -36,7 +39,7 @@ function rowFrom(name: string, owner: string, models: number, profiles: UnitProf
     profiles,
     profile: profiles.length > 1 ? 'best' : 0,
     keywordNames: first?.keywords ?? [],
-  };
+  });
 }
 
 const EXTRA_ATTACKS = /^extra attacks$/i;
@@ -191,7 +194,7 @@ function groupsOf(
       character,
     });
   }
-  return rows;
+  return rows.map(withGroupOriginal);
 }
 
 const reductionText = (r: NonNullable<UnitDatasheet['damageReduction']>) =>
@@ -235,7 +238,7 @@ export function defenderFrom(
   previous: DefenderForm,
 ): DefenderForm {
   const all = [sheet, ...attached];
-  return {
+  return withDefenderOriginal({
     ...previous,
     source: [sheet.name, ...attached.map((a) => a.name)].join(' + '),
     groups: [
@@ -246,7 +249,7 @@ export function defenderFrom(
     attached: attached.length > 0,
     stealth: all.every((unit) => unit.stealth),
     ...damageFrom(sheet, attached),
-  };
+  });
 }
 
 const sheetOf = (list: MathhammerList, id: string | null) =>
@@ -305,7 +308,7 @@ export function defenderFromList(
   if (unit === undefined || sheet === undefined) return previous;
   const characters = charactersOf(list, index);
   const all = [sheet, ...characters.map((c) => c.sheet)];
-  return {
+  return withDefenderOriginal({
     ...previous,
     source: [unit.name, ...characters.map((c) => c.unit.name)].join(' + '),
     groups: [
@@ -319,5 +322,5 @@ export function defenderFromList(
       sheet,
       characters.map((c) => c.sheet),
     ),
-  };
+  });
 }

@@ -51,6 +51,8 @@ export interface WeaponRow {
   own: WeaponMods | null;
   /** The unit (or attached character) carrying it; "" when typed by hand. */
   owner: string;
+  /** What the datasheet (or the starting setup) filled in; null for a row added by hand. */
+  original: WeaponOriginal | null;
 }
 
 /** One kind of model in the target. */
@@ -64,6 +66,8 @@ export interface GroupRow {
   wounds: number;
   fnp: number | null;
   character: boolean;
+  /** What the datasheet (or the starting setup) filled in; null for a row added by hand. */
+  original: GroupOriginal | null;
 }
 
 export interface DefenderForm {
@@ -81,6 +85,8 @@ export interface DefenderForm {
   /** Where a picked datasheet's damage reduction came from (shown, never calculated). */
   damageNote: string | null;
   savePenaltiesIgnored: boolean;
+  /** The switches the datasheet (or the starting setup) filled in. */
+  original: DefenderOriginal | null;
 }
 
 export interface MathhammerForm {
@@ -146,6 +152,7 @@ export const newWeapon = (): WeaponRow => ({
   keywordNames: [],
   own: null,
   owner: '',
+  original: null,
 });
 
 export const newGroup = (): GroupRow => ({
@@ -158,18 +165,144 @@ export const newGroup = (): GroupRow => ({
   wounds: 1,
   fnp: null,
   character: false,
+  original: null,
 });
+
+/** The weapon fields a datasheet fills in, compared to show what was changed. */
+const WEAPON_FIELDS = [
+  'name',
+  'models',
+  'melee',
+  'attacks',
+  'skill',
+  'strength',
+  'ap',
+  'damage',
+  'profile',
+  'torrent',
+  'lethalHits',
+  'sustainedHits',
+  'devastatingWounds',
+  'twinLinked',
+  'heavy',
+  'lance',
+  'ignoresCover',
+  'precision',
+  'indirectFire',
+  'rapidFire',
+  'blast',
+  'cleave',
+  'melta',
+  'anti',
+] as const;
+export type WeaponField = (typeof WEAPON_FIELDS)[number];
+export type WeaponOriginal = Pick<WeaponRow, WeaponField>;
+
+const GROUP_FIELDS = [
+  'name',
+  'models',
+  'toughness',
+  'save',
+  'invuln',
+  'wounds',
+  'fnp',
+  'character',
+] as const;
+export type GroupField = (typeof GROUP_FIELDS)[number];
+export type GroupOriginal = Pick<GroupRow, GroupField>;
+
+const DEFENDER_FIELDS = [
+  'keywords',
+  'attached',
+  'stealth',
+  'damageReduction',
+  'halveDamage',
+] as const;
+export type DefenderField = (typeof DEFENDER_FIELDS)[number];
+export type DefenderOriginal = Pick<DefenderForm, DefenderField>;
+
+const pick = <T, K extends keyof T>(from: T, keys: readonly K[]) =>
+  Object.fromEntries(keys.map((k) => [k, from[k]])) as Pick<T, K>;
+
+/** The row, remembering its values as the ones to compare against. */
+export const withOriginal = (row: WeaponRow): WeaponRow => ({
+  ...row,
+  original: pick(row, WEAPON_FIELDS),
+});
+export const withGroupOriginal = (row: GroupRow): GroupRow => ({
+  ...row,
+  original: pick(row, GROUP_FIELDS),
+});
+export const withDefenderOriginal = (defender: DefenderForm): DefenderForm => ({
+  ...defender,
+  original: pick(defender, DEFENDER_FIELDS),
+});
+
+const differs = <T, K extends keyof T>(row: T, original: Pick<T, K> | null, keys: readonly K[]) =>
+  original === null ? [] : keys.filter((k) => row[k] !== original[k]);
+
+/** The fields changed since the datasheet filled the row (none for a row added by hand). */
+export const weaponChanges = (row: WeaponRow): WeaponField[] =>
+  differs(row, row.original, WEAPON_FIELDS);
+export const groupChanges = (row: GroupRow): GroupField[] =>
+  differs(row, row.original, GROUP_FIELDS);
+export const defenderChanges = (defender: DefenderForm): DefenderField[] =>
+  differs(defender, defender.original, DEFENDER_FIELDS);
+
+/** A value as the hint shows it: "on"/"off", "–" for none, a profile by its name. */
+function shown(value: string | number | boolean | null, row?: WeaponRow): string {
+  if (typeof value === 'boolean') return value ? 'on' : 'off';
+  if (value === null || value === '') return '–';
+  if (row !== undefined && typeof value === 'number' && row.profiles[value] !== undefined) {
+    return row.profiles[value].name;
+  }
+  if (value === 'best') return 'Best';
+  return String(value);
+}
+
+/** What the datasheet had in a changed weapon field, for the hint; null when unchanged. */
+export function originalText(row: WeaponRow, field: WeaponField): string | null {
+  if (row.original === null || row[field] === row.original[field]) return null;
+  return shown(row.original[field], field === 'profile' ? row : undefined);
+}
+export function groupOriginalText(row: GroupRow, field: GroupField): string | null {
+  if (row.original === null || row[field] === row.original[field]) return null;
+  return shown(row.original[field]);
+}
+export function defenderOriginalText(defender: DefenderForm, field: DefenderField): string | null {
+  if (defender.original === null || defender[field] === defender.original[field]) return null;
+  return shown(defender.original[field]);
+}
+
+/** The row with the datasheet's values back. */
+export const resetWeapon = (row: WeaponRow): WeaponRow =>
+  row.original === null ? row : { ...row, ...row.original };
+export const resetGroup = (row: GroupRow): GroupRow =>
+  row.original === null ? row : { ...row, ...row.original };
+export const resetDefender = (defender: DefenderForm): DefenderForm =>
+  defender.original === null ? defender : { ...defender, ...defender.original };
 
 /** A setup to start from: five bolt rifles into ten Boyz. */
 export function defaultForm(): MathhammerForm {
   return {
     source: null,
     phase: 'shooting',
-    weapons: [{ ...newWeapon(), name: 'Bolt rifle', models: 5, attacks: '2', ap: -1, heavy: true }],
+    weapons: [
+      withOriginal({
+        ...newWeapon(),
+        name: 'Bolt rifle',
+        models: 5,
+        attacks: '2',
+        ap: -1,
+        heavy: true,
+      }),
+    ],
     unit: DEFAULT_MODS,
     defender: {
       source: null,
-      groups: [{ ...newGroup(), name: 'Boyz', models: 10, toughness: 5, save: 5 }],
+      groups: [
+        withGroupOriginal({ ...newGroup(), name: 'Boyz', models: 10, toughness: 5, save: 5 }),
+      ],
       keywords: 'INFANTRY, ORKS',
       attached: false,
       stealth: false,
@@ -179,6 +312,13 @@ export function defaultForm(): MathhammerForm {
       halveDamage: false,
       damageNote: null,
       savePenaltiesIgnored: false,
+      original: {
+        keywords: 'INFANTRY, ORKS',
+        attached: false,
+        stealth: false,
+        damageReduction: 0,
+        halveDamage: false,
+      },
     },
     situation: NO_SITUATION,
     flatMortals: '',
@@ -352,7 +492,7 @@ export function toCalculation(
     calculation: {
       weapons,
       defender: {
-        groups: d.groups.map(({ key: _key, ...group }) => group),
+        groups: d.groups.map(({ key: _key, original: _original, ...group }) => group),
         keywords: targetKeywords,
         attached: d.attached,
         stealth: d.stealth,
