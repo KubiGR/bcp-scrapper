@@ -5,6 +5,7 @@ import { Breakdown } from './Breakdown';
 import { DamageChart } from './DamageChart';
 import { expected } from './expected';
 import type { MathhammerForm } from './form-state';
+import { MonteCarloCheck } from './MonteCarloCheck';
 import { ShareResult } from './ShareResult';
 import classes from './ResultPanel.module.css';
 
@@ -136,6 +137,12 @@ export function ResultPanel({
           </Text>
         )}
         <Breakdown steps={result.breakdown} />
+        {/* A fresh check for each setup: the key drops the last one's rolls. */}
+        <MonteCarloCheck
+          key={JSON.stringify(outcome.calculation)}
+          calculation={outcome.calculation}
+          result={result}
+        />
       </Stack>
     </Panel>
   );
