@@ -120,6 +120,7 @@ function GroupEditor({
         <Check
           original={groupOriginalText(g, 'character')}
           label="Character"
+          boxed
           checked={g.character}
           onChange={(v) => {
             onChange({ character: v });

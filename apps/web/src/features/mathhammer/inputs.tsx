@@ -139,7 +139,7 @@ export function Check({
       }}
     />
   );
-  return boxed ? <div className={classes.checkCell}>{box}</div> : box;
+  return boxed ? <div className={`${classes.checkCell} ${classes.checkInline}`}>{box}</div> : box;
 }
 
 const REROLLS: { value: Reroll; label: string }[] = [
