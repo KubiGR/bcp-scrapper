@@ -64,6 +64,11 @@ export function WeaponEditor({
             {sitsOut}
           </Text>
         )}
+        {w.option && w.models === 0 && (
+          <Text size="xs" c="dimmed">
+            Not taken: set Models to use it
+          </Text>
+        )}
         <Group gap="xs" align="flex-end">
           <TextInput
             classNames={{ input: inputClasses.field }}
@@ -171,6 +176,11 @@ export function WeaponEditor({
             <Button size="compact-xs" variant="subtle" color="red" onClick={onRemove}>
               Remove
             </Button>
+            {w.option && (
+              <Badge size="xs" variant="light" color="blue">
+                Option
+              </Badge>
+            )}
             {w.original === null ? (
               <Badge size="xs" variant="light" color="gray">
                 Added

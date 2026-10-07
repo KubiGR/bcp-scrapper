@@ -92,4 +92,10 @@ describe('WeaponEditor', () => {
     expect(screen.getByText('Added')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reset' })).toBeNull();
   });
+
+  it('tags a wargear option, and says how to use it while it has no models', () => {
+    editor([], { ...withOriginal({ ...chainblades, models: 0 }), option: true });
+    expect(screen.getByText('Option')).toBeInTheDocument();
+    expect(screen.getByText('Not taken: set Models to use it')).toBeInTheDocument();
+  });
 });

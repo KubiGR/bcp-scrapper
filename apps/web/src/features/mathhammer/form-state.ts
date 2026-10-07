@@ -55,6 +55,8 @@ export interface WeaponRow {
   owner: string;
   /** What the datasheet (or the starting setup) filled in; null for a row added by hand. */
   original: WeaponOriginal | null;
+  /** A wargear option the datasheet offers instead of its default: 0 models until chosen. */
+  option: boolean;
 }
 
 /** One kind of model in the target. */
@@ -155,6 +157,7 @@ export const newWeapon = (): WeaponRow => ({
   own: null,
   owner: '',
   original: null,
+  option: false,
 });
 
 export const newGroup = (): GroupRow => ({

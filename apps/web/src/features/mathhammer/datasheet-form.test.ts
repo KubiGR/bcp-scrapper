@@ -313,3 +313,39 @@ describe('datasheet keywords in the weapon’s boxes', () => {
     expect(ticked.calculation.weapons[0]?.mods.woundReroll).toBe('failures');
   });
 });
+
+describe('wargear options', () => {
+  const withOption = {
+    ...INTERCESSORS,
+    weapons: [
+      ...INTERCESSORS.weapons,
+      {
+        id: 'wi-ab',
+        name: 'Auto bolt rifle',
+        profiles: [
+          { ...(INTERCESSORS.weapons[0]?.profiles[0] ?? ({} as never)), name: 'Auto bolt rifle' },
+        ],
+      },
+    ],
+  };
+
+  it('adds every weapon the datasheet can take, the options not counted until chosen', () => {
+    const rows = attackerRows(withOption, 0, []);
+    expect(rows.map((r) => [r.name, r.models, r.option])).toEqual([
+      ['Bolt rifle', 5, false],
+      ['Plasma gun', 1, false],
+      ['Auto bolt rifle', 0, true],
+    ]);
+  });
+
+  it('adds an attached character’s options too, under its name', () => {
+    const rows = attackerRows(INTERCESSORS, 0, [
+      { ...CAPTAIN, weapons: [...CAPTAIN.weapons, ...withOption.weapons.slice(-1)] },
+    ]);
+    expect(rows.at(-1)).toMatchObject({
+      name: 'Captain: Auto bolt rifle',
+      models: 0,
+      option: true,
+    });
+  });
+});
