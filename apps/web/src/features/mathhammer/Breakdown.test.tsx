@@ -98,4 +98,10 @@ describe('Breakdown', () => {
     expect(container.querySelector(scroll)).toBeNull();
     expect(screen.getByRole('table', { name: 'Step by step' })).toBeInTheDocument();
   });
+
+  it('has no paragraph of notes under it, only the ≈ explained when it’s used', () => {
+    renderWithProviders(<Breakdown steps={steps} />);
+    expect(screen.queryByText(/Averages\./)).toBeNull();
+    expect(screen.getByText('≈ uses the save of the models hit first')).toBeInTheDocument();
+  });
 });
