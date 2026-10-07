@@ -321,7 +321,7 @@ function stepOf(
   defender: Defender,
   priority: number[],
   parts: { mass: number; setup: WeaponSetup; averages: PoolAverages }[],
-): Omit<WeaponStep, 'damage' | 'wasted' | 'slain'> {
+): Omit<WeaponStep, 'damage' | 'wasted' | 'slain' | 'slainMedian'> {
   const first = defender.groups[priority[0] ?? 0];
   const fail = (profile: SaveProfile) => (first === undefined ? 1 : failChance(first, profile));
   const same = (profile: SaveProfile) =>
@@ -425,6 +425,22 @@ function slainOf(space: Space, vector: Vector, defender: Defender): number {
   return total;
 }
 
+/** The median models slain: the fewest slain at least half the time. */
+function medianSlainOf(space: Space, vector: Vector, defender: Defender): number {
+  const dist: number[] = [];
+  for (const [id, p] of vector) {
+    const state = space.state(id);
+    const killed = defender.groups.reduce((sum, g, i) => sum + g.models - (state[i * 2] ?? 0), 0);
+    dist[killed] = (dist[killed] ?? 0) + p;
+  }
+  let sum = 0;
+  for (let n = 0; n < dist.length; n += 1) {
+    sum += dist[n] ?? 0;
+    if (sum >= 0.5 - 1e-9) return n;
+  }
+  return Math.max(0, dist.length - 1);
+}
+
 function woundsOf(state: State, defender: Defender): number {
   return defender.groups.reduce(
     (sum, g, i) => sum + (g.models - (state[i * 2] ?? 0)) * g.wounds + (state[i * 2 + 1] ?? 0),
@@ -488,7 +504,11 @@ export function calculate(calculation: Calculation): CalculationResult {
       }
     }
     if (best === null) continue;
-    const before = { slain: slainOf(space, vector, defender), wounds: lostOf(vector) };
+    const before = {
+      slain: slainOf(space, vector, defender),
+      median: medianSlainOf(space, vector, defender),
+      wounds: lostOf(vector),
+    };
     vector = best.vector;
     wasted += best.wasted;
     orders.push(best.priority);
@@ -497,6 +517,7 @@ export function calculate(calculation: Calculation): CalculationResult {
       damage: lostOf(vector) - before.wounds,
       wasted: best.wasted,
       slain: slainOf(space, vector, defender) - before.slain,
+      slainMedian: medianSlainOf(space, vector, defender) - before.median,
     });
   }
   if (calculation.flatMortals !== null) {
@@ -507,7 +528,11 @@ export function calculate(calculation: Calculation): CalculationResult {
       priority: orders.at(-1) ?? candidates[0] ?? [],
       precision: false,
     };
-    const before = { slain: slainOf(space, vector, defender), wounds: lostOf(vector) };
+    const before = {
+      slain: slainOf(space, vector, defender),
+      median: medianSlainOf(space, vector, defender),
+      wounds: lostOf(vector),
+    };
     const result = repeat(vector, hitStep(space, mortal, one, null), dice(calculation.flatMortals));
     vector = result.vector;
     wasted += result.wasted;
@@ -526,6 +551,7 @@ export function calculate(calculation: Calculation): CalculationResult {
       damage: lostOf(vector) - before.wounds,
       wasted: result.wasted,
       slain: slainOf(space, vector, defender) - before.slain,
+      slainMedian: medianSlainOf(space, vector, defender) - before.median,
     });
   }
   const slain: number[] = [];

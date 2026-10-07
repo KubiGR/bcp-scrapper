@@ -69,4 +69,18 @@ describe('step-by-step breakdown', () => {
     close(sum('damage'), result.averages.woundsDealt);
     close(sum('wasted'), result.averages.wasted);
   });
+
+  it('gives each weapon a whole number of models slain that adds up to the median', () => {
+    const result = calculate(
+      calc({
+        weapons: [weapon({ attacks: '6', damage: '2' }), weapon({ name: 'Sword', attacks: '4' })],
+        defender: defender({ groups: [group({ models: 3, save: 4, wounds: 2 })] }),
+      }),
+    );
+    // The median: the fewest models slain at least half the time.
+    let sum = 0;
+    const median = result.modelsSlain.findIndex((p) => (sum += p) >= 0.5 - 1e-9);
+    for (const step of result.breakdown) expect(Number.isInteger(step.slainMedian)).toBe(true);
+    expect(result.breakdown.reduce((total, step) => total + step.slainMedian, 0)).toBe(median);
+  });
 });

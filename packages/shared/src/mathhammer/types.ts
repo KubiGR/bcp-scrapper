@@ -137,6 +137,11 @@ export interface WeaponStep {
   damage: number;
   wasted: number;
   slain: number;
+  /**
+   * How much this weapon moves the median models slain: whole numbers that add up to the result's
+   * median. (Can be 0 while the average rises a little.)
+   */
+  slainMedian: number;
 }
 
 export interface CalculationResult {

@@ -18,6 +18,7 @@ const step = (s: Partial<WeaponStep> & Pick<WeaponStep, 'name'>): WeaponStep => 
   damage: 0,
   wasted: 0,
   slain: 0,
+  slainMedian: 0,
   ...s,
 });
 
@@ -34,6 +35,7 @@ const steps = [
     unsaved: 5 / 3,
     damage: 5 / 3,
     slain: 1.5,
+    slainMedian: 2,
   }),
   step({
     name: 'Power fist',
@@ -70,12 +72,21 @@ describe('Breakdown', () => {
     expect(fist.getByText('≈0.75')).toBeInTheDocument();
   });
 
+  it('counts models slain in whole models (the median’s rise), the average beneath', () => {
+    renderWithProviders(<Breakdown steps={steps} />);
+    const rifle = row('Bolt rifle');
+    expect(rifle.getByText('2')).toBeInTheDocument();
+    expect(rifle.getByText('avg 1.50')).toBeInTheDocument();
+    expect(row('Power fist').getByText('0')).toBeInTheDocument();
+  });
+
   it('adds every weapon up in a Combined row', () => {
     renderWithProviders(<Breakdown steps={steps} />);
     const combined = row('Combined');
     expect(combined.getByText('13.00')).toBeInTheDocument(); // attacks
     expect(combined.getByText('3.17')).toBeInTheDocument(); // damage
-    expect(combined.getByText('2.00')).toBeInTheDocument(); // slain
+    expect(combined.getByText('2')).toBeInTheDocument(); // slain, whole
+    expect(combined.getByText('avg 2.00')).toBeInTheDocument();
   });
 
   it('shows the whole table, without a scroll box, for a picture', () => {

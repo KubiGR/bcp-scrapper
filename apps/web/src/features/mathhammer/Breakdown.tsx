@@ -68,7 +68,8 @@ function StepRow({
       <Cell value={`${step.unsavedExact ? '' : '≈'}${two(step.unsaved)}`} />
       <Cell value={two(step.damage)} />
       <Cell value={two(step.wasted)} />
-      <Cell value={two(step.slain)} />
+      {/* Whole models: how far this weapon moves the median; the average beneath. */}
+      <Cell value={String(step.slainMedian)} detail={`avg ${two(step.slain)}`} />
     </Table.Tr>
   );
 }
@@ -102,6 +103,7 @@ export function Breakdown({
     damage: sum(steps, 'damage'),
     wasted: sum(steps, 'wasted'),
     slain: sum(steps, 'slain'),
+    slainMedian: sum(steps, 'slainMedian'),
   };
   const approximate = steps.some((step) => !step.unsavedExact);
   const wrap = (table: ReactNode) =>
@@ -143,7 +145,8 @@ export function Breakdown({
         Averages. Crits: critical hits (unmodified 6s to hit) and critical wounds (6s to wound, or
         lower with Anti); sus: extra hits from Sustained Hits; lethals: hits that wound by Lethal
         Hits. Damage dealt is wounds the target lost, after damage reduction, Feel No Pain and
-        overkill; each weapon counts after the ones above it.
+        overkill; each weapon counts after the ones above it. Models slain is whole models: how far
+        each weapon moves the median (they add up to it), with the average beneath.
         {approximate &&
           ' ≈: the target’s models save differently, so unsaved wounds use the save of the models hit first.'}
       </Text>
