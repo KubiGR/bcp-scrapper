@@ -40,20 +40,19 @@ export function SwitchesEditor({
   );
   return (
     <Stack gap="xs">
-      {anyChanged && (
-        <Group>
-          <Button
-            size="compact-xs"
-            variant="subtle"
-            color="yellow"
-            onClick={() => {
-              onChange(DEFAULT_MODS);
-            }}
-          >
-            Reset modifiers
-          </Button>
-        </Group>
-      )}
+      <Group>
+        <Button
+          disabled={!anyChanged}
+          size="compact-xs"
+          variant="subtle"
+          color="yellow"
+          onClick={() => {
+            onChange(DEFAULT_MODS);
+          }}
+        >
+          Reset modifiers
+        </Button>
+      </Group>
       <Fieldset legend="Hit roll" variant="filled" p="sm" classNames={{ legend: classes.legend }}>
         <Group gap="xs" align="flex-end">
           <RerollSelect

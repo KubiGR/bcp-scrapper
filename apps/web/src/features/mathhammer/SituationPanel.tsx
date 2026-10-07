@@ -26,22 +26,23 @@ export function SituationPanel({
   );
   return (
     <Panel title="Situation">
-      {(Object.keys(NO_SITUATION) as (keyof Situation)[]).some(
-        (key) => situation[key] !== NO_SITUATION[key],
-      ) && (
-        <Group mb="xs">
-          <Button
-            size="compact-xs"
-            variant="subtle"
-            color="yellow"
-            onClick={() => {
-              onChange(NO_SITUATION);
-            }}
-          >
-            Clear situation
-          </Button>
-        </Group>
-      )}
+      <Group mb="xs">
+        <Button
+          disabled={
+            !(Object.keys(NO_SITUATION) as (keyof Situation)[]).some(
+              (key) => situation[key] !== NO_SITUATION[key],
+            )
+          }
+          size="compact-xs"
+          variant="subtle"
+          color="yellow"
+          onClick={() => {
+            onChange(NO_SITUATION);
+          }}
+        >
+          Clear situation
+        </Button>
+      </Group>
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
         <Stack gap={6}>
           <Text size="sm" fw={600}>

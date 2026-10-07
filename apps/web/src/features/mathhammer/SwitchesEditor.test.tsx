@@ -48,9 +48,14 @@ describe('SwitchesEditor', () => {
     ).toBeInTheDocument();
   });
 
-  it('offers no reset while nothing is changed', () => {
+  it('keeps its reset in place, greyed out, while nothing is changed (the page never jumps)', () => {
     renderWithProviders(<SwitchesEditor mods={DEFAULT_MODS} onChange={vi.fn()} />);
-    expect(screen.queryByRole('button', { name: 'Reset modifiers' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Reset modifiers' })).toBeDisabled();
+  });
+
+  it('keeps Clear situation in place, greyed out, while nothing is ticked', () => {
+    renderWithProviders(<SituationPanel situation={NO_SITUATION} onChange={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Clear situation' })).toBeDisabled();
   });
 });
 
