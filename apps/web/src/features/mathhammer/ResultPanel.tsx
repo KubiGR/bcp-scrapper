@@ -60,7 +60,10 @@ export function ResultPanel({
     );
   }
   const { result, groupNames } = outcome;
-  const slain = atLeast(result.modelsSlain).slice(1);
+  // "At least n" only falls as n grows: the totals below a 1% chance are left off the end.
+  const slain = atLeast(result.modelsSlain)
+    .slice(1)
+    .filter((p) => p >= 0.005);
   const order = result.orders[0];
   return (
     <Panel title="Result">

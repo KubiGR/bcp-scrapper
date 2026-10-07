@@ -47,6 +47,14 @@ describe('MathhammerPage', () => {
     expect(screen.getByRole('img', { name: /^Damage dealt: / })).toBeInTheDocument();
   });
 
+  it('leaves out totals of models slain with less than a 1% chance', () => {
+    renderWithProviders(<MathhammerPage />);
+    const table = within(screen.getByRole('table', { name: 'Models slain, at least' }));
+    expect(table.queryByText('<1%')).toBeNull();
+    // The starting setup slays 6+ about 1% of the time, and 7+ less.
+    expect(table.getAllByRole('row').at(-1)?.textContent).toMatch(/^6\+/);
+  });
+
   it('shows each weapon step by step under the result', () => {
     renderWithProviders(<MathhammerPage />);
     const steps = within(screen.getByRole('table', { name: 'Step by step' }));
