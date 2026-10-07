@@ -133,6 +133,7 @@ export function WeaponEditor({
           <Check
             original={originalText(w, 'melee')}
             label="Melee"
+            boxed
             checked={w.melee}
             onChange={(v) => {
               onChange({ melee: v });

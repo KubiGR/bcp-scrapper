@@ -120,6 +120,7 @@ function GroupEditor({
         <Check
           original={groupOriginalText(g, 'character')}
           label="Character"
+          boxed
           checked={g.character}
           onChange={(v) => {
             onChange({ character: v });
@@ -243,20 +244,19 @@ export function DefenderPanel({
             set({ keywords: event.currentTarget.value });
           }}
         />
-        {defenderChanges(defender).length > 0 && (
-          <Group>
-            <Button
-              size="compact-xs"
-              variant="subtle"
-              color="yellow"
-              onClick={() => {
-                onChange(resetDefender(defender));
-              }}
-            >
-              Reset switches
-            </Button>
-          </Group>
-        )}
+        <Group>
+          <Button
+            disabled={defenderChanges(defender).length === 0}
+            size="compact-xs"
+            variant="subtle"
+            color="yellow"
+            onClick={() => {
+              onChange(resetDefender(defender));
+            }}
+          >
+            Reset switches
+          </Button>
+        </Group>
         <CheckGrid>
           <Check
             original={defenderOriginalText(defender, 'attached')}

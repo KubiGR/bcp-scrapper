@@ -1,0 +1,6 @@
+/* A section's title, set into its border. */
+.legend {
+  padding: 0 6px;
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+}

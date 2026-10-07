@@ -54,4 +54,9 @@ describe('DefenderPanel changes from the datasheet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reset switches' }));
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ stealth: false }));
   });
+
+  it('keeps Reset switches in place, greyed out, while nothing is changed', () => {
+    panel(filled);
+    expect(screen.getByRole('button', { name: 'Reset switches' })).toBeDisabled();
+  });
 });

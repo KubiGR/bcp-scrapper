@@ -13,6 +13,14 @@
   background: color-mix(in srgb, var(--mantine-color-blue-9) 35%, var(--mantine-color-dark-7));
 }
 
+/* Beside other fields: exactly their height, so its top and bottom line up with theirs. */
+.checkInline {
+  box-sizing: border-box;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 10px;
+}
+
 /* Changed from the datasheet: amber, the chart's line colour (checked apart from the blue). */
 .field[data-changed] {
   border-color: #cc7f12;
