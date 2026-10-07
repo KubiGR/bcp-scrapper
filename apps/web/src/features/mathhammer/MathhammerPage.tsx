@@ -40,7 +40,12 @@ export function MathhammerPage() {
         </Grid.Col>
         <Grid.Col span={{ base: 12, lg: 5 }}>
           <Stack gap="lg">
-            <ResultPanel outcome={outcome} />
+            <ResultPanel
+              outcome={outcome}
+              attacker={settled.source ?? 'Attacker'}
+              defender={settled.defender.source ?? 'Defender'}
+              phase={settled.phase}
+            />
             <DefenderPanel
               defender={form.defender}
               onChange={(defender) => {

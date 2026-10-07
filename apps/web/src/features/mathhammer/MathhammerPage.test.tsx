@@ -36,6 +36,12 @@ describe('MathhammerPage', () => {
     expect(screen.queryByRole('group', { name: 'Weapon 1' })).toBeNull();
   });
 
+  it('offers to share the result as an image', () => {
+    renderWithProviders(<MathhammerPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    expect(screen.getByTestId('share-card')).toBeInTheDocument();
+  });
+
   it('charts the chance of each total of damage dealt', () => {
     renderWithProviders(<MathhammerPage />);
     expect(screen.getByRole('img', { name: /^Damage dealt: / })).toBeInTheDocument();

@@ -1,0 +1,22 @@
+/* The shared image: the page's panel colours, a fixed width so the picture looks the same. */
+.card {
+  width: 700px;
+  max-width: 100%;
+  padding: 20px;
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-dark-6);
+}
+
+.section {
+  padding: 10px 12px;
+  border: 1px solid var(--mantine-color-dark-4);
+  border-radius: var(--mantine-radius-sm);
+}
+
+.row {
+  padding: 4px 0;
+}
+
+.row + .row {
+  border-top: 1px solid var(--mantine-color-dark-5);
+}

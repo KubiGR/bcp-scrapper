@@ -11,6 +11,28 @@ const TOP = 26;
 const BOTTOM = 40;
 const PLOT_W = WIDTH - LEFT - RIGHT;
 const PLOT_H = HEIGHT - TOP - BOTTOM;
+/**
+ * The chart's colours and type, written onto the SVG itself (not through classes) so a copied image
+ * of it (Share) looks the same. Bars #00a3bf and line #cc7f12: checked apart for colour-blind
+ * readers on the dark panel; the greys are the theme's dark steps.
+ */
+const MONO = '"JetBrains Mono Variable", ui-monospace, monospace';
+const SANS = '"Exo 2 Variable", system-ui, sans-serif';
+const SVG = {
+  middle: { fill: '#2a3656', fillOpacity: 0.55 },
+  grid: { stroke: '#2a3656', strokeWidth: 1, strokeDasharray: '4 4' },
+  baseline: { stroke: '#5a6a8e', strokeWidth: 1 },
+  axis: { fill: '#7f8fb0', fontSize: 11, fontFamily: MONO },
+  axisTitle: { fill: '#7f8fb0', fontSize: 11, fontFamily: SANS },
+  bar: { fill: '#00a3bf' },
+  barHover: { fill: '#26c0db' },
+  quartile: { stroke: '#7f8fb0', strokeWidth: 1, strokeDasharray: '3 3' },
+  median: { stroke: '#ffffff', strokeWidth: 2 },
+  medianLabel: { fill: '#ffffff', fontSize: 11, fontWeight: 600, fontFamily: MONO },
+  line: { fill: 'none', stroke: '#cc7f12', strokeWidth: 2 },
+  point: { fill: '#cc7f12', stroke: '#1b2440', strokeWidth: 2 },
+} as const;
+
 /** Totals less likely than this at the high end are left off. */
 const TAIL = 0.0005;
 /** Gridlines: both axes share them, the left in fifths of its top, the right in 20% steps. */
@@ -98,23 +120,17 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
             y={TOP}
             width={(qs[2] - qs[0] + 1) * slot}
             height={PLOT_H}
-            className={classes.middle}
+            {...SVG.middle}
           />
           {lines.map((i) => {
             const y = TOP + PLOT_H - (i / LINES) * PLOT_H;
             return (
               <g key={i}>
-                <line x1={LEFT} x2={WIDTH - RIGHT} y1={y} y2={y} className={classes.grid} />
-                <text
-                  data-axis="left"
-                  x={LEFT - 6}
-                  y={y + 4}
-                  textAnchor="end"
-                  className={classes.axis}
-                >
+                <line x1={LEFT} x2={WIDTH - RIGHT} y1={y} y2={y} {...SVG.grid} />
+                <text data-axis="left" x={LEFT - 6} y={y + 4} textAnchor="end" {...SVG.axis}>
                   {`${String(Math.round(step * i * 100))}%`}
                 </text>
-                <text data-axis="right" x={WIDTH - RIGHT + 6} y={y + 4} className={classes.axis}>
+                <text data-axis="right" x={WIDTH - RIGHT + 6} y={y + 4} {...SVG.axis}>
                   {`${String((i * 100) / LINES)}%`}
                 </text>
               </g>
@@ -125,7 +141,7 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
             x2={WIDTH - RIGHT}
             y1={TOP + PLOT_H}
             y2={TOP + PLOT_H}
-            className={classes.baseline}
+            {...SVG.baseline}
           />
           {exactly.map((p, n) => (
             <g
@@ -143,15 +159,10 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
                 width={barW}
                 height={Math.max(0, TOP + PLOT_H - yLeft(p))}
                 rx={Math.min(4, barW / 2)}
-                className={hover === n ? classes.barHover : classes.bar}
+                {...(hover === n ? SVG.barHover : SVG.bar)}
               />
               {n % labelEvery === 0 && (
-                <text
-                  x={center(n)}
-                  y={TOP + PLOT_H + 16}
-                  textAnchor="middle"
-                  className={classes.axis}
-                >
+                <text x={center(n)} y={TOP + PLOT_H + 16} textAnchor="middle" {...SVG.axis}>
                   {n}
                 </text>
               )}
@@ -166,7 +177,7 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
               x2={center(total)}
               y1={TOP}
               y2={TOP + PLOT_H}
-              className={i === 1 ? classes.median : classes.quartile}
+              {...(i === 1 ? SVG.median : SVG.quartile)}
             />
           ))}
           {[...labels].map(([total, names]) => (
@@ -175,14 +186,14 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
               x={center(total)}
               y={TOP - 8}
               textAnchor="middle"
-              className={names.includes('Q2') ? classes.medianLabel : classes.axis}
+              {...(names.includes('Q2') ? SVG.medianLabel : SVG.axis)}
             >
               {names.join(' ')}
             </text>
           ))}
           <polyline
             points={atLeast.map((p, n) => `${String(center(n))},${String(yRight(p))}`).join(' ')}
-            className={classes.line}
+            {...SVG.line}
           />
           {atLeast.map((p, n) => (
             <circle
@@ -191,21 +202,16 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
               cx={center(n)}
               cy={yRight(p)}
               r={hover === n ? 5 : 4}
-              className={classes.point}
+              {...SVG.point}
             />
           ))}
-          <text x={LEFT - 6} y={HEIGHT - 4} textAnchor="end" className={classes.axisTitle}>
+          <text x={4} y={HEIGHT - 4} {...SVG.axisTitle}>
             Exactly
           </text>
-          <text
-            x={LEFT + PLOT_W / 2}
-            y={HEIGHT - 4}
-            textAnchor="middle"
-            className={classes.axisTitle}
-          >
+          <text x={LEFT + PLOT_W / 2} y={HEIGHT - 4} textAnchor="middle" {...SVG.axisTitle}>
             Damage dealt
           </text>
-          <text x={WIDTH - RIGHT + 6} y={HEIGHT - 4} className={classes.axisTitle}>
+          <text x={WIDTH - 4} y={HEIGHT - 4} textAnchor="end" {...SVG.axisTitle}>
             At least
           </text>
         </svg>

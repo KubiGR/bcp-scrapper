@@ -1,8 +1,9 @@
-import { atLeast, type CalculationResult } from '@bcp/shared';
+import { atLeast, type Calculation, type CalculationResult } from '@bcp/shared';
 import { Alert, Group, Stack, Table, Text } from '@mantine/core';
 import { Panel } from '../../components/Panel';
 import { Breakdown } from './Breakdown';
 import { DamageChart } from './DamageChart';
+import { ShareResult } from './ShareResult';
 import classes from './ResultPanel.module.css';
 
 /** 0.623 → "62%"; tiny chances never round to a flat 0% or 100%. */
@@ -28,6 +29,8 @@ function Stat({ label, value }: { label: string; value: string }) {
 export type Outcome =
   | {
       result: CalculationResult;
+      /** What was calculated: the weapons as used (Best's profiles chosen), target, situation. */
+      calculation: Calculation;
       groupNames: string[];
       /** Profile names Best chose, by weapon row key. */
       best: Record<string, string>;
@@ -35,7 +38,18 @@ export type Outcome =
   | { error: string };
 
 /** Averages, the chance of each number of models slain or more, and the allocation used. */
-export function ResultPanel({ outcome }: { outcome: Outcome }) {
+export function ResultPanel({
+  outcome,
+  attacker,
+  defender,
+  phase,
+}: {
+  outcome: Outcome;
+  /** Names for the shared image. */
+  attacker: string;
+  defender: string;
+  phase: 'shooting' | 'fighting';
+}) {
   if ('error' in outcome) {
     return (
       <Panel title="Result">
@@ -51,6 +65,15 @@ export function ResultPanel({ outcome }: { outcome: Outcome }) {
   return (
     <Panel title="Result">
       <Stack gap="md">
+        <Group justify="flex-end">
+          <ShareResult
+            calculation={outcome.calculation}
+            result={result}
+            attacker={attacker}
+            defender={defender}
+            phase={phase}
+          />
+        </Group>
         <Group gap="xl">
           <Stat label="Models slain" value={result.averages.modelsSlain.toFixed(2)} />
           <Stat label="Wounds dealt" value={result.averages.woundsDealt.toFixed(2)} />
