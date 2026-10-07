@@ -9,6 +9,8 @@ import {
   type UnitProfile,
   type WeaponKeywords,
   type WeaponMods,
+  isConditional,
+  keywordFields,
 } from '@bcp/shared';
 
 /** One weapon as typed: its profile and its keywords. */
@@ -414,6 +416,31 @@ const merge = (typed: WeaponKeywords, read: WeaponKeywords): WeaponKeywords => (
   melta: typed.melta ?? read.melta,
 });
 
+/**
+ * A weapon's boxes and switches from its datasheet keywords (those that hold whatever the target;
+ * the rest are applied against the target when calculating).
+ */
+export function keywordBoxes(names: string[]): Partial<WeaponRow> {
+  const k = keywordFields(names);
+  return {
+    torrent: k.torrent,
+    lethalHits: k.lethalHits,
+    sustainedHits: k.sustainedHits ?? '',
+    devastatingWounds: k.devastatingWounds,
+    twinLinked: k.twinLinked,
+    heavy: k.heavy,
+    lance: k.lance,
+    ignoresCover: k.ignoresCover,
+    precision: k.precision,
+    indirectFire: k.indirectFire,
+    rapidFire: k.rapidFire ?? '',
+    blast: k.blast,
+    cleave: k.cleave,
+    melta: k.melta,
+    anti: k.anti.map((a) => `${a.keyword} ${String(a.value)}+`).join(', '),
+  };
+}
+
 /** The defender's keywords, upper-case, from the comma-separated field. */
 export const targetKeywordsOf = (defender: DefenderForm) =>
   defender.keywords
@@ -476,7 +503,12 @@ export function toCalculation(
             cleave: row.cleave,
             melta: row.melta,
           },
-          readKeywords(row.keywordNames, targetKeywords),
+          // A Best row uses its chosen profile's keywords; any other row's keywords are in its
+          // boxes, except those that depend on the target.
+          readKeywords(
+            choosing(typed) ? row.keywordNames : row.keywordNames.filter(isConditional),
+            targetKeywords,
+          ),
         ),
         row.own ?? form.unit,
       );

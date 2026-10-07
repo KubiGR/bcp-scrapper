@@ -6,6 +6,7 @@ import type {
   UnitWeapon,
 } from '@bcp/shared';
 import {
+  keywordBoxes,
   newGroup,
   newWeapon,
   withDefenderOriginal,
@@ -38,6 +39,8 @@ function rowFrom(name: string, owner: string, models: number, profiles: UnitProf
     damage: first?.damage ?? '1',
     profiles,
     profile: profiles.length > 1 ? 'best' : 0,
+    // One profile: its keywords fill the weapon's boxes (Best rows use each profile's own).
+    ...(profiles.length > 1 ? {} : keywordBoxes(first?.keywords ?? [])),
     keywordNames: first?.keywords ?? [],
   });
 }

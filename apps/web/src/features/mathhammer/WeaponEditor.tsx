@@ -1,6 +1,12 @@
 import { keywordEffect, type WeaponMods } from '@bcp/shared';
 import { Badge, Button, Group, Paper, Select, Stack, Text, TextInput } from '@mantine/core';
-import { originalText, resetWeapon, weaponChanges, type WeaponRow } from './form-state';
+import {
+  keywordBoxes,
+  originalText,
+  resetWeapon,
+  weaponChanges,
+  type WeaponRow,
+} from './form-state';
 import { Check, CheckGrid, changedProps, DiceInput, Num } from './inputs';
 import inputClasses from './inputs.module.css';
 import { SwitchesEditor } from './SwitchesEditor';
@@ -202,7 +208,8 @@ export function WeaponEditor({
               value={String(w.profile)}
               onChange={(next) => {
                 if (next === 'best' || next === null) {
-                  onChange({ profile: 'best' });
+                  // Best uses each profile's own keywords: the boxes start empty.
+                  onChange({ profile: 'best', ...keywordBoxes([]) });
                   return;
                 }
                 const i = Number(next);
@@ -217,6 +224,7 @@ export function WeaponEditor({
                   ap: p.ap,
                   damage: p.damage,
                   keywordNames: p.keywords,
+                  ...keywordBoxes(p.keywords),
                 });
               }}
             />

@@ -91,3 +91,21 @@ export function keywordEffect(
   }
   return null;
 }
+
+/**
+ * Whether a keyword's effect depends on the target ("LETHAL HITS: non-MONSTER/VEHICLE",
+ * "Anti-non-CHARACTER 4+"), so it can't be a plain switch on the weapon.
+ */
+export function isConditional(name: string): boolean {
+  const tidied = tidy(name);
+  const anti = ANTI.exec(tidied);
+  if (anti !== null) return anti[1] !== undefined;
+  return CONDITION.test(tidied);
+}
+
+/** What a weapon's keywords that hold whatever the target do: its switches and boxes. */
+export const keywordFields = (names: string[]): WeaponKeywords =>
+  readKeywords(
+    names.filter((name) => !isConditional(name)),
+    [],
+  );
