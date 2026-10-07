@@ -313,8 +313,9 @@ function resolveWeapon(
 }
 
 /**
- * A weapon's averages before saves, from each kind of target it met (the states where the target
- * is wiped out add nothing), and its unsaved wounds against the first group allocated.
+ * A weapon's averages before saves for a whole volley: over the games where it has something to
+ * shoot at (a target the weapons before it wiped out takes no attacks), from each kind of target
+ * it met; and its unsaved wounds against the first group allocated.
  */
 function stepOf(
   weapon: Weapon,
@@ -359,6 +360,23 @@ function stepOf(
       step.unsaved += mass * a.wounds * fail(setup.normal);
     }
     step.unsavedExact &&= same(setup.normal);
+  }
+  // Per volley: the games where the target was already gone don't lower the weapon's attacks.
+  const fired = parts.reduce((sum, part) => sum + part.mass, 0);
+  if (fired > 0) {
+    for (const key of [
+      'attacks',
+      'hits',
+      'critHits',
+      'sustainedHits',
+      'lethalHits',
+      'wounds',
+      'critWounds',
+      'devastating',
+      'unsaved',
+    ] as const) {
+      step[key] /= fired;
+    }
   }
   return step;
 }

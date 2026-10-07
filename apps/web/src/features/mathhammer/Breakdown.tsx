@@ -144,9 +144,10 @@ export function Breakdown({
       <Text size="xs" c="dimmed">
         Averages. Crits: critical hits (unmodified 6s to hit) and critical wounds (6s to wound, or
         lower with Anti); sus: extra hits from Sustained Hits; lethals: hits that wound by Lethal
-        Hits. Damage dealt is wounds the target lost, after damage reduction, Feel No Pain and
-        overkill; each weapon counts after the ones above it. Models slain is whole models: how far
-        each weapon moves the median (they add up to it), with the average beneath.
+        Hits. Attacks to unsaved are each weapon's whole volley. Damage dealt is wounds the target
+        lost, after damage reduction, Feel No Pain and overkill: what each weapon adds after the
+        ones above it (nothing once the target is gone). Models slain is whole models: how far each
+        weapon moves the median (they add up to it), with the average beneath.
         {approximate &&
           ' ≈: the target’s models save differently, so unsaved wounds use the save of the models hit first.'}
       </Text>

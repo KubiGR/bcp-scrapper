@@ -83,4 +83,19 @@ describe('step-by-step breakdown', () => {
     for (const step of result.breakdown) expect(Number.isInteger(step.slainMedian)).toBe(true);
     expect(result.breakdown.reduce((total, step) => total + step.slainMedian, 0)).toBe(median);
   });
+
+  it('shows a weapon’s whole volley even when the ones before it sometimes wipe the target', () => {
+    // One 1-wound model, no save: the first gun often kills it before the second fires.
+    const result = calculate(
+      calc({
+        weapons: [weapon({ attacks: '6' }), weapon({ name: 'Second', attacks: '8' })],
+        defender: defender({ groups: [group({ models: 1, save: 7, wounds: 1 })] }),
+      }),
+    );
+    const second = result.breakdown[1];
+    close(second?.attacks, 8);
+    close(second?.hits, 8 * (4 / 6));
+    // What it adds still counts only the games where something was left to kill.
+    expect(second?.slain ?? 1).toBeLessThan(1 - (result.breakdown[0]?.slain ?? 0) + 1e-9);
+  });
 });
