@@ -2,6 +2,7 @@ import { atLeast, type CalculationResult } from '@bcp/shared';
 import { Alert, Group, Stack, Table, Text } from '@mantine/core';
 import { Panel } from '../../components/Panel';
 import { Breakdown } from './Breakdown';
+import { DamageChart } from './DamageChart';
 import classes from './ResultPanel.module.css';
 
 /** 0.623 → "62%"; tiny chances never round to a flat 0% or 100%. */
@@ -59,6 +60,7 @@ export function ResultPanel({ outcome }: { outcome: Outcome }) {
             <Stat label="Leader slain" value={percent(result.leaderSlain)} />
           )}
         </Group>
+        <DamageChart woundsDealt={result.woundsDealt} />
         <Table aria-label="Models slain, at least" withRowBorders={false}>
           <Table.Thead>
             <Table.Tr>

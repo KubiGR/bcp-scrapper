@@ -36,6 +36,11 @@ describe('MathhammerPage', () => {
     expect(screen.queryByRole('group', { name: 'Weapon 1' })).toBeNull();
   });
 
+  it('charts the chance of each total of damage dealt', () => {
+    renderWithProviders(<MathhammerPage />);
+    expect(screen.getByRole('img', { name: /^Damage dealt: / })).toBeInTheDocument();
+  });
+
   it('shows each weapon step by step under the result', () => {
     renderWithProviders(<MathhammerPage />);
     const steps = within(screen.getByRole('table', { name: 'Step by step' }));
