@@ -67,10 +67,17 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
   const exactly = woundsDealt.slice(0, last + 1);
   if (exactly.length === 0) return null;
   // At least n: everything from n up (the trimmed tail included).
-  const atLeast = exactly.map((_, n) => woundsDealt.slice(n).reduce((sum, p) => sum + p, 0));
+  const atLeastOf = exactly.map((_, n) => woundsDealt.slice(n).reduce((sum, p) => sum + p, 0));
+  // Only the totals that can happen get a column: 2-damage hits make no odd totals, so no gaps.
+  const totals = exactly.flatMap((p, n) => (p > 0 || n === 0 ? [n] : []));
+  const at = (total: number) =>
+    Math.max(
+      0,
+      totals.findIndex((t) => t >= total),
+    );
   const step = STEPS.find((s) => s * LINES >= Math.max(...exactly) - 1e-9) ?? 0.2;
   const top = step * LINES;
-  const slot = PLOT_W / exactly.length;
+  const slot = PLOT_W / totals.length;
   const barW = Math.max(2, Math.min(40, slot - 4));
   const center = (n: number) => LEFT + n * slot + slot / 2;
   const yLeft = (p: number) => TOP + PLOT_H - (Math.min(p, top) / top) * PLOT_H;
@@ -79,7 +86,7 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
   const qs = quartiles(woundsDealt.slice(0, last + 1));
   const labels = new Map<number, string[]>();
   qs.forEach((total, i) => labels.set(total, [...(labels.get(total) ?? []), `Q${String(i + 1)}`]));
-  const labelEvery = Math.ceil(exactly.length / 16);
+  const labelEvery = Math.ceil(totals.length / 16);
   const mean = exactly.reduce((sum, p, n) => sum + p * n, 0);
   const quartileText = `Q1: ${String(qs[0])} · Q2: ${String(qs[1])} · Q3: ${String(qs[2])}`;
 
@@ -116,9 +123,9 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
         >
           {/* The middle half of results. */}
           <rect
-            x={LEFT + qs[0] * slot}
+            x={LEFT + at(qs[0]) * slot}
             y={TOP}
-            width={(qs[2] - qs[0] + 1) * slot}
+            width={(at(qs[2]) - at(qs[0]) + 1) * slot}
             height={PLOT_H}
             {...SVG.middle}
           />
@@ -143,9 +150,9 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
             y2={TOP + PLOT_H}
             {...SVG.baseline}
           />
-          {exactly.map((p, n) => (
+          {totals.map((total, n) => (
             <g
-              key={n}
+              key={total}
               onMouseEnter={() => {
                 setHover(n);
               }}
@@ -155,15 +162,15 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
               <rect
                 data-testid="damage-bar"
                 x={center(n) - barW / 2}
-                y={yLeft(p)}
+                y={yLeft(exactly[total] ?? 0)}
                 width={barW}
-                height={Math.max(0, TOP + PLOT_H - yLeft(p))}
+                height={Math.max(0, TOP + PLOT_H - yLeft(exactly[total] ?? 0))}
                 rx={Math.min(4, barW / 2)}
                 {...(hover === n ? SVG.barHover : SVG.bar)}
               />
               {n % labelEvery === 0 && (
                 <text x={center(n)} y={TOP + PLOT_H + 16} textAnchor="middle" {...SVG.axis}>
-                  {n}
+                  {total}
                 </text>
               )}
             </g>
@@ -173,8 +180,8 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
               key={i}
               data-testid={`quartile-Q${String(i + 1)}`}
               data-total={total}
-              x1={center(total)}
-              x2={center(total)}
+              x1={center(at(total))}
+              x2={center(at(total))}
               y1={TOP}
               y2={TOP + PLOT_H}
               {...(i === 1 ? SVG.median : SVG.quartile)}
@@ -183,7 +190,7 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
           {[...labels].map(([total, names]) => (
             <text
               key={total}
-              x={center(total)}
+              x={center(at(total))}
               y={TOP - 8}
               textAnchor="middle"
               {...(names.includes('Q2') ? SVG.medianLabel : SVG.axis)}
@@ -192,15 +199,17 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
             </text>
           ))}
           <polyline
-            points={atLeast.map((p, n) => `${String(center(n))},${String(yRight(p))}`).join(' ')}
+            points={totals
+              .map((total, n) => `${String(center(n))},${String(yRight(atLeastOf[total] ?? 0))}`)
+              .join(' ')}
             {...SVG.line}
           />
-          {atLeast.map((p, n) => (
+          {totals.map((total, n) => (
             <circle
-              key={n}
+              key={total}
               data-testid="at-least-point"
               cx={center(n)}
-              cy={yRight(p)}
+              cy={yRight(atLeastOf[total] ?? 0)}
               r={hover === n ? 5 : 4}
               {...SVG.point}
             />
@@ -223,11 +232,11 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
           >
             <div>
               <span className={classes.swatchBar} aria-hidden />
-              {`${String(hover)}: ${percent(exactly[hover] ?? 0)}`}
+              {`${String(totals[hover] ?? 0)}: ${percent(exactly[totals[hover] ?? 0] ?? 0)}`}
             </div>
             <div>
               <span className={classes.swatchLine} aria-hidden />
-              {`${String(hover)}+: ${percent(atLeast[hover] ?? 0)}`}
+              {`${String(totals[hover] ?? 0)}+: ${percent(atLeastOf[totals[hover] ?? 0] ?? 0)}`}
             </div>
             <div className={classes.tipQuartiles}>{quartileText}</div>
           </div>
@@ -248,11 +257,11 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
             </tr>
           </thead>
           <tbody>
-            {exactly.map((p, n) => (
-              <tr key={n}>
-                <td>{n}</td>
-                <td>{percent(p)}</td>
-                <td>{percent(atLeast[n] ?? 0)}</td>
+            {totals.map((total) => (
+              <tr key={total}>
+                <td>{total}</td>
+                <td>{percent(exactly[total] ?? 0)}</td>
+                <td>{percent(atLeastOf[total] ?? 0)}</td>
               </tr>
             ))}
           </tbody>

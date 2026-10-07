@@ -3,6 +3,7 @@ import { Alert, Group, Stack, Table, Text } from '@mantine/core';
 import { Panel } from '../../components/Panel';
 import { Breakdown } from './Breakdown';
 import { DamageChart } from './DamageChart';
+import type { MathhammerForm } from './form-state';
 import { ShareResult } from './ShareResult';
 import classes from './ResultPanel.module.css';
 
@@ -40,15 +41,11 @@ export type Outcome =
 /** Averages, the chance of each number of models slain or more, and the allocation used. */
 export function ResultPanel({
   outcome,
-  attacker,
-  defender,
-  phase,
+  form,
 }: {
   outcome: Outcome;
-  /** Names for the shared image. */
-  attacker: string;
-  defender: string;
-  phase: 'shooting' | 'fighting';
+  /** The page's form, for the shared image. */
+  form: MathhammerForm;
 }) {
   if ('error' in outcome) {
     return (
@@ -69,13 +66,7 @@ export function ResultPanel({
     <Panel title="Result">
       <Stack gap="md">
         <Group justify="flex-end">
-          <ShareResult
-            calculation={outcome.calculation}
-            result={result}
-            attacker={attacker}
-            defender={defender}
-            phase={phase}
-          />
+          <ShareResult form={form} calculation={outcome.calculation} result={result} />
         </Group>
         <Group gap="xl">
           <Stat label="Models slain" value={result.averages.modelsSlain.toFixed(2)} />
@@ -87,35 +78,37 @@ export function ResultPanel({
           )}
         </Group>
         <DamageChart woundsDealt={result.woundsDealt} />
-        <Table
-          aria-label="Models slain, at least"
-          withRowBorders={false}
-          verticalSpacing={2}
-          fz="xs"
-        >
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Models slain</Table.Th>
-              <Table.Th ta="right">Chance</Table.Th>
-              <Table.Th />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {slain.map((p, i) => (
-              <Table.Tr key={i}>
-                <Table.Td className="numeric">{`${String(i + 1)}+`}</Table.Td>
-                <Table.Td ta="right" className="numeric">
-                  {percent(p)}
-                </Table.Td>
-                <Table.Td w="60%">
-                  <div className={classes.track} aria-hidden>
-                    <div className={classes.bar} style={{ width: `${String(p * 100)}%` }} />
-                  </div>
-                </Table.Td>
+        {slain.length > 0 && (
+          <Table
+            aria-label="Models slain, at least"
+            withRowBorders={false}
+            verticalSpacing={2}
+            fz="xs"
+          >
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Models slain</Table.Th>
+                <Table.Th ta="right">Chance</Table.Th>
+                <Table.Th />
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {slain.map((p, i) => (
+                <Table.Tr key={i}>
+                  <Table.Td className="numeric">{`${String(i + 1)}+`}</Table.Td>
+                  <Table.Td ta="right" className="numeric">
+                    {percent(p)}
+                  </Table.Td>
+                  <Table.Td w="60%">
+                    <div className={classes.track} aria-hidden>
+                      <div className={classes.bar} style={{ width: `${String(p * 100)}%` }} />
+                    </div>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        )}
         {order !== undefined && groupNames.length > 1 && (
           <Text size="xs" c="dimmed">
             {`Allocation: ${order.map((g) => groupNames[g] ?? '?').join(' → ')}`}

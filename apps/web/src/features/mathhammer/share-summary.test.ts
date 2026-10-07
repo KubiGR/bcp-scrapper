@@ -1,7 +1,7 @@
 import { DEFAULT_MODS } from '@bcp/shared';
 import { describe, expect, it } from 'vitest';
-import { defenderSummary, situationLabels, weaponSummary } from './share-summary';
-import { NO_SITUATION } from './form-state';
+import { appliedModifiers, defenderSummary, situationLabels, weaponSummary } from './share-summary';
+import { defaultForm, NO_SITUATION } from './form-state';
 
 const weapon = {
   name: 'Chainblades',
@@ -88,5 +88,27 @@ describe('share summary', () => {
       mods: { ...DEFAULT_MODS, attacksModifier: 1, skillModifier: 1, strengthModifier: -1 },
     };
     expect(weaponSummary(changed).tags).toEqual(['Attacks +1', 'BS/WS +1', 'Strength -1']);
+  });
+});
+
+describe('appliedModifiers', () => {
+  it('lists what was set on top of the datasheets and the starting setup', () => {
+    const form = defaultForm();
+    const [rifle] = form.weapons;
+    if (rifle === undefined) throw new Error('no rifle');
+    form.unit = { ...DEFAULT_MODS, lethalHits: true, strengthModifier: 1 };
+    form.situation = { ...form.situation, cover: false, charged: true };
+    form.weapons = [{ ...rifle, attacks: '3' }];
+    form.defender = { ...form.defender, stealth: true };
+    expect(appliedModifiers(form)).toEqual([
+      'Unit: Strength +1 · Lethal Hits',
+      'Situation: Charged · Not in cover',
+      'Bolt rifle: Attacks 3 (was 2)',
+      'Defender: Stealth on (was off)',
+    ]);
+  });
+
+  it('is empty for an untouched setup', () => {
+    expect(appliedModifiers(defaultForm())).toEqual([]);
   });
 });

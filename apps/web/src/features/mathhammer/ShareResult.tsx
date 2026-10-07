@@ -2,22 +2,35 @@ import type { Calculation, CalculationResult } from '@bcp/shared';
 import { Alert, Button, Group, Modal, Stack, Text } from '@mantine/core';
 import { toBlob } from 'html-to-image';
 import { useRef, useState } from 'react';
+import { Breakdown } from './Breakdown';
 import { DamageChart, quartiles } from './DamageChart';
+import type { MathhammerForm } from './form-state';
 import { percent } from './ResultPanel';
 import classes from './ShareResult.module.css';
-import { defenderSummary, situationLabels, weaponSummary } from './share-summary';
+import {
+  appliedModifiers,
+  defenderSummary,
+  modLabels,
+  situationLabels,
+  weaponSummary,
+} from './share-summary';
 
 interface ShareProps {
+  /** The page's form: names, phase, and what was changed from the datasheets. */
+  form: MathhammerForm;
   calculation: Calculation;
   result: CalculationResult;
-  attacker: string;
-  defender: string;
-  phase: 'shooting' | 'fighting';
 }
 
 /** The result as one card: matchup, profiles as used, modifiers, numbers and the damage graph. */
-function ShareCard({ calculation, result, attacker, defender, phase }: ShareProps) {
+function ShareCard({ form, calculation, result }: ShareProps) {
+  const attacker = form.source ?? 'Attacker';
+  const defender = form.defender.source ?? 'Defender';
+  const { phase } = form;
   const target = defenderSummary(calculation.defender);
+  const applied = appliedModifiers(form);
+  // The unit's own switches are listed once, under Modifiers applied, not on every weapon.
+  const unitLabels = new Set(modLabels(form.unit));
   const situation = situationLabels(calculation.situation);
   const qs = quartiles(result.woundsDealt);
   const numbers: [string, string][] = [
@@ -39,7 +52,8 @@ function ShareCard({ calculation, result, attacker, defender, phase }: ShareProp
           Attacker
         </Text>
         {calculation.weapons.map((weapon, index) => {
-          const w = weaponSummary(weapon);
+          const summary = weaponSummary(weapon);
+          const w = { ...summary, tags: summary.tags.filter((tag) => !unitLabels.has(tag)) };
           return (
             <div key={`${weapon.name}-${String(index)}`} className={classes.row}>
               <Text size="sm" fw={600}>
@@ -75,6 +89,18 @@ function ShareCard({ calculation, result, attacker, defender, phase }: ShareProp
           </Text>
         )}
       </div>
+      {applied.length > 0 && (
+        <div className={classes.section}>
+          <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+            Modifiers applied
+          </Text>
+          {applied.map((line) => (
+            <Text key={line} size="sm">
+              {line}
+            </Text>
+          ))}
+        </div>
+      )}
       <Group gap="xl">
         {numbers.map(([label, value]) => (
           <div key={label}>
@@ -88,6 +114,7 @@ function ShareCard({ calculation, result, attacker, defender, phase }: ShareProp
         ))}
       </Group>
       <DamageChart woundsDealt={result.woundsDealt} />
+      <Breakdown steps={result.breakdown} />
       <Text size="xs" c="dimmed" ta="right">
         BCP Analyzer · Mathhammer · exact chances
       </Text>

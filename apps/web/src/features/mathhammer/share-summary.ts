@@ -5,12 +5,22 @@ import {
   type Weapon,
   type WeaponMods,
 } from '@bcp/shared';
+import {
+  DEFAULT_SITUATION,
+  defenderChanges,
+  defenderOriginalText,
+  groupChanges,
+  groupOriginalText,
+  originalText,
+  weaponChanges,
+  type MathhammerForm,
+} from './form-state';
 
 const REROLL: Record<string, string> = { ones: '1s', failures: 'fails', fish: 'non-criticals' };
 const signed = (n: number) => (n > 0 ? `+${String(n)}` : String(n));
 
 /** The switches that differ from the defaults, as short labels. */
-function modLabels(mods: WeaponMods): string[] {
+export function modLabels(mods: WeaponMods): string[] {
   const d = DEFAULT_MODS;
   const out: string[] = [];
   const add = (when: boolean, label: string) => {
@@ -116,3 +126,102 @@ export const situationLabels = (situation: Situation): string[] =>
   (Object.keys(SITUATION_LABELS) as (keyof Situation)[])
     .filter((key) => situation[key])
     .map((key) => SITUATION_LABELS[key]);
+
+const FIELD_LABELS: Record<string, string> = {
+  name: 'Name',
+  models: 'Weapons',
+  melee: 'Melee',
+  attacks: 'Attacks',
+  skill: 'BS/WS',
+  strength: 'S',
+  ap: 'AP',
+  damage: 'D',
+  profile: 'Profile',
+  torrent: 'Torrent',
+  lethalHits: 'Lethal Hits',
+  sustainedHits: 'Sustained Hits',
+  devastatingWounds: 'Devastating Wounds',
+  twinLinked: 'Twin-linked',
+  heavy: 'Heavy',
+  lance: 'Lance',
+  ignoresCover: 'Ignores Cover',
+  precision: 'Precision',
+  indirectFire: 'Indirect Fire',
+  rapidFire: 'Rapid Fire',
+  blast: 'Blast',
+  cleave: 'Cleave',
+  melta: 'Melta',
+  anti: 'Anti',
+  toughness: 'T',
+  save: 'Sv',
+  invuln: 'InSv',
+  wounds: 'W',
+  fnp: 'FNP',
+  character: 'Character',
+  keywords: 'Keywords',
+  attached: 'Attached unit',
+  stealth: 'Stealth',
+  damageReduction: 'Damage −',
+  halveDamage: 'Halve damage',
+};
+
+const valueText = (value: unknown) =>
+  typeof value === 'boolean'
+    ? value
+      ? 'on'
+      : 'off'
+    : value === null || value === ''
+      ? '–'
+      : typeof value === 'string' || typeof value === 'number'
+        ? String(value)
+        : JSON.stringify(value);
+
+const change = (field: string, now: unknown, was: string | null) =>
+  `${FIELD_LABELS[field] ?? field} ${valueText(now)} (was ${was ?? '–'})`;
+
+const NOT_SITUATION: Partial<Record<keyof Situation, string>> = {
+  halfRange: 'Not at half range',
+  cover: 'Not in cover',
+};
+
+/**
+ * What was set on top of the datasheets and the starting setup, one line per part: the unit's
+ * modifiers, the situation, each weapon's and the defender's edited fields.
+ */
+export function appliedModifiers(form: MathhammerForm): string[] {
+  const lines: string[] = [];
+  const unit = modLabels(form.unit);
+  if (unit.length > 0) lines.push(`Unit: ${unit.join(' · ')}`);
+  const situation = (Object.keys(SITUATION_LABELS) as (keyof Situation)[])
+    .filter((key) => form.situation[key] !== DEFAULT_SITUATION[key])
+    .map((key) =>
+      form.situation[key]
+        ? SITUATION_LABELS[key]
+        : (NOT_SITUATION[key] ?? `Not ${SITUATION_LABELS[key].toLowerCase()}`),
+    );
+  if (situation.length > 0) lines.push(`Situation: ${situation.join(' · ')}`);
+  for (const w of form.weapons) {
+    if (w.original === null) {
+      lines.push(`${w.name}: added by hand`);
+      continue;
+    }
+    const edits = weaponChanges(w).map((field) => change(field, w[field], originalText(w, field)));
+    if (edits.length > 0) lines.push(`${w.name}: ${edits.join(' · ')}`);
+  }
+  const d = form.defender;
+  const defender = defenderChanges(d).map((field) =>
+    change(field, d[field], defenderOriginalText(d, field)),
+  );
+  if (defender.length > 0) lines.push(`Defender: ${defender.join(' · ')}`);
+  for (const g of d.groups) {
+    if (g.original === null) {
+      lines.push(`${g.name}: added by hand`);
+      continue;
+    }
+    const edits = groupChanges(g).map((field) =>
+      change(field, g[field], groupOriginalText(g, field)),
+    );
+    if (edits.length > 0) lines.push(`${g.name}: ${edits.join(' · ')}`);
+  }
+  return lines;
+}
