@@ -41,9 +41,11 @@ export function RatingsTable({
                   w={320}
                 >
                   <span tabIndex={0}>
-                    <Text size="xs" c="dimmed">
-                      {t.name}
-                    </Text>
+                    {t.name !== t.faction && (
+                      <Text size="xs" c="dimmed">
+                        {t.name}
+                      </Text>
+                    )}
                     <Text size="sm">{t.faction ?? '—'}</Text>
                     {t.detachments.length > 0 && (
                       <Text size="xs" c="dimmed">
@@ -60,10 +62,12 @@ export function RatingsTable({
           {ours.map((o) => (
             <tr key={o.id}>
               <th scope="row">
-                <Text size="sm">{o.name}</Text>
-                <Text size="xs" c="dimmed">
-                  {o.faction ?? '—'}
-                </Text>
+                <Text size="sm">{o.faction ?? o.name}</Text>
+                {o.name !== o.faction && (
+                  <Text size="xs" c="dimmed">
+                    {o.name}
+                  </Text>
+                )}
               </th>
               {theirs.map((t) => {
                 const chip = chipOf.get(`${o.id}|${t.id}`) ?? null;

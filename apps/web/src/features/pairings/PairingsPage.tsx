@@ -4,113 +4,38 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { Alert, Group, Select, Skeleton, Stack, Text, Title } from '@mantine/core';
-import { useQuery } from '@tanstack/react-query';
+import { Button, Group, Modal, Stack, Text, Title } from '@mantine/core';
 import { useMemo, useState } from 'react';
-import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
-import {
-  eventTeamsQuery,
-  pairingQuery,
-  teamEventsQuery,
-  useSaveRating,
-  useSaveRatings,
-} from './pairing-queries';
-import type { PairingsChoice } from './last-choice';
-import { PasteFromSheet } from './PasteFromSheet';
 import { ChainFlow } from './ChainFlow';
 import { DefenderGrid } from './DefenderGrid';
 import { PairingSummary } from './PairingSummary';
+import { PasteBox } from './PasteBox';
 import { RatingsTable } from './RatingsTable';
+import { ratePlan, readPlan, writePlan, type SheetPlan } from './sheet-plan';
 
-/** The pairings planner: pick the event, your team and the team you play, then rate and analyse. */
-export function PairingsPage({
-  choice,
-  onChange,
-}: {
-  choice: PairingsChoice;
-  onChange: (next: PairingsChoice) => void;
-}) {
-  const { event, team, opponent } = choice;
-  const events = useQuery(teamEventsQuery());
-  const teams = useQuery({ ...eventTeamsQuery(event ?? ''), enabled: event !== undefined });
-  const error = events.error ?? teams.error;
-  const eventOptions = (events.data?.items ?? []).map((e) => ({
-    value: e.bcpId,
-    label: `${e.name} · ${e.startDate.slice(0, 10)}`,
-  }));
-  const teamOptions = (teams.data?.teams ?? []).map((t) => ({ value: t.id, label: t.name }));
-  return (
-    <Stack gap="lg">
-      <Title order={2}>Pairings</Title>
-      <Group align="flex-end" gap="sm">
-        <Select
-          label="Event"
-          placeholder="Pick a team event"
-          data={eventOptions}
-          value={event ?? null}
-          onChange={(v) => {
-            if (v) onChange({ event: v });
-          }}
-          searchable
-          w={360}
-        />
-        <Select
-          label="My team"
-          placeholder="Your team"
-          data={teamOptions}
-          value={team ?? null}
-          disabled={event === undefined || !teams.data}
-          onChange={(v) => {
-            if (v) onChange({ event, team: v });
-          }}
-          searchable
-          w={260}
-        />
-        <Select
-          label="Opponent"
-          placeholder="The team you play"
-          data={teamOptions.filter((t) => t.value !== team)}
-          value={opponent ?? null}
-          disabled={team === undefined || !teams.data}
-          onChange={(v) => {
-            if (v) onChange({ event, team, opponent: v });
-          }}
-          searchable
-          w={260}
-        />
-      </Group>
-      {error && <ErrorState error={error} onRetry={() => void events.refetch()} />}
-      {event !== undefined && team !== undefined && opponent !== undefined ? (
-        <Matchup
-          key={`${event}/${team}/${opponent}`}
-          eventId={event}
-          teamId={team}
-          opponentId={opponent}
-        />
-      ) : (
-        <Text c="dimmed">Pick the event, your team and the team you play.</Text>
-      )}
-    </Stack>
-  );
-}
-
-function Matchup({
-  eventId,
-  teamId,
-  opponentId,
-}: {
-  eventId: string;
-  teamId: string;
-  opponentId: string;
-}) {
-  const data = useQuery(pairingQuery(eventId, teamId, opponentId));
-  const save = useSaveRating(eventId, teamId, opponentId);
-  const saveAll = useSaveRatings(eventId, teamId, opponentId);
-  if (data.isPending) return <Skeleton height={240} />;
-  if (data.error) return <ErrorState error={data.error} onRetry={() => void data.refetch()} />;
-  const { ours, theirs, ratings, problem } = data.data;
-  if (problem) return <Alert color="yellow">{problem}</Alert>;
+/**
+ * The pairings planner: paste the ratings from the team's sheet and see how the pairing is likely
+ * to go. The last sheet (and any chips changed here) is kept in this browser.
+ */
+export function PairingsPage() {
+  const [plan, setPlan] = useState<SheetPlan | null>(readPlan);
+  const [pasting, setPasting] = useState(false);
+  const use = (next: SheetPlan) => {
+    setPlan(next);
+    writePlan(next);
+  };
+  if (!plan) {
+    return (
+      <Stack gap="lg">
+        <Title order={2}>Pairings</Title>
+        <Panel title="Paste from your sheet">
+          <PasteBox onUse={use} />
+        </Panel>
+      </Stack>
+    );
+  }
+  const { ours, theirs, ratings } = plan;
   const { rated } = pointsMatrix(
     ours.map((p) => p.id),
     theirs.map((p) => p.id),
@@ -118,6 +43,7 @@ function Matchup({
   );
   return (
     <Stack gap="lg">
+      <Title order={2}>Pairings</Title>
       <Panel title="Rate the games">
         <Stack gap="xs">
           <RatingsTable
@@ -125,18 +51,40 @@ function Matchup({
             theirs={theirs}
             ratings={ratings}
             onRate={(playerId, opponentPlayerId, chip) => {
-              save.mutate({ playerId, opponentPlayerId, chip });
+              use(ratePlan(plan, playerId, opponentPlayerId, chip));
             }}
           />
           <Group justify="space-between">
             <Text size="xs" c="dimmed">
               {rated} of 25 rated{rated < 25 ? ' · unrated games count as Y (even)' : ''}
             </Text>
-            <PasteFromSheet ours={ours} theirs={theirs} onSave={saveAll.mutateAsync} />
+            <Button
+              variant="default"
+              size="xs"
+              onClick={() => {
+                setPasting(true);
+              }}
+            >
+              Paste again
+            </Button>
           </Group>
-          {save.error && <Alert color="red">Couldn’t save: {save.error.message}</Alert>}
         </Stack>
       </Panel>
+      <Modal
+        opened={pasting}
+        onClose={() => {
+          setPasting(false);
+        }}
+        title="Paste from your sheet"
+        size="lg"
+      >
+        <PasteBox
+          onUse={(next) => {
+            use(next);
+            setPasting(false);
+          }}
+        />
+      </Modal>
       <Analysis ours={ours} theirs={theirs} ratings={ratings} />
     </Stack>
   );

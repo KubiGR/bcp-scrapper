@@ -1,3 +1,4 @@
+import { canonicalArmy } from '../factions';
 import { PAIRING_CHIPS, type PairingChip } from './scale';
 
 const CHIPS = new Set<string>(PAIRING_CHIPS);
@@ -20,23 +21,99 @@ function readCell(text: string): Cell {
   return chip === undefined ? { kind: 'blank' } : { kind: 'chip', chip: chip as PairingChip };
 }
 
+/** A player as the sheet labels them: the army, and the name and list when copied along. */
+export interface SheetPlayer {
+  army: string;
+  name: string | null;
+  list: string | null;
+}
+
 export interface SheetPaste {
   /** The size × size block of chips (null = unrated or unreadable), or null if none was found. */
   cells: (PairingChip | null)[][] | null;
   /** [row, column] within the block of cells that weren't chips. */
   unreadable: [number, number][];
+  /** Our players (the block's rows), from the cells to their left. */
+  ours: SheetPlayer[];
+  /** Their players (the block's columns), from the cells above. */
+  theirs: SheetPlayer[];
 }
 
 /**
- * Reads ratings copied from the team's Google Sheet (tab-separated rows). The block is the
- * size × size window with the most chips, so header rows, names and role columns copied along
- * are skipped.
+ * Tab-separated rows as Google Sheets copies them: a cell holding line breaks, tabs or quotes is
+ * quoted, with its quotes doubled.
+ */
+function splitTsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let i = 0;
+  while (i < text.length) {
+    const ch = text.charAt(i);
+    if (ch === '"' && field === '') {
+      i += 1;
+      while (i < text.length) {
+        if (text[i] === '"' && text[i + 1] === '"') {
+          field += '"';
+          i += 2;
+        } else if (text[i] === '"') {
+          i += 1;
+          break;
+        } else {
+          field += text.charAt(i);
+          i += 1;
+        }
+      }
+      continue;
+    }
+    if (ch === '\t') {
+      row.push(field);
+      field = '';
+    } else if (ch === '\n' || (ch === '\r' && text[i + 1] === '\n')) {
+      if (ch === '\r') i += 1;
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else {
+      field += ch;
+    }
+    i += 1;
+  }
+  if (field !== '' || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows;
+}
+
+/** Header text that can name a player: one line, not a number like "11.7 ± 4", not a chip. */
+const isLabel = (text: string) =>
+  text !== '' && !text.includes('\n') && !/\d/.test(text) && readCell(text).kind === 'unreadable';
+
+/**
+ * Labels read from the cells beside a row or above a column, nearest the block last. The army is
+ * the one the app recognises as an army (else the first label); the name is the label before it.
+ */
+function playerFrom(texts: string[], fallback: string): SheetPlayer {
+  const labels = texts.map((t) => t.trim()).filter(isLabel);
+  const at = labels.findIndex((t) => canonicalArmy(t) !== null);
+  const armyAt = at === -1 ? 0 : at;
+  const lists = texts.filter((t) => t.includes('\n')).map((t) => t.trim());
+  return {
+    army: labels[armyAt] ?? fallback,
+    name: armyAt > 0 ? (labels[armyAt - 1] ?? null) : null,
+    list: lists.reduce<string | null>((a, b) => (a === null || b.length > a.length ? b : a), null),
+  };
+}
+
+/**
+ * Reads ratings copied from the team's Google Sheet. The block is the size × size window with the
+ * most chips; the cells to its left name our players and the cells above name theirs.
  */
 export function parseSheetPaste(text: string, size = 5): SheetPaste {
-  const grid = text
-    .split(/\r?\n/)
-    .filter((line, i, all) => line.trim() !== '' || i < all.length - 1)
-    .map((line) => line.split('\t').map(readCell));
+  const raw = splitTsv(text);
+  const grid = raw.map((line) => line.map(readCell));
   const at = (r: number, c: number): Cell => grid[r]?.[c] ?? { kind: 'blank' };
   const width = Math.max(0, ...grid.map((row) => row.length));
   let best: { r: number; c: number; score: number } | null = null;
@@ -54,15 +131,30 @@ export function parseSheetPaste(text: string, size = 5): SheetPaste {
       if (chips > 0 && (best === null || score > best.score)) best = { r, c, score };
     }
   }
-  if (best === null) return { cells: null, unreadable: [] };
+  const places = Array.from({ length: size }, (_, i) => i);
+  if (best === null) {
+    return {
+      cells: null,
+      unreadable: [],
+      ours: places.map((i) => playerFrom([], `Player ${i + 1}`)),
+      theirs: places.map((j) => playerFrom([], `Opponent ${j + 1}`)),
+    };
+  }
   const { r, c } = best;
   const unreadable: [number, number][] = [];
-  const cells = Array.from({ length: size }, (_, i) =>
-    Array.from({ length: size }, (_, j) => {
+  const cells = places.map((i) =>
+    places.map((j) => {
       const cell = at(r + i, c + j);
       if (cell.kind === 'unreadable') unreadable.push([i, j]);
       return cell.kind === 'chip' ? cell.chip : null;
     }),
   );
-  return { cells, unreadable };
+  const ours = places.map((i) => playerFrom((raw[r + i] ?? []).slice(0, c), `Player ${i + 1}`));
+  const theirs = places.map((j) =>
+    playerFrom(
+      raw.slice(0, r).map((line) => line[c + j] ?? ''),
+      `Opponent ${j + 1}`,
+    ),
+  );
+  return { cells, unreadable, ours, theirs };
 }

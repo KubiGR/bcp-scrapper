@@ -63,4 +63,78 @@ describe('parseSheetPaste', () => {
     expect(parseSheetPaste('hello\tworld').cells).toBeNull();
     expect(parseSheetPaste('').cells).toBeNull();
   });
+
+  it('reads each side’s army, the opponents’ names and lists from around the block', () => {
+    // As Google Sheets copies A1:I11: the list cells span lines, so they come quoted.
+    const text = [
+      row('', '', '', '', 'George', 'Ioannis', 'John', 'Panagiotis', 'Petros'),
+      row(
+        'PAIRING MATRIX',
+        '',
+        '',
+        '',
+        'Grey Knights',
+        'Death Guard',
+        'Orks',
+        'Chaos Space Marines',
+        'Adeptus Custodes',
+      ),
+      row(
+        '',
+        '',
+        '',
+        '',
+        'Argent Assault + Banishers',
+        'Contagion Engines',
+        'War Horde',
+        'Devotees',
+        'Lions of the Emperor',
+      ),
+      row(
+        'Round',
+        '',
+        '',
+        '',
+        '"Crowe + 10 Purifiers\n5 Strike"',
+        '"LoC + 3 ""Deathshroud""\nPoxwalkers"',
+        '',
+        '',
+        '',
+      ),
+      row('', '', '', '', 'DRP', 'REC', 'PTF', 'PRT', 'T&H'),
+      row('YOUR PLAYER', 'ROLE', 'AVERAGE', '', '11.7 ± 4', '10.6 ± 2.5', '7.9', '8.9', '10.3'),
+      row('Space Marines', 'DRP', '11.4 ± 3.8', '', 'GG', 'Y', 'Y', 'R', 'G'),
+      row('Emperor’s Children', 'REC', '10.1', '', 'Y', 'G', 'RR', 'G', 'G'),
+      row('Chaos Daemons', 'T&H', '7.9', '', 'R', 'G', 'Y', 'R', 'RR'),
+      row('World Eaters', 'PTF', '10.9', '', 'G', 'Y', 'R', 'G', 'G'),
+      row('Adepta Sororitas', 'PRT', '9.1', '', 'G', 'R', 'Y', 'RR', 'BOUYA'),
+    ].join('\n');
+    const { cells, ours, theirs } = parseSheetPaste(text);
+    expect(cells?.[0]).toEqual(['GG', 'Y', 'Y', 'R', 'G']);
+    expect(ours.map((p) => p.army)).toEqual([
+      'Space Marines',
+      'Emperor’s Children',
+      'Chaos Daemons',
+      'World Eaters',
+      'Adepta Sororitas',
+    ]);
+    // The army is the header the app recognises, even below a name or above a detachment.
+    expect(theirs.map((p) => p.army)).toEqual([
+      'Grey Knights',
+      'Death Guard',
+      'Orks',
+      'Chaos Space Marines',
+      'Adeptus Custodes',
+    ]);
+    expect(theirs[0]?.name).toBe('George');
+    expect(theirs[1]?.list).toBe('LoC + 3 "Deathshroud"\nPoxwalkers');
+    expect(theirs[2]?.list).toBeNull();
+  });
+
+  it('names the players by place when only the chips were copied', () => {
+    const text = Array.from({ length: 5 }, () => row('G', 'G', 'G', 'G', 'G')).join('\n');
+    const { ours, theirs } = parseSheetPaste(text);
+    expect(ours[0]).toEqual({ army: 'Player 1', name: null, list: null });
+    expect(theirs[4]).toEqual({ army: 'Opponent 5', name: null, list: null });
+  });
 });

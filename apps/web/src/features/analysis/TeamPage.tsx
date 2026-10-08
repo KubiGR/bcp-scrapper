@@ -157,9 +157,6 @@ export function TeamPage({ eventId, teamId }: { eventId: string; teamId: string 
           <Text size="sm" c="dimmed">
             Placing <span className="numeric">{team.data.team.placing ?? '—'}</span>
           </Text>
-          <AnchorLink to="/pairings" search={{ event: eventId, team: teamId }}>
-            <Text size="sm">Pairings</Text>
-          </AnchorLink>
           <Text size="sm" c="dimmed">
             <span className="numeric">{formatTotals(totals)}</span> ·{' '}
             <span className="numeric">{totals.points}</span> game points
