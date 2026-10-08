@@ -64,6 +64,33 @@ describe('AccountMenu', () => {
     expect(screen.queryByText('ana@example.com')).not.toBeInTheDocument();
   });
 
+  it('through Cloudflare Access, marks an admin with a badge and a member with nothing', async () => {
+    stubFetchRoutes({ 'GET /api/auth/me': viaAccess(aUser({ role: 'admin' })) });
+    const admin = renderAtRoutes({ initial: '/', page: <AccountMenu />, login: <p>login</p> });
+    expect(await screen.findByText('Admin')).toBeInTheDocument();
+    admin.unmount();
+
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': viaAccess(aUser({ role: 'member' })),
+    });
+    renderAtRoutes({
+      initial: '/',
+      page: (
+        <>
+          <AccountMenu />
+          <p>page</p>
+        </>
+      ),
+      login: <p>login</p>,
+    });
+    await screen.findByText('page');
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByText('Admin')).not.toBeInTheDocument();
+  });
+
   it('is not there when logins are off', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff });
     renderAtRoutes({
