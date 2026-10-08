@@ -1,6 +1,6 @@
 import { analysePairing } from '@bcp/shared';
 import { fireEvent, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/render';
 import { ChainFlow } from './ChainFlow';
 
@@ -261,5 +261,32 @@ describe('ChainFlow', () => {
     const shown = screen.getAllByRole('button', { name: /Final line-up/ }).length;
     fireEvent.click(screen.getByRole('switch', { name: /Show our unlikely choices/ }));
     expect(screen.getAllByRole('button', { name: /Final line-up/ }).length).toBeGreaterThan(shown);
+  });
+
+  it('arrows step to the previous or next box in the same column', () => {
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    const r2 = screen.getAllByText(/^R2: you /).length;
+    const sends = screen.getAllByText(/^Back to the pool/).length;
+    const leaves = screen.getAllByRole('button', { name: /Final line-up/ }).length;
+    // Every box but the last in its column can step down, every box but the first up.
+    expect(screen.getAllByRole('button', { name: 'Next in this column' })).toHaveLength(
+      sends - 1 + r2 - 1 + leaves - 1,
+    );
+    expect(screen.getAllByRole('button', { name: 'Previous in this column' })).toHaveLength(
+      sends - 1 + r2 - 1 + leaves - 1,
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Next in this column' })[0] as Element);
+    expect(scrollTo).toHaveBeenCalledOnce();
+    scrollTo.mockRestore();
   });
 });

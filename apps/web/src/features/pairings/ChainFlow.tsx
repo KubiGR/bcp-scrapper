@@ -7,7 +7,7 @@ import {
   type PairingRosterPlayer,
 } from '@bcp/shared';
 import { Group, NativeSelect, Stack, Switch, Text } from '@mantine/core';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import classes from './ChainFlow.module.css';
 import { LINE, layoutChain, visibleChain, type ChainBox } from './chain-layout';
 import { ratingName } from './ChipLabel';
@@ -152,6 +152,63 @@ export function ChainFlow({
     );
   };
   const byId = new Map(layout.nodes.map((n) => [n.id, n]));
+
+  // ▲ ▼ on each box step through its column (one decision's options), top to bottom.
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [flashId, setFlashId] = useState<string | null>(null);
+  useEffect(() => {
+    if (flashId === null) return;
+    const timer = setTimeout(() => {
+      setFlashId(null);
+    }, 1200);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [flashId]);
+  const columns = new Map<number, ChainBox[]>();
+  for (const box of layout.nodes) {
+    if (box.column === 0) continue;
+    columns.set(box.column, [...(columns.get(box.column) ?? []), box]);
+  }
+  for (const list of columns.values()) list.sort((a, b) => a.y - b.y);
+  const jump = (to: ChainBox) => {
+    const top = svgRef.current?.getBoundingClientRect().top ?? 0;
+    window.scrollTo({
+      top: window.scrollY + top + to.y + to.h / 2 - window.innerHeight / 2,
+      behavior: 'smooth',
+    });
+    setFlashId(to.id);
+  };
+  const arrow = (box: ChainBox, to: ChainBox | undefined, dir: 'up' | 'down') => {
+    if (!to) return null;
+    const x = box.x + box.w - (dir === 'up' ? 40 : 22);
+    const y = box.y + box.h - 20;
+    const go = () => {
+      jump(to);
+    };
+    return (
+      <g
+        key={`${box.id}-${dir}`}
+        role="button"
+        tabIndex={0}
+        className={classes.arrow}
+        aria-label={dir === 'up' ? 'Previous in this column' : 'Next in this column'}
+        onClick={go}
+        onKeyDown={(ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault();
+            go();
+          }
+        }}
+      >
+        <rect x={x} y={y} width={16} height={14} rx={3} />
+        <text x={x + 8} y={y + 11} textAnchor="middle">
+          {dir === 'up' ? '▲' : '▼'}
+        </text>
+      </g>
+    );
+  };
+
   return (
     <Stack gap="sm">
       <Group align="flex-end" gap="lg">
@@ -189,6 +246,7 @@ export function ChainFlow({
       </Group>
       <div style={{ overflowX: 'auto' }}>
         <svg
+          ref={svgRef}
           role="group"
           aria-label={`Chain: you defend ${army(ours[d])}, they defend ${army(theirs[e])}, you send ${send.pair.map((a) => army(ours[a])).join(' + ')}`}
           width={layout.width}
@@ -234,7 +292,8 @@ export function ChainFlow({
                   height={box.h}
                   rx={6}
                   fill={fill}
-                  stroke={stroke}
+                  stroke={box.id === flashId ? 'var(--mantine-color-text)' : stroke}
+                  strokeWidth={box.id === flashId ? 3 : 1}
                 />
                 {lines.map((line, i) => drawLine(box, line, i))}
               </>
@@ -263,6 +322,12 @@ export function ChainFlow({
               <g key={box.id}>{content}</g>
             );
           })}
+          {[...columns.values()].flatMap((list) =>
+            list.flatMap((box, i) => [
+              arrow(box, list[i - 1], 'up'),
+              arrow(box, list[i + 1], 'down'),
+            ]),
+          )}
         </svg>
       </div>
       {picked && (

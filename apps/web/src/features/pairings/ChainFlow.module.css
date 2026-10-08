@@ -8,3 +8,28 @@
   stroke: var(--mantine-color-text);
   stroke-width: 3;
 }
+
+/* The ▲ ▼ that step through a column. */
+.arrow {
+  cursor: pointer;
+  outline: none;
+}
+
+.arrow rect {
+  fill: var(--mantine-color-default);
+  stroke: var(--mantine-color-default-border);
+}
+
+.arrow text {
+  fill: var(--mantine-color-dimmed);
+  font-size: 9px;
+}
+
+.arrow:hover rect,
+.arrow:focus-visible rect {
+  stroke: var(--mantine-color-text);
+}
+
+.arrow:hover text {
+  fill: var(--mantine-color-text);
+}
