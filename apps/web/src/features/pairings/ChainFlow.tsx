@@ -6,6 +6,7 @@ import {
 } from '@bcp/shared';
 import { NativeSelect, Stack, Text } from '@mantine/core';
 import { useState } from 'react';
+import classes from './ChainFlow.module.css';
 import { layoutChain, type ChainBox } from './chain-layout';
 
 const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
@@ -32,7 +33,9 @@ export function ChainFlow({
   // Cheap: the solver already cached every stage the chain walks through.
   const chain = pairingChain(analysis, d, e, send.pair);
   const layout = layoutChain(chain);
-  const [picked, setPicked] = useState<ChainLeaf | null>(null);
+  // The open line-up is remembered by its place in the chain, so it follows rating changes.
+  const [pickedId, setPickedId] = useState<string | null>(null);
+  const picked: ChainLeaf | null = layout.nodes.find((n) => n.id === pickedId)?.leaf ?? null;
   const label = (box: ChainBox): string[] => {
     const s = box.ref.send !== undefined ? chain.sends[box.ref.send] : undefined;
     const p = s && box.ref.pick !== undefined ? s.picks[box.ref.pick] : undefined;
@@ -60,7 +63,7 @@ export function ChainFlow({
         value={send.pair.join()}
         onChange={(ev) => {
           setSendKey(ev.currentTarget.value);
-          setPicked(null);
+          setPickedId(null);
         }}
         data={options.map((o) => ({
           value: o.pair.join(),
@@ -70,7 +73,7 @@ export function ChainFlow({
       />
       <div style={{ overflowX: 'auto' }}>
         <svg
-          role="img"
+          role="group"
           aria-label={`Chain: you defend ${army(ours[d])}, they defend ${army(theirs[e])}, you send ${send.pair.map((a) => army(ours[a])).join(' + ')}`}
           width={layout.width}
           height={layout.height + 4}
@@ -101,7 +104,9 @@ export function ChainFlow({
             const leaf = box.leaf;
             const lines = label(box);
             const fill =
-              leaf && picked === leaf ? 'var(--mantine-color-dark-5)' : 'var(--mantine-color-body)';
+              box.id === pickedId
+                ? 'var(--mantine-color-default-hover)'
+                : 'var(--mantine-color-body)';
             const stroke =
               box.value >= 50 ? 'var(--mantine-color-teal-6)' : 'var(--mantine-color-orange-6)';
             const content = (
@@ -132,13 +137,17 @@ export function ChainFlow({
                 key={box.id}
                 role="button"
                 tabIndex={0}
+                className={classes.leaf}
                 aria-label={`Final line-up, total ${box.value.toFixed(1)}`}
-                style={{ cursor: 'pointer' }}
+                aria-pressed={box.id === pickedId}
                 onClick={() => {
-                  setPicked(leaf);
+                  setPickedId(box.id);
                 }}
                 onKeyDown={(ev) => {
-                  if (ev.key === 'Enter' || ev.key === ' ') setPicked(leaf);
+                  if (ev.key === 'Enter' || ev.key === ' ') {
+                    ev.preventDefault();
+                    setPickedId(box.id);
+                  }
                 }}
               >
                 {content}
@@ -150,7 +159,7 @@ export function ChainFlow({
         </svg>
       </div>
       {picked && (
-        <Stack gap={2}>
+        <Stack gap={2} role="region" aria-label="Line-up">
           <Text size="sm" fw={600}>
             Line-up · Total {picked.total.toFixed(1)}
           </Text>

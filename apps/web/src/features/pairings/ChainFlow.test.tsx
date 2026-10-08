@@ -1,5 +1,5 @@
 import { analysePairing } from '@bcp/shared';
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders } from '../../test/render';
 import { ChainFlow } from './ChainFlow';
@@ -34,7 +34,7 @@ describe('ChainFlow', () => {
       <ChainFlow analysis={analysePairing(R1)} ours={ours} theirs={theirs} d={3} e={4} />,
     );
     expect(
-      screen.getByRole('img', {
+      screen.getByRole('group', {
         name: /Chain: you defend World Eaters, they defend Adeptus Custodes/,
       }),
     ).toBeInTheDocument();
@@ -51,7 +51,43 @@ describe('ChainFlow', () => {
     );
     fireEvent.change(screen.getByLabelText('You send'), { target: { value: '0,1' } });
     expect(
-      screen.getByRole('img', { name: /you send Space Marines \+ Emperor's Children/ }),
+      screen.getByRole('group', { name: /you send Space Marines \+ Emperor's Children/ }),
     ).toBeInTheDocument();
+  });
+
+  it('the final boxes are buttons a screen reader reaches, and Space picks without scrolling', () => {
+    renderWithProviders(
+      <ChainFlow analysis={analysePairing(R1)} ours={ours} theirs={theirs} d={3} e={4} />,
+    );
+    // Inside role="img" everything is presentational: the diagram must be a group instead.
+    const diagram = screen.getByRole('group', { name: /Chain: you defend World Eaters/ });
+    const box = within(diagram).getAllByRole('button', { name: /Final line-up/ })[0] as Element;
+    expect(fireEvent.keyDown(box, { key: ' ' })).toBe(false);
+    expect(screen.getByText(/^Line-up · Total/)).toBeInTheDocument();
+  });
+
+  it('the open line-up follows a rating change', () => {
+    const { rerender } = renderWithProviders(
+      <ChainFlow analysis={analysePairing(R1)} ours={ours} theirs={theirs} d={3} e={4} />,
+    );
+    const fifties = screen.getAllByRole('button', { name: 'Final line-up, total 50.0' });
+    fireEvent.click(fifties.at(-1) as Element);
+    // World Eaters v Death Guard goes from Y (10) to G (13).
+    const changed = R1.map((row, i) => row.map((v, j) => (i === 3 && j === 1 ? 13 : v)));
+    rerender(
+      <ChainFlow analysis={analysePairing(changed)} ours={ours} theirs={theirs} d={3} e={4} />,
+    );
+    const panel = within(screen.getByRole('region', { name: 'Line-up' }));
+    const heading = panel.getByText(/^Line-up · Total/).textContent;
+    const shown = Number(/Total ([\d.]+)/.exec(heading)?.[1]);
+    const games = panel
+      .getAllByText(/ v /)
+      .map((el) => Number(/([\d.]+)$/.exec(el.textContent)?.[1]));
+    expect(games).toHaveLength(5);
+    expect(shown).toBeCloseTo(
+      games.reduce((s, v) => s + v, 0),
+      9,
+    );
+    expect(shown).not.toBeCloseTo(50, 9);
   });
 });
