@@ -30,7 +30,7 @@ export function RatingsTable({
       <table className={classes.table}>
         <thead>
           <tr>
-            <th />
+            <th className={classes.names} />
             {theirs.map((t) => (
               <th key={t.id}>
                 <Tooltip

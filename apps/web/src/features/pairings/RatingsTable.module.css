@@ -2,6 +2,9 @@
 .table {
   border-collapse: separate;
   border-spacing: 6px 4px;
+  /* Our names, then five equal columns: every chip sits under its opponent's name. */
+  table-layout: fixed;
+  width: 100%;
 }
 .table th {
   font-weight: 600;
@@ -9,7 +12,14 @@
   vertical-align: bottom;
   padding: 2px 4px;
 }
+.table tbody th {
+  vertical-align: middle;
+}
+.names {
+  width: 11rem;
+}
 .cell {
+  width: 100%;
   min-width: 64px;
   padding: 4px 6px;
   border-radius: 4px;
