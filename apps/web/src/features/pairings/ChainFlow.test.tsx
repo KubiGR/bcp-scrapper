@@ -320,4 +320,28 @@ describe('ChainFlow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
     expect(screen.getAllByText(/^R2: you /).length).toBeGreaterThan(1);
   });
+
+  it('tips our next decision as the pairing goes', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    expect(screen.queryByRole('region', { name: 'Tip' })).toBeNull();
+    fireEvent.change(screen.getByLabelText('They send'), { target: { value: '1,2' } });
+    const tip = within(screen.getByRole('region', { name: 'Tip' }));
+    expect(tip.getByText(/You take/)).toBeInTheDocument();
+    expect(tip.getAllByText(/^(Death Guard|Orks)$/)).toHaveLength(2);
+    expect(tip.getAllByText(/expected [\d.]+ · worst [\d.]+/)).toHaveLength(2);
+    fireEvent.change(screen.getByLabelText('You take'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('They take'), { target: { value: '1' } });
+    expect(
+      within(screen.getByRole('region', { name: 'Tip' })).getByText(/Your round-2 defender/),
+    ).toBeInTheDocument();
+  });
 });

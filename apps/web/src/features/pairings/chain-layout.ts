@@ -73,46 +73,62 @@ export function visibleChain(
   const visible = (x: ChainChances, oursFollowed: boolean, theirsFollowed: boolean) =>
     (oursFollowed || shown.ours || likely(x.ourChance)) &&
     (theirsFollowed || shown.theirs || likely(x.theirChance));
-  const keep = <T extends { p: number }>(items: T[], ok: (x: T) => boolean) => ({
-    kept: items.filter(ok),
-    gone: items.filter((x) => !ok(x)).reduce((sum, x) => sum + x.p, 0),
-  });
-  const sendsKept = keep(chain.sends, (x) =>
-    follow.theirSend === undefined ? likely(x.p) : x.theirs.join() === follow.theirSend,
-  );
+  /**
+   * Of the steps that agree with the live pairing (`happened`), those shown, and the chance of the
+   * hidden ones ("other lines"); steps that didn't happen are simply gone.
+   */
+  const keep = <T extends { p: number }>(
+    items: T[],
+    happened: (x: T) => boolean,
+    show: (x: T) => boolean,
+  ) => {
+    const real = items.filter(happened);
+    return {
+      kept: real.filter(show),
+      gone: real.filter((x) => !show(x)).reduce((sum, x) => sum + x.p, 0),
+    };
+  };
   // A followed choice really happened: it counts as certain, so chances after it start from there.
   const given = <T extends ChainChances>(x: T, ours: boolean, theirs: boolean): T => {
     const ourChance = ours ? 1 : x.ourChance;
     const theirChance = theirs ? 1 : x.theirChance;
     return { ...x, ourChance, theirChance, p: ourChance * theirChance };
   };
-  const sends = sendsKept.kept.map((followed) => {
-    const send = follow.theirSend === undefined ? followed : { ...followed, p: 1 };
+  const sendFollowed = follow.theirSend !== undefined;
+  const sendsKept = keep(
+    chain.sends.map((x) => (sendFollowed ? { ...x, p: 1 } : x)),
+    (x) => !sendFollowed || x.theirs.join() === follow.theirSend,
+    (x) => sendFollowed || likely(x.p),
+  );
+  const weTake = follow.weTake !== undefined;
+  const theyTake = follow.theyTake !== undefined;
+  const ourR2 = follow.ourR2 !== undefined;
+  const theirR2 = follow.theirR2 !== undefined;
+  const sends = sendsKept.kept.map((send) => {
     const picks = keep(
-      send.picks,
+      send.picks.map((x) => given(x, weTake, theyTake)),
       (x) =>
-        (follow.weTake === undefined || x.weTake === follow.weTake) &&
-        (follow.theyTake === undefined || x.theyTake === follow.theyTake) &&
-        visible(x, follow.weTake !== undefined, follow.theyTake !== undefined),
+        (!weTake || x.weTake === follow.weTake) && (!theyTake || x.theyTake === follow.theyTake),
+      (x) => visible(x, weTake, theyTake),
     );
     return {
       ...send,
       other: send.other + picks.gone,
-      picks: picks.kept.map((seen) => {
-        const pick = given(seen, follow.weTake !== undefined, follow.theyTake !== undefined);
+      picks: picks.kept.map((pick) => {
         const round2 = keep(
-          pick.round2,
-          (x) =>
-            (follow.ourR2 === undefined || x.d === follow.ourR2) &&
-            (follow.theirR2 === undefined || x.e === follow.theirR2) &&
-            visible(x, follow.ourR2 !== undefined, follow.theirR2 !== undefined),
+          pick.round2.map((x) => given(x, ourR2, theirR2)),
+          (x) => (!ourR2 || x.d === follow.ourR2) && (!theirR2 || x.e === follow.theirR2),
+          (x) => visible(x, ourR2, theirR2),
         );
         return {
           ...pick,
           other: pick.other + round2.gone,
-          round2: round2.kept.map((seenR2) => {
-            const r2 = given(seenR2, follow.ourR2 !== undefined, follow.theirR2 !== undefined);
-            const leaves = keep(r2.leaves, (x) => visible(x, false, false));
+          round2: round2.kept.map((r2) => {
+            const leaves = keep(
+              r2.leaves,
+              () => true,
+              (x) => visible(x, false, false),
+            );
             return { ...r2, other: r2.other + leaves.gone, leaves: leaves.kept };
           }),
         };

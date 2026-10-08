@@ -66,6 +66,8 @@ describe('layoutChain', () => {
     expect(followed.sends.map((x) => x.theirs)).toEqual([unlikely.theirs]);
     // What happened is certain: chances after it count from there.
     expect(followed.sends[0]?.p).toBe(1);
+    // The sends that didn't happen are not "other lines".
+    expect(followed.other).toBe(0);
   });
 
   it('following the picks and round-2 defenders keeps only that branch', () => {

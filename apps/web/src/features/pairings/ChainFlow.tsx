@@ -1,4 +1,5 @@
 import {
+  CHAIN_MIN_SHARE,
   pairingChain,
   type ChainLeaf,
   type PairingAnalysis,
@@ -6,12 +7,13 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { Button, Group, NativeSelect, Stack, Switch, Text } from '@mantine/core';
+import { Button, Group, NativeSelect, Paper, Stack, Switch, Text } from '@mantine/core';
 import { useEffect, useRef, useState } from 'react';
 import classes from './ChainFlow.module.css';
 import { LINE, layoutChain, visibleChain, type ChainBox, type ChainFollow } from './chain-layout';
 import { ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
+import { nextTip } from './tips';
 
 const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
 const pct = (x: number) => (x > 0 && x < 0.005 ? '<1%' : `${Math.round(x * 100)}%`);
@@ -60,6 +62,10 @@ export function ChainFlow({
     { value: '', label: 'Any' },
     ...indexes.map((i) => ({ value: String(i), label: army(players[i]) })),
   ];
+  // Our team's next decision, with what each option leads to.
+  const tip = nextTip(analysis, d, e, send.pair, follow);
+  const tipPlayers = tip?.side === 'ours' ? ours : theirs;
+  const mixed = !tip?.same && (tip?.options[1]?.chance ?? 0) >= CHAIN_MIN_SHARE;
   const pickNumber = (value: string) => (value === '' ? undefined : Number(value));
   const layout = layoutChain(chain);
   // The open line-up is remembered by its place in the chain, so it follows rating changes.
@@ -346,6 +352,39 @@ export function ChainFlow({
           Clear
         </Button>
       </Group>
+      {tip && (
+        <Paper role="region" aria-label="Tip" withBorder p="xs" radius="sm">
+          <Text size="sm" fw={600}>
+            Tip · {tip.step}
+            {tip.same ? ' · any: they all come to the same' : ''}
+            {mixed
+              ? ` · the model mixes ${tip.options
+                  .filter((o) => o.chance >= CHAIN_MIN_SHARE)
+                  .map((o) => `${pct(o.chance)} ${army(tipPlayers[o.index])}`)
+                  .join(' / ')}: about equally good, so don't be predictable`
+              : ''}
+          </Text>
+          <Group gap="xl" mt={4}>
+            {tip.options.map((o, i) => (
+              <Stack key={o.index} gap={0}>
+                <Group gap={6}>
+                  <Text size="sm" fw={i === 0 ? 700 : 400}>
+                    {army(tipPlayers[o.index])}
+                  </Text>
+                  {i === 0 && !mixed && !tip.same && (
+                    <Text size="xs" c="teal">
+                      best
+                    </Text>
+                  )}
+                </Group>
+                <Text size="xs" c="dimmed" className="numeric">
+                  expected {o.expected.toFixed(1)} · worst {o.worst.toFixed(1)}
+                </Text>
+              </Stack>
+            ))}
+          </Group>
+        </Paper>
+      )}
       <div style={{ overflowX: 'auto' }}>
         <svg
           ref={svgRef}
