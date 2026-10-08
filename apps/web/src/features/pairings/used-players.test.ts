@@ -45,4 +45,27 @@ describe('usedPlayers', () => {
     expect(used.ours).toEqual([3, 1, 0]);
     expect(used.theirs).toEqual([4, 2, 3]);
   });
+
+  it('the round-2 picks lock the last games: the whole line-up', () => {
+    // Round 2: we have Space Marines (0), Chaos Daemons (2), Sororitas (4); they Grey Knights (0),
+    // Death Guard (1), Chaos Space Marines (3). We defend Space Marines, they CSM.
+    const used = usedPlayers(3, 4, {
+      theirSend: '1,2',
+      weTake: 2,
+      theyTake: 1,
+      ourR2: 0,
+      theirR2: 3,
+      weTake2: 0,
+      theyTake2: 2,
+    });
+    expect(used.games).toEqual([
+      [3, 2],
+      [1, 4],
+      [0, 0],
+      [2, 3],
+      [4, 1],
+    ]);
+    expect([...used.ours].sort()).toEqual([0, 1, 2, 3, 4]);
+    expect([...used.theirs].sort()).toEqual([0, 1, 2, 3, 4]);
+  });
 });

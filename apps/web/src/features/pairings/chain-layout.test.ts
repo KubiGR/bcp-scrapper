@@ -93,4 +93,30 @@ describe('layoutChain', () => {
     expect(only.sends[0]?.picks[0]?.p).toBe(1);
     expect(only.sends[0]?.picks[0]?.round2[0]?.p).toBe(1);
   });
+
+  it('following the round-2 picks leaves the one final line-up', () => {
+    const full = pairingChain(analysePairing(R1), 3, 4, [1, 4]);
+    const send = full.sends[0];
+    const pick = send?.picks[0];
+    const r2 = pick?.round2[0];
+    const leaf = r2?.leaves.at(-1);
+    if (!send || !pick || !r2 || !leaf) throw new Error('no branch');
+    const only = visibleChain(
+      full,
+      { ours: false, theirs: false },
+      {
+        theirSend: send.theirs.join(),
+        weTake: pick.weTake,
+        theyTake: pick.theyTake,
+        ourR2: r2.d,
+        theirR2: r2.e,
+        weTake2: leaf.weTake,
+        theyTake2: leaf.theyTake,
+      },
+    );
+    const leaves = only.sends[0]?.picks[0]?.round2[0]?.leaves ?? [];
+    expect(leaves).toHaveLength(1);
+    expect(leaves[0]?.games).toEqual(leaf.games);
+    expect(leaves[0]?.p).toBe(1);
+  });
 });

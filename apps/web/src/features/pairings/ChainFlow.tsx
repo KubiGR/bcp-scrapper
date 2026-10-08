@@ -21,6 +21,7 @@ import {
 import { ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
 import { bestAgainst, breakEven, nextTip, safest } from './tips';
+import { usedPlayers } from './used-players';
 
 const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
 /** A score difference as "+0.8", "−1.2" or "0.0". */
@@ -92,6 +93,16 @@ export function ChainFlow({
     { value: '', label: 'Any' },
     ...indexes.map((i) => ({ value: String(i), label: army(players[i]) })),
   ];
+  // Round 2's attackers: whoever is left besides the round-2 defenders.
+  const ourRound2Attackers = ALL.filter(
+    (a) => a !== d && a !== follow.theyTake && a !== follow.ourR2,
+  );
+  const theirRound2Attackers = ALL.filter(
+    (b) => b !== e && b !== follow.weTake && b !== follow.theirR2,
+  );
+  // Every pick in: the line-up is locked.
+  const locked = usedPlayers(d, e, follow).games;
+  const lineUp = locked.length === 5 ? locked : null;
   // Our team's next decision, with what each option leads to.
   const tip = nextTip(analysis, d, e, send.pair, follow);
   const tipPlayers = tip?.side === 'ours' ? ours : theirs;
@@ -370,6 +381,7 @@ export function ChainFlow({
               theirDefender: follow.theirDefender,
               theyTake: follow.theyTake,
               ourR2: follow.ourR2,
+              theyTake2: follow.theyTake2,
               theirSend: v || undefined,
             });
           }}
@@ -391,6 +403,7 @@ export function ChainFlow({
               ...follow,
               weTake: pickNumber(ev.currentTarget.value),
               theirR2: undefined,
+              weTake2: undefined,
             });
           }}
           data={followOptions(theirs, theirSend ?? [])}
@@ -404,6 +417,7 @@ export function ChainFlow({
               ...follow,
               theyTake: pickNumber(ev.currentTarget.value),
               ourR2: undefined,
+              theyTake2: undefined,
             });
           }}
           data={followOptions(ours, send.pair)}
@@ -414,7 +428,11 @@ export function ChainFlow({
           disabled={follow.theyTake === undefined}
           value={follow.ourR2 === undefined ? '' : String(follow.ourR2)}
           onChange={(ev) => {
-            setFollow({ ...follow, ourR2: pickNumber(ev.currentTarget.value) });
+            setFollow({
+              ...follow,
+              ourR2: pickNumber(ev.currentTarget.value),
+              theyTake2: undefined,
+            });
           }}
           data={followOptions(
             ours,
@@ -427,12 +445,36 @@ export function ChainFlow({
           disabled={follow.weTake === undefined}
           value={follow.theirR2 === undefined ? '' : String(follow.theirR2)}
           onChange={(ev) => {
-            setFollow({ ...follow, theirR2: pickNumber(ev.currentTarget.value) });
+            setFollow({
+              ...follow,
+              theirR2: pickNumber(ev.currentTarget.value),
+              weTake2: undefined,
+            });
           }}
           data={followOptions(
             theirs,
             ALL.filter((t) => t !== e && t !== follow.weTake),
           )}
+          w={190}
+        />
+        <NativeSelect
+          label="You take (round 2)"
+          disabled={follow.ourR2 === undefined || follow.theirR2 === undefined}
+          value={follow.weTake2 === undefined ? '' : String(follow.weTake2)}
+          onChange={(ev) => {
+            setFollow({ ...follow, weTake2: pickNumber(ev.currentTarget.value) });
+          }}
+          data={followOptions(theirs, theirRound2Attackers)}
+          w={190}
+        />
+        <NativeSelect
+          label="They take (round 2)"
+          disabled={follow.ourR2 === undefined || follow.theirR2 === undefined}
+          value={follow.theyTake2 === undefined ? '' : String(follow.theyTake2)}
+          onChange={(ev) => {
+            setFollow({ ...follow, theyTake2: pickNumber(ev.currentTarget.value) });
+          }}
+          data={followOptions(ours, ourRound2Attackers)}
           w={190}
         />
         <Button
@@ -551,6 +593,27 @@ export function ChainFlow({
               </Text>
             )}
           </Group>
+        </Paper>
+      )}
+      {lineUp && (
+        <Paper role="region" aria-label="Final line-up" withBorder p="xs" radius="sm">
+          <Text size="sm" fw={600}>
+            Final line-up · total{' '}
+            {lineUp.reduce((sum, [a, b]) => sum + analysis.game.pt(a, b), 0).toFixed(1)}
+          </Text>
+          <Stack gap={2} mt={4}>
+            {lineUp.map(([a, b]) => {
+              const r = rating([a, b]);
+              return (
+                <Text key={`${String(a)}-${String(b)}`} size="sm">
+                  {army(ours[a])} v {army(theirs[b])} ·{' '}
+                  <span className="numeric">
+                    {ratingName(r?.chip ?? null, r?.alt)} ({analysis.game.pt(a, b).toFixed(1)})
+                  </span>
+                </Text>
+              );
+            })}
+          </Stack>
         </Paper>
       )}
       <div style={{ overflowX: 'auto' }}>

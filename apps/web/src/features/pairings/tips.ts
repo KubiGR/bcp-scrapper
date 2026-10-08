@@ -152,7 +152,7 @@ const repliesOf = (
 /**
  * Our team's next decision in a live pairing, given what has happened (round-1 defenders `d`, `e`
  * and our send are already chosen): which of their attackers to take, then our round-2 defender,
- * then which of their round-2 attackers to take. Null while it's their move.
+ * then which of their round-2 attackers to take. Null while it's their move, and once we've taken.
  */
 export function nextTip(
   analysis: PairingAnalysis,
@@ -187,7 +187,7 @@ export function nextTip(
       repliesOf('theirs', 'defend', B, t.cols),
     );
   }
-  if (follow.theirR2 === undefined) return null;
+  if (follow.theirR2 === undefined || follow.weTake2 !== undefined) return null;
   const ourPair = without(A, follow.ourR2) as Pair;
   const theirPair = without(B, follow.theirR2) as Pair;
   const c = game.choices(A, B, follow.ourR2, follow.theirR2, ourPair, theirPair);

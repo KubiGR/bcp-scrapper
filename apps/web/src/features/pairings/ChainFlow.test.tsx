@@ -447,4 +447,29 @@ describe('ChainFlow', () => {
       tip.getByText(/^If they take Adepta Sororitas: take (Death Guard|Orks) → [\d.]+$/),
     ).toBeInTheDocument();
   });
+
+  it('locking in the round-2 picks gives the final line-up, and the tip is done', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('They send'), { target: { value: '1,2' } });
+    fireEvent.change(screen.getByLabelText('You take'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('They take'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('Your round-2 defender'), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText('Their round-2 defender'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('You take (round 2)'), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText('They take (round 2)'), { target: { value: '2' } });
+    expect(screen.queryByRole('region', { name: 'Tip' })).toBeNull();
+    const final = within(screen.getByRole('region', { name: 'Final line-up' }));
+    expect(final.getAllByText(/ v /)).toHaveLength(5);
+    // World Eaters v Orks 7, Emperor's Children v Custodes 11.5, SM v GK 17, CD v CSM 7, AS v DG 7.
+    expect(final.getByText(/^Final line-up · total 49\.5$/)).toBeInTheDocument();
+  });
 });
