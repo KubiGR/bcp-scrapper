@@ -155,4 +155,24 @@ describe('ChainFlow', () => {
     );
     expect(screen.getAllByRole('img', { name: /: unrated$/ }).length).toBeGreaterThan(0);
   });
+
+  it('round-2 and final boxes give their share of the step before and of the whole chain', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    const leaves = screen.getAllByRole('button', { name: /Final line-up/ }).length;
+    expect(screen.getAllByText(/^Total [\d.]+ · \d+% here · (<1|\d+)% overall$/)).toHaveLength(
+      leaves,
+    );
+    const r2 = screen.getAllByText(/^R2: you /).length;
+    expect(r2).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^\d+% here · (<1|\d+)% overall$/)).toHaveLength(r2);
+  });
 });

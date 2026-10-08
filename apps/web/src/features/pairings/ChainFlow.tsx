@@ -13,7 +13,9 @@ import { LINE, layoutChain, type ChainBox } from './chain-layout';
 import { chipStyle } from './chip-style';
 
 const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
-const pct = (x: number) => `${Math.round(x * 100)}%`;
+const pct = (x: number) => (x > 0 && x < 0.005 ? '<1%' : `${Math.round(x * 100)}%`);
+/** A step's share of the one before it, and of the whole chain. */
+const shares = (box: ChainBox) => `${pct(box.share)} here · ${pct(box.reach)} overall`;
 /** A line of a box: text, or a game that forms at this step (drawn with its chip). */
 type Line = string | { game: [number, number] };
 const CHIP_W = 44;
@@ -62,8 +64,9 @@ export function ChainFlow({
       ];
     if (box.kind === 'round2' && r)
       return [
-        `R2 · ${pct(r.p)}: you ${army(ours[r.d])}`,
+        `R2: you ${army(ours[r.d])}`,
         `them ${army(theirs[r.e])} → ${box.value.toFixed(1)}`,
+        shares(box),
       ];
     const leaf = box.leaf;
     if (leaf && r)
@@ -71,7 +74,7 @@ export function ChainFlow({
         { game: [r.d, leaf.weTake] },
         { game: [leaf.theyTake, r.e] },
         { game: leaf.last },
-        `Total ${box.value.toFixed(1)} · ${pct(box.share)}`,
+        `Total ${box.value.toFixed(1)} · ${shares(box)}`,
       ];
     return [];
   };
