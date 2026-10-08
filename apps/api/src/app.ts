@@ -8,6 +8,7 @@ import type { AutoFetchPlanner } from './fetch-queue/auto-fetch';
 import type { FetchQueueWorker } from './fetch-queue/worker';
 import type { Logger } from './logger';
 import { analysisRoutes } from './routes/analysis';
+import { pairingRoutes } from './routes/pairing-ratings';
 import { autoFetchRoutes } from './routes/auto-fetch';
 import { authRoutes } from './routes/auth';
 import { bcpRoutes } from './routes/bcp';
@@ -120,6 +121,7 @@ export function createApp(deps: AppDeps) {
   app.route('/api', catalogRoutes({ ...deps, now }));
   app.route('/api', fetchQueueRoutes(deps));
   app.route('/api', analysisRoutes(deps));
+  app.route('/api', pairingRoutes({ db: deps.db }));
   app.route('/api', matchupsRoutes({ ...deps, now }));
   app.route('/api', playersSearchRoutes({ ...deps, now }));
   app.route('/api', rankingsRoutes({ ...deps, now }));

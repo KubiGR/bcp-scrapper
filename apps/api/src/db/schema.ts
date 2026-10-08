@@ -399,3 +399,27 @@ export const rulesSnapshot = pgTable(
   },
   (t) => [check('rules_snapshot_single_row', sql`${t.id} = 1`)],
 );
+
+export const pairingChip = pgEnum('pairing_chip', ['BOUYA', 'GG', 'G', 'Y', 'R', 'RR', 'F']);
+
+/** A team's rating of one of its players against one of the opposing team's players, for pairings. */
+export const pairingRatings = pgTable(
+  'pairing_ratings',
+  {
+    eventId: text('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'cascade' }),
+    teamId: text('team_id').notNull(),
+    opponentTeamId: text('opponent_team_id').notNull(),
+    playerId: text('player_id').notNull(),
+    opponentPlayerId: text('opponent_player_id').notNull(),
+    chip: pairingChip('chip').notNull(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({
+      name: 'pairing_ratings_pk',
+      columns: [t.eventId, t.teamId, t.opponentTeamId, t.playerId, t.opponentPlayerId],
+    }),
+  ],
+);
