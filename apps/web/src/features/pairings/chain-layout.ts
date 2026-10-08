@@ -52,6 +52,8 @@ export interface ChainShown {
  * "0,2"), which of it our defender took, which of ours theirs took, and both round-2 defenders.
  */
 export interface ChainFollow {
+  /** The round-1 defenders were set in the follow bar: the pairing is under way. */
+  defenders?: boolean;
   theirSend?: string;
   weTake?: number;
   theyTake?: number;

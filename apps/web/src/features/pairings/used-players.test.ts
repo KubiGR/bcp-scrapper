@@ -3,21 +3,25 @@ import { usedPlayers } from './used-players';
 
 // We defend World Eaters (3), they Custodes (4).
 describe('usedPlayers', () => {
-  it('nobody is used before a game locks', () => {
+  it('nobody is used while just planning', () => {
     expect(usedPlayers(3, 4, {})).toEqual({ ours: [], theirs: [], games: [] });
-    expect(usedPlayers(3, 4, { theirSend: '1,2' })).toEqual({ ours: [], theirs: [], games: [] });
+  });
+
+  it('the round-1 defenders are used once the pairing is being followed', () => {
+    expect(usedPlayers(3, 4, { defenders: true })).toEqual({ ours: [3], theirs: [4], games: [] });
+    expect(usedPlayers(3, 4, { theirSend: '1,2' })).toEqual({ ours: [3], theirs: [4], games: [] });
   });
 
   it('each pick locks a game and uses both its players', () => {
     // We take Orks (2) with World Eaters; they take Emperor's Children (1) with Custodes.
     expect(usedPlayers(3, 4, { theirSend: '1,2', weTake: 2 })).toEqual({
       ours: [3],
-      theirs: [2],
+      theirs: [4, 2],
       games: [[3, 2]],
     });
     expect(usedPlayers(3, 4, { theirSend: '1,2', weTake: 2, theyTake: 1 })).toEqual({
       ours: [3, 1],
-      theirs: [2, 4],
+      theirs: [4, 2],
       games: [
         [3, 2],
         [1, 4],
@@ -34,6 +38,6 @@ describe('usedPlayers', () => {
       theirR2: 3,
     });
     expect(used.ours).toEqual([3, 1, 0]);
-    expect(used.theirs).toEqual([2, 4, 3]);
+    expect(used.theirs).toEqual([4, 2, 3]);
   });
 });

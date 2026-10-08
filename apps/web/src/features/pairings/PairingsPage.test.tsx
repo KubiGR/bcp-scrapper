@@ -115,4 +115,30 @@ describe('PairingsPage', () => {
       table.getByRole('button', { name: /^World Eaters v John: .*, locked in$/ }),
     ).toBeInTheDocument();
   });
+
+  it('choosing the defenders in the follow bar greys them out; the grid alone does not, and Clear undoes it', () => {
+    renderWithProviders(<PairingsPage />);
+    paste(SHEET);
+    fireEvent.click(screen.getByRole('button', { name: 'Use these ratings' }));
+    const table = () => within(screen.getByRole('table', { name: 'Ratings' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /^You defend Space Marines, they defend Orks/ }),
+    );
+    expect(table().getByRole('rowheader', { name: /Space Marines/ })).not.toHaveAttribute(
+      'data-used',
+    );
+    fireEvent.change(screen.getByLabelText('You defend'), { target: { value: '3' } });
+    expect(table().getByRole('rowheader', { name: /World Eaters/ })).toHaveAttribute(
+      'data-used',
+      'true',
+    );
+    expect(table().getByRole('columnheader', { name: /Orks/ })).toHaveAttribute(
+      'data-used',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(table().getByRole('rowheader', { name: /World Eaters/ })).not.toHaveAttribute(
+      'data-used',
+    );
+  });
 });

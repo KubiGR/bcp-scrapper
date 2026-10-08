@@ -380,4 +380,18 @@ describe('ChainFlow', () => {
     for (const o of options.slice(1))
       expect(o).toHaveTextContent(/ · (<1|\d+)% · [\d.]+ for you \((\+|−)?[\d.]+\)$/);
   });
+
+  it('Clear is always there', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Clear' })).toBeEnabled();
+  });
 });

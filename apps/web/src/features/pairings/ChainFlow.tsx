@@ -279,6 +279,7 @@ export function ChainFlow({
           value={String(d)}
           onChange={(ev) => {
             onDefendersChange?.(Number(ev.currentTarget.value), e);
+            setFollow({ defenders: true });
           }}
           data={ours.map((p, i) => ({
             value: String(i),
@@ -291,6 +292,7 @@ export function ChainFlow({
           value={String(e)}
           onChange={(ev) => {
             onDefendersChange?.(d, Number(ev.currentTarget.value));
+            setFollow({ defenders: true });
           }}
           data={theirs.map((p, i) => ({
             value: String(i),
@@ -303,7 +305,8 @@ export function ChainFlow({
           value={send.pair.join()}
           onChange={(ev) => {
             setSendKey(ev.currentTarget.value);
-            setFollow({});
+            // What follows our send starts over; the defenders stay chosen.
+            setFollow(follow.defenders ? { defenders: true } : {});
             setPickedId(null);
           }}
           data={options.map((o) => ({
@@ -387,7 +390,6 @@ export function ChainFlow({
         />
         <Button
           variant="default"
-          disabled={Object.values(follow).every((v) => v === undefined)}
           onClick={() => {
             setFollow({});
           }}
