@@ -14,11 +14,20 @@ describe('parseSheetPaste', () => {
     ].join('\n');
     const { cells, unreadable } = parseSheetPaste(text);
     expect(cells?.[0]).toEqual(['GG', 'Y', 'Y', 'R', 'G']);
-    // Several chips: the first colour chip; "?" and "+" are ignored.
+    // Several chips: the first is the rating; "?" and "+" are ignored.
     expect(cells?.[1]?.[4]).toBe('G');
     expect(cells?.[3]?.[0]).toBe('G');
     expect(cells?.[4]?.[4]).toBe('BOUYA');
     expect(unreadable).toEqual([]);
+  });
+
+  it('keeps a second chip as what the game can become; modifiers are not chips', () => {
+    const text = Array.from({ length: 5 }, () =>
+      row('Y, R', 'G, ?', 'G, A, GG', 'GG', 'R, Y, G'),
+    ).join('\n');
+    const { cells, alts } = parseSheetPaste(text);
+    expect(cells?.[0]).toEqual(['Y', 'G', 'G', 'GG', 'R']);
+    expect(alts?.[0]).toEqual(['R', null, 'GG', null, 'Y']);
   });
 
   it('finds the block inside extra rows and columns, and keeps blanks unrated', () => {

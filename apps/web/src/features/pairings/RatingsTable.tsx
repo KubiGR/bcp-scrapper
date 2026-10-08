@@ -5,6 +5,7 @@ import {
   type PairingRosterPlayer,
 } from '@bcp/shared';
 import { Menu, Table, Text, Tooltip, UnstyledButton } from '@mantine/core';
+import { ChipLabel, ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
 import classes from './RatingsTable.module.css';
 
@@ -14,13 +15,16 @@ export function RatingsTable({
   theirs,
   ratings,
   onRate,
+  onAlt,
 }: {
   ours: PairingRosterPlayer[];
   theirs: PairingRosterPlayer[];
   ratings: PairingRating[];
   onRate: (playerId: string, opponentPlayerId: string, chip: PairingChip | null) => void;
+  /** Sets what a rated game can become (null: nothing). */
+  onAlt: (playerId: string, opponentPlayerId: string, alt: PairingChip | null) => void;
 }) {
-  const chipOf = new Map(ratings.map((r) => [`${r.playerId}|${r.opponentPlayerId}`, r.chip]));
+  const ratingOf = new Map(ratings.map((r) => [`${r.playerId}|${r.opponentPlayerId}`, r]));
   return (
     <Table.ScrollContainer minWidth={560}>
       <table className={classes.table}>
@@ -68,17 +72,18 @@ export function RatingsTable({
                 )}
               </th>
               {theirs.map((t) => {
-                const chip = chipOf.get(`${o.id}|${t.id}`) ?? null;
+                const rating = ratingOf.get(`${o.id}|${t.id}`);
+                const chip = rating?.chip ?? null;
                 return (
                   <td key={t.id}>
                     <Menu position="bottom" withinPortal>
                       <Menu.Target>
                         <UnstyledButton
-                          aria-label={`${o.name} v ${t.name}: ${chip ?? 'unrated'}`}
+                          aria-label={`${o.name} v ${t.name}: ${ratingName(chip, rating?.alt)}`}
                           className={chip ? classes.cell : `${classes.cell} ${classes.unrated}`}
                           style={chip ? chipStyle(chip) : undefined}
                         >
-                          {chip ?? '–'}
+                          {chip ? <ChipLabel chip={chip} alt={rating?.alt} /> : '–'}
                         </UnstyledButton>
                       </Menu.Target>
                       <Menu.Dropdown>
@@ -100,6 +105,31 @@ export function RatingsTable({
                         >
                           Clear
                         </Menu.Item>
+                        {chip && (
+                          <>
+                            <Menu.Divider />
+                            <Menu.Label>Can become</Menu.Label>
+                            {PAIRING_CHIPS.filter((c) => c !== chip).map((c) => (
+                              <Menu.Item
+                                key={c}
+                                aria-label={`Can become ${c}`}
+                                onClick={() => {
+                                  onAlt(o.id, t.id, c);
+                                }}
+                              >
+                                {c}
+                              </Menu.Item>
+                            ))}
+                            <Menu.Item
+                              aria-label="Can become: none"
+                              onClick={() => {
+                                onAlt(o.id, t.id, null);
+                              }}
+                            >
+                              Nothing
+                            </Menu.Item>
+                          </>
+                        )}
                       </Menu.Dropdown>
                     </Menu>
                   </td>

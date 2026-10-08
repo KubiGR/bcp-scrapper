@@ -13,7 +13,7 @@ import { DefenderGrid } from './DefenderGrid';
 import { PairingSummary } from './PairingSummary';
 import { PasteBox } from './PasteBox';
 import { RatingsTable } from './RatingsTable';
-import { ratePlan, readPlan, writePlan, type SheetPlan } from './sheet-plan';
+import { altPlan, ratePlan, readPlan, writePlan, type SheetPlan } from './sheet-plan';
 
 /** The page is full width for the chain; everything else keeps the usual centred column. */
 const Column = ({ children }: { children: ReactNode }) => (
@@ -65,6 +65,9 @@ export function PairingsPage() {
               ratings={ratings}
               onRate={(playerId, opponentPlayerId, chip) => {
                 use(ratePlan(plan, playerId, opponentPlayerId, chip));
+              }}
+              onAlt={(playerId, opponentPlayerId, alt) => {
+                use(altPlan(plan, playerId, opponentPlayerId, alt));
               }}
             />
             <Group justify="space-between">

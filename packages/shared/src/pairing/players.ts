@@ -17,4 +17,6 @@ export interface PairingRating {
   playerId: string;
   opponentPlayerId: string;
   chip: PairingChip;
+  /** What the game can become (the sheet's second chip), if anything. */
+  alt?: PairingChip;
 }

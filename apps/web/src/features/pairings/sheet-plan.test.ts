@@ -1,6 +1,6 @@
 import { parseSheetPaste } from '@bcp/shared';
 import { afterEach, describe, expect, it } from 'vitest';
-import { planFromPaste, ratePlan, readPlan, writePlan } from './sheet-plan';
+import { altPlan, planFromPaste, ratePlan, readPlan, writePlan } from './sheet-plan';
 
 const SHEET = [
   '\tGrey Knights\tDeath Guard\tOrks\tChaos Space Marines\tAdeptus Custodes',
@@ -54,5 +54,25 @@ describe('the sheet plan', () => {
     expect(readPlan()).toEqual(plan);
     localStorage.setItem('pairings:sheet-plan', '{"ours":1}');
     expect(readPlan()).toBeNull();
+  });
+
+  it('keeps what a game can become, through changes of its chip', () => {
+    const plan = planFromPaste(parseSheetPaste(SHEET.replace('Y\tY\tR\tG', 'Y, R\tY\tR\tG')));
+    if (!plan) throw new Error('no plan');
+    expect(plan.ratings).toContainEqual({
+      playerId: 'us0',
+      opponentPlayerId: 'them1',
+      chip: 'Y',
+      alt: 'R',
+    });
+    const changed = ratePlan(plan, 'us0', 'them1', 'G');
+    expect(changed.ratings).toContainEqual({
+      playerId: 'us0',
+      opponentPlayerId: 'them1',
+      chip: 'G',
+      alt: 'R',
+    });
+    const plain = altPlan(changed, 'us0', 'them1', null);
+    expect(plain.ratings).toContainEqual({ playerId: 'us0', opponentPlayerId: 'them1', chip: 'G' });
   });
 });

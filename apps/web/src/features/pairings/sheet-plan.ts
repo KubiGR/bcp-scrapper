@@ -25,14 +25,19 @@ const PlanSchema = z.object({
   ours: z.array(PlayerSchema).length(5),
   theirs: z.array(PlayerSchema).length(5),
   ratings: z.array(
-    z.object({ playerId: z.string(), opponentPlayerId: z.string(), chip: z.enum(PAIRING_CHIPS) }),
+    z.object({
+      playerId: z.string(),
+      opponentPlayerId: z.string(),
+      chip: z.enum(PAIRING_CHIPS),
+      alt: z.enum(PAIRING_CHIPS).optional(),
+    }),
   ),
 });
 
 const KEY = 'pairings:sheet-plan';
 
 /** Players and ratings from a paste; null when it held no ratings. */
-export function planFromPaste({ cells, ours, theirs }: SheetPaste): SheetPlan | null {
+export function planFromPaste({ cells, alts, ours, theirs }: SheetPaste): SheetPlan | null {
   if (!cells) return null;
   const player = (prefix: string) => (p: SheetPaste['ours'][number], i: number) => ({
     id: `${prefix}${String(i)}`,
@@ -43,28 +48,47 @@ export function planFromPaste({ cells, ours, theirs }: SheetPaste): SheetPlan | 
   });
   const plan = { ours: ours.map(player('us')), theirs: theirs.map(player('them')) };
   const ratings = cells.flatMap((row, i) =>
-    row.flatMap((chip, j) =>
-      chip === null
-        ? []
-        : [{ playerId: `us${String(i)}`, opponentPlayerId: `them${String(j)}`, chip }],
-    ),
+    row.flatMap((chip, j): PairingRating[] => {
+      if (chip === null) return [];
+      const alt = alts?.[i]?.[j] ?? null;
+      const rating = { playerId: `us${String(i)}`, opponentPlayerId: `them${String(j)}`, chip };
+      return [alt ? { ...rating, alt } : rating];
+    }),
   );
   return { ...plan, ratings };
 }
 
-/** The plan with one game's chip changed (null clears it). */
+const same = (r: PairingRating, playerId: string, opponentPlayerId: string) =>
+  r.playerId === playerId && r.opponentPlayerId === opponentPlayerId;
+
+/** The plan with one game's chip changed (null clears the game); what it can become stays. */
 export function ratePlan(
   plan: SheetPlan,
   playerId: string,
   opponentPlayerId: string,
   chip: PairingChip | null,
 ): SheetPlan {
-  const rest = plan.ratings.filter(
-    (r) => !(r.playerId === playerId && r.opponentPlayerId === opponentPlayerId),
-  );
+  const old = plan.ratings.find((r) => same(r, playerId, opponentPlayerId));
+  const rest = plan.ratings.filter((r) => !same(r, playerId, opponentPlayerId));
+  if (chip === null) return { ...plan, ratings: rest };
+  const rating = { playerId, opponentPlayerId, chip };
+  return { ...plan, ratings: [...rest, old?.alt ? { ...rating, alt: old.alt } : rating] };
+}
+
+/** The plan with what one rated game can become changed (null: nothing). */
+export function altPlan(
+  plan: SheetPlan,
+  playerId: string,
+  opponentPlayerId: string,
+  alt: PairingChip | null,
+): SheetPlan {
   return {
     ...plan,
-    ratings: chip === null ? rest : [...rest, { playerId, opponentPlayerId, chip }],
+    ratings: plan.ratings.map((r) => {
+      if (!same(r, playerId, opponentPlayerId)) return r;
+      const plain = { playerId, opponentPlayerId, chip: r.chip };
+      return alt ? { ...plain, alt } : plain;
+    }),
   };
 }
 

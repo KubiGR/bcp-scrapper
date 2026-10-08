@@ -10,6 +10,7 @@ import { Group, NativeSelect, Stack, Switch, Text } from '@mantine/core';
 import { useState } from 'react';
 import classes from './ChainFlow.module.css';
 import { LINE, layoutChain, likelyOnly, type ChainBox } from './chain-layout';
+import { ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
 
 const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
@@ -19,6 +20,8 @@ const shares = (box: ChainBox) => `${pct(box.share)} here · ${pct(box.reach)} o
 /** A line of a box: text, or a game that forms at this step (drawn with its chip). */
 type Line = string | { game: [number, number] };
 const CHIP_W = 44;
+/** The strip for the chip a game can become. */
+const ALT_W = 16;
 
 /** The chain for one pair of round-1 defenders, as a flow diagram; click a final box for its line-up. */
 export function ChainFlow({
@@ -48,9 +51,9 @@ export function ChainFlow({
   // The open line-up is remembered by its place in the chain, so it follows rating changes.
   const [pickedId, setPickedId] = useState<string | null>(null);
   const picked: ChainLeaf | null = layout.nodes.find((n) => n.id === pickedId)?.leaf ?? null;
-  const chipOf = new Map(ratings.map((r) => [`${r.playerId}|${r.opponentPlayerId}`, r.chip]));
-  const chip = ([a, b]: [number, number]): PairingChip | null =>
-    chipOf.get(`${ours[a]?.id ?? ''}|${theirs[b]?.id ?? ''}`) ?? null;
+  const ratingOf = new Map(ratings.map((r) => [`${r.playerId}|${r.opponentPlayerId}`, r]));
+  const rating = ([a, b]: [number, number]): PairingRating | undefined =>
+    ratingOf.get(`${ours[a]?.id ?? ''}|${theirs[b]?.id ?? ''}`);
   const label = (box: ChainBox): Line[] => {
     const s = box.ref.send !== undefined ? chain.sends[box.ref.send] : undefined;
     const p = s && box.ref.pick !== undefined ? s.picks[box.ref.pick] : undefined;
@@ -92,18 +95,21 @@ export function ChainFlow({
         </text>
       );
     const [a, b] = line.game;
-    const c = chip(line.game);
+    const r = rating(line.game);
+    const c: PairingChip | null = r?.chip ?? null;
     const name = `${army(ours[a])} v ${army(theirs[b])}`;
     const bx = box.x + box.w - 8 - CHIP_W;
+    // A game that can become another chip: its chip, then the other one in a narrower strip.
+    const mainW = r?.alt ? CHIP_W - ALT_W : CHIP_W;
     return (
-      <g key={i} role="img" aria-label={`${name}: ${c ?? 'unrated'}`}>
+      <g key={i} role="img" aria-label={`${name}: ${ratingName(c, r?.alt)}`}>
         <text x={box.x + 8} y={y} fill="var(--mantine-color-text)">
           {name}
         </text>
         <rect
           x={bx}
           y={y - 11}
-          width={CHIP_W}
+          width={mainW}
           height={14}
           rx={3}
           fill={c ? chipStyle(c).background : 'none'}
@@ -111,7 +117,7 @@ export function ChainFlow({
           strokeDasharray={c ? undefined : '3 2'}
         />
         <text
-          x={bx + CHIP_W / 2}
+          x={bx + mainW / 2}
           y={y}
           textAnchor="middle"
           fontWeight={700}
@@ -119,6 +125,28 @@ export function ChainFlow({
         >
           {c ?? '–'}
         </text>
+        {r?.alt && (
+          <>
+            <rect
+              x={bx + mainW + 1}
+              y={y - 11}
+              width={ALT_W - 1}
+              height={14}
+              rx={3}
+              fill={chipStyle(r.alt).background}
+            />
+            <text
+              x={bx + mainW + ALT_W / 2}
+              y={y - 1}
+              textAnchor="middle"
+              fontSize={8}
+              fontWeight={700}
+              fill={chipStyle(r.alt).color}
+            >
+              {r.alt}
+            </text>
+          </>
+        )}
       </g>
     );
   };

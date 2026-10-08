@@ -6,8 +6,9 @@ The team keeps its ratings in its Google Sheet, so the planner now works from a 
 instead of an event's stored players and ratings. **Pairings** in the menu opens `/pairings`: paste the
 ratings block (the army headers above and the army column to the left can come along; names and list
 cells are read too), check what was found, and the analysis runs at once. Chips can still be changed on
-the page to try things; the last sheet is kept in this browser only. Multi-chip cells use the first
-colour; "?", "+" and the layout badges A, B and C are ignored. The ratings table, API, migration and the
+the page to try things; the last sheet is kept in this browser only. A two-chip cell ("Y, R") is the
+first chip that can become the second: it counts ⅔ the first and ⅓ the second, and the table and chain
+show both. "?", "+" and the layout badges A, B and C are ignored. The ratings table, API, migration and the
 team-page link of the first version are gone; the sections below on the API and storage are superseded.
 
 ## Purpose

@@ -224,4 +224,26 @@ describe('ChainFlow', () => {
     expect(screen.getAllByRole('button', { name: /Final line-up/ }).length).toBeLessThan(all);
     expect(screen.queryAllByText(/(^| )(0|<1)% here/)).toHaveLength(0);
   });
+
+  it('a game that can become another chip says so', () => {
+    const ratings = ours.flatMap((o) =>
+      theirs.map((t) => ({
+        playerId: o.id,
+        opponentPlayerId: t.id,
+        chip: 'Y' as const,
+        alt: 'R' as const,
+      })),
+    );
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={ratings}
+        d={3}
+        e={4}
+      />,
+    );
+    expect(screen.getAllByRole('img', { name: /: Y, can become R$/ }).length).toBeGreaterThan(0);
+  });
 });
