@@ -1,4 +1,4 @@
-import { Button, Menu, Modal } from '@mantine/core';
+import { Badge, Button, Menu, Modal } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -13,8 +13,16 @@ export function AccountMenu() {
   const logout = useLogout();
   const [changing, setChanging] = useState(false);
 
-  // Through Cloudflare Access there is nothing to show or change here: it knows who you are.
-  const user = data?.authRequired === true && data.access !== true ? data.user : null;
+  // Through Cloudflare Access there is nothing to change here, it knows who you are: only an
+  // admin is marked, as admin rights come from the server's settings.
+  if (data?.authRequired === true && data.access === true) {
+    return data.user?.role === 'admin' ? (
+      <Badge variant="outline" color="neon" size="sm" className={classes.account}>
+        Admin
+      </Badge>
+    ) : null;
+  }
+  const user = data?.authRequired === true ? data.user : null;
   if (user === null) return null;
 
   return (
