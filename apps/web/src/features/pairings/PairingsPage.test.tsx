@@ -141,4 +141,35 @@ describe('PairingsPage', () => {
       'data-used',
     );
   });
+
+  it('Clear starts the pairing over: suggested defenders, our best send, nothing followed', () => {
+    renderWithProviders(<PairingsPage />);
+    paste(SHEET);
+    fireEvent.click(screen.getByRole('button', { name: 'Use these ratings' }));
+    const select = (label: string) => screen.getByLabelText<HTMLSelectElement>(label);
+    const start = {
+      youDefend: select('You defend').value,
+      theyDefend: select('They defend').value,
+      youSend: select('You send').value,
+    };
+    const other = (label: string) => {
+      const select = screen.getByLabelText<HTMLSelectElement>(label);
+      const next = [...select.options].find((o) => o.value !== select.value && o.value !== '');
+      fireEvent.change(select, { target: { value: next?.value } });
+    };
+    other('You defend');
+    other('They defend');
+    other('You send');
+    other('They send');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(screen.getByLabelText('You defend')).toHaveValue(start.youDefend);
+    expect(screen.getByLabelText('They defend')).toHaveValue(start.theyDefend);
+    expect(screen.getByLabelText('You send')).toHaveValue(start.youSend);
+    expect(screen.getByLabelText('They send')).toHaveValue('');
+    expect(
+      within(screen.getByRole('table', { name: 'Ratings' }))
+        .queryAllByRole('rowheader', { name: /./ })
+        .filter((h) => h.hasAttribute('data-used')),
+    ).toHaveLength(0);
+  });
 });

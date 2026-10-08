@@ -42,6 +42,7 @@ export function ChainFlow({
   onDefendersChange,
   follow: followProp,
   onFollowChange,
+  onClear,
 }: {
   analysis: PairingAnalysis;
   ours: PairingRosterPlayer[];
@@ -54,6 +55,8 @@ export function ChainFlow({
   /** The live pairing, when the page keeps it (the ratings table greys out who's used). */
   follow?: ChainFollow;
   onFollowChange?: (follow: ChainFollow) => void;
+  /** Clear was pressed: the page puts the round-1 defenders back to the suggested ones. */
+  onClear?: () => void;
 }) {
   const options = analysis.attackerOptions(d, e);
   const best = options.reduce((x, y) => (y.share > x.share ? y : x));
@@ -391,7 +394,12 @@ export function ChainFlow({
         <Button
           variant="default"
           onClick={() => {
+            // The whole pairing starts over: our best send, nothing followed, and (from the
+            // page) the suggested defenders.
+            setSendKey(null);
+            setPickedId(null);
             setFollow({});
+            onClear?.();
           }}
         >
           Clear

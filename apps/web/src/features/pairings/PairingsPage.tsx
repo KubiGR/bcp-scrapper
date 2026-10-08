@@ -134,6 +134,10 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
         onSelect={choose}
         follow={follow}
         onFollowChange={setFollow}
+        onClear={() => {
+          setSquare(null);
+          setFollow({});
+        }}
       />
     </Stack>
   );
@@ -149,6 +153,7 @@ function Analysis({
   onSelect,
   follow,
   onFollowChange,
+  onClear,
 }: {
   analysis: PairingAnalysis;
   ours: PairingRosterPlayer[];
@@ -158,6 +163,7 @@ function Analysis({
   onSelect: (d: number, e: number) => void;
   follow: ChainFollow;
   onFollowChange: (follow: ChainFollow) => void;
+  onClear: () => void;
 }) {
   return (
     <>
@@ -198,6 +204,7 @@ function Analysis({
           onDefendersChange={onSelect}
           follow={follow}
           onFollowChange={onFollowChange}
+          onClear={onClear}
         />
       </Panel>
     </>
