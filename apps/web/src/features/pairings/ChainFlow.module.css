@@ -1,0 +1,10 @@
+/* A final box is a button: keyboard focus gets a clear outline on its frame. */
+.leaf {
+  cursor: pointer;
+  outline: none;
+}
+
+.leaf:focus-visible rect {
+  stroke: var(--mantine-color-text);
+  stroke-width: 3;
+}

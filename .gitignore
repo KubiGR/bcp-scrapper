@@ -10,3 +10,6 @@ fixtures/bcp/recorded/
 test-results/
 playwright-report/
 .worktrees/
+
+# Brainstorming companion mockups
+.superpowers/
