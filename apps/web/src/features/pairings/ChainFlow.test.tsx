@@ -358,8 +358,10 @@ describe('ChainFlow', () => {
         onDefendersChange={onDefenders}
       />,
     );
+    // The bar shows what the chain draws: the suggested defenders and our best send.
     expect(screen.getByLabelText('You defend')).toHaveValue('3');
     expect(screen.getByLabelText('They defend')).toHaveValue('4');
+    expect(screen.getByLabelText('You send')).toHaveValue('1,4');
     fireEvent.change(screen.getByLabelText('They defend'), { target: { value: '0' } });
     expect(onDefenders).toHaveBeenCalledWith(3, 0);
   });
@@ -379,5 +381,19 @@ describe('ChainFlow', () => {
     expect(options).toHaveLength(7);
     for (const o of options.slice(1))
       expect(o).toHaveTextContent(/ · (<1|\d+)% · [\d.]+ for you \((\+|−)?[\d.]+\)$/);
+  });
+
+  it('Clear is always there', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Clear' })).toBeEnabled();
   });
 });

@@ -40,6 +40,9 @@ export function ChainFlow({
   d,
   e,
   onDefendersChange,
+  follow: followProp,
+  onFollowChange,
+  onClear,
 }: {
   analysis: PairingAnalysis;
   ours: PairingRosterPlayer[];
@@ -49,6 +52,11 @@ export function ChainFlow({
   e: number;
   /** The round-1 defenders chosen in the follow bar (the grid's square follows). */
   onDefendersChange?: (d: number, e: number) => void;
+  /** The live pairing, when the page keeps it (the ratings table greys out who's used). */
+  follow?: ChainFollow;
+  onFollowChange?: (follow: ChainFollow) => void;
+  /** Clear was pressed: the page puts the round-1 defenders back to the suggested ones. */
+  onClear?: () => void;
 }) {
   const options = analysis.attackerOptions(d, e);
   const best = options.reduce((x, y) => (y.share > x.share ? y : x));
@@ -60,7 +68,9 @@ export function ChainFlow({
   const [shown, setShown] = useState({ ours: false, theirs: true });
   const full = pairingChain(analysis, d, e, send.pair);
   // The live pairing so far; each choice depends on the ones before it.
-  const [follow, setFollow] = useState<ChainFollow>({});
+  const [ownFollow, setOwnFollow] = useState<ChainFollow>({});
+  const follow = followProp ?? ownFollow;
+  const setFollow = onFollowChange ?? setOwnFollow;
   const chain = visibleChain(full, shown, follow);
   const ALL = [0, 1, 2, 3, 4];
   const theirSend = full.sends.find((x) => x.theirs.join() === follow.theirSend)?.theirs;
@@ -272,45 +282,51 @@ export function ChainFlow({
           value={String(d)}
           onChange={(ev) => {
             onDefendersChange?.(Number(ev.currentTarget.value), e);
+            setFollow({ ourDefender: true, theirDefender: follow.theirDefender });
           }}
           data={ours.map((p, i) => ({
             value: String(i),
             label: `${army(p)} (expected ${defenderExpected(i).toFixed(1)})`,
           }))}
-          w={250}
+          w={300}
         />
         <NativeSelect
           label="They defend"
           value={String(e)}
           onChange={(ev) => {
             onDefendersChange?.(d, Number(ev.currentTarget.value));
+            setFollow({ ourDefender: follow.ourDefender, theirDefender: true });
           }}
           data={theirs.map((p, i) => ({
             value: String(i),
             label: `${army(p)} (${pct(analysis.theirDefender[i] ?? 0)})`,
           }))}
-          w={250}
+          w={300}
         />
         <NativeSelect
           label="You send"
           value={send.pair.join()}
           onChange={(ev) => {
             setSendKey(ev.currentTarget.value);
-            setFollow({});
+            // What follows our send starts over; the defenders stay chosen.
+            setFollow({ ourDefender: follow.ourDefender, theirDefender: follow.theirDefender });
             setPickedId(null);
           }}
           data={options.map((o) => ({
             value: o.pair.join(),
             label: `${o.pair.map((a) => army(ours[a])).join(' + ')} (${o.likely.toFixed(1)}${o === best ? ', best' : ''})`,
           }))}
-          w={360}
+          w={500}
         />
         <NativeSelect
           label="They send"
           value={follow.theirSend ?? ''}
           onChange={(ev) => {
             const v = ev.currentTarget.value;
+            // Their send decides what our defender can take, and so their round-2 defender.
             setFollow({
+              ourDefender: follow.ourDefender,
+              theirDefender: follow.theirDefender,
               theyTake: follow.theyTake,
               ourR2: follow.ourR2,
               theirSend: v || undefined,
@@ -380,9 +396,13 @@ export function ChainFlow({
         />
         <Button
           variant="default"
-          disabled={Object.values(follow).every((v) => v === undefined)}
           onClick={() => {
+            // The whole pairing starts over: our best send, nothing followed, and (from the
+            // page) the suggested defenders.
+            setSendKey(null);
+            setPickedId(null);
             setFollow({});
+            onClear?.();
           }}
         >
           Clear

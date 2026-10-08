@@ -16,6 +16,7 @@ export function RatingsTable({
   ratings,
   onRate,
   onAlt,
+  used,
 }: {
   ours: PairingRosterPlayer[];
   theirs: PairingRosterPlayer[];
@@ -23,16 +24,25 @@ export function RatingsTable({
   onRate: (playerId: string, opponentPlayerId: string, chip: PairingChip | null) => void;
   /** Sets what a rated game can become (null: nothing). */
   onAlt: (playerId: string, opponentPlayerId: string, alt: PairingChip | null) => void;
+  /** Players used up in a live pairing (by place) and the games locked in: greyed out, marked. */
+  used?: { ours: number[]; theirs: number[]; games: [number, number][] };
 }) {
+  const usedOurs = new Set(used?.ours);
+  const usedTheirs = new Set(used?.theirs);
+  const locked = new Set(used?.games.map(([a, b]) => `${String(a)}|${String(b)}`));
   const ratingOf = new Map(ratings.map((r) => [`${r.playerId}|${r.opponentPlayerId}`, r]));
   return (
     <Table.ScrollContainer minWidth={560}>
-      <table className={classes.table}>
+      <table className={classes.table} aria-label="Ratings">
         <thead>
           <tr>
             <th className={classes.names} />
-            {theirs.map((t) => (
-              <th key={t.id}>
+            {theirs.map((t, j) => (
+              <th
+                key={t.id}
+                data-used={usedTheirs.has(j) || undefined}
+                className={usedTheirs.has(j) ? classes.used : undefined}
+              >
                 <Tooltip
                   label={
                     <Text size="xs" style={{ whiteSpace: 'pre-wrap' }}>
@@ -61,9 +71,13 @@ export function RatingsTable({
           </tr>
         </thead>
         <tbody>
-          {ours.map((o) => (
+          {ours.map((o, i) => (
             <tr key={o.id}>
-              <th scope="row">
+              <th
+                scope="row"
+                data-used={usedOurs.has(i) || undefined}
+                className={usedOurs.has(i) ? classes.used : undefined}
+              >
                 <Text size="sm">{o.faction ?? o.name}</Text>
                 {o.name !== o.faction && (
                   <Text size="xs" c="dimmed">
@@ -71,15 +85,20 @@ export function RatingsTable({
                   </Text>
                 )}
               </th>
-              {theirs.map((t) => {
+              {theirs.map((t, j) => {
                 const rating = ratingOf.get(`${o.id}|${t.id}`);
                 const chip = rating?.chip ?? null;
+                const isLocked = locked.has(`${String(i)}|${String(j)}`);
+                const isUsed = !isLocked && (usedOurs.has(i) || usedTheirs.has(j));
                 return (
-                  <td key={t.id}>
+                  <td
+                    key={t.id}
+                    className={isLocked ? classes.locked : isUsed ? classes.used : undefined}
+                  >
                     <Menu position="bottom" withinPortal>
                       <Menu.Target>
                         <UnstyledButton
-                          aria-label={`${o.name} v ${t.name}: ${ratingName(chip, rating?.alt)}`}
+                          aria-label={`${o.name} v ${t.name}: ${ratingName(chip, rating?.alt)}${isLocked ? ', locked in' : ''}`}
                           className={chip ? classes.cell : `${classes.cell} ${classes.unrated}`}
                           style={chip ? chipStyle(chip) : undefined}
                         >
