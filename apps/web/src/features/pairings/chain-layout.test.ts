@@ -1,6 +1,6 @@
 import { analysePairing, pairingChain } from '@bcp/shared';
 import { describe, expect, it } from 'vitest';
-import { layoutChain } from './chain-layout';
+import { layoutChain, visibleChain } from './chain-layout';
 
 const R1 = [
   [17, 10, 10, 7, 13],
@@ -54,5 +54,41 @@ describe('layoutChain', () => {
       });
     }
     expect(all.height).toBeGreaterThanOrEqual(Math.max(...all.nodes.map((n) => n.y + n.h)) + 12);
+  });
+
+  it('shows only their likely sends unless one is followed, and a followed choice shows however unlikely', () => {
+    const full = pairingChain(analysePairing(R1), 3, 4, [1, 4]);
+    const shown = { ours: false, theirs: false };
+    expect(visibleChain(full, shown, {}).sends.every((x) => x.p >= 0.02)).toBe(true);
+    const unlikely = full.sends.find((x) => x.p < 0.02);
+    if (!unlikely) throw new Error('every send is likely');
+    const followed = visibleChain(full, shown, { theirSend: unlikely.theirs.join() });
+    expect(followed.sends.map((x) => x.theirs)).toEqual([unlikely.theirs]);
+    // What happened is certain: chances after it count from there.
+    expect(followed.sends[0]?.p).toBe(1);
+  });
+
+  it('following the picks and round-2 defenders keeps only that branch', () => {
+    const full = pairingChain(analysePairing(R1), 3, 4, [1, 4]);
+    const send = full.sends[0];
+    const pick =
+      send?.picks.find((x) => x.ourChance < 0.02 && x.theirChance < 0.02) ?? send?.picks[0];
+    const r2 = pick?.round2.at(-1);
+    if (!send || !pick || !r2) throw new Error('no branch');
+    const follow = {
+      theirSend: send.theirs.join(),
+      weTake: pick.weTake,
+      theyTake: pick.theyTake,
+      ourR2: r2.d,
+      theirR2: r2.e,
+    };
+    const only = visibleChain(full, { ours: false, theirs: false }, follow);
+    expect(only.sends).toHaveLength(1);
+    expect(only.sends[0]?.picks.map((x) => [x.weTake, x.theyTake])).toEqual([
+      [pick.weTake, pick.theyTake],
+    ]);
+    expect(only.sends[0]?.picks[0]?.round2.map((x) => [x.d, x.e])).toEqual([[r2.d, r2.e]]);
+    expect(only.sends[0]?.picks[0]?.p).toBe(1);
+    expect(only.sends[0]?.picks[0]?.round2[0]?.p).toBe(1);
   });
 });

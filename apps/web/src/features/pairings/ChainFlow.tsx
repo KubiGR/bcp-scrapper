@@ -6,10 +6,10 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { Group, NativeSelect, Stack, Switch, Text } from '@mantine/core';
+import { Button, Group, NativeSelect, Stack, Switch, Text } from '@mantine/core';
 import { useEffect, useRef, useState } from 'react';
 import classes from './ChainFlow.module.css';
-import { LINE, layoutChain, visibleChain, type ChainBox } from './chain-layout';
+import { LINE, layoutChain, visibleChain, type ChainBox, type ChainFollow } from './chain-layout';
 import { ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
 
@@ -50,7 +50,17 @@ export function ChainFlow({
   // Their unlikely choices are shown by default (real opponents rate the games their own way);
   // ours, which are ours to make, only when asked for: they multiply the chain's size.
   const [shown, setShown] = useState({ ours: false, theirs: true });
-  const chain = visibleChain(pairingChain(analysis, d, e, send.pair), shown);
+  const full = pairingChain(analysis, d, e, send.pair);
+  // The live pairing so far; each choice depends on the ones before it.
+  const [follow, setFollow] = useState<ChainFollow>({});
+  const chain = visibleChain(full, shown, follow);
+  const ALL = [0, 1, 2, 3, 4];
+  const theirSend = full.sends.find((x) => x.theirs.join() === follow.theirSend)?.theirs;
+  const followOptions = (players: PairingRosterPlayer[], indexes: readonly number[]) => [
+    { value: '', label: 'Any' },
+    ...indexes.map((i) => ({ value: String(i), label: army(players[i]) })),
+  ];
+  const pickNumber = (value: string) => (value === '' ? undefined : Number(value));
   const layout = layoutChain(chain);
   // The open line-up is remembered by its place in the chain, so it follows rating changes.
   const [pickedId, setPickedId] = useState<string | null>(null);
@@ -221,6 +231,7 @@ export function ChainFlow({
           value={send.pair.join()}
           onChange={(ev) => {
             setSendKey(ev.currentTarget.value);
+            setFollow({});
             setPickedId(null);
           }}
           data={options.map((o) => ({
@@ -247,6 +258,93 @@ export function ChainFlow({
             }}
           />
         </Stack>
+      </Group>
+      <Group align="flex-end" gap="sm" wrap="wrap">
+        <Text size="sm" fw={600} w="100%">
+          Follow the pairing
+        </Text>
+        <NativeSelect
+          label="They send"
+          value={follow.theirSend ?? ''}
+          onChange={(ev) => {
+            const v = ev.currentTarget.value;
+            setFollow({
+              theyTake: follow.theyTake,
+              ourR2: follow.ourR2,
+              theirSend: v || undefined,
+            });
+          }}
+          data={[
+            { value: '', label: 'Any' },
+            ...full.sends.map((x) => ({
+              value: x.theirs.join(),
+              label: `${x.theirs.map((t) => army(theirs[t])).join(' + ')} (${pct(x.p)})`,
+            })),
+          ]}
+          w={300}
+        />
+        <NativeSelect
+          label="You take"
+          disabled={!theirSend}
+          value={follow.weTake === undefined ? '' : String(follow.weTake)}
+          onChange={(ev) => {
+            setFollow({
+              ...follow,
+              weTake: pickNumber(ev.currentTarget.value),
+              theirR2: undefined,
+            });
+          }}
+          data={followOptions(theirs, theirSend ?? [])}
+          w={190}
+        />
+        <NativeSelect
+          label="They take"
+          value={follow.theyTake === undefined ? '' : String(follow.theyTake)}
+          onChange={(ev) => {
+            setFollow({
+              ...follow,
+              theyTake: pickNumber(ev.currentTarget.value),
+              ourR2: undefined,
+            });
+          }}
+          data={followOptions(ours, send.pair)}
+          w={190}
+        />
+        <NativeSelect
+          label="Your round-2 defender"
+          disabled={follow.theyTake === undefined}
+          value={follow.ourR2 === undefined ? '' : String(follow.ourR2)}
+          onChange={(ev) => {
+            setFollow({ ...follow, ourR2: pickNumber(ev.currentTarget.value) });
+          }}
+          data={followOptions(
+            ours,
+            ALL.filter((a) => a !== d && a !== follow.theyTake),
+          )}
+          w={190}
+        />
+        <NativeSelect
+          label="Their round-2 defender"
+          disabled={follow.weTake === undefined}
+          value={follow.theirR2 === undefined ? '' : String(follow.theirR2)}
+          onChange={(ev) => {
+            setFollow({ ...follow, theirR2: pickNumber(ev.currentTarget.value) });
+          }}
+          data={followOptions(
+            theirs,
+            ALL.filter((t) => t !== e && t !== follow.weTake),
+          )}
+          w={190}
+        />
+        <Button
+          variant="default"
+          disabled={Object.values(follow).every((v) => v === undefined)}
+          onClick={() => {
+            setFollow({});
+          }}
+        >
+          Clear
+        </Button>
       </Group>
       <div style={{ overflowX: 'auto' }}>
         <svg

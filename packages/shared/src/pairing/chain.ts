@@ -45,19 +45,12 @@ export interface PairingChain {
   other: number;
 }
 
-/** Branches below this share of their parent are folded into "other". */
+/** A choice below this chance is "unlikely": the page can hide it. */
 export const CHAIN_MIN_SHARE = 0.02;
-const EPS = 1e-9;
 const ALL = [0, 1, 2, 3, 4];
 const without = (list: number[], ...drop: number[]) => list.filter((x) => !drop.includes(x));
 const weighted = <T extends { p: number }>(items: T[], v: (x: T) => number) =>
   items.reduce((s, x) => s + x.p * v(x), 0) / (items.reduce((s, x) => s + x.p, 0) || 1);
-function fold<T extends { p: number }>(items: T[]): { kept: T[]; other: number } {
-  return {
-    kept: items.filter((x) => x.p >= CHAIN_MIN_SHARE),
-    other: items.filter((x) => x.p < CHAIN_MIN_SHARE).reduce((s, x) => s + x.p, 0),
-  };
-}
 
 /** Every way the pairing goes once both defenders and our two attackers are chosen. */
 export function pairingChain(
@@ -127,7 +120,6 @@ export function pairingChain(
   const sends: ChainSend[] = [];
   s.theirs.forEach((q, j) => {
     const pq = s.cols[j] ?? 0;
-    if (pq <= EPS) return;
     const pickNodes = picks(ALL, ALL, d, e, ours, q).map((x): ChainPick => {
       const nodes = round2(without(ALL, d, x.a), without(ALL, e, x.b), [
         [d, x.b],
@@ -152,6 +144,7 @@ export function pairingChain(
       other: 0,
     });
   });
-  const { kept, other } = fold(sends);
-  return { d, e, ours, value: weighted(sends, (x) => x.value), sends: kept, other };
+  // Every pair they could send stays (a live pairing may follow an unlikely one); showing only the
+  // likely ones is the page's choice.
+  return { d, e, ours, value: weighted(sends, (x) => x.value), sends, other: 0 };
 }

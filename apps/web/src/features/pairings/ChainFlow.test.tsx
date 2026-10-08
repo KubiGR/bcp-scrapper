@@ -289,4 +289,35 @@ describe('ChainFlow', () => {
     expect(scrollTo).toHaveBeenCalledOnce();
     scrollTo.mockRestore();
   });
+
+  it('following the live pairing narrows the chain to what happened', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    // They send Grey Knights + Orks; World Eaters takes Orks; Custodes takes Emperor's Children.
+    fireEvent.change(screen.getByLabelText('They send'), { target: { value: '0,2' } });
+    fireEvent.change(screen.getByLabelText('You take'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('They take'), { target: { value: '1' } });
+    const sends = screen.getAllByText(/^They send .* · (<1|\d+)%$/);
+    expect(sends).toHaveLength(1);
+    expect(sends[0]).toHaveTextContent(/^They send Grey Knights \+ Orks/);
+    expect(screen.getByRole('img', { name: /^World Eaters v Orks: / })).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: /^Emperor's Children v Adeptus Custodes: / }),
+    ).toBeInTheDocument();
+    // Round 2: Space Marines (left with Chaos Daemons and Sororitas) against Death Guard.
+    fireEvent.change(screen.getByLabelText('Your round-2 defender'), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText('Their round-2 defender'), { target: { value: '1' } });
+    expect(screen.getAllByText(/^R2: you /)).toHaveLength(1);
+    expect(screen.getByText('R2: you Space Marines')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(screen.getAllByText(/^R2: you /).length).toBeGreaterThan(1);
+  });
 });

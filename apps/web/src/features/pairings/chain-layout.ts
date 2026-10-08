@@ -47,34 +47,79 @@ export interface ChainShown {
   theirs: boolean;
 }
 
-/** The chain without the choices the model thinks unlikely, for the sides not asked for. */
-export function visibleChain(chain: PairingChain, shown: ChainShown): PairingChain {
-  const visible = (x: ChainChances) =>
-    (shown.ours || x.ourChance >= CHAIN_MIN_SHARE) &&
-    (shown.theirs || x.theirChance >= CHAIN_MIN_SHARE);
-  const keep = <T extends ChainChances>(items: T[]) => ({
-    kept: items.filter(visible),
-    gone: items.filter((x) => !visible(x)).reduce((sum, x) => sum + x.p, 0),
+/**
+ * What has really happened in a live pairing, as far as it's got: their send (pair joined, e.g.
+ * "0,2"), which of it our defender took, which of ours theirs took, and both round-2 defenders.
+ */
+export interface ChainFollow {
+  theirSend?: string;
+  weTake?: number;
+  theyTake?: number;
+  ourR2?: number;
+  theirR2?: number;
+}
+
+/**
+ * The chain to draw: only what follows the live pairing, and of the rest only the likely choices
+ * (2% or more) for the sides not asked for. A followed choice shows however unlikely it is, and
+ * counts as certain; their unlikely sends only when followed (all six would swamp the chain).
+ */
+export function visibleChain(
+  chain: PairingChain,
+  shown: ChainShown,
+  follow: ChainFollow = {},
+): PairingChain {
+  const likely = (x: number) => x >= CHAIN_MIN_SHARE;
+  const visible = (x: ChainChances, oursFollowed: boolean, theirsFollowed: boolean) =>
+    (oursFollowed || shown.ours || likely(x.ourChance)) &&
+    (theirsFollowed || shown.theirs || likely(x.theirChance));
+  const keep = <T extends { p: number }>(items: T[], ok: (x: T) => boolean) => ({
+    kept: items.filter(ok),
+    gone: items.filter((x) => !ok(x)).reduce((sum, x) => sum + x.p, 0),
   });
-  const sends = chain.sends.map((send) => {
-    const picks = keep(send.picks);
+  const sendsKept = keep(chain.sends, (x) =>
+    follow.theirSend === undefined ? likely(x.p) : x.theirs.join() === follow.theirSend,
+  );
+  // A followed choice really happened: it counts as certain, so chances after it start from there.
+  const given = <T extends ChainChances>(x: T, ours: boolean, theirs: boolean): T => {
+    const ourChance = ours ? 1 : x.ourChance;
+    const theirChance = theirs ? 1 : x.theirChance;
+    return { ...x, ourChance, theirChance, p: ourChance * theirChance };
+  };
+  const sends = sendsKept.kept.map((followed) => {
+    const send = follow.theirSend === undefined ? followed : { ...followed, p: 1 };
+    const picks = keep(
+      send.picks,
+      (x) =>
+        (follow.weTake === undefined || x.weTake === follow.weTake) &&
+        (follow.theyTake === undefined || x.theyTake === follow.theyTake) &&
+        visible(x, follow.weTake !== undefined, follow.theyTake !== undefined),
+    );
     return {
       ...send,
       other: send.other + picks.gone,
-      picks: picks.kept.map((pick) => {
-        const round2 = keep(pick.round2);
+      picks: picks.kept.map((seen) => {
+        const pick = given(seen, follow.weTake !== undefined, follow.theyTake !== undefined);
+        const round2 = keep(
+          pick.round2,
+          (x) =>
+            (follow.ourR2 === undefined || x.d === follow.ourR2) &&
+            (follow.theirR2 === undefined || x.e === follow.theirR2) &&
+            visible(x, follow.ourR2 !== undefined, follow.theirR2 !== undefined),
+        );
         return {
           ...pick,
           other: pick.other + round2.gone,
-          round2: round2.kept.map((r2) => {
-            const leaves = keep(r2.leaves);
+          round2: round2.kept.map((seenR2) => {
+            const r2 = given(seenR2, follow.ourR2 !== undefined, follow.theirR2 !== undefined);
+            const leaves = keep(r2.leaves, (x) => visible(x, false, false));
             return { ...r2, other: r2.other + leaves.gone, leaves: leaves.kept };
           }),
         };
       }),
     };
   });
-  return { ...chain, sends };
+  return { ...chain, sends, other: chain.other + sendsKept.gone };
 }
 
 /**

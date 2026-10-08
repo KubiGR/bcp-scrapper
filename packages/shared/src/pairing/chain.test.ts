@@ -92,4 +92,10 @@ describe('pairingChain', () => {
       }
     }
   });
+
+  it('keeps every pair they could send, however unlikely, so a live pairing can follow it', () => {
+    expect(chain.sends).toHaveLength(6);
+    expect(chain.other).toBe(0);
+    expect(chain.sends.reduce((sum, x) => sum + x.p, 0)).toBeCloseTo(1, 6);
+  });
 });
