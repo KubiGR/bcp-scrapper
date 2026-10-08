@@ -74,7 +74,7 @@ sum of its five games, **out of 100; 50 is even**. The page always labels these 
 - **Web**: `/events/$eventId/teams/$teamId/pairings` with the opponent as a search param; a **Pairings** link
   on the team page.
   - `RatingsTable` — compact grid with gaps between cells; clicking a cell opens the chip picker; each change
-    is saved at once (optimistic, last change wins); the page refetches every few seconds and on focus so
+    is saved at once (optimistic, last change wins); the page refetches every 10 seconds and on focus so
     teammates' edits appear. Opponent names show their list on hover/focus.
   - `PairingSummary` — expected team score, safe defender (and the unpredictable mix), their likely defender,
     "N of 25 rated".
