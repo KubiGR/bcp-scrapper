@@ -15,6 +15,33 @@ const roster = (prefix: string, n: number) =>
     list: null,
   }));
 
+const LISTS = {
+  'GET /api/events/E1/pairings': { teams: [team, opponent] },
+  'GET /api/events?': {
+    items: [
+      {
+        bcpId: 'E1',
+        name: 'Balkan Team Championship 2026',
+        startDate: '2026-10-10T06:00:00.000Z',
+        endDate: null,
+        country: 'Greece',
+        city: null,
+        playerCount: 101,
+        teamCount: 21,
+        isTeamEvent: true,
+        isOnline: false,
+        roundCount: 5,
+        ended: false,
+        hideLists: false,
+        lastSyncedAt: null,
+      },
+    ],
+    total: 1,
+    page: 1,
+    pageSize: 100,
+  },
+};
+
 // The stub matches by prefix: the opponent's address is listed before the shorter teams address.
 describe('PairingsPage', () => {
   it('shows how many games are rated', async () => {
@@ -27,10 +54,10 @@ describe('PairingsPage', () => {
         problem: null,
         ratings: [{ playerId: 'U0', opponentPlayerId: 'H0', chip: 'G' }],
       },
-      'GET /api/events/E1/teams/T1/pairings': { team, opponents: [opponent] },
+      ...LISTS,
     });
     renderWithRouter(
-      <PairingsPage eventId="E1" teamId="T1" opponentId="T2" onOpponentChange={() => {}} />,
+      <PairingsPage choice={{ event: 'E1', team: 'T1', opponent: 'T2' }} onChange={() => {}} />,
     );
     expect(await screen.findByText(/^1 of 25 rated/)).toBeInTheDocument();
   });
@@ -45,22 +72,48 @@ describe('PairingsPage', () => {
         ratings: [],
         problem: 'Dice Bunker has 4 players; pairings need 5 on each team.',
       },
-      'GET /api/events/E1/teams/T1/pairings': { team, opponents: [opponent] },
+      ...LISTS,
     });
     renderWithRouter(
-      <PairingsPage eventId="E1" teamId="T1" opponentId="T2" onOpponentChange={() => {}} />,
+      <PairingsPage choice={{ event: 'E1', team: 'T1', opponent: 'T2' }} onChange={() => {}} />,
     );
     expect(
       await screen.findByText('Dice Bunker has 4 players; pairings need 5 on each team.'),
     ).toBeInTheDocument();
   });
 
-  it('asks for an opponent first', async () => {
-    stubFetchRoutes({ 'GET /api/events/E1/teams/T1/pairings': { team, opponents: [opponent] } });
+  it('asks for the event, your team and the opponent', async () => {
+    stubFetchRoutes(LISTS);
+    renderWithRouter(<PairingsPage choice={{}} onChange={() => {}} />);
+    expect(
+      await screen.findByText('Pick the event, your team and the team you play.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'My team' })).toBeDisabled();
+  });
+
+  it('choosing an event starts the team and opponent over', async () => {
+    stubFetchRoutes(LISTS);
+    const onChange = vi.fn();
     renderWithRouter(
-      <PairingsPage eventId="E1" teamId="T1" opponentId={null} onOpponentChange={() => {}} />,
+      <PairingsPage choice={{ event: 'E0', team: 'X', opponent: 'Y' }} onChange={onChange} />,
     );
-    expect(await screen.findByText('Pick the team you play this round.')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('combobox', { name: 'Event' }));
+    fireEvent.click(await screen.findByRole('option', { name: /Balkan Team Championship/ }));
+    expect(onChange).toHaveBeenCalledWith({ event: 'E1' });
+  });
+
+  it('the opponent list leaves out your own team, and picking one keeps the rest', async () => {
+    stubFetchRoutes(LISTS);
+    const onChange = vi.fn();
+    renderWithRouter(<PairingsPage choice={{ event: 'E1', team: 'T1' }} onChange={onChange} />);
+    const input = await screen.findByRole('combobox', { name: 'Opponent' });
+    await vi.waitFor(() => {
+      expect(input).toBeEnabled();
+    });
+    fireEvent.click(input);
+    expect(screen.queryByRole('option', { name: 'Dice Bunker' })).toBeNull();
+    fireEvent.click(await screen.findByRole('option', { name: 'Mighty Ducks' }));
+    expect(onChange).toHaveBeenCalledWith({ event: 'E1', team: 'T1', opponent: 'T2' });
   });
 
   it('refetches every 10 seconds so teammates’ edits appear', () => {
@@ -78,10 +131,10 @@ describe('PairingsPage', () => {
         problem: null,
         ratings: [],
       },
-      'GET /api/events/E1/teams/T1/pairings': { team, opponents: [opponent] },
+      ...LISTS,
     });
     renderWithRouter(
-      <PairingsPage eventId="E1" teamId="T1" opponentId="T2" onOpponentChange={() => {}} />,
+      <PairingsPage choice={{ event: 'E1', team: 'T1', opponent: 'T2' }} onChange={() => {}} />,
     );
     fireEvent.click(await screen.findByRole('button', { name: 'Paste from sheet' }));
     const sheet = Array.from({ length: 5 }, () => 'G\tG\tG\tG\tG').join('\n');

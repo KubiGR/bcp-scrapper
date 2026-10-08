@@ -7,53 +7,89 @@ import {
 import { Alert, Group, Select, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
-import { pairingQuery, pairingTeamsQuery, useSaveRating, useSaveRatings } from './pairing-queries';
+import {
+  eventTeamsQuery,
+  pairingQuery,
+  teamEventsQuery,
+  useSaveRating,
+  useSaveRatings,
+} from './pairing-queries';
+import type { PairingsChoice } from './last-choice';
 import { PasteFromSheet } from './PasteFromSheet';
 import { ChainFlow } from './ChainFlow';
 import { DefenderGrid } from './DefenderGrid';
 import { PairingSummary } from './PairingSummary';
 import { RatingsTable } from './RatingsTable';
 
+/** The pairings planner: pick the event, your team and the team you play, then rate and analyse. */
 export function PairingsPage({
-  eventId,
-  teamId,
-  opponentId,
-  onOpponentChange,
+  choice,
+  onChange,
 }: {
-  eventId: string;
-  teamId: string;
-  opponentId: string | null;
-  onOpponentChange: (id: string) => void;
+  choice: PairingsChoice;
+  onChange: (next: PairingsChoice) => void;
 }) {
-  const teams = useQuery(pairingTeamsQuery(eventId, teamId));
-  if (teams.isPending) return <Skeleton height={200} />;
-  if (teams.error) return <ErrorState error={teams.error} onRetry={() => void teams.refetch()} />;
+  const { event, team, opponent } = choice;
+  const events = useQuery(teamEventsQuery());
+  const teams = useQuery({ ...eventTeamsQuery(event ?? ''), enabled: event !== undefined });
+  const error = events.error ?? teams.error;
+  const eventOptions = (events.data?.items ?? []).map((e) => ({
+    value: e.bcpId,
+    label: `${e.name} · ${e.startDate.slice(0, 10)}`,
+  }));
+  const teamOptions = (teams.data?.teams ?? []).map((t) => ({ value: t.id, label: t.name }));
   return (
     <Stack gap="lg">
-      <Stack gap={4}>
-        <AnchorLink to="/events/$eventId/teams/$teamId" params={{ eventId, teamId }}>
-          <Text size="sm">← {teams.data.team.name}</Text>
-        </AnchorLink>
-        <Title order={2}>Pairings</Title>
-      </Stack>
-      <Select
-        label="Opposing team"
-        placeholder="Pick a team"
-        data={teams.data.opponents.map((t) => ({ value: t.id, label: t.name }))}
-        value={opponentId}
-        onChange={(v) => {
-          if (v) onOpponentChange(v);
-        }}
-        searchable
-        maw={360}
-      />
-      {opponentId === null ? (
-        <Text c="dimmed">Pick the team you play this round.</Text>
+      <Title order={2}>Pairings</Title>
+      <Group align="flex-end" gap="sm">
+        <Select
+          label="Event"
+          placeholder="Pick a team event"
+          data={eventOptions}
+          value={event ?? null}
+          onChange={(v) => {
+            if (v) onChange({ event: v });
+          }}
+          searchable
+          w={360}
+        />
+        <Select
+          label="My team"
+          placeholder="Your team"
+          data={teamOptions}
+          value={team ?? null}
+          disabled={event === undefined || !teams.data}
+          onChange={(v) => {
+            if (v) onChange({ event, team: v });
+          }}
+          searchable
+          w={260}
+        />
+        <Select
+          label="Opponent"
+          placeholder="The team you play"
+          data={teamOptions.filter((t) => t.value !== team)}
+          value={opponent ?? null}
+          disabled={team === undefined || !teams.data}
+          onChange={(v) => {
+            if (v) onChange({ event, team, opponent: v });
+          }}
+          searchable
+          w={260}
+        />
+      </Group>
+      {error && <ErrorState error={error} onRetry={() => void events.refetch()} />}
+      {event !== undefined && team !== undefined && opponent !== undefined ? (
+        <Matchup
+          key={`${event}/${team}/${opponent}`}
+          eventId={event}
+          teamId={team}
+          opponentId={opponent}
+        />
       ) : (
-        <Matchup eventId={eventId} teamId={teamId} opponentId={opponentId} />
+        <Text c="dimmed">Pick the event, your team and the team you play.</Text>
       )}
     </Stack>
   );

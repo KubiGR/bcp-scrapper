@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MathhammerRouteImport } from './routes/mathhammer'
+import { Route as PairingsRouteImport } from './routes/pairings'
 import { Route as QueueRouteImport } from './routes/queue'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AnalysisFactionsRouteImport } from './routes/analysis.factions'
@@ -37,6 +38,11 @@ const LoginRoute = LoginRouteImport.update({
 const MathhammerRoute = MathhammerRouteImport.update({
   id: '/mathhammer',
   path: '/mathhammer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PairingsRoute = PairingsRouteImport.update({
+  id: '/pairings',
+  path: '/pairings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QueueRoute = QueueRouteImport.update({
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/mathhammer': typeof MathhammerRoute
+  '/pairings': typeof PairingsRoute
   '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/analysis/factions': typeof AnalysisFactionsRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/mathhammer': typeof MathhammerRoute
+  '/pairings': typeof PairingsRoute
   '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/analysis/factions': typeof AnalysisFactionsRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/mathhammer': typeof MathhammerRoute
+  '/pairings': typeof PairingsRoute
   '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/analysis/factions': typeof AnalysisFactionsRoute
@@ -152,6 +161,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/mathhammer'
+    | '/pairings'
     | '/queue'
     | '/settings'
     | '/analysis/factions'
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/mathhammer'
+    | '/pairings'
     | '/queue'
     | '/settings'
     | '/analysis/factions'
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/mathhammer'
+    | '/pairings'
     | '/queue'
     | '/settings'
     | '/analysis/factions'
@@ -201,6 +213,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   MathhammerRoute: typeof MathhammerRoute
+  PairingsRoute: typeof PairingsRoute
   QueueRoute: typeof QueueRoute
   SettingsRoute: typeof SettingsRoute
   AnalysisFactionsRoute: typeof AnalysisFactionsRoute
@@ -235,6 +248,13 @@ declare module '@tanstack/react-router' {
       path: '/mathhammer'
       fullPath: '/mathhammer'
       preLoaderRoute: typeof MathhammerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pairings': {
+      id: '/pairings'
+      path: '/pairings'
+      fullPath: '/pairings'
+      preLoaderRoute: typeof PairingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/queue': {
@@ -321,6 +341,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   MathhammerRoute: MathhammerRoute,
+  PairingsRoute: PairingsRoute,
   QueueRoute: QueueRoute,
   SettingsRoute: SettingsRoute,
   AnalysisFactionsRoute: AnalysisFactionsRoute,

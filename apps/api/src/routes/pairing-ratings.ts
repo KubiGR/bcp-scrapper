@@ -1,6 +1,7 @@
 import {
   SaveRatingRequestSchema,
   SaveRatingsRequestSchema,
+  type PairingEventTeamsResponse,
   type PairingResponse,
   type PairingTeamsResponse,
   type SaveRatingsResponse,
@@ -63,6 +64,12 @@ export function pairingRoutes(deps: { db: Db }) {
   };
 
   return new Hono()
+    .get('/events/:id/pairings', async (c) => {
+      const id = c.req.param('id');
+      await requireEvent(db, id);
+      const body: PairingEventTeamsResponse = { teams: await eventTeams(db, id) };
+      return c.json(body);
+    })
     .get('/events/:id/teams/:teamId/pairings', async (c) => {
       const { id, teamId } = c.req.param();
       const { team, all } = await teamsOf(id, teamId);

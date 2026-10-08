@@ -157,11 +157,7 @@ export function TeamPage({ eventId, teamId }: { eventId: string; teamId: string 
           <Text size="sm" c="dimmed">
             Placing <span className="numeric">{team.data.team.placing ?? '—'}</span>
           </Text>
-          <AnchorLink
-            to="/events/$eventId/teams/$teamId/pairings"
-            params={{ eventId, teamId }}
-            search={{}}
-          >
+          <AnchorLink to="/pairings" search={{ event: eventId, team: teamId }}>
             <Text size="sm">Pairings</Text>
           </AnchorLink>
           <Text size="sm" c="dimmed">

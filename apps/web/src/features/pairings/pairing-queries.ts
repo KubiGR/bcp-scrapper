@@ -1,6 +1,7 @@
 import {
+  EventListResponseSchema,
+  PairingEventTeamsResponseSchema,
   PairingResponseSchema,
-  PairingTeamsResponseSchema,
   SaveRatingResponseSchema,
   SaveRatingsResponseSchema,
   type PairingChip,
@@ -12,10 +13,22 @@ import { apiGet, apiPut } from '../../api/client';
 const base = (eventId: string, teamId: string) =>
   `/api/events/${encodeURIComponent(eventId)}/teams/${encodeURIComponent(teamId)}/pairings`;
 
-export const pairingTeamsQuery = (eventId: string, teamId: string) =>
+/** Team events, newest first, for the planner's event picker. */
+export const teamEventsQuery = () =>
   queryOptions({
-    queryKey: ['pairings', eventId, teamId],
-    queryFn: () => apiGet(base(eventId, teamId), PairingTeamsResponseSchema),
+    queryKey: ['pairings', 'events'],
+    queryFn: () =>
+      apiGet('/api/events?type=teams&sort=date&dir=desc&pageSize=100', EventListResponseSchema),
+  });
+
+export const eventTeamsQuery = (eventId: string) =>
+  queryOptions({
+    queryKey: ['pairings', eventId, 'teams'],
+    queryFn: () =>
+      apiGet(
+        `/api/events/${encodeURIComponent(eventId)}/pairings`,
+        PairingEventTeamsResponseSchema,
+      ),
   });
 
 /** Polls so teammates' ratings appear without a reload. */

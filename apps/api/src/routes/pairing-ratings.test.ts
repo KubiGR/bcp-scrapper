@@ -1,4 +1,4 @@
-import type { PairingResponse, PairingTeamsResponse } from '@bcp/shared';
+import type { PairingEventTeamsResponse, PairingResponse, PairingTeamsResponse } from '@bcp/shared';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import type { Db } from '../db/client';
@@ -161,5 +161,17 @@ describe('pairing routes', () => {
     expect(response.status).toBe(400);
     const { body } = await get<PairingResponse>(`${BASE}/T-THEM`);
     expect(body.ratings).toEqual([]);
+  });
+
+  it('lists an event’s teams for the planner', async () => {
+    await seed();
+    const { status, body } = await get<PairingEventTeamsResponse>(`/api/events/${EVENT}/pairings`);
+    expect(status).toBe(200);
+    expect(body.teams.map((t) => t.name).sort()).toEqual(['Dice Bunker', 'Mighty Ducks']);
+  });
+
+  it('an unknown event has no teams to list', async () => {
+    const { status } = await get(`/api/events/NOPE/pairings`);
+    expect(status).toBe(404);
   });
 });

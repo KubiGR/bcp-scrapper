@@ -1,25 +1,15 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { z } from 'zod';
-import { PairingsPage } from '../features/pairings/PairingsPage';
 
+/** The old per-team address: the planner now lives at /pairings. */
 export const Route = createFileRoute('/events/$eventId_/teams/$teamId_/pairings')({
   validateSearch: z.object({ opponent: z.string().optional() }),
-  component: PairingsRoute,
+  beforeLoad: ({ params, search }) => {
+    redirect({
+      to: '/pairings',
+      search: { event: params.eventId, team: params.teamId, opponent: search.opponent },
+      replace: true,
+      throw: true,
+    });
+  },
 });
-
-function PairingsRoute() {
-  const { eventId, teamId } = Route.useParams();
-  const { opponent } = Route.useSearch();
-  const navigate = Route.useNavigate();
-  return (
-    <PairingsPage
-      key={`${eventId}/${teamId}`}
-      eventId={eventId}
-      teamId={teamId}
-      opponentId={opponent ?? null}
-      onOpponentChange={(next) => {
-        void navigate({ search: { opponent: next }, replace: true });
-      }}
-    />
-  );
-}

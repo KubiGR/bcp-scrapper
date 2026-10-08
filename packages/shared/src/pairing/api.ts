@@ -11,6 +11,10 @@ export const PairingTeamsResponseSchema = z.object({
 });
 export type PairingTeamsResponse = z.infer<typeof PairingTeamsResponseSchema>;
 
+/** GET /api/events/:id/pairings: the event's teams, for the planner's team pickers. */
+export const PairingEventTeamsResponseSchema = z.object({ teams: z.array(TeamRefSchema) });
+export type PairingEventTeamsResponse = z.infer<typeof PairingEventTeamsResponseSchema>;
+
 export const PairingRosterPlayerSchema = z.object({
   id: z.string(),
   name: z.string(),
