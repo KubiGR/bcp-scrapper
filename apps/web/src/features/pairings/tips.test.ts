@@ -1,6 +1,6 @@
 import { analysePairing } from '@bcp/shared';
 import { describe, expect, it } from 'vitest';
-import { nextTip } from './tips';
+import { nextTip, toTip } from './tips';
 
 const R1 = [
   [17, 10, 10, 7, 13],
@@ -68,5 +68,21 @@ describe('nextTip', () => {
     expect(typeof tip?.same).toBe('boolean');
     const flat = analysePairing(Array.from({ length: 5 }, () => [10, 10, 10, 10, 10]));
     expect(nextTip(flat, 0, 0, [1, 2], { theirSend: '1,2' })?.same).toBe(true);
+  });
+
+  it('an option whose worst already reaches the expected score is recommended outright, not mixed', () => {
+    // As the solver can return: a 92/8 mix although Chaos Daemons alone guarantees 51.5.
+    const tip = toTip('Your round-2 defender', 'ours', [
+      { index: 2, chance: 0.92, expected: 51.5, best: 52, worst: 51.5 },
+      { index: 4, chance: 0.08, expected: 51.5, best: 52, worst: 46 },
+    ]);
+    expect(tip.safe).toBe(2);
+    expect(tip.options[0]?.index).toBe(2);
+    // A real mix: every option can be punished below the expected score.
+    const mix = toTip('You take', 'theirs', [
+      { index: 2, chance: 0.6, expected: 50.1, best: 50.6, worst: 49.2 },
+      { index: 1, chance: 0.4, expected: 50.1, best: 51.5, worst: 49.5 },
+    ]);
+    expect(mix.safe).toBeNull();
   });
 });

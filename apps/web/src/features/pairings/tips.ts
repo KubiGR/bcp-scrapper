@@ -22,12 +22,18 @@ export interface Tip {
   options: TipOption[];
   /** Every option leads to the same scores (expected, best and worst): take any. */
   same: boolean;
+  /**
+   * The option (by `index`) whose worst already reaches the expected score: it guarantees the
+   * best we can expect, so take it outright (any mix the solver returned is one of several equally
+   * good ones). Null when every option can be punished, and mixing is what keeps us safe.
+   */
+  safe: number | null;
 }
 
 const ALL = [0, 1, 2, 3, 4];
 /** Scores closer than this read the same (they show to one decimal). */
 const SAME = 0.05;
-const tip = (step: Tip['step'], side: Tip['side'], list: TipOption[]): Tip => {
+export function toTip(step: Tip['step'], side: Tip['side'], list: TipOption[]): Tip {
   const top = list[0];
   const same =
     top !== undefined &&
@@ -37,8 +43,14 @@ const tip = (step: Tip['step'], side: Tip['side'], list: TipOption[]): Tip => {
         Math.abs(o.best - top.best) < SAME &&
         Math.abs(o.worst - top.worst) < SAME,
     );
-  return { step, side, options: list, same };
-};
+  const value = Math.max(...list.map((o) => o.expected));
+  const sure = list
+    .filter((o) => o.worst >= value - SAME)
+    .sort((a, b) => b.worst - a.worst || b.expected - a.expected)[0];
+  // The guaranteed option goes first; the rest keep the model's order.
+  const options = sure ? [sure, ...list.filter((o) => o !== sure)] : list;
+  return { step, side, options, same, safe: sure && !same ? sure.index : null };
+}
 const without = (list: number[], ...drop: number[]) => list.filter((x) => !drop.includes(x));
 
 /** A decision table's rows as options: against their mix (`cols`) and their best reply. */
@@ -78,7 +90,7 @@ export function nextTip(
   if (!theirSend) return null;
   if (follow.weTake === undefined) {
     const c = game.choices(ALL, ALL, d, e, ourSend, theirSend);
-    return tip('You take', 'theirs', options(theirSend, c, 0));
+    return toTip('You take', 'theirs', options(theirSend, c, 0));
   }
   if (follow.theyTake === undefined) return null;
   // Round 2 works on the players left; the two round-1 games are already locked.
@@ -86,11 +98,11 @@ export function nextTip(
   const B = without(ALL, e, follow.weTake);
   const locked = game.pt(d, follow.weTake) + game.pt(follow.theyTake, e);
   if (follow.ourR2 === undefined) {
-    return tip('Your round-2 defender', 'ours', options(A, game.defenders(A, B), locked));
+    return toTip('Your round-2 defender', 'ours', options(A, game.defenders(A, B), locked));
   }
   if (follow.theirR2 === undefined) return null;
   const ourPair = without(A, follow.ourR2) as Pair;
   const theirPair = without(B, follow.theirR2) as Pair;
   const c = game.choices(A, B, follow.ourR2, follow.theirR2, ourPair, theirPair);
-  return tip('Round-2 take', 'theirs', options(theirPair, c, locked));
+  return toTip('Round-2 take', 'theirs', options(theirPair, c, locked));
 }

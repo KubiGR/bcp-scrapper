@@ -95,7 +95,9 @@ export function ChainFlow({
   // Our team's next decision, with what each option leads to.
   const tip = nextTip(analysis, d, e, send.pair, follow);
   const tipPlayers = tip?.side === 'ours' ? ours : theirs;
-  const mixed = !tip?.same && (tip?.options[1]?.chance ?? 0) >= CHAIN_MIN_SHARE;
+  // A real mix only when no option guarantees the expected score on its own.
+  const mixed =
+    !tip?.same && tip?.safe === null && (tip.options[1]?.chance ?? 0) >= CHAIN_MIN_SHARE;
   /** Our row of the defender grid against their likely defender. */
   const defenderExpected = (i: number) =>
     (analysis.defenderGrid[i] ?? []).reduce(
@@ -444,7 +446,9 @@ export function ChainFlow({
                   </Text>
                   {i === 0 && !mixed && !tip.same && (
                     <Text size="xs" c="teal">
-                      recommended
+                      {tip.safe === o.index
+                        ? `recommended · guarantees ${o.worst.toFixed(1)}`
+                        : 'recommended'}
                     </Text>
                   )}
                 </Group>
