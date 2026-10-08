@@ -22,6 +22,9 @@ type Line = string | { game: [number, number] };
 const CHIP_W = 44;
 /** The strip for the chip a game can become. */
 const ALT_W = 16;
+/** The ▲ ▼ that step through a column. */
+const ARROW_W = 22;
+const ARROW_H = 10;
 
 /** The chain for one pair of round-1 defenders, as a flow diagram; click a final box for its line-up. */
 export function ChainFlow({
@@ -181,8 +184,9 @@ export function ChainFlow({
   };
   const arrow = (box: ChainBox, to: ChainBox | undefined, dir: 'up' | 'down') => {
     if (!to) return null;
-    const x = box.x + box.w - (dir === 'up' ? 40 : 22);
-    const y = box.y + box.h - 20;
+    // Centred on the box's top edge (▲) or bottom edge (▼), half outside it.
+    const x = box.x + box.w / 2 - ARROW_W / 2;
+    const y = (dir === 'up' ? box.y : box.y + box.h) - ARROW_H / 2;
     const go = () => {
       jump(to);
     };
@@ -201,8 +205,8 @@ export function ChainFlow({
           }
         }}
       >
-        <rect x={x} y={y} width={16} height={14} rx={3} />
-        <text x={x + 8} y={y + 11} textAnchor="middle">
+        <rect x={x} y={y} width={ARROW_W} height={ARROW_H} rx={3} />
+        <text x={x + ARROW_W / 2} y={y + ARROW_H - 2} textAnchor="middle">
           {dir === 'up' ? '▲' : '▼'}
         </text>
       </g>

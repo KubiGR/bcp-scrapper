@@ -35,7 +35,8 @@ const WIDTHS = [160, 390, 330, 300];
 export const LINE = 16;
 const lines = (n: number) => 10 + n * LINE;
 const H = { root: lines(3), pick: lines(5), round2: lines(5), leaf: lines(4) };
-const GAP = 8;
+// Room between stacked boxes for the ▼ of one and the ▲ of the next (each 10 px, half outside).
+const GAP = 12;
 const lineWidth = (reach: number) => Math.max(1.5, reach * 14);
 
 /** Which unlikely choices (under 2% for that side) to show: ours, theirs. */

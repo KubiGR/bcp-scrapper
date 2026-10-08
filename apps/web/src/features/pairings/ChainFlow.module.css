@@ -22,7 +22,7 @@
 
 .arrow text {
   fill: var(--mantine-color-dimmed);
-  font-size: 9px;
+  font-size: 7px;
 }
 
 .arrow:hover rect,
