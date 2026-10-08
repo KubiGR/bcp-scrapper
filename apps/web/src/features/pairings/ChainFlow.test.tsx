@@ -336,7 +336,8 @@ describe('ChainFlow', () => {
     fireEvent.change(screen.getByLabelText('They send'), { target: { value: '1,2' } });
     const tip = within(screen.getByRole('region', { name: 'Tip' }));
     expect(tip.getByText(/You take/)).toBeInTheDocument();
-    expect(tip.getAllByText(/^(Death Guard|Orks)$/)).toHaveLength(2);
+    // Each option by name above its numbers, and again as a row of the answers table.
+    expect(tip.getAllByText(/^(Death Guard|Orks)$/)).toHaveLength(4);
     expect(tip.getAllByText(/expected [\d.]+ · best [\d.]+ · worst [\d.]+/)).toHaveLength(2);
     fireEvent.change(screen.getByLabelText('You take'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('They take'), { target: { value: '1' } });
@@ -416,5 +417,34 @@ describe('ChainFlow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
     expect(ours_).not.toBeChecked();
     expect(theirs_).not.toBeChecked();
+  });
+
+  it('the tip scores each option against each of their answers, and takes a read on them', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('They send'), { target: { value: '1,2' } });
+    const tip = within(screen.getByRole('region', { name: 'Tip' }));
+    // Their defender takes one of our attackers: Emperor's Children or Adepta Sororitas.
+    expect(
+      tip.getByRole('columnheader', { name: /^If they take Emperor's Children/ }),
+    ).toBeInTheDocument();
+    expect(
+      tip.getByRole('columnheader', { name: /^If they take Adepta Sororitas/ }),
+    ).toBeInTheDocument();
+    expect(tip.getAllByRole('row')).toHaveLength(3);
+    // No read yet: still one name to go with.
+    expect(tip.getByText(/^No read: /)).toBeInTheDocument();
+    fireEvent.change(tip.getByLabelText('Your read'), { target: { value: '1' } });
+    expect(
+      tip.getByText(/^If they take Adepta Sororitas: take (Death Guard|Orks) → [\d.]+$/),
+    ).toBeInTheDocument();
   });
 });

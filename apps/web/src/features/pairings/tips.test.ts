@@ -1,6 +1,6 @@
 import { analysePairing } from '@bcp/shared';
 import { describe, expect, it } from 'vitest';
-import { nextTip, toTip } from './tips';
+import { bestAgainst, breakEven, nextTip, safest, toTip } from './tips';
 
 const R1 = [
   [17, 10, 10, 7, 13],
@@ -10,6 +10,19 @@ const R1 = [
   [13, 7, 10, 2.5, 13],
 ];
 const analysis = analysePairing(R1);
+// The tip from the live pairing: Orks or Death Guard, against their defender taking X (1) or Y (4).
+const MIX = [
+  { index: 2, chance: 0.6, expected: 50.1, best: 50.6, worst: 49.2, scores: [50.6, 49.2] },
+  { index: 1, chance: 0.4, expected: 50.1, best: 51.5, worst: 49.5, scores: [49.5, 51.5] },
+];
+const MIX_REPLIES = {
+  side: 'ours' as const,
+  verb: 'take' as const,
+  list: [
+    { index: 1, chance: 0.68 },
+    { index: 4, chance: 0.32 },
+  ],
+};
 const { game } = analysis;
 const ALL = [0, 1, 2, 3, 4];
 // We defend World Eaters (3), they Custodes (4); we send Emperor's Children + Sororitas (1, 4).
@@ -72,17 +85,50 @@ describe('nextTip', () => {
 
   it('an option whose worst already reaches the expected score is recommended outright, not mixed', () => {
     // As the solver can return: a 92/8 mix although Chaos Daemons alone guarantees 51.5.
-    const tip = toTip('Your round-2 defender', 'ours', [
-      { index: 2, chance: 0.92, expected: 51.5, best: 52, worst: 51.5 },
-      { index: 4, chance: 0.08, expected: 51.5, best: 52, worst: 46 },
-    ]);
+    const tip = toTip(
+      'Your round-2 defender',
+      'ours',
+      [
+        { index: 2, chance: 0.92, expected: 51.5, best: 52, worst: 51.5, scores: [51.5, 52] },
+        { index: 4, chance: 0.08, expected: 51.5, best: 52, worst: 46, scores: [52, 46] },
+      ],
+      { side: 'theirs', verb: 'defend', list: [] },
+    );
     expect(tip.safe).toBe(2);
     expect(tip.options[0]?.index).toBe(2);
     // A real mix: every option can be punished below the expected score.
-    const mix = toTip('You take', 'theirs', [
-      { index: 2, chance: 0.6, expected: 50.1, best: 50.6, worst: 49.2 },
-      { index: 1, chance: 0.4, expected: 50.1, best: 51.5, worst: 49.5 },
-    ]);
+    const mix = toTip('You take', 'theirs', MIX, MIX_REPLIES);
     expect(mix.safe).toBeNull();
+  });
+
+  it('each option scores against each of their answers, named and with their odds', () => {
+    const tip = nextTip(analysis, d, e, [1, 4], { theirSend: '1,2' });
+    // Their defender takes one of our attackers: Emperor's Children (1) or Sororitas (4).
+    expect(tip?.replies.side).toBe('ours');
+    expect(tip?.replies.verb).toBe('take');
+    expect(tip?.replies.list.map((r) => r.index)).toEqual([1, 4]);
+    const c = game.choices(ALL, ALL, d, e, [1, 4], [1, 2]);
+    for (const o of tip?.options ?? []) expect(o.scores).toEqual(c.table[o.index === 1 ? 0 : 1]);
+    expect(tip?.replies.list.map((r) => r.chance)).toEqual(c.cols);
+  });
+
+  it('with a read on their answer, the option that does best against it', () => {
+    const tip = toTip('You take', 'theirs', MIX, MIX_REPLIES);
+    expect(bestAgainst(tip, 0)?.index).toBe(2); // they take X: Orks 50.6
+    expect(bestAgainst(tip, 1)?.index).toBe(1); // they take Y: Death Guard 51.5
+  });
+
+  it('the break-even for a two-way choice: above it one option, below it the other', () => {
+    const tip = toTip('You take', 'theirs', MIX, MIX_REPLIES);
+    const even = breakEven(tip);
+    // 50.6q + 49.2(1−q) = 49.5q + 51.5(1−q)  →  q = 2.3 / 3.4
+    expect(even?.share).toBeCloseTo(2.3 / 3.4, 9);
+    expect(even?.reply).toBe(1);
+    expect(even?.above).toBe(2);
+    expect(even?.below).toBe(1);
+  });
+
+  it('with no read, the safest single pick is the one with the highest worst case', () => {
+    expect(safest(toTip('You take', 'theirs', MIX, MIX_REPLIES))?.index).toBe(1); // Death Guard, 49.5
   });
 });
