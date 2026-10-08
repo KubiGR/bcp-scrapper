@@ -12,3 +12,4 @@ export * from './sync';
 export * from './bsdata';
 export * from './game-updates';
 export * from './mathhammer';
+export * from './pairing';
