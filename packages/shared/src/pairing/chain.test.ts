@@ -41,7 +41,7 @@ describe('pairingChain', () => {
     const dgOrks = chain.sends.find((s) => s.theirs.join() === '1,2');
     expect(dgOrks?.p).toBeCloseTo(0.657, 2);
     const likeliest = [...(dgOrks?.picks ?? [])].sort((a, b) => b.p - a.p)[0];
-    const nodes = likeliest?.round2 ?? [];
+    const nodes = (likeliest?.round2 ?? []).filter((n) => n.p > 0);
     expect(nodes.length).toBeGreaterThan(0);
     // Several round-2 defenders are equally good here (the game has more than one best strategy).
     for (const node of nodes) {
@@ -65,5 +65,17 @@ describe('pairingChain', () => {
             expect(theyTake.sort()).toEqual([...node.ours].sort());
           }
     }
+  });
+
+  it('their round-2 defender is never assumed: all three are shown against each of ours', () => {
+    for (const send of chain.sends)
+      for (const pick of send.picks) {
+        for (const d of new Set(pick.round2.map((n) => n.d))) {
+          const theirs = pick.round2.filter((n) => n.d === d).map((n) => n.e);
+          expect(theirs).toHaveLength(3);
+          expect(new Set(theirs).size).toBe(3);
+        }
+        expect(pick.round2.reduce((sum, n) => sum + n.p, 0) + pick.other).toBeCloseTo(1, 6);
+      }
   });
 });

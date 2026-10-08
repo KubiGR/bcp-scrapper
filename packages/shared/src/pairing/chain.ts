@@ -69,57 +69,59 @@ export function pairingChain(
   /**
    * The simultaneous picks: our defender takes `b` from `q`, theirs takes `a` from `p`. Their pick
    * is never assumed (real opponents rate the games their own way), so both of its options come
-   * with every pick of ours; `ours` is the chance of our pick, which is what folding goes by.
+   * with every pick of ours; `chance` is that of our pick, which is what folding goes by.
    */
   const picks = (A: number[], B: number[], dd: number, ee: number, p: Pair, q: Pair) => {
     const c = game.choices(A, B, dd, ee, p, q);
-    const out: { p: number; ours: number; b: number; a: number }[] = [];
+    const out: { p: number; chance: number; b: number; a: number }[] = [];
     q.forEach((b, bi) => {
-      const ours = c.rows[bi] ?? 0;
-      if (ours <= EPS) return;
+      const chance = c.rows[bi] ?? 0;
+      if (chance <= EPS) return;
       p.forEach((a, ai) => {
-        out.push({ p: ours * (c.cols[ai] ?? 0), ours, b, a });
+        out.push({ p: chance * (c.cols[ai] ?? 0), chance, b, a });
       });
     });
     return out;
   };
-  /** Folds our unlikely picks only: both of their answers to a pick we'd make stay. */
-  const foldPicks = <T extends { p: number; ours: number }>(items: T[]) => ({
-    kept: items.filter((x) => x.ours >= CHAIN_MIN_SHARE),
-    other: items.filter((x) => x.ours < CHAIN_MIN_SHARE).reduce((sum, x) => sum + x.p, 0),
+  /** Folds our unlikely choices only: every answer of theirs to a choice we'd make stays. */
+  const foldOurs = <T extends { p: number; chance: number }>(items: T[]) => ({
+    kept: items.filter((x) => x.chance >= CHAIN_MIN_SHARE),
+    other: items.filter((x) => x.chance < CHAIN_MIN_SHARE).reduce((sum, x) => sum + x.p, 0),
   });
 
-  const round2 = (A: number[], B: number[], locked: Pair[]): ChainRound2[] => {
+  const round2 = (A: number[], B: number[], locked: Pair[]) => {
     const t = game.defenders(A, B);
-    const nodes: ChainRound2[] = [];
+    const nodes: (ChainRound2 & { chance: number })[] = [];
+    // Like the picks: every defender of theirs answers each defender we'd put up.
     A.forEach((d2, di) => {
+      const chance = t.rows[di] ?? 0;
+      if (chance <= EPS) return;
       B.forEach((e2, ei) => {
-        const pde = (t.rows[di] ?? 0) * (t.cols[ei] ?? 0);
-        if (pde <= EPS) return;
         const ourPair = without(A, d2) as Pair;
         const theirPair = without(B, e2) as Pair;
-        const leaves = picks(A, B, d2, e2, ourPair, theirPair).map(({ p, ours, b, a }) => {
-          const last: Pair = [without(ourPair, a)[0] ?? 0, without(theirPair, b)[0] ?? 0];
-          const games: Pair[] = [...locked, [d2, b], [a, e2], last];
+        const leaves = picks(A, B, d2, e2, ourPair, theirPair).map((x) => {
+          const last: Pair = [without(ourPair, x.a)[0] ?? 0, without(theirPair, x.b)[0] ?? 0];
+          const games: Pair[] = [...locked, [d2, x.b], [x.a, e2], last];
           return {
-            p,
-            ours,
-            weTake: b,
-            theyTake: a,
+            p: x.p,
+            chance: x.chance,
+            weTake: x.b,
+            theyTake: x.a,
             last,
             games,
-            total: games.reduce((s, [x, y]) => s + pt(x, y), 0),
+            total: games.reduce((s, [g, h]) => s + pt(g, h), 0),
           };
         });
-        const { kept, other } = foldPicks(leaves);
+        const { kept, other } = foldOurs(leaves);
         nodes.push({
-          p: pde,
+          p: chance * (t.cols[ei] ?? 0),
+          chance,
           d: d2,
           e: e2,
           ours: ourPair,
           theirs: theirPair,
           value: weighted(leaves, (l) => l.total),
-          leaves: kept.map(({ ours: _ours, ...leaf }): ChainLeaf => leaf),
+          leaves: kept.map(({ chance: _chance, ...leaf }): ChainLeaf => leaf),
           other,
         });
       });
@@ -132,28 +134,28 @@ export function pairingChain(
   s.theirs.forEach((q, j) => {
     const pq = s.cols[j] ?? 0;
     if (pq <= EPS) return;
-    const pickNodes = picks(ALL, ALL, d, e, ours, q).map(({ p, ours: chance, b, a }) => {
+    const pickNodes = picks(ALL, ALL, d, e, ours, q).map(({ p, chance, b, a }) => {
       const nodes = round2(without(ALL, d, a), without(ALL, e, b), [
         [d, b],
         [a, e],
       ]);
-      const { kept, other } = fold(nodes);
+      const { kept, other } = foldOurs(nodes);
       return {
         p,
-        ours: chance,
+        chance,
         weTake: b,
         theyTake: a,
         value: weighted(nodes, (n) => n.value),
-        round2: kept,
+        round2: kept.map(({ chance: _chance, ...node }): ChainRound2 => node),
         other,
       };
     });
-    const { kept, other } = foldPicks(pickNodes);
+    const { kept, other } = foldOurs(pickNodes);
     sends.push({
       p: pq,
       theirs: q,
       value: weighted(pickNodes, (x) => x.value),
-      picks: kept.map(({ ours: _ours, ...pick }): ChainPick => pick),
+      picks: kept.map(({ chance: _chance, ...pick }): ChainPick => pick),
       other,
     });
   });
