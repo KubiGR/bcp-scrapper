@@ -168,11 +168,26 @@ describe('ChainFlow', () => {
       />,
     );
     const leaves = screen.getAllByRole('button', { name: /Final line-up/ }).length;
-    expect(screen.getAllByText(/^Total [\d.]+ · \d+% here · (<1|\d+)% overall$/)).toHaveLength(
+    expect(screen.getAllByText(/^Total [\d.]+ · (<1|\d+)% here · (<1|\d+)% overall$/)).toHaveLength(
       leaves,
     );
     const r2 = screen.getAllByText(/^R2: you /).length;
     expect(r2).toBeGreaterThan(0);
-    expect(screen.getAllByText(/^\d+% here · (<1|\d+)% overall$/)).toHaveLength(r2);
+    expect(screen.getAllByText(/^(<1|\d+)% here · (<1|\d+)% overall$/)).toHaveLength(r2);
+  });
+
+  it('each send names the attackers refused, who go back for round 2', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    const sends = screen.getAllByText(/^They send/).length;
+    expect(screen.getAllByText(/^Back to the pool: .+ \(you\) · .+ \(them\)$/)).toHaveLength(sends);
   });
 });

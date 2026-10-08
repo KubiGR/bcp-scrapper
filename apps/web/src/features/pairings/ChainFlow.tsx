@@ -60,6 +60,7 @@ export function ChainFlow({
         `They send ${s.theirs.map((t) => army(theirs[t])).join(' + ')} · ${pct(box.share)}`,
         { game: [d, p.weTake] },
         { game: [p.theyTake, e] },
+        `Back to the pool: ${army(ours[chain.ours.find((a) => a !== p.theyTake) ?? -1])} (you) · ${army(theirs[s.theirs.find((t) => t !== p.weTake) ?? -1])} (them)`,
         `→ ${box.value.toFixed(1)}`,
       ];
     if (box.kind === 'round2' && r)

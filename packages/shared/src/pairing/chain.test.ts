@@ -40,13 +40,30 @@ describe('pairingChain', () => {
   it('matches the spreadsheet analysis: DG + Orks 66%, then CSM defends in round 2 and every line-up totals 50', () => {
     const dgOrks = chain.sends.find((s) => s.theirs.join() === '1,2');
     expect(dgOrks?.p).toBeCloseTo(0.657, 2);
-    const nodes = dgOrks?.picks[0]?.round2 ?? [];
+    const likeliest = [...(dgOrks?.picks ?? [])].sort((a, b) => b.p - a.p)[0];
+    const nodes = likeliest?.round2 ?? [];
     expect(nodes.length).toBeGreaterThan(0);
     // Several round-2 defenders are equally good here (the game has more than one best strategy).
     for (const node of nodes) {
       expect(node.e).toBe(3);
-      for (const leaf of node.leaves) expect(leaf.total).toBeCloseTo(50, 9);
+      // The lines the model expects; their defender picking the other way can do better for us.
+      for (const leaf of node.leaves.filter((l) => l.p > 0)) expect(leaf.total).toBeCloseTo(50, 9);
     }
     expect(chain.value).toBeCloseTo(49.8, 1);
+  });
+
+  it('their defender’s pick is never assumed: both of its options are shown, however unlikely', () => {
+    for (const send of chain.sends) {
+      for (const weTake of new Set(send.picks.map((x) => x.weTake))) {
+        const theyTake = send.picks.filter((x) => x.weTake === weTake).map((x) => x.theyTake);
+        expect(theyTake.sort()).toEqual([...chain.ours].sort());
+      }
+      for (const pick of send.picks)
+        for (const node of pick.round2)
+          for (const weTake of new Set(node.leaves.map((l) => l.weTake))) {
+            const theyTake = node.leaves.filter((l) => l.weTake === weTake).map((l) => l.theyTake);
+            expect(theyTake.sort()).toEqual([...node.ours].sort());
+          }
+    }
   });
 });
