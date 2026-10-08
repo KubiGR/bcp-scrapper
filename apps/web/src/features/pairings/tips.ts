@@ -8,6 +8,8 @@ export interface TipOption {
   chance: number;
   /** Team score (of 100) if they play as the model expects. */
   expected: number;
+  /** Team score if they make the choice that is best for us. */
+  best: number;
   /** Team score if they make the choice that is worst for us. */
   worst: number;
 }
@@ -18,7 +20,7 @@ export interface Tip {
   side: 'ours' | 'theirs';
   /** Best first: the model's likeliest choice. */
   options: TipOption[];
-  /** Every option leads to the same score, expected and worst: take any. */
+  /** Every option leads to the same scores (expected, best and worst): take any. */
   same: boolean;
 }
 
@@ -30,7 +32,10 @@ const tip = (step: Tip['step'], side: Tip['side'], list: TipOption[]): Tip => {
   const same =
     top !== undefined &&
     list.every(
-      (o) => Math.abs(o.expected - top.expected) < SAME && Math.abs(o.worst - top.worst) < SAME,
+      (o) =>
+        Math.abs(o.expected - top.expected) < SAME &&
+        Math.abs(o.best - top.best) < SAME &&
+        Math.abs(o.worst - top.worst) < SAME,
     );
   return { step, side, options: list, same };
 };
@@ -49,6 +54,7 @@ function options(
         index,
         chance: t.rows[i] ?? 0,
         expected: locked + row.reduce((sum, v, j) => sum + v * (t.cols[j] ?? 0), 0),
+        best: locked + Math.max(...row),
         worst: locked + Math.min(...row),
       };
     })

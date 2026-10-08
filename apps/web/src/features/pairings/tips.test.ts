@@ -32,6 +32,7 @@ describe('nextTip', () => {
       const i = o.index === 1 ? 0 : 1;
       expect(o.expected).toBeCloseTo(expected[i] ?? 0, 9);
       expect(o.worst).toBeCloseTo(Math.min(...(c.table[i] ?? [])), 9);
+      expect(o.best).toBeCloseTo(Math.max(...(c.table[i] ?? [])), 9);
       expect(o.chance).toBeCloseTo(c.rows[i] ?? 0, 9);
     }
     expect(tip?.options[0]?.chance).toBe(Math.max(...(tip?.options.map((o) => o.chance) ?? [])));

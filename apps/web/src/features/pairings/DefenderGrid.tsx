@@ -9,7 +9,7 @@ const tint = (v: number) => {
   return `color-mix(in srgb, ${c} ${Math.round(Math.abs(t) * 60)}%, transparent)`;
 };
 
-/** Each row's summary: plain mean, weighted by their likely defender, and the worst square. */
+/** Each row's summary: plain mean, weighted by their likely defender, the best and worst square. */
 const SUMMARIES = [
   {
     key: 'average',
@@ -20,6 +20,11 @@ const SUMMARIES = [
     key: 'expected',
     title: 'Expected',
     help: 'Weighted by how likely each of their defenders is: what to expect from this defender.',
+  },
+  {
+    key: 'best',
+    title: 'Best',
+    help: 'The highest square: the most their defender can give away.',
   },
   { key: 'worst', title: 'Worst', help: 'The lowest square: the most their defender can hurt.' },
 ] as const;
@@ -65,6 +70,7 @@ export function DefenderGrid({
             const values = {
               average: row.reduce((sum, v) => sum + v, 0) / row.length,
               expected: row.reduce((sum, v, e) => sum + v * (analysis.theirDefender[e] ?? 0), 0),
+              best: Math.max(...row),
               worst: Math.min(...row),
             };
             return (

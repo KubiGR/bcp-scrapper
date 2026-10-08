@@ -337,7 +337,7 @@ describe('ChainFlow', () => {
     const tip = within(screen.getByRole('region', { name: 'Tip' }));
     expect(tip.getByText(/You take/)).toBeInTheDocument();
     expect(tip.getAllByText(/^(Death Guard|Orks)$/)).toHaveLength(2);
-    expect(tip.getAllByText(/expected [\d.]+ · worst [\d.]+/)).toHaveLength(2);
+    expect(tip.getAllByText(/expected [\d.]+ · best [\d.]+ · worst [\d.]+/)).toHaveLength(2);
     fireEvent.change(screen.getByLabelText('You take'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('They take'), { target: { value: '1' } });
     expect(

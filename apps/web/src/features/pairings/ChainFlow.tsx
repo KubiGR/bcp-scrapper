@@ -444,12 +444,13 @@ export function ChainFlow({
                   </Text>
                   {i === 0 && !mixed && !tip.same && (
                     <Text size="xs" c="teal">
-                      best
+                      recommended
                     </Text>
                   )}
                 </Group>
                 <Text size="xs" c="dimmed" className="numeric">
-                  expected {o.expected.toFixed(1)} · worst {o.worst.toFixed(1)}
+                  expected {o.expected.toFixed(1)} · best {o.best.toFixed(1)} · worst{' '}
+                  {o.worst.toFixed(1)}
                 </Text>
               </Stack>
             ))}
