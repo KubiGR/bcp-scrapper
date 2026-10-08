@@ -4,13 +4,14 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { Alert, Select, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Alert, Group, Select, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
-import { pairingQuery, pairingTeamsQuery, useSaveRating } from './pairing-queries';
+import { pairingQuery, pairingTeamsQuery, useSaveRating, useSaveRatings } from './pairing-queries';
+import { PasteFromSheet } from './PasteFromSheet';
 import { ChainFlow } from './ChainFlow';
 import { DefenderGrid } from './DefenderGrid';
 import { PairingSummary } from './PairingSummary';
@@ -69,6 +70,7 @@ function Matchup({
 }) {
   const data = useQuery(pairingQuery(eventId, teamId, opponentId));
   const save = useSaveRating(eventId, teamId, opponentId);
+  const saveAll = useSaveRatings(eventId, teamId, opponentId);
   if (data.isPending) return <Skeleton height={240} />;
   if (data.error) return <ErrorState error={data.error} onRetry={() => void data.refetch()} />;
   const { ours, theirs, ratings, problem } = data.data;
@@ -90,9 +92,12 @@ function Matchup({
               save.mutate({ playerId, opponentPlayerId, chip });
             }}
           />
-          <Text size="xs" c="dimmed">
-            {rated} of 25 rated{rated < 25 ? ' · unrated games count as Y (even)' : ''}
-          </Text>
+          <Group justify="space-between">
+            <Text size="xs" c="dimmed">
+              {rated} of 25 rated{rated < 25 ? ' · unrated games count as Y (even)' : ''}
+            </Text>
+            <PasteFromSheet ours={ours} theirs={theirs} onSave={saveAll.mutateAsync} />
+          </Group>
           {save.error && <Alert color="red">Couldn’t save: {save.error.message}</Alert>}
         </Stack>
       </Panel>

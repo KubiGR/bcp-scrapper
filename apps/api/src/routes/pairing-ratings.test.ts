@@ -134,4 +134,32 @@ describe('pairing routes', () => {
     expect((await get(`${BASE}/T-NOPE`)).status).toBe(404);
     expect((await put(`${BASE}/T-THEM/US0/TH0`, { chip: 'XX' })).status).toBe(400);
   });
+
+  it('saves many ratings at once (a pasted sheet), clearing the empty ones', async () => {
+    await seed();
+    await put(`${BASE}/T-THEM/US1/TH1`, { chip: 'RR' });
+    const response = await put(`${BASE}/T-THEM`, {
+      ratings: [
+        { playerId: 'US0', opponentPlayerId: 'TH0', chip: 'GG' },
+        { playerId: 'US1', opponentPlayerId: 'TH1', chip: null },
+      ],
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ saved: 2 });
+    const { body } = await get<PairingResponse>(`${BASE}/T-THEM`);
+    expect(body.ratings).toEqual([{ playerId: 'US0', opponentPlayerId: 'TH0', chip: 'GG' }]);
+  });
+
+  it('saves nothing when one rating names a player from the wrong team', async () => {
+    await seed();
+    const response = await put(`${BASE}/T-THEM`, {
+      ratings: [
+        { playerId: 'US0', opponentPlayerId: 'TH0', chip: 'GG' },
+        { playerId: 'TH0', opponentPlayerId: 'US0', chip: 'G' },
+      ],
+    });
+    expect(response.status).toBe(400);
+    const { body } = await get<PairingResponse>(`${BASE}/T-THEM`);
+    expect(body.ratings).toEqual([]);
+  });
 });

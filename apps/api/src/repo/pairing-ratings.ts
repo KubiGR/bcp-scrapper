@@ -108,3 +108,16 @@ export async function saveRating(
       set: { chip, updatedAt: new Date() },
     });
 }
+
+/** Several ratings for one team pairing (a pasted sheet), all or none. */
+export async function saveRatings(
+  db: Db,
+  key: { eventId: string; teamId: string; opponentTeamId: string },
+  list: { playerId: string; opponentPlayerId: string; chip: PairingChip | null }[],
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    for (const { playerId, opponentPlayerId, chip } of list) {
+      await saveRating(tx, { ...key, playerId, opponentPlayerId }, chip);
+    }
+  });
+}

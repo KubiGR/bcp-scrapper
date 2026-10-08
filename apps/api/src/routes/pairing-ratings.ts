@@ -1,12 +1,14 @@
 import {
   SaveRatingRequestSchema,
+  SaveRatingsRequestSchema,
   type PairingResponse,
   type PairingTeamsResponse,
+  type SaveRatingsResponse,
 } from '@bcp/shared';
 import { Hono } from 'hono';
 import type { Db } from '../db/client';
 import { NotFoundError, ValidationError } from '../errors';
-import { eventTeams, ratings, roster, saveRating } from '../repo/pairing-ratings';
+import { eventTeams, ratings, roster, saveRating, saveRatings } from '../repo/pairing-ratings';
 import { parseInput } from '../validation';
 import { requireEvent } from './require-event';
 import { requireJson } from './require-json';
@@ -32,6 +34,32 @@ export function pairingRoutes(deps: { db: Db }) {
       );
     }
     return { team, opponent, all };
+  };
+
+  /** Both rosters; refuses any player not on the right team. */
+  const checkPlayers = async (
+    eventId: string,
+    teamId: string,
+    opponentTeamId: string,
+    pairs: { playerId: string; opponentPlayerId: string }[],
+  ) => {
+    const { team, opponent } = await teamsOf(eventId, teamId, opponentTeamId);
+    if (!opponent) throw new NotFoundError('Opponent missing');
+    const [ours, theirs] = await Promise.all([
+      roster(db, eventId, team.id),
+      roster(db, eventId, opponent.id),
+    ]);
+    const bad = pairs.some(
+      ({ playerId, opponentPlayerId }) =>
+        !ours.some((p) => p.id === playerId) || !theirs.some((p) => p.id === opponentPlayerId),
+    );
+    if (bad) {
+      throw new ValidationError(
+        [{ path: 'playerId', message: 'Not a player of these teams' }],
+        'Those players are not on these teams',
+      );
+    }
+    return { eventId, teamId: team.id, opponentTeamId: opponent.id };
   };
 
   return new Hono()
@@ -70,27 +98,22 @@ export function pairingRoutes(deps: { db: Db }) {
           SaveRatingRequestSchema,
           await c.req.json<unknown>().catch(() => null),
         );
-        const { team, opponent } = await teamsOf(id, teamId, opponentTeamId);
-        if (!opponent) throw new NotFoundError('Opponent missing');
-        const [ours, theirs] = await Promise.all([
-          roster(db, id, team.id),
-          roster(db, id, opponent.id),
+        const key = await checkPlayers(id, teamId, opponentTeamId, [
+          { playerId, opponentPlayerId },
         ]);
-        if (
-          !ours.some((p) => p.id === playerId) ||
-          !theirs.some((p) => p.id === opponentPlayerId)
-        ) {
-          throw new ValidationError(
-            [{ path: 'playerId', message: 'Not a player of these teams' }],
-            'Those players are not on these teams',
-          );
-        }
-        await saveRating(
-          db,
-          { eventId: id, teamId: team.id, opponentTeamId: opponent.id, playerId, opponentPlayerId },
-          chip,
-        );
+        await saveRating(db, { ...key, playerId, opponentPlayerId }, chip);
         return c.json({ rating: { playerId, opponentPlayerId, chip } });
       },
-    );
+    )
+    .put('/events/:id/teams/:teamId/pairings/:opponentTeamId', requireJson, async (c) => {
+      const { id, teamId, opponentTeamId } = c.req.param();
+      const { ratings: list } = parseInput(
+        SaveRatingsRequestSchema,
+        await c.req.json<unknown>().catch(() => null),
+      );
+      const key = await checkPlayers(id, teamId, opponentTeamId, list);
+      await saveRatings(db, key, list);
+      const body: SaveRatingsResponse = { saved: list.length };
+      return c.json(body);
+    });
 }

@@ -2,6 +2,7 @@ import {
   PairingResponseSchema,
   PairingTeamsResponseSchema,
   SaveRatingResponseSchema,
+  SaveRatingsResponseSchema,
   type PairingChip,
   type PairingResponse,
 } from '@bcp/shared';
@@ -64,6 +65,23 @@ export function useSaveRating(eventId: string, teamId: string, opponentId: strin
     onError: (_error, _vars, context) => {
       if (context?.previous) client.setQueryData(key, context.previous);
     },
+    onSettled: () => client.invalidateQueries({ queryKey: key }),
+  });
+}
+
+/** Saves a pasted sheet: all its games in one request, then reloads the matrix. */
+export function useSaveRatings(eventId: string, teamId: string, opponentId: string) {
+  const client = useQueryClient();
+  const key = pairingQuery(eventId, teamId, opponentId).queryKey;
+  return useMutation({
+    mutationFn: (
+      ratings: { playerId: string; opponentPlayerId: string; chip: PairingChip | null }[],
+    ) =>
+      apiPut(
+        `${base(eventId, teamId)}/${encodeURIComponent(opponentId)}`,
+        { ratings },
+        SaveRatingsResponseSchema,
+      ),
     onSettled: () => client.invalidateQueries({ queryKey: key }),
   });
 }

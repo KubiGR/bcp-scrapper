@@ -45,3 +45,20 @@ export const SaveRatingRequestSchema = z.object({ chip: PairingChipSchema.nullab
 export const SaveRatingResponseSchema = z.object({
   rating: PairingRatingSchema.extend({ chip: PairingChipSchema.nullable() }),
 });
+
+/** PUT …/pairings/:opponentTeamId: several ratings at once (a pasted sheet); null clears one. */
+export const SaveRatingsRequestSchema = z.object({
+  ratings: z
+    .array(
+      z.object({
+        playerId: z.string(),
+        opponentPlayerId: z.string(),
+        chip: PairingChipSchema.nullable(),
+      }),
+    )
+    .min(1)
+    .max(25),
+});
+export type SaveRatingsRequest = z.infer<typeof SaveRatingsRequestSchema>;
+export const SaveRatingsResponseSchema = z.object({ saved: z.number().int() });
+export type SaveRatingsResponse = z.infer<typeof SaveRatingsResponseSchema>;
