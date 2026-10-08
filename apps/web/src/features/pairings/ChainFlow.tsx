@@ -16,6 +16,9 @@ import { chipStyle } from './chip-style';
 import { nextTip } from './tips';
 
 const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
+/** A score difference as "+0.8", "−1.2" or "0.0". */
+const signed = (x: number) =>
+  Math.abs(x) < 0.05 ? '0.0' : `${x > 0 ? '+' : '−'}${Math.abs(x).toFixed(1)}`;
 const pct = (x: number) => (x > 0 && x < 0.005 ? '<1%' : `${Math.round(x * 100)}%`);
 /** A step's share of the one before it, and of the whole chain. */
 const shares = (box: ChainBox) => `${pct(box.share)} here · ${pct(box.reach)} overall`;
@@ -36,6 +39,7 @@ export function ChainFlow({
   ratings,
   d,
   e,
+  onDefendersChange,
 }: {
   analysis: PairingAnalysis;
   ours: PairingRosterPlayer[];
@@ -43,6 +47,8 @@ export function ChainFlow({
   ratings: PairingRating[];
   d: number;
   e: number;
+  /** The round-1 defenders chosen in the follow bar (the grid's square follows). */
+  onDefendersChange?: (d: number, e: number) => void;
 }) {
   const options = analysis.attackerOptions(d, e);
   const best = options.reduce((x, y) => (y.share > x.share ? y : x));
@@ -66,6 +72,12 @@ export function ChainFlow({
   const tip = nextTip(analysis, d, e, send.pair, follow);
   const tipPlayers = tip?.side === 'ours' ? ours : theirs;
   const mixed = !tip?.same && (tip?.options[1]?.chance ?? 0) >= CHAIN_MIN_SHARE;
+  /** Our row of the defender grid against their likely defender. */
+  const defenderExpected = (i: number) =>
+    (analysis.defenderGrid[i] ?? []).reduce(
+      (sum, v, j) => sum + v * (analysis.theirDefender[j] ?? 0),
+      0,
+    );
   const pickNumber = (value: string) => (value === '' ? undefined : Number(value));
   const layout = layoutChain(chain);
   // The open line-up is remembered by its place in the chain, so it follows rating changes.
@@ -232,20 +244,6 @@ export function ChainFlow({
   return (
     <Stack gap="sm">
       <Group align="flex-end" gap="lg">
-        <NativeSelect
-          label="You send"
-          value={send.pair.join()}
-          onChange={(ev) => {
-            setSendKey(ev.currentTarget.value);
-            setFollow({});
-            setPickedId(null);
-          }}
-          data={options.map((o) => ({
-            value: o.pair.join(),
-            label: `${o.pair.map((a) => army(ours[a])).join(' + ')} (${o.likely.toFixed(1)}${o === best ? ', best' : ''})`,
-          }))}
-          maw={420}
-        />
         <Stack gap={6}>
           <Switch
             label="Show their unlikely choices"
@@ -270,6 +268,44 @@ export function ChainFlow({
           Follow the pairing
         </Text>
         <NativeSelect
+          label="You defend"
+          value={String(d)}
+          onChange={(ev) => {
+            onDefendersChange?.(Number(ev.currentTarget.value), e);
+          }}
+          data={ours.map((p, i) => ({
+            value: String(i),
+            label: `${army(p)} (expected ${defenderExpected(i).toFixed(1)})`,
+          }))}
+          w={250}
+        />
+        <NativeSelect
+          label="They defend"
+          value={String(e)}
+          onChange={(ev) => {
+            onDefendersChange?.(d, Number(ev.currentTarget.value));
+          }}
+          data={theirs.map((p, i) => ({
+            value: String(i),
+            label: `${army(p)} (${pct(analysis.theirDefender[i] ?? 0)})`,
+          }))}
+          w={250}
+        />
+        <NativeSelect
+          label="You send"
+          value={send.pair.join()}
+          onChange={(ev) => {
+            setSendKey(ev.currentTarget.value);
+            setFollow({});
+            setPickedId(null);
+          }}
+          data={options.map((o) => ({
+            value: o.pair.join(),
+            label: `${o.pair.map((a) => army(ours[a])).join(' + ')} (${o.likely.toFixed(1)}${o === best ? ', best' : ''})`,
+          }))}
+          w={360}
+        />
+        <NativeSelect
           label="They send"
           value={follow.theirSend ?? ''}
           onChange={(ev) => {
@@ -284,10 +320,10 @@ export function ChainFlow({
             { value: '', label: 'Any' },
             ...full.sends.map((x) => ({
               value: x.theirs.join(),
-              label: `${x.theirs.map((t) => army(theirs[t])).join(' + ')} (${pct(x.p)})`,
+              label: `${x.theirs.map((t) => army(theirs[t])).join(' + ')} · ${pct(x.p)} · ${x.value.toFixed(1)} for you (${signed(x.value - full.value)})`,
             })),
           ]}
-          w={300}
+          w={420}
         />
         <NativeSelect
           label="You take"

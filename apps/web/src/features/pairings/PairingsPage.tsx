@@ -168,6 +168,9 @@ function Analysis({
           ratings={ratings}
           d={selected.d}
           e={selected.e}
+          onDefendersChange={(d, e) => {
+            setSquare({ d, e });
+          }}
         />
       </Panel>
     </>

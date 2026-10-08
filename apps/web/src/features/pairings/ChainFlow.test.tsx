@@ -344,4 +344,40 @@ describe('ChainFlow', () => {
       within(screen.getByRole('region', { name: 'Tip' })).getByText(/Your round-2 defender/),
     ).toBeInTheDocument();
   });
+
+  it('the follow bar starts with both defenders and our send, and changing a defender is passed up', () => {
+    const onDefenders = vi.fn();
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+        onDefendersChange={onDefenders}
+      />,
+    );
+    expect(screen.getByLabelText('You defend')).toHaveValue('3');
+    expect(screen.getByLabelText('They defend')).toHaveValue('4');
+    fireEvent.change(screen.getByLabelText('They defend'), { target: { value: '0' } });
+    expect(onDefenders).toHaveBeenCalledWith(3, 0);
+  });
+
+  it('each send they could make says what it leaves us, against their best', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    const options = within(screen.getByLabelText('They send')).getAllByRole('option');
+    expect(options).toHaveLength(7);
+    for (const o of options.slice(1))
+      expect(o).toHaveTextContent(/ · (<1|\d+)% · [\d.]+ for you \((\+|−)?[\d.]+\)$/);
+  });
 });

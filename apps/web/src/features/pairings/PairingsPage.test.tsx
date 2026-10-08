@@ -76,4 +76,20 @@ describe('PairingsPage', () => {
     expect(column('Round 1 defenders')).not.toBeNull();
     expect(column('The chain')).toBeNull();
   });
+
+  it('the defenders in the follow bar and the grid square move together', () => {
+    renderWithProviders(<PairingsPage />);
+    paste(SHEET);
+    fireEvent.click(screen.getByRole('button', { name: 'Use these ratings' }));
+    fireEvent.change(screen.getByLabelText('You defend'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('They defend'), { target: { value: '1' } });
+    expect(
+      screen.getByRole('button', { name: /^You defend Chaos Daemons, they defend Death Guard/ }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(
+      screen.getByRole('button', { name: /^You defend Space Marines, they defend Orks/ }),
+    );
+    expect(screen.getByLabelText('You defend')).toHaveValue('0');
+    expect(screen.getByLabelText('They defend')).toHaveValue('2');
+  });
 });
