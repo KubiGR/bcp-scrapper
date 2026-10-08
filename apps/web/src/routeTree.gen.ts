@@ -22,6 +22,7 @@ import { Route as EventsEventIdRouteImport } from './routes/events.$eventId'
 import { Route as PlayersIndexRouteImport } from './routes/players.index'
 import { Route as PlayersUserIdRouteImport } from './routes/players.$userId'
 import { Route as EventsEventIdTeamsTeamIdRouteImport } from './routes/events.$eventId_.teams.$teamId'
+import { Route as EventsEventIdTeamsTeamIdPairingsRouteImport } from './routes/events.$eventId_.teams.$teamId_.pairings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -89,6 +90,12 @@ const EventsEventIdTeamsTeamIdRoute =
     path: '/events/$eventId/teams/$teamId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const EventsEventIdTeamsTeamIdPairingsRoute =
+  EventsEventIdTeamsTeamIdPairingsRouteImport.update({
+    id: '/events/$eventId_/teams/$teamId_/pairings',
+    path: '/events/$eventId/teams/$teamId/pairings',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/players/$userId': typeof PlayersUserIdRoute
   '/players/': typeof PlayersIndexRoute
   '/events/$eventId/teams/$teamId': typeof EventsEventIdTeamsTeamIdRoute
+  '/events/$eventId/teams/$teamId/pairings': typeof EventsEventIdTeamsTeamIdPairingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -119,6 +127,7 @@ export interface FileRoutesByTo {
   '/players/$userId': typeof PlayersUserIdRoute
   '/players': typeof PlayersIndexRoute
   '/events/$eventId/teams/$teamId': typeof EventsEventIdTeamsTeamIdRoute
+  '/events/$eventId/teams/$teamId/pairings': typeof EventsEventIdTeamsTeamIdPairingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -135,6 +144,7 @@ export interface FileRoutesById {
   '/players/$userId': typeof PlayersUserIdRoute
   '/players/': typeof PlayersIndexRoute
   '/events/$eventId_/teams/$teamId': typeof EventsEventIdTeamsTeamIdRoute
+  '/events/$eventId_/teams/$teamId_/pairings': typeof EventsEventIdTeamsTeamIdPairingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/players/$userId'
     | '/players/'
     | '/events/$eventId/teams/$teamId'
+    | '/events/$eventId/teams/$teamId/pairings'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/players/$userId'
     | '/players'
     | '/events/$eventId/teams/$teamId'
+    | '/events/$eventId/teams/$teamId/pairings'
   id:
     | '__root__'
     | '/'
@@ -182,6 +194,7 @@ export interface FileRouteTypes {
     | '/players/$userId'
     | '/players/'
     | '/events/$eventId_/teams/$teamId'
+    | '/events/$eventId_/teams/$teamId_/pairings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -198,6 +211,7 @@ export interface RootRouteChildren {
   PlayersUserIdRoute: typeof PlayersUserIdRoute
   PlayersIndexRoute: typeof PlayersIndexRoute
   EventsEventIdTeamsTeamIdRoute: typeof EventsEventIdTeamsTeamIdRoute
+  EventsEventIdTeamsTeamIdPairingsRoute: typeof EventsEventIdTeamsTeamIdPairingsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -293,6 +307,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsEventIdTeamsTeamIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/events/$eventId_/teams/$teamId_/pairings': {
+      id: '/events/$eventId_/teams/$teamId_/pairings'
+      path: '/events/$eventId/teams/$teamId/pairings'
+      fullPath: '/events/$eventId/teams/$teamId/pairings'
+      preLoaderRoute: typeof EventsEventIdTeamsTeamIdPairingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -310,6 +331,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlayersUserIdRoute: PlayersUserIdRoute,
   PlayersIndexRoute: PlayersIndexRoute,
   EventsEventIdTeamsTeamIdRoute: EventsEventIdTeamsTeamIdRoute,
+  EventsEventIdTeamsTeamIdPairingsRoute: EventsEventIdTeamsTeamIdPairingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

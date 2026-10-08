@@ -103,3 +103,20 @@ export function apiPatch<S extends z.ZodType>(
     schema,
   );
 }
+
+/** PUTs a JSON body. */
+export function apiPut<S extends z.ZodType>(
+  path: string,
+  body: unknown,
+  schema: S,
+): Promise<z.output<S>> {
+  return request(
+    path,
+    {
+      method: 'PUT',
+      headers: { accept: 'application/json', 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+    schema,
+  );
+}
