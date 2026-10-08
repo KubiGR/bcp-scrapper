@@ -1,14 +1,14 @@
 import { PAIRING_CHIPS, type PairingChip } from './scale';
 
 const CHIPS = new Set<string>(PAIRING_CHIPS);
-/** The sheet's modifiers: no chip of their own. */
-const MODIFIERS = new Set(['?', '+']);
+/** The sheet's modifiers and preferred-layout badges: no chip of their own. */
+const MODIFIERS = new Set(['?', '+', 'A', 'B', 'C']);
 
 type Cell = { kind: 'chip'; chip: PairingChip } | { kind: 'blank' } | { kind: 'unreadable' };
 
 /**
  * One copied cell: "GG", "g, y" (several chips: the first colour chip, as the sheet colours the
- * cell), "G, ?" (modifiers ignored), "" or only modifiers (unrated); anything else is unreadable.
+ * cell), "G, ?" or "G, A" (modifiers and layout badges ignored), "" or only modifiers (unrated); anything else is unreadable.
  */
 function readCell(text: string): Cell {
   const tokens = text

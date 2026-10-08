@@ -37,6 +37,15 @@ describe('parseSheetPaste', () => {
     expect(cells?.[4]).toEqual(['G', 'R', 'Y', 'RR', 'G']);
   });
 
+  it('ignores the preferred-layout badges A, B and C', () => {
+    const text = Array.from({ length: 5 }, () => row('G, A', 'B, Y', 'C', 'R, A, ?', 'G')).join(
+      '\n',
+    );
+    const { cells, unreadable } = parseSheetPaste(text);
+    expect(cells?.[0]).toEqual(['G', 'Y', null, 'R', 'G']);
+    expect(unreadable).toEqual([]);
+  });
+
   it('marks cells it cannot read', () => {
     const text = [
       row('GG', 'Y', 'Y', 'R', 'G'),
