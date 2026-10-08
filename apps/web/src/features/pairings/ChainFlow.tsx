@@ -9,7 +9,7 @@ import {
 import { Group, NativeSelect, Stack, Switch, Text } from '@mantine/core';
 import { useState } from 'react';
 import classes from './ChainFlow.module.css';
-import { LINE, layoutChain, likelyOnly, type ChainBox } from './chain-layout';
+import { LINE, layoutChain, visibleChain, type ChainBox } from './chain-layout';
 import { ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
 
@@ -44,9 +44,10 @@ export function ChainFlow({
   const [sendKey, setSendKey] = useState<string | null>(null);
   const send = options.find((o) => o.pair.join() === sendKey) ?? best;
   // Cheap: the solver already cached every stage the chain walks through.
-  const [showUnlikely, setShowUnlikely] = useState(true);
-  const full = pairingChain(analysis, d, e, send.pair);
-  const chain = showUnlikely ? full : likelyOnly(full);
+  // Their unlikely choices are shown by default (real opponents rate the games their own way);
+  // ours, which are ours to make, only when asked for: they multiply the chain's size.
+  const [shown, setShown] = useState({ ours: false, theirs: true });
+  const chain = visibleChain(pairingChain(analysis, d, e, send.pair), shown);
   const layout = layoutChain(chain);
   // The open line-up is remembered by its place in the chain, so it follows rating changes.
   const [pickedId, setPickedId] = useState<string | null>(null);
@@ -167,14 +168,24 @@ export function ChainFlow({
           }))}
           maw={420}
         />
-        <Switch
-          label="Show their unlikely choices"
-          description="Choices the model thinks they won't make (under 2%)"
-          checked={showUnlikely}
-          onChange={(ev) => {
-            setShowUnlikely(ev.currentTarget.checked);
-          }}
-        />
+        <Stack gap={6}>
+          <Switch
+            label="Show their unlikely choices"
+            description="Choices the model thinks they won't make (under 2%)"
+            checked={shown.theirs}
+            onChange={(ev) => {
+              setShown({ ...shown, theirs: ev.currentTarget.checked });
+            }}
+          />
+          <Switch
+            label="Show our unlikely choices"
+            description="Choices the model advises against (under 2%); makes the chain much longer"
+            checked={shown.ours}
+            onChange={(ev) => {
+              setShown({ ...shown, ours: ev.currentTarget.checked });
+            }}
+          />
+        </Stack>
       </Group>
       <div style={{ overflowX: 'auto' }}>
         <svg

@@ -1,4 +1,4 @@
-import { CHAIN_MIN_SHARE, type ChainLeaf, type PairingChain } from '@bcp/shared';
+import { CHAIN_MIN_SHARE, type ChainChances, type ChainLeaf, type PairingChain } from '@bcp/shared';
 
 export interface ChainBox {
   id: string;
@@ -38,11 +38,20 @@ const H = { root: lines(3), pick: lines(5), round2: lines(5), leaf: lines(4) };
 const GAP = 8;
 const lineWidth = (reach: number) => Math.max(1.5, reach * 14);
 
-/** Only the branches the model thinks likely (2% or more of the step before); the rest go to "other". */
-export function likelyOnly(chain: PairingChain): PairingChain {
-  const keep = <T extends { p: number }>(items: T[]) => ({
-    kept: items.filter((x) => x.p >= CHAIN_MIN_SHARE),
-    gone: items.filter((x) => x.p < CHAIN_MIN_SHARE).reduce((sum, x) => sum + x.p, 0),
+/** Which unlikely choices (under 2% for that side) to show: ours, theirs. */
+export interface ChainShown {
+  ours: boolean;
+  theirs: boolean;
+}
+
+/** The chain without the choices the model thinks unlikely, for the sides not asked for. */
+export function visibleChain(chain: PairingChain, shown: ChainShown): PairingChain {
+  const visible = (x: ChainChances) =>
+    (shown.ours || x.ourChance >= CHAIN_MIN_SHARE) &&
+    (shown.theirs || x.theirChance >= CHAIN_MIN_SHARE);
+  const keep = <T extends ChainChances>(items: T[]) => ({
+    kept: items.filter(visible),
+    gone: items.filter((x) => !visible(x)).reduce((sum, x) => sum + x.p, 0),
   });
   const sends = chain.sends.map((send) => {
     const picks = keep(send.picks);

@@ -246,4 +246,20 @@ describe('ChainFlow', () => {
     );
     expect(screen.getAllByRole('img', { name: /: Y, can become R$/ }).length).toBeGreaterThan(0);
   });
+
+  it('our own unlikely choices are hidden until asked for', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    const shown = screen.getAllByRole('button', { name: /Final line-up/ }).length;
+    fireEvent.click(screen.getByRole('switch', { name: /Show our unlikely choices/ }));
+    expect(screen.getAllByRole('button', { name: /Final line-up/ }).length).toBeGreaterThan(shown);
+  });
 });
