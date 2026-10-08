@@ -1,5 +1,5 @@
 import { analysePairing } from '@bcp/shared';
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/render';
 import { DefenderGrid } from './DefenderGrid';
@@ -60,5 +60,28 @@ describe('summary and defender grid', () => {
     expect(
       screen.getByRole('button', { name: /You defend World Eaters, they defend Adeptus Custodes/ }),
     ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('ends each row with its average, its expected value against their likely defender, and its worst', () => {
+    const analysis = analysePairing(R1);
+    renderWithProviders(
+      <DefenderGrid
+        analysis={analysis}
+        ours={ours}
+        theirs={theirs}
+        selected={{ d: 3, e: 4 }}
+        onSelect={() => {}}
+      />,
+    );
+    expect(screen.getByRole('columnheader', { name: 'Avg' })).toBeInTheDocument();
+    const row = analysis.defenderGrid[3] ?? [];
+    const avg = row.reduce((s, v) => s + v, 0) / row.length;
+    const expected = row.reduce((s, v, e) => s + v * (analysis.theirDefender[e] ?? 0), 0);
+    const cells = within(screen.getByRole('row', { name: /^World Eaters/ }));
+    expect(cells.getByLabelText('World Eaters average')).toHaveTextContent(avg.toFixed(1));
+    expect(cells.getByLabelText('World Eaters expected')).toHaveTextContent(expected.toFixed(1));
+    expect(cells.getByLabelText('World Eaters worst')).toHaveTextContent(
+      Math.min(...row).toFixed(1),
+    );
   });
 });
