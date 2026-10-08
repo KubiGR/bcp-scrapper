@@ -9,7 +9,7 @@ import { Button, Container, Group, Modal, Stack, Text, Title } from '@mantine/co
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { Panel } from '../../components/Panel';
-import type { ChainFollow } from './chain-layout';
+import type { ChainFollow, ChainShown } from './chain-layout';
 import { ChainFlow } from './ChainFlow';
 import { DefenderGrid } from './DefenderGrid';
 import { PairingSummary } from './PairingSummary';
@@ -69,6 +69,7 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
   };
   // The live pairing: kept here so the ratings table can grey out who's used up.
   const [follow, setFollow] = useState<ChainFollow>({});
+  const [shown, setShown] = useState<ChainShown>({ ours: false, theirs: true });
   const choose = (d: number, e: number) => {
     setSquare({ d, e });
     setFollow({});
@@ -137,7 +138,10 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
         onClear={() => {
           setSquare(null);
           setFollow({});
+          setShown({ ours: false, theirs: false });
         }}
+        shown={shown}
+        onShownChange={setShown}
       />
     </Stack>
   );
@@ -154,6 +158,8 @@ function Analysis({
   follow,
   onFollowChange,
   onClear,
+  shown,
+  onShownChange,
 }: {
   analysis: PairingAnalysis;
   ours: PairingRosterPlayer[];
@@ -164,6 +170,8 @@ function Analysis({
   follow: ChainFollow;
   onFollowChange: (follow: ChainFollow) => void;
   onClear: () => void;
+  shown: ChainShown;
+  onShownChange: (shown: ChainShown) => void;
 }) {
   return (
     <>
@@ -205,6 +213,8 @@ function Analysis({
           follow={follow}
           onFollowChange={onFollowChange}
           onClear={onClear}
+          shown={shown}
+          onShownChange={onShownChange}
         />
       </Panel>
     </>

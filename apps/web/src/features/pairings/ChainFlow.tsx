@@ -7,13 +7,21 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { Button, Group, NativeSelect, Paper, Stack, Switch, Text } from '@mantine/core';
+import { Button, Group, NativeSelect, Paper, Stack, Switch, Table, Text } from '@mantine/core';
 import { useEffect, useRef, useState } from 'react';
 import classes from './ChainFlow.module.css';
-import { LINE, layoutChain, visibleChain, type ChainBox, type ChainFollow } from './chain-layout';
+import {
+  LINE,
+  layoutChain,
+  visibleChain,
+  type ChainBox,
+  type ChainFollow,
+  type ChainShown,
+} from './chain-layout';
 import { ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
-import { nextTip } from './tips';
+import { bestAgainst, breakEven, nextTip, safest } from './tips';
+import { usedPlayers } from './used-players';
 
 const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
 /** A score difference as "+0.8", "−1.2" or "0.0". */
@@ -43,6 +51,8 @@ export function ChainFlow({
   follow: followProp,
   onFollowChange,
   onClear,
+  shown: shownProp,
+  onShownChange,
 }: {
   analysis: PairingAnalysis;
   ours: PairingRosterPlayer[];
@@ -57,6 +67,9 @@ export function ChainFlow({
   onFollowChange?: (follow: ChainFollow) => void;
   /** Clear was pressed: the page puts the round-1 defenders back to the suggested ones. */
   onClear?: () => void;
+  /** Which unlikely choices show, when the page keeps it (so it survives other defenders). */
+  shown?: ChainShown;
+  onShownChange?: (shown: ChainShown) => void;
 }) {
   const options = analysis.attackerOptions(d, e);
   const best = options.reduce((x, y) => (y.share > x.share ? y : x));
@@ -65,7 +78,9 @@ export function ChainFlow({
   // Cheap: the solver already cached every stage the chain walks through.
   // Their unlikely choices are shown by default (real opponents rate the games their own way);
   // ours, which are ours to make, only when asked for: they multiply the chain's size.
-  const [shown, setShown] = useState({ ours: false, theirs: true });
+  const [ownShown, setOwnShown] = useState<ChainShown>({ ours: false, theirs: true });
+  const shown = shownProp ?? ownShown;
+  const setShown = onShownChange ?? setOwnShown;
   const full = pairingChain(analysis, d, e, send.pair);
   // The live pairing so far; each choice depends on the ones before it.
   const [ownFollow, setOwnFollow] = useState<ChainFollow>({});
@@ -78,10 +93,47 @@ export function ChainFlow({
     { value: '', label: 'Any' },
     ...indexes.map((i) => ({ value: String(i), label: army(players[i]) })),
   ];
+  // Round 2's attackers: whoever is left besides the round-2 defenders.
+  const ourRound2Attackers = ALL.filter(
+    (a) => a !== d && a !== follow.theyTake && a !== follow.ourR2,
+  );
+  const theirRound2Attackers = ALL.filter(
+    (b) => b !== e && b !== follow.weTake && b !== follow.theirR2,
+  );
+  // Every pick in: the line-up is locked.
+  const locked = usedPlayers(d, e, follow).games;
+  const lineUp = locked.length === 5 ? locked : null;
   // Our team's next decision, with what each option leads to.
   const tip = nextTip(analysis, d, e, send.pair, follow);
   const tipPlayers = tip?.side === 'ours' ? ours : theirs;
-  const mixed = !tip?.same && (tip?.options[1]?.chance ?? 0) >= CHAIN_MIN_SHARE;
+  // Their answers to it, and a read on which one they'll make (forgotten when the decision moves on).
+  const replyPlayers = tip?.replies.side === 'ours' ? ours : theirs;
+  const tipKey = tip
+    ? `${tip.step}|${tip.options.map((o) => o.index).join()}|${tip.replies.list.map((r) => r.index).join()}`
+    : '';
+  const [readState, setReadState] = useState<{ key: string; reply: number } | null>(null);
+  const read = readState?.key === tipKey ? readState.reply : null;
+  const readBest = tip && read !== null ? bestAgainst(tip, read) : undefined;
+  const even = tip ? breakEven(tip) : null;
+  const safe = tip ? safest(tip) : undefined;
+  // A real mix only when no option guarantees the expected score on its own.
+  const mixed =
+    !tip?.same && tip?.safe === null && (tip.options[1]?.chance ?? 0) >= CHAIN_MIN_SHARE;
+  // With no read: the pick to go with, and when the model mixes, the safest single pick too.
+  const top = tip?.options[0];
+  const noRead =
+    !tip || !top
+      ? ''
+      : tip.same
+        ? 'No read: any of them'
+        : mixed
+          ? `No read: mix ${tip.options
+              .filter((o) => o.chance >= CHAIN_MIN_SHARE)
+              .map((o) => `${pct(o.chance)} ${army(tipPlayers[o.index])}`)
+              .join(
+                ' / ',
+              )} (averages ${top.expected.toFixed(1)} whatever they do). For one pick, ${army(tipPlayers[safe?.index ?? -1])}: never below ${(safe?.worst ?? 0).toFixed(1)}, up to ${(safe?.best ?? 0).toFixed(1)}.`
+          : `No read: take ${army(tipPlayers[top.index])} → ${top.expected.toFixed(1)}`;
   /** Our row of the defender grid against their likely defender. */
   const defenderExpected = (i: number) =>
     (analysis.defenderGrid[i] ?? []).reduce(
@@ -329,6 +381,7 @@ export function ChainFlow({
               theirDefender: follow.theirDefender,
               theyTake: follow.theyTake,
               ourR2: follow.ourR2,
+              theyTake2: follow.theyTake2,
               theirSend: v || undefined,
             });
           }}
@@ -350,6 +403,7 @@ export function ChainFlow({
               ...follow,
               weTake: pickNumber(ev.currentTarget.value),
               theirR2: undefined,
+              weTake2: undefined,
             });
           }}
           data={followOptions(theirs, theirSend ?? [])}
@@ -363,6 +417,7 @@ export function ChainFlow({
               ...follow,
               theyTake: pickNumber(ev.currentTarget.value),
               ourR2: undefined,
+              theyTake2: undefined,
             });
           }}
           data={followOptions(ours, send.pair)}
@@ -373,7 +428,11 @@ export function ChainFlow({
           disabled={follow.theyTake === undefined}
           value={follow.ourR2 === undefined ? '' : String(follow.ourR2)}
           onChange={(ev) => {
-            setFollow({ ...follow, ourR2: pickNumber(ev.currentTarget.value) });
+            setFollow({
+              ...follow,
+              ourR2: pickNumber(ev.currentTarget.value),
+              theyTake2: undefined,
+            });
           }}
           data={followOptions(
             ours,
@@ -386,7 +445,11 @@ export function ChainFlow({
           disabled={follow.weTake === undefined}
           value={follow.theirR2 === undefined ? '' : String(follow.theirR2)}
           onChange={(ev) => {
-            setFollow({ ...follow, theirR2: pickNumber(ev.currentTarget.value) });
+            setFollow({
+              ...follow,
+              theirR2: pickNumber(ev.currentTarget.value),
+              weTake2: undefined,
+            });
           }}
           data={followOptions(
             theirs,
@@ -394,14 +457,35 @@ export function ChainFlow({
           )}
           w={190}
         />
+        <NativeSelect
+          label="You take (round 2)"
+          disabled={follow.ourR2 === undefined || follow.theirR2 === undefined}
+          value={follow.weTake2 === undefined ? '' : String(follow.weTake2)}
+          onChange={(ev) => {
+            setFollow({ ...follow, weTake2: pickNumber(ev.currentTarget.value) });
+          }}
+          data={followOptions(theirs, theirRound2Attackers)}
+          w={190}
+        />
+        <NativeSelect
+          label="They take (round 2)"
+          disabled={follow.ourR2 === undefined || follow.theirR2 === undefined}
+          value={follow.theyTake2 === undefined ? '' : String(follow.theyTake2)}
+          onChange={(ev) => {
+            setFollow({ ...follow, theyTake2: pickNumber(ev.currentTarget.value) });
+          }}
+          data={followOptions(ours, ourRound2Attackers)}
+          w={190}
+        />
         <Button
           variant="default"
           onClick={() => {
-            // The whole pairing starts over: our best send, nothing followed, and (from the
-            // page) the suggested defenders.
+            // The whole pairing starts over: our best send, nothing followed, no unlikely
+            // choices shown, and (from the page) the suggested defenders.
             setSendKey(null);
             setPickedId(null);
             setFollow({});
+            setShown({ ours: false, theirs: false });
             onClear?.();
           }}
         >
@@ -429,16 +513,107 @@ export function ChainFlow({
                   </Text>
                   {i === 0 && !mixed && !tip.same && (
                     <Text size="xs" c="teal">
-                      best
+                      {tip.safe === o.index
+                        ? `recommended · guarantees ${o.worst.toFixed(1)}`
+                        : 'recommended'}
                     </Text>
                   )}
                 </Group>
                 <Text size="xs" c="dimmed" className="numeric">
-                  expected {o.expected.toFixed(1)} · worst {o.worst.toFixed(1)}
+                  expected {o.expected.toFixed(1)} · best {o.best.toFixed(1)} · worst{' '}
+                  {o.worst.toFixed(1)}
                 </Text>
               </Stack>
             ))}
           </Group>
+          <Table withRowBorders={false} fz="xs" mt="xs" w="auto" verticalSpacing={2}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th />
+                {tip.replies.list.map((r) => (
+                  <Table.Th key={r.index}>
+                    If they {tip.replies.verb} {army(replyPlayers[r.index])} ({pct(r.chance)})
+                  </Table.Th>
+                ))}
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {tip.options.map((o) => (
+                <Table.Tr key={o.index}>
+                  <Table.Th scope="row">{army(tipPlayers[o.index])}</Table.Th>
+                  {o.scores.map((v, j) => (
+                    <Table.Td
+                      key={j}
+                      className="numeric"
+                      style={{ fontWeight: bestAgainst(tip, j)?.index === o.index ? 700 : 400 }}
+                    >
+                      {v.toFixed(1)}
+                    </Table.Td>
+                  ))}
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+          {even && (
+            <Text size="xs" c="dimmed" mt={4}>
+              Take {army(tipPlayers[even.above])} if they {tip.replies.verb}{' '}
+              {army(replyPlayers[even.reply])} more than {pct(even.share)} of the time, otherwise{' '}
+              {army(tipPlayers[even.below])}. The model thinks{' '}
+              {pct(tip.replies.list[0]?.chance ?? 0)}.
+            </Text>
+          )}
+          <Group align="flex-end" gap="sm" mt="xs">
+            <NativeSelect
+              label="Your read"
+              size="xs"
+              value={read === null ? '' : String(read)}
+              onChange={(ev) => {
+                const v = ev.currentTarget.value;
+                setReadState(v === '' ? null : { key: tipKey, reply: Number(v) });
+              }}
+              data={[
+                { value: '', label: 'No read' },
+                ...tip.replies.list.map((r, j) => ({
+                  value: String(j),
+                  label: `They ${tip.replies.verb} ${army(replyPlayers[r.index])}`,
+                })),
+              ]}
+              w={280}
+            />
+            {read === null && (
+              <Text size="sm" fw={600}>
+                {noRead}
+              </Text>
+            )}
+            {readBest && read !== null && (
+              <Text size="sm" fw={600}>
+                If they {tip.replies.verb} {army(replyPlayers[tip.replies.list[read]?.index ?? -1])}
+                : take {army(tipPlayers[readBest.index])} →{' '}
+                {(readBest.scores[read] ?? 0).toFixed(1)}
+              </Text>
+            )}
+          </Group>
+        </Paper>
+      )}
+      {lineUp && (
+        <Paper role="region" aria-label="Final line-up" withBorder p="xs" radius="sm">
+          <Text size="sm" fw={600}>
+            Final line-up · total{' '}
+            {lineUp.reduce((sum, [a, b]) => sum + analysis.game.pt(a, b), 0).toFixed(1)}
+          </Text>
+          <Stack gap={2} mt={4}>
+            {lineUp.map(([a, b]) => {
+              const r = rating([a, b]);
+              return (
+                <Text key={`${String(a)}-${String(b)}`} size="sm">
+                  {army(ours[a])} v {army(theirs[b])} ·{' '}
+                  <span className="numeric">
+                    {ratingName(r?.chip ?? null, r?.alt)} ({analysis.game.pt(a, b).toFixed(1)})
+                  </span>
+                </Text>
+              );
+            })}
+          </Stack>
         </Paper>
       )}
       <div style={{ overflowX: 'auto' }}>

@@ -60,6 +60,9 @@ export interface ChainFollow {
   theyTake?: number;
   ourR2?: number;
   theirR2?: number;
+  /** Round 2: which of their two attackers our defender took, and which of ours theirs took. */
+  weTake2?: number;
+  theyTake2?: number;
 }
 
 /**
@@ -107,6 +110,8 @@ export function visibleChain(
   const theyTake = follow.theyTake !== undefined;
   const ourR2 = follow.ourR2 !== undefined;
   const theirR2 = follow.theirR2 !== undefined;
+  const weTake2 = follow.weTake2 !== undefined;
+  const theyTake2 = follow.theyTake2 !== undefined;
   const sends = sendsKept.kept.map((send) => {
     const picks = keep(
       send.picks.map((x) => given(x, weTake, theyTake)),
@@ -128,9 +133,11 @@ export function visibleChain(
           other: pick.other + round2.gone,
           round2: round2.kept.map((r2) => {
             const leaves = keep(
-              r2.leaves,
-              () => true,
-              (x) => visible(x, false, false),
+              r2.leaves.map((x) => given(x, weTake2, theyTake2)),
+              (x) =>
+                (!weTake2 || x.weTake === follow.weTake2) &&
+                (!theyTake2 || x.theyTake === follow.theyTake2),
+              (x) => visible(x, weTake2, theyTake2),
             );
             return { ...r2, other: r2.other + leaves.gone, leaves: leaves.kept };
           }),

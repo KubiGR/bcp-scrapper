@@ -83,5 +83,8 @@ describe('summary and defender grid', () => {
     expect(cells.getByLabelText('World Eaters worst')).toHaveTextContent(
       Math.min(...row).toFixed(1),
     );
+    expect(cells.getByLabelText('World Eaters best')).toHaveTextContent(
+      Math.max(...row).toFixed(1),
+    );
   });
 });

@@ -336,8 +336,9 @@ describe('ChainFlow', () => {
     fireEvent.change(screen.getByLabelText('They send'), { target: { value: '1,2' } });
     const tip = within(screen.getByRole('region', { name: 'Tip' }));
     expect(tip.getByText(/You take/)).toBeInTheDocument();
-    expect(tip.getAllByText(/^(Death Guard|Orks)$/)).toHaveLength(2);
-    expect(tip.getAllByText(/expected [\d.]+ · worst [\d.]+/)).toHaveLength(2);
+    // Each option by name above its numbers, and again as a row of the answers table.
+    expect(tip.getAllByText(/^(Death Guard|Orks)$/)).toHaveLength(4);
+    expect(tip.getAllByText(/expected [\d.]+ · best [\d.]+ · worst [\d.]+/)).toHaveLength(2);
     fireEvent.change(screen.getByLabelText('You take'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('They take'), { target: { value: '1' } });
     expect(
@@ -395,5 +396,80 @@ describe('ChainFlow', () => {
       />,
     );
     expect(screen.getByRole('button', { name: 'Clear' })).toBeEnabled();
+  });
+
+  it('Clear also turns both unlikely-choice switches off', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    const theirs_ = screen.getByRole('switch', { name: /Show their unlikely choices/ });
+    const ours_ = screen.getByRole('switch', { name: /Show our unlikely choices/ });
+    fireEvent.click(ours_);
+    expect(ours_).toBeChecked();
+    expect(theirs_).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(ours_).not.toBeChecked();
+    expect(theirs_).not.toBeChecked();
+  });
+
+  it('the tip scores each option against each of their answers, and takes a read on them', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('They send'), { target: { value: '1,2' } });
+    const tip = within(screen.getByRole('region', { name: 'Tip' }));
+    // Their defender takes one of our attackers: Emperor's Children or Adepta Sororitas.
+    expect(
+      tip.getByRole('columnheader', { name: /^If they take Emperor's Children/ }),
+    ).toBeInTheDocument();
+    expect(
+      tip.getByRole('columnheader', { name: /^If they take Adepta Sororitas/ }),
+    ).toBeInTheDocument();
+    expect(tip.getAllByRole('row')).toHaveLength(3);
+    // No read yet: still one name to go with.
+    expect(tip.getByText(/^No read: /)).toBeInTheDocument();
+    fireEvent.change(tip.getByLabelText('Your read'), { target: { value: '1' } });
+    expect(
+      tip.getByText(/^If they take Adepta Sororitas: take (Death Guard|Orks) → [\d.]+$/),
+    ).toBeInTheDocument();
+  });
+
+  it('locking in the round-2 picks gives the final line-up, and the tip is done', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('They send'), { target: { value: '1,2' } });
+    fireEvent.change(screen.getByLabelText('You take'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('They take'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('Your round-2 defender'), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText('Their round-2 defender'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('You take (round 2)'), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText('They take (round 2)'), { target: { value: '2' } });
+    expect(screen.queryByRole('region', { name: 'Tip' })).toBeNull();
+    const final = within(screen.getByRole('region', { name: 'Final line-up' }));
+    expect(final.getAllByText(/ v /)).toHaveLength(5);
+    // World Eaters v Orks 7, Emperor's Children v Custodes 11.5, SM v GK 17, CD v CSM 7, AS v DG 7.
+    expect(final.getByText(/^Final line-up · total 49\.5$/)).toBeInTheDocument();
   });
 });
