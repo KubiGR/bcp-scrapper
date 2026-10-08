@@ -134,7 +134,7 @@ describe('ChainFlow', () => {
     renderWithProviders(
       <ChainFlow analysis={analysis} ours={ours} theirs={theirs} ratings={ratings} d={3} e={4} />,
     );
-    const picks = screen.getAllByText(/^They send/).length;
+    const picks = screen.getAllByText(/^Back to the pool/).length;
     const leaves = screen.getAllByRole('button', { name: /Final line-up/ }).length;
     // Round 1 locks two games per pick; round 2 locks two more and leaves the last one.
     const games = screen.getAllByRole('img', { name: / v .*: G$/ });
@@ -187,7 +187,41 @@ describe('ChainFlow', () => {
         e={4}
       />,
     );
-    const sends = screen.getAllByText(/^They send/).length;
+    const sends = screen.getAllByText(/^They send .* · (<1|\d+)%$/).length;
     expect(screen.getAllByText(/^Back to the pool: .+ \(you\) · .+ \(them\)$/)).toHaveLength(sends);
+  });
+
+  it('round-2 boxes name the attackers each side sends', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    const r2 = screen.getAllByText(/^R2: you /).length;
+    expect(screen.getAllByText(/^They send \S.* \+ \S.*[^%]$/)).toHaveLength(r2);
+    expect(screen.getAllByText(/^You send .+ \+ .+$/)).toHaveLength(r2);
+  });
+
+  it('the toggle hides what the model thinks they won’t do', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    const all = screen.getAllByRole('button', { name: /Final line-up/ }).length;
+    expect(screen.getAllByText(/^0% here/).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('switch', { name: /Show their unlikely choices/ }));
+    expect(screen.getAllByRole('button', { name: /Final line-up/ }).length).toBeLessThan(all);
+    expect(screen.queryAllByText(/(^| )(0|<1)% here/)).toHaveLength(0);
   });
 });

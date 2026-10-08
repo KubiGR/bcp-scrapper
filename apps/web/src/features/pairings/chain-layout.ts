@@ -1,4 +1,4 @@
-import type { ChainLeaf, PairingChain } from '@bcp/shared';
+import { CHAIN_MIN_SHARE, type ChainLeaf, type PairingChain } from '@bcp/shared';
 
 export interface ChainBox {
   id: string;
@@ -29,14 +29,41 @@ export interface ChainLayout {
 }
 
 // Wide enough for the longest labels, e.g. "Emperor's Children v Adeptus Custodes" and its chip.
-const COLS = [0, 210, 630, 930];
-const WIDTHS = [180, 390, 270, 300];
+const COLS = [0, 210, 630, 990];
+const WIDTHS = [180, 390, 330, 300];
 /** Text lines are LINE apart; a pick lists its two games and who goes back, a final box its last three. */
 export const LINE = 16;
 const lines = (n: number) => 10 + n * LINE;
-const H = { root: lines(3), pick: lines(5), round2: lines(3), leaf: lines(4) };
+const H = { root: lines(3), pick: lines(5), round2: lines(5), leaf: lines(4) };
 const GAP = 8;
 const lineWidth = (reach: number) => Math.max(1.5, reach * 14);
+
+/** Only the branches the model thinks likely (2% or more of the step before); the rest go to "other". */
+export function likelyOnly(chain: PairingChain): PairingChain {
+  const keep = <T extends { p: number }>(items: T[]) => ({
+    kept: items.filter((x) => x.p >= CHAIN_MIN_SHARE),
+    gone: items.filter((x) => x.p < CHAIN_MIN_SHARE).reduce((sum, x) => sum + x.p, 0),
+  });
+  const sends = chain.sends.map((send) => {
+    const picks = keep(send.picks);
+    return {
+      ...send,
+      other: send.other + picks.gone,
+      picks: picks.kept.map((pick) => {
+        const round2 = keep(pick.round2);
+        return {
+          ...pick,
+          other: pick.other + round2.gone,
+          round2: round2.kept.map((r2) => {
+            const leaves = keep(r2.leaves);
+            return { ...r2, other: r2.other + leaves.gone, leaves: leaves.kept };
+          }),
+        };
+      }),
+    };
+  });
+  return { ...chain, sends };
+}
 
 /**
  * Left to right: our round-1 decision, their send with both picks, round-2 defenders, final line-up.

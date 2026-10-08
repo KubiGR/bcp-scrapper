@@ -6,10 +6,10 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { NativeSelect, Stack, Text } from '@mantine/core';
+import { Group, NativeSelect, Stack, Switch, Text } from '@mantine/core';
 import { useState } from 'react';
 import classes from './ChainFlow.module.css';
-import { LINE, layoutChain, type ChainBox } from './chain-layout';
+import { LINE, layoutChain, likelyOnly, type ChainBox } from './chain-layout';
 import { chipStyle } from './chip-style';
 
 const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
@@ -41,7 +41,9 @@ export function ChainFlow({
   const [sendKey, setSendKey] = useState<string | null>(null);
   const send = options.find((o) => o.pair.join() === sendKey) ?? best;
   // Cheap: the solver already cached every stage the chain walks through.
-  const chain = pairingChain(analysis, d, e, send.pair);
+  const [showUnlikely, setShowUnlikely] = useState(true);
+  const full = pairingChain(analysis, d, e, send.pair);
+  const chain = showUnlikely ? full : likelyOnly(full);
   const layout = layoutChain(chain);
   // The open line-up is remembered by its place in the chain, so it follows rating changes.
   const [pickedId, setPickedId] = useState<string | null>(null);
@@ -67,6 +69,8 @@ export function ChainFlow({
       return [
         `R2: you ${army(ours[r.d])}`,
         `them ${army(theirs[r.e])} → ${box.value.toFixed(1)}`,
+        `They send ${r.theirs.map((t) => army(theirs[t])).join(' + ')}`,
+        `You send ${r.ours.map((a) => army(ours[a])).join(' + ')}`,
         shares(box),
       ];
     const leaf = box.leaf;
@@ -121,19 +125,29 @@ export function ChainFlow({
   const byId = new Map(layout.nodes.map((n) => [n.id, n]));
   return (
     <Stack gap="sm">
-      <NativeSelect
-        label="You send"
-        value={send.pair.join()}
-        onChange={(ev) => {
-          setSendKey(ev.currentTarget.value);
-          setPickedId(null);
-        }}
-        data={options.map((o) => ({
-          value: o.pair.join(),
-          label: `${o.pair.map((a) => army(ours[a])).join(' + ')} (${o.likely.toFixed(1)}${o === best ? ', best' : ''})`,
-        }))}
-        maw={420}
-      />
+      <Group align="flex-end" gap="lg">
+        <NativeSelect
+          label="You send"
+          value={send.pair.join()}
+          onChange={(ev) => {
+            setSendKey(ev.currentTarget.value);
+            setPickedId(null);
+          }}
+          data={options.map((o) => ({
+            value: o.pair.join(),
+            label: `${o.pair.map((a) => army(ours[a])).join(' + ')} (${o.likely.toFixed(1)}${o === best ? ', best' : ''})`,
+          }))}
+          maw={420}
+        />
+        <Switch
+          label="Show their unlikely choices"
+          description="Choices the model thinks they won't make (under 2%)"
+          checked={showUnlikely}
+          onChange={(ev) => {
+            setShowUnlikely(ev.currentTarget.checked);
+          }}
+        />
+      </Group>
       <div style={{ overflowX: 'auto' }}>
         <svg
           role="group"
