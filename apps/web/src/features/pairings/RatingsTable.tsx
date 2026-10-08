@@ -1,14 +1,12 @@
 import {
-  CHIP_COLOURS,
   PAIRING_CHIPS,
   type PairingChip,
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
 import { Menu, Table, Text, Tooltip, UnstyledButton } from '@mantine/core';
+import { chipStyle } from './chip-style';
 import classes from './RatingsTable.module.css';
-
-const darkText = new Set<PairingChip>(['BOUYA', 'Y', 'R']);
 
 /** Our players (rows) against theirs (columns); click a cell to pick its chip. */
 export function RatingsTable({
@@ -78,14 +76,7 @@ export function RatingsTable({
                         <UnstyledButton
                           aria-label={`${o.name} v ${t.name}: ${chip ?? 'unrated'}`}
                           className={chip ? classes.cell : `${classes.cell} ${classes.unrated}`}
-                          style={
-                            chip
-                              ? {
-                                  background: CHIP_COLOURS[chip],
-                                  color: darkText.has(chip) ? '#111' : '#fff',
-                                }
-                              : undefined
-                          }
+                          style={chip ? chipStyle(chip) : undefined}
                         >
                           {chip ?? '–'}
                         </UnstyledButton>

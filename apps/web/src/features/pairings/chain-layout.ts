@@ -28,10 +28,13 @@ export interface ChainLayout {
   edges: ChainEdge[];
 }
 
-// Wide enough for the longest labels, e.g. "Adepta Sororitas v Adeptus Custodes → 50.0".
-const COLS = [0, 200, 500, 800];
-const WIDTHS = [180, 270, 270, 150];
-const H = { root: 64, pick: 64, round2: 48, leaf: 40 };
+// Wide enough for the longest labels, e.g. "Emperor's Children v Adeptus Custodes" and its chip.
+const COLS = [0, 210, 570, 870];
+const WIDTHS = [180, 330, 270, 300];
+/** Text lines are LINE apart; a pick lists its two games, a final box its last three. */
+export const LINE = 16;
+const lines = (n: number) => 10 + n * LINE;
+const H = { root: lines(3), pick: lines(4), round2: lines(2), leaf: lines(4) };
 const GAP = 8;
 const lineWidth = (reach: number) => Math.max(1.5, reach * 14);
 

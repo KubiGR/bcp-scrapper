@@ -135,6 +135,7 @@ function Analysis({
           analysis={analysis}
           ours={ours}
           theirs={theirs}
+          ratings={ratings}
           d={selected.d}
           e={selected.e}
         />

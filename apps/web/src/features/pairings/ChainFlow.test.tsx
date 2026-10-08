@@ -31,7 +31,14 @@ const theirs = names([
 describe('ChainFlow', () => {
   it('draws the chain for the best send and shows a line-up when a final box is clicked', () => {
     renderWithProviders(
-      <ChainFlow analysis={analysePairing(R1)} ours={ours} theirs={theirs} d={3} e={4} />,
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
     );
     expect(
       screen.getByRole('group', {
@@ -47,7 +54,14 @@ describe('ChainFlow', () => {
 
   it('redraws for another send', () => {
     renderWithProviders(
-      <ChainFlow analysis={analysePairing(R1)} ours={ours} theirs={theirs} d={3} e={4} />,
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
     );
     fireEvent.change(screen.getByLabelText('You send'), { target: { value: '0,1' } });
     expect(
@@ -57,7 +71,14 @@ describe('ChainFlow', () => {
 
   it('the final boxes are buttons a screen reader reaches, and Space picks without scrolling', () => {
     renderWithProviders(
-      <ChainFlow analysis={analysePairing(R1)} ours={ours} theirs={theirs} d={3} e={4} />,
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
     );
     // Inside role="img" everything is presentational: the diagram must be a group instead.
     const diagram = screen.getByRole('group', { name: /Chain: you defend World Eaters/ });
@@ -68,14 +89,28 @@ describe('ChainFlow', () => {
 
   it('the open line-up follows a rating change', () => {
     const { rerender } = renderWithProviders(
-      <ChainFlow analysis={analysePairing(R1)} ours={ours} theirs={theirs} d={3} e={4} />,
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
     );
     const fifties = screen.getAllByRole('button', { name: 'Final line-up, total 50.0' });
     fireEvent.click(fifties.at(-1) as Element);
     // World Eaters v Death Guard goes from Y (10) to G (13).
     const changed = R1.map((row, i) => row.map((v, j) => (i === 3 && j === 1 ? 13 : v)));
     rerender(
-      <ChainFlow analysis={analysePairing(changed)} ours={ours} theirs={theirs} d={3} e={4} />,
+      <ChainFlow
+        analysis={analysePairing(changed)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
     );
     const panel = within(screen.getByRole('region', { name: 'Line-up' }));
     const heading = panel.getByText(/^Line-up · Total/).textContent;
@@ -89,5 +124,35 @@ describe('ChainFlow', () => {
       9,
     );
     expect(shown).not.toBeCloseTo(50, 9);
+  });
+
+  it('each box lists the games formed at that step with their chips', () => {
+    const analysis = analysePairing(R1);
+    const ratings = ours.flatMap((o) =>
+      theirs.map((t) => ({ playerId: o.id, opponentPlayerId: t.id, chip: 'G' as const })),
+    );
+    renderWithProviders(
+      <ChainFlow analysis={analysis} ours={ours} theirs={theirs} ratings={ratings} d={3} e={4} />,
+    );
+    const picks = screen.getAllByText(/^They send/).length;
+    const leaves = screen.getAllByRole('button', { name: /Final line-up/ }).length;
+    // Round 1 locks two games per pick; round 2 locks two more and leaves the last one.
+    const games = screen.getAllByRole('img', { name: / v .*: G$/ });
+    expect(games).toHaveLength(picks * 2 + leaves * 3);
+    expect(screen.getAllByRole('img', { name: /^Adepta Sororitas v / }).length).toBeGreaterThan(0);
+  });
+
+  it('a game nobody rated says so', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    expect(screen.getAllByRole('img', { name: /: unrated$/ }).length).toBeGreaterThan(0);
   });
 });

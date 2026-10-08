@@ -2,27 +2,35 @@ import {
   pairingChain,
   type ChainLeaf,
   type PairingAnalysis,
+  type PairingChip,
+  type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
 import { NativeSelect, Stack, Text } from '@mantine/core';
 import { useState } from 'react';
 import classes from './ChainFlow.module.css';
-import { layoutChain, type ChainBox } from './chain-layout';
+import { LINE, layoutChain, type ChainBox } from './chain-layout';
+import { chipStyle } from './chip-style';
 
 const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
 const pct = (x: number) => `${Math.round(x * 100)}%`;
+/** A line of a box: text, or a game that forms at this step (drawn with its chip). */
+type Line = string | { game: [number, number] };
+const CHIP_W = 44;
 
 /** The chain for one pair of round-1 defenders, as a flow diagram; click a final box for its line-up. */
 export function ChainFlow({
   analysis,
   ours,
   theirs,
+  ratings,
   d,
   e,
 }: {
   analysis: PairingAnalysis;
   ours: PairingRosterPlayer[];
   theirs: PairingRosterPlayer[];
+  ratings: PairingRating[];
   d: number;
   e: number;
 }) {
@@ -36,7 +44,10 @@ export function ChainFlow({
   // The open line-up is remembered by its place in the chain, so it follows rating changes.
   const [pickedId, setPickedId] = useState<string | null>(null);
   const picked: ChainLeaf | null = layout.nodes.find((n) => n.id === pickedId)?.leaf ?? null;
-  const label = (box: ChainBox): string[] => {
+  const chipOf = new Map(ratings.map((r) => [`${r.playerId}|${r.opponentPlayerId}`, r.chip]));
+  const chip = ([a, b]: [number, number]): PairingChip | null =>
+    chipOf.get(`${ours[a]?.id ?? ''}|${theirs[b]?.id ?? ''}`) ?? null;
+  const label = (box: ChainBox): Line[] => {
     const s = box.ref.send !== undefined ? chain.sends[box.ref.send] : undefined;
     const p = s && box.ref.pick !== undefined ? s.picks[box.ref.pick] : undefined;
     const r = p && box.ref.r2 !== undefined ? p.round2[box.ref.r2] : undefined;
@@ -45,15 +56,63 @@ export function ChainFlow({
     if (box.kind === 'pick' && s && p)
       return [
         `They send ${s.theirs.map((t) => army(theirs[t])).join(' + ')} · ${pct(box.share)}`,
-        `${army(ours[d])} v ${army(theirs[p.weTake])}`,
-        `${army(ours[p.theyTake])} v ${army(theirs[e])} → ${box.value.toFixed(1)}`,
+        { game: [d, p.weTake] },
+        { game: [p.theyTake, e] },
+        `→ ${box.value.toFixed(1)}`,
       ];
     if (box.kind === 'round2' && r)
       return [
         `R2 · ${pct(r.p)}: you ${army(ours[r.d])}`,
         `them ${army(theirs[r.e])} → ${box.value.toFixed(1)}`,
       ];
-    return [`${box.leaf ? `Total ${box.value.toFixed(1)}` : ''} · ${pct(box.share)}`];
+    const leaf = box.leaf;
+    if (leaf && r)
+      return [
+        { game: [r.d, leaf.weTake] },
+        { game: [leaf.theyTake, r.e] },
+        { game: leaf.last },
+        `Total ${box.value.toFixed(1)} · ${pct(box.share)}`,
+      ];
+    return [];
+  };
+  const drawLine = (box: ChainBox, line: Line, i: number) => {
+    const y = box.y + 15 + i * LINE;
+    if (typeof line === 'string')
+      return (
+        <text key={i} x={box.x + 8} y={y} fill="var(--mantine-color-text)">
+          {line}
+        </text>
+      );
+    const [a, b] = line.game;
+    const c = chip(line.game);
+    const name = `${army(ours[a])} v ${army(theirs[b])}`;
+    const bx = box.x + box.w - 8 - CHIP_W;
+    return (
+      <g key={i} role="img" aria-label={`${name}: ${c ?? 'unrated'}`}>
+        <text x={box.x + 8} y={y} fill="var(--mantine-color-text)">
+          {name}
+        </text>
+        <rect
+          x={bx}
+          y={y - 11}
+          width={CHIP_W}
+          height={14}
+          rx={3}
+          fill={c ? chipStyle(c).background : 'none'}
+          stroke={c ? 'none' : 'var(--mantine-color-dimmed)'}
+          strokeDasharray={c ? undefined : '3 2'}
+        />
+        <text
+          x={bx + CHIP_W / 2}
+          y={y}
+          textAnchor="middle"
+          fontWeight={700}
+          fill={c ? chipStyle(c).color : 'var(--mantine-color-dimmed)'}
+        >
+          {c ?? '–'}
+        </text>
+      </g>
+    );
   };
   const byId = new Map(layout.nodes.map((n) => [n.id, n]));
   return (
@@ -120,16 +179,7 @@ export function ChainFlow({
                   fill={fill}
                   stroke={stroke}
                 />
-                {lines.map((line, i) => (
-                  <text
-                    key={i}
-                    x={box.x + 8}
-                    y={box.y + 15 + i * 14}
-                    fill="var(--mantine-color-text)"
-                  >
-                    {line}
-                  </text>
-                ))}
+                {lines.map((line, i) => drawLine(box, line, i))}
               </>
             );
             return leaf ? (
