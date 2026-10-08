@@ -358,8 +358,16 @@ describe('ChainFlow', () => {
         onDefendersChange={onDefenders}
       />,
     );
-    expect(screen.getByLabelText('You defend')).toHaveValue('3');
-    expect(screen.getByLabelText('They defend')).toHaveValue('4');
+    // Nothing chosen yet: the bar says what the chain is showing.
+    expect(screen.getByLabelText('You defend')).toHaveValue('');
+    expect(screen.getByLabelText('They defend')).toHaveValue('');
+    expect(screen.getByLabelText('You send')).toHaveValue('');
+    expect(screen.getByRole('option', { name: 'Any (showing World Eaters)' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', {
+        name: /^Any \(showing the best: Emperor's Children \+ Adepta Sororitas/,
+      }),
+    ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('They defend'), { target: { value: '0' } });
     expect(onDefenders).toHaveBeenCalledWith(3, 0);
   });

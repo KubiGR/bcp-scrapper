@@ -279,51 +279,76 @@ export function ChainFlow({
         </Text>
         <NativeSelect
           label="You defend"
-          value={String(d)}
+          value={follow.ourDefender ? String(d) : ''}
           onChange={(ev) => {
-            onDefendersChange?.(Number(ev.currentTarget.value), e);
-            setFollow({ defenders: true });
+            const v = ev.currentTarget.value;
+            if (v === '') {
+              setFollow({ ...follow, ourDefender: undefined });
+              return;
+            }
+            onDefendersChange?.(Number(v), e);
+            setFollow({ ourDefender: true, theirDefender: follow.theirDefender });
           }}
-          data={ours.map((p, i) => ({
-            value: String(i),
-            label: `${army(p)} (expected ${defenderExpected(i).toFixed(1)})`,
-          }))}
+          data={[
+            { value: '', label: `Any (showing ${army(ours[d])})` },
+            ...ours.map((p, i) => ({
+              value: String(i),
+              label: `${army(p)} (expected ${defenderExpected(i).toFixed(1)})`,
+            })),
+          ]}
           w={250}
         />
         <NativeSelect
           label="They defend"
-          value={String(e)}
+          value={follow.theirDefender ? String(e) : ''}
           onChange={(ev) => {
-            onDefendersChange?.(d, Number(ev.currentTarget.value));
-            setFollow({ defenders: true });
+            const v = ev.currentTarget.value;
+            if (v === '') {
+              setFollow({ ...follow, theirDefender: undefined });
+              return;
+            }
+            onDefendersChange?.(d, Number(v));
+            setFollow({ ourDefender: follow.ourDefender, theirDefender: true });
           }}
-          data={theirs.map((p, i) => ({
-            value: String(i),
-            label: `${army(p)} (${pct(analysis.theirDefender[i] ?? 0)})`,
-          }))}
+          data={[
+            { value: '', label: `Any (showing ${army(theirs[e])})` },
+            ...theirs.map((p, i) => ({
+              value: String(i),
+              label: `${army(p)} (${pct(analysis.theirDefender[i] ?? 0)})`,
+            })),
+          ]}
           w={250}
         />
         <NativeSelect
           label="You send"
-          value={send.pair.join()}
+          value={sendKey ?? ''}
           onChange={(ev) => {
-            setSendKey(ev.currentTarget.value);
+            setSendKey(ev.currentTarget.value || null);
             // What follows our send starts over; the defenders stay chosen.
-            setFollow(follow.defenders ? { defenders: true } : {});
+            setFollow({ ourDefender: follow.ourDefender, theirDefender: follow.theirDefender });
             setPickedId(null);
           }}
-          data={options.map((o) => ({
-            value: o.pair.join(),
-            label: `${o.pair.map((a) => army(ours[a])).join(' + ')} (${o.likely.toFixed(1)}${o === best ? ', best' : ''})`,
-          }))}
-          w={360}
+          data={[
+            {
+              value: '',
+              label: `Any (showing the best: ${best.pair.map((a) => army(ours[a])).join(' + ')} (${best.likely.toFixed(1)}))`,
+            },
+            ...options.map((o) => ({
+              value: o.pair.join(),
+              label: `${o.pair.map((a) => army(ours[a])).join(' + ')} (${o.likely.toFixed(1)}${o === best ? ', best' : ''})`,
+            })),
+          ]}
+          w={420}
         />
         <NativeSelect
           label="They send"
           value={follow.theirSend ?? ''}
           onChange={(ev) => {
             const v = ev.currentTarget.value;
+            // Their send decides what our defender can take, and so their round-2 defender.
             setFollow({
+              ourDefender: follow.ourDefender,
+              theirDefender: follow.theirDefender,
               theyTake: follow.theyTake,
               ourR2: follow.ourR2,
               theirSend: v || undefined,

@@ -86,11 +86,13 @@ describe('PairingsPage', () => {
     expect(
       screen.getByRole('button', { name: /^You defend Chaos Daemons, they defend Death Guard/ }),
     ).toHaveAttribute('aria-pressed', 'true');
+    // A grid square is planning: the bar goes back to nothing chosen, showing that square.
     fireEvent.click(
       screen.getByRole('button', { name: /^You defend Space Marines, they defend Orks/ }),
     );
-    expect(screen.getByLabelText('You defend')).toHaveValue('0');
-    expect(screen.getByLabelText('They defend')).toHaveValue('2');
+    expect(screen.getByLabelText('You defend')).toHaveValue('');
+    expect(screen.getByRole('option', { name: 'Any (showing Space Marines)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Any (showing Orks)' })).toBeInTheDocument();
   });
 
   it('players used up in the live pairing are greyed out in the table, their games marked', () => {
@@ -116,7 +118,7 @@ describe('PairingsPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('choosing the defenders in the follow bar greys them out; the grid alone does not, and Clear undoes it', () => {
+  it('each defender chosen in the follow bar greys out; the grid alone does not, and Clear undoes it', () => {
     renderWithProviders(<PairingsPage />);
     paste(SHEET);
     fireEvent.click(screen.getByRole('button', { name: 'Use these ratings' }));
@@ -132,7 +134,14 @@ describe('PairingsPage', () => {
       'data-used',
       'true',
     );
+    // Theirs only once chosen too.
+    expect(table().getByRole('columnheader', { name: /Orks/ })).not.toHaveAttribute('data-used');
+    fireEvent.change(screen.getByLabelText('They defend'), { target: { value: '2' } });
     expect(table().getByRole('columnheader', { name: /Orks/ })).toHaveAttribute(
+      'data-used',
+      'true',
+    );
+    expect(table().getByRole('rowheader', { name: /World Eaters/ })).toHaveAttribute(
       'data-used',
       'true',
     );
@@ -162,6 +171,7 @@ describe('PairingsPage', () => {
     other('You send');
     other('They send');
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(start).toEqual({ youDefend: '', theyDefend: '', youSend: '' });
     expect(screen.getByLabelText('You defend')).toHaveValue(start.youDefend);
     expect(screen.getByLabelText('They defend')).toHaveValue(start.theyDefend);
     expect(screen.getByLabelText('You send')).toHaveValue(start.youSend);
@@ -171,5 +181,20 @@ describe('PairingsPage', () => {
         .queryAllByRole('rowheader', { name: /./ })
         .filter((h) => h.hasAttribute('data-used')),
     ).toHaveLength(0);
+  });
+
+  it('choices made in the follow bar stay chosen as the pairing goes on', () => {
+    renderWithProviders(<PairingsPage />);
+    paste(SHEET);
+    fireEvent.click(screen.getByRole('button', { name: 'Use these ratings' }));
+    fireEvent.change(screen.getByLabelText('You defend'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('They defend'), { target: { value: '4' } });
+    fireEvent.change(screen.getByLabelText('You send'), { target: { value: '1,4' } });
+    fireEvent.change(screen.getByLabelText('They send'), { target: { value: '1,2' } });
+    fireEvent.change(screen.getByLabelText('You take'), { target: { value: '2' } });
+    expect(screen.getByLabelText('You defend')).toHaveValue('3');
+    expect(screen.getByLabelText('They defend')).toHaveValue('4');
+    expect(screen.getByLabelText('You send')).toHaveValue('1,4');
+    expect(screen.getByLabelText('They send')).toHaveValue('1,2');
   });
 });

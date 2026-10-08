@@ -7,8 +7,13 @@ describe('usedPlayers', () => {
     expect(usedPlayers(3, 4, {})).toEqual({ ours: [], theirs: [], games: [] });
   });
 
-  it('the round-1 defenders are used once the pairing is being followed', () => {
-    expect(usedPlayers(3, 4, { defenders: true })).toEqual({ ours: [3], theirs: [4], games: [] });
+  it('a round-1 defender is used once chosen, both once the pairing has moved on', () => {
+    expect(usedPlayers(3, 4, { ourDefender: true })).toEqual({ ours: [3], theirs: [], games: [] });
+    expect(usedPlayers(3, 4, { theirDefender: true })).toEqual({
+      ours: [],
+      theirs: [4],
+      games: [],
+    });
     expect(usedPlayers(3, 4, { theirSend: '1,2' })).toEqual({ ours: [3], theirs: [4], games: [] });
   });
 
