@@ -65,4 +65,15 @@ describe('PairingsPage', () => {
     expect(screen.getByText(/^25 of 25 rated/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Player 1 v Opponent 1: G' })).toBeInTheDocument();
   });
+
+  it('only the chain spans the full width; the rest keeps the usual centred column', () => {
+    renderWithProviders(<PairingsPage />);
+    paste(SHEET);
+    fireEvent.click(screen.getByRole('button', { name: 'Use these ratings' }));
+    const column = (text: string) => screen.getByText(text).closest('.mantine-Container-root');
+    expect(column('Rate the games')).not.toBeNull();
+    expect(column('Summary')).not.toBeNull();
+    expect(column('Round 1 defenders')).not.toBeNull();
+    expect(column('The chain')).toBeNull();
+  });
 });
