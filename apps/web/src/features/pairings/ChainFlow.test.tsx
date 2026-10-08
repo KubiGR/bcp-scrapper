@@ -362,10 +362,12 @@ describe('ChainFlow', () => {
     expect(screen.getByLabelText('You defend')).toHaveValue('');
     expect(screen.getByLabelText('They defend')).toHaveValue('');
     expect(screen.getByLabelText('You send')).toHaveValue('');
-    expect(screen.getByRole('option', { name: 'Any (showing World Eaters)' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'Not set · suggested World Eaters' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('option', {
-        name: /^Any \(showing the best: Emperor's Children \+ Adepta Sororitas/,
+        name: /^Not set · best: Emperor's Children \+ Adepta Sororitas/,
       }),
     ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('They defend'), { target: { value: '0' } });

@@ -91,8 +91,10 @@ describe('PairingsPage', () => {
       screen.getByRole('button', { name: /^You defend Space Marines, they defend Orks/ }),
     );
     expect(screen.getByLabelText('You defend')).toHaveValue('');
-    expect(screen.getByRole('option', { name: 'Any (showing Space Marines)' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Any (showing Orks)' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'Not set · suggested Space Marines' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Not set · likely Orks' })).toBeInTheDocument();
   });
 
   it('players used up in the live pairing are greyed out in the table, their games marked', () => {

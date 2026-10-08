@@ -290,13 +290,13 @@ export function ChainFlow({
             setFollow({ ourDefender: true, theirDefender: follow.theirDefender });
           }}
           data={[
-            { value: '', label: `Any (showing ${army(ours[d])})` },
+            { value: '', label: `Not set · suggested ${army(ours[d])}` },
             ...ours.map((p, i) => ({
               value: String(i),
               label: `${army(p)} (expected ${defenderExpected(i).toFixed(1)})`,
             })),
           ]}
-          w={250}
+          w={300}
         />
         <NativeSelect
           label="They defend"
@@ -311,13 +311,13 @@ export function ChainFlow({
             setFollow({ ourDefender: follow.ourDefender, theirDefender: true });
           }}
           data={[
-            { value: '', label: `Any (showing ${army(theirs[e])})` },
+            { value: '', label: `Not set · likely ${army(theirs[e])}` },
             ...theirs.map((p, i) => ({
               value: String(i),
               label: `${army(p)} (${pct(analysis.theirDefender[i] ?? 0)})`,
             })),
           ]}
-          w={250}
+          w={300}
         />
         <NativeSelect
           label="You send"
@@ -331,14 +331,14 @@ export function ChainFlow({
           data={[
             {
               value: '',
-              label: `Any (showing the best: ${best.pair.map((a) => army(ours[a])).join(' + ')} (${best.likely.toFixed(1)}))`,
+              label: `Not set · best: ${best.pair.map((a) => army(ours[a])).join(' + ')} (${best.likely.toFixed(1)})`,
             },
             ...options.map((o) => ({
               value: o.pair.join(),
               label: `${o.pair.map((a) => army(ours[a])).join(' + ')} (${o.likely.toFixed(1)}${o === best ? ', best' : ''})`,
             })),
           ]}
-          w={420}
+          w={500}
         />
         <NativeSelect
           label="They send"
