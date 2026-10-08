@@ -1,6 +1,7 @@
 import {
   analysePairing,
   pointsMatrix,
+  type PairingAnalysis,
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
@@ -8,12 +9,14 @@ import { Button, Container, Group, Modal, Stack, Text, Title } from '@mantine/co
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { Panel } from '../../components/Panel';
+import type { ChainFollow } from './chain-layout';
 import { ChainFlow } from './ChainFlow';
 import { DefenderGrid } from './DefenderGrid';
 import { PairingSummary } from './PairingSummary';
 import { PasteBox } from './PasteBox';
 import { RatingsTable } from './RatingsTable';
 import { altPlan, ratePlan, readPlan, writePlan, type SheetPlan } from './sheet-plan';
+import { usedPlayers } from './used-players';
 
 /** The page is full width for the chain; everything else keeps the usual centred column. */
 const Column = ({ children }: { children: ReactNode }) => (
@@ -28,7 +31,6 @@ const Column = ({ children }: { children: ReactNode }) => (
  */
 export function PairingsPage() {
   const [plan, setPlan] = useState<SheetPlan | null>(readPlan);
-  const [pasting, setPasting] = useState(false);
   const use = (next: SheetPlan) => {
     setPlan(next);
     writePlan(next);
@@ -45,12 +47,32 @@ export function PairingsPage() {
       </Column>
     );
   }
+  return <Planner plan={plan} use={use} />;
+}
+
+/** The pasted sheet, its analysis and a live pairing being followed. */
+function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => void }) {
+  const [pasting, setPasting] = useState(false);
   const { ours, theirs, ratings } = plan;
-  const { rated } = pointsMatrix(
+  const { points, rated } = pointsMatrix(
     ours.map((p) => p.id),
     theirs.map((p) => p.id),
     ratings,
   );
+  const key = JSON.stringify(points);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` stands for `points` (same numbers, new array each render).
+  const analysis = useMemo(() => analysePairing(points), [key]);
+  const [square, setSquare] = useState<{ d: number; e: number } | null>(null);
+  const selected = square ?? {
+    d: analysis.safeDefender.index,
+    e: analysis.theirDefender.indexOf(Math.max(...analysis.theirDefender)),
+  };
+  // The live pairing: kept here so the ratings table can grey out who's used up.
+  const [follow, setFollow] = useState<ChainFollow>({});
+  const choose = (d: number, e: number) => {
+    setSquare({ d, e });
+    setFollow({});
+  };
   return (
     <Stack gap="lg">
       <Column>
@@ -63,6 +85,7 @@ export function PairingsPage() {
               ours={ours}
               theirs={theirs}
               ratings={ratings}
+              used={usedPlayers(selected.d, selected.e, follow)}
               onRate={(playerId, opponentPlayerId, chip) => {
                 use(ratePlan(plan, playerId, opponentPlayerId, chip));
               }}
@@ -102,34 +125,40 @@ export function PairingsPage() {
           }}
         />
       </Modal>
-      <Analysis ours={ours} theirs={theirs} ratings={ratings} />
+      <Analysis
+        analysis={analysis}
+        ours={ours}
+        theirs={theirs}
+        ratings={ratings}
+        selected={selected}
+        onSelect={choose}
+        follow={follow}
+        onFollowChange={setFollow}
+      />
     </Stack>
   );
 }
 
 /** Everything worked out from the ratings: re-solved whenever a chip changes. */
 function Analysis({
+  analysis,
   ours,
   theirs,
   ratings,
+  selected,
+  onSelect,
+  follow,
+  onFollowChange,
 }: {
+  analysis: PairingAnalysis;
   ours: PairingRosterPlayer[];
   theirs: PairingRosterPlayer[];
   ratings: PairingRating[];
+  selected: { d: number; e: number };
+  onSelect: (d: number, e: number) => void;
+  follow: ChainFollow;
+  onFollowChange: (follow: ChainFollow) => void;
 }) {
-  const { points } = pointsMatrix(
-    ours.map((p) => p.id),
-    theirs.map((p) => p.id),
-    ratings,
-  );
-  const key = JSON.stringify(points);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` stands for `points` (same numbers, new array each render).
-  const analysis = useMemo(() => analysePairing(points), [key]);
-  const [square, setSquare] = useState<{ d: number; e: number } | null>(null);
-  const selected = square ?? {
-    d: analysis.safeDefender.index,
-    e: analysis.theirDefender.indexOf(Math.max(...analysis.theirDefender)),
-  };
   return (
     <>
       <Column>
@@ -144,9 +173,7 @@ function Analysis({
             ours={ours}
             theirs={theirs}
             selected={selected}
-            onSelect={(d, e) => {
-              setSquare({ d, e });
-            }}
+            onSelect={onSelect}
           />
         </Panel>
       </Column>
@@ -168,9 +195,9 @@ function Analysis({
           ratings={ratings}
           d={selected.d}
           e={selected.e}
-          onDefendersChange={(d, e) => {
-            setSquare({ d, e });
-          }}
+          onDefendersChange={onSelect}
+          follow={follow}
+          onFollowChange={onFollowChange}
         />
       </Panel>
     </>

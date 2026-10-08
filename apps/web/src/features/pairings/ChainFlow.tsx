@@ -40,6 +40,8 @@ export function ChainFlow({
   d,
   e,
   onDefendersChange,
+  follow: followProp,
+  onFollowChange,
 }: {
   analysis: PairingAnalysis;
   ours: PairingRosterPlayer[];
@@ -49,6 +51,9 @@ export function ChainFlow({
   e: number;
   /** The round-1 defenders chosen in the follow bar (the grid's square follows). */
   onDefendersChange?: (d: number, e: number) => void;
+  /** The live pairing, when the page keeps it (the ratings table greys out who's used). */
+  follow?: ChainFollow;
+  onFollowChange?: (follow: ChainFollow) => void;
 }) {
   const options = analysis.attackerOptions(d, e);
   const best = options.reduce((x, y) => (y.share > x.share ? y : x));
@@ -60,7 +65,9 @@ export function ChainFlow({
   const [shown, setShown] = useState({ ours: false, theirs: true });
   const full = pairingChain(analysis, d, e, send.pair);
   // The live pairing so far; each choice depends on the ones before it.
-  const [follow, setFollow] = useState<ChainFollow>({});
+  const [ownFollow, setOwnFollow] = useState<ChainFollow>({});
+  const follow = followProp ?? ownFollow;
+  const setFollow = onFollowChange ?? setOwnFollow;
   const chain = visibleChain(full, shown, follow);
   const ALL = [0, 1, 2, 3, 4];
   const theirSend = full.sends.find((x) => x.theirs.join() === follow.theirSend)?.theirs;

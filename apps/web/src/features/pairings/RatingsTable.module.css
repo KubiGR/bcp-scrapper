@@ -31,3 +31,13 @@
   color: var(--mantine-color-dimmed);
   background: transparent;
 }
+
+/* A live pairing: players used up fade, the games locked in stand out. */
+.used {
+  opacity: 0.3;
+}
+.locked {
+  outline: 2px solid var(--mantine-color-text);
+  outline-offset: 1px;
+  border-radius: 4px;
+}

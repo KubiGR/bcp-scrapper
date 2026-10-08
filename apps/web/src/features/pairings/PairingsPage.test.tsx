@@ -92,4 +92,27 @@ describe('PairingsPage', () => {
     expect(screen.getByLabelText('You defend')).toHaveValue('0');
     expect(screen.getByLabelText('They defend')).toHaveValue('2');
   });
+
+  it('players used up in the live pairing are greyed out in the table, their games marked', () => {
+    renderWithProviders(<PairingsPage />);
+    paste(SHEET);
+    fireEvent.click(screen.getByRole('button', { name: 'Use these ratings' }));
+    // World Eaters defends against Custodes.
+    fireEvent.change(screen.getByLabelText('You defend'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('They defend'), { target: { value: '4' } });
+    fireEvent.change(screen.getByLabelText('They send'), { target: { value: '1,2' } });
+    fireEvent.change(screen.getByLabelText('You take'), { target: { value: '2' } });
+    const table = within(screen.getByRole('table', { name: 'Ratings' }));
+    expect(table.getByRole('rowheader', { name: /World Eaters/ })).toHaveAttribute(
+      'data-used',
+      'true',
+    );
+    expect(table.getByRole('columnheader', { name: /Orks/ })).toHaveAttribute('data-used', 'true');
+    expect(table.getByRole('rowheader', { name: /Space Marines/ })).not.toHaveAttribute(
+      'data-used',
+    );
+    expect(
+      table.getByRole('button', { name: /^World Eaters v John: .*, locked in$/ }),
+    ).toBeInTheDocument();
+  });
 });
