@@ -121,7 +121,7 @@ export function ChainFlow({
               .map((o) => `${pct(o.chance)} ${army(tipPlayers[o.index])}`)
               .join(
                 ' / ',
-              )} (averages ${top.expected.toFixed(1)} whatever they do). For one pick, ${army(tipPlayers[safe?.index ?? -1])} is the safer: never below ${(safe?.worst ?? 0).toFixed(1)}.`
+              )} (averages ${top.expected.toFixed(1)} whatever they do). For one pick, ${army(tipPlayers[safe?.index ?? -1])}: never below ${(safe?.worst ?? 0).toFixed(1)}, up to ${(safe?.best ?? 0).toFixed(1)}.`
           : `No read: take ${army(tipPlayers[top.index])} → ${top.expected.toFixed(1)}`;
   /** Our row of the defender grid against their likely defender. */
   const defenderExpected = (i: number) =>

@@ -29,7 +29,7 @@ export interface Tip {
   step: 'You take' | 'Your round-2 defender' | 'Round-2 take';
   /** Whose players the options are: their attackers to take, or our round-2 defenders. */
   side: 'ours' | 'theirs';
-  /** Best first: the model's likeliest choice. */
+  /** Best first: by expected score, then worst case, then upside. */
   options: TipOption[];
   replies: TipReplies;
   /** Every option leads to the same scores (expected, best and worst): take any. */
@@ -45,6 +45,20 @@ export interface Tip {
 const ALL = [0, 1, 2, 3, 4];
 /** Scores closer than this read the same (they show to one decimal). */
 const SAME = 0.05;
+/**
+ * Higher first by each score in turn; scores that read the same (one decimal) fall through to the
+ * next, and then to the model's chance.
+ */
+const byScore =
+  (...keys: ('expected' | 'worst' | 'best')[]) =>
+  (a: TipOption, b: TipOption): number => {
+    for (const key of keys) {
+      const diff = b[key] - a[key];
+      if (Math.abs(diff) >= SAME) return diff;
+    }
+    return b.chance - a.chance;
+  };
+
 export function toTip(
   step: Tip['step'],
   side: Tip['side'],
@@ -64,14 +78,15 @@ export function toTip(
   const sure = list
     .filter((o) => o.worst >= value - SAME)
     .sort((a, b) => b.worst - a.worst || b.expected - a.expected)[0];
-  // The guaranteed option goes first; the rest keep the model's order.
-  const options = sure ? [sure, ...list.filter((o) => o !== sure)] : list;
+  // The guaranteed option goes first; then by expected score, worst case and upside.
+  const ranked = [...list].sort(byScore('expected', 'worst', 'best'));
+  const options = sure ? [sure, ...ranked.filter((o) => o !== sure)] : ranked;
   return { step, side, options, replies, same, safe: sure && !same ? sure.index : null };
 }
 
 /** With no read, the safest single pick: the best worst case (then the better expected). */
 export function safest(tip: Tip): TipOption | undefined {
-  return [...tip.options].sort((a, b) => b.worst - a.worst || b.expected - a.expected)[0];
+  return [...tip.options].sort(byScore('worst', 'expected', 'best'))[0];
 }
 
 /** With a read that they'll make answer `reply` (its place in `replies.list`): our best option. */

@@ -48,7 +48,9 @@ describe('nextTip', () => {
       expect(o.best).toBeCloseTo(Math.max(...(c.table[i] ?? [])), 9);
       expect(o.chance).toBeCloseTo(c.rows[i] ?? 0, 9);
     }
-    expect(tip?.options[0]?.chance).toBe(Math.max(...(tip?.options.map((o) => o.chance) ?? [])));
+    // Best first by expected score.
+    const [first, second] = tip?.options ?? [];
+    expect((first?.expected ?? 0) + 0.05).toBeGreaterThanOrEqual(second?.expected ?? 0);
   });
 
   it('the round-2 defender, counting the round-1 games already locked', () => {
@@ -130,5 +132,30 @@ describe('nextTip', () => {
 
   it('with no read, the safest single pick is the one with the highest worst case', () => {
     expect(safest(toTip('You take', 'theirs', MIX, MIX_REPLIES))?.index).toBe(1); // Death Guard, 49.5
+  });
+
+  it('options level on expected and worst are told apart by their upside', () => {
+    // The round-2 defender table: Space Marines flat, Emperor's Children a cheap gamble.
+    const r2 = {
+      side: 'theirs' as const,
+      verb: 'defend' as const,
+      list: [
+        { index: 0, chance: 0.09 },
+        { index: 2, chance: 0 },
+        { index: 3, chance: 0.91 },
+      ],
+    };
+    const tip = toTip(
+      'Your round-2 defender',
+      'ours',
+      [
+        { index: 0, chance: 0.9, expected: 49.45, best: 49.5, worst: 49, scores: [49, 49.5, 49.5] },
+        { index: 1, chance: 0.1, expected: 49.48, best: 54.3, worst: 49, scores: [54.3, 54.3, 49] },
+        { index: 2, chance: 0, expected: 49.02, best: 49.2, worst: 49, scores: [49, 49.2, 49] },
+      ],
+      r2,
+    );
+    expect(tip.options.map((o) => o.index)).toEqual([1, 0, 2]);
+    expect(safest(tip)?.index).toBe(1);
   });
 });
