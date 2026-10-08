@@ -10,7 +10,14 @@ import {
 import { Button, Group, NativeSelect, Paper, Stack, Switch, Text } from '@mantine/core';
 import { useEffect, useRef, useState } from 'react';
 import classes from './ChainFlow.module.css';
-import { LINE, layoutChain, visibleChain, type ChainBox, type ChainFollow } from './chain-layout';
+import {
+  LINE,
+  layoutChain,
+  visibleChain,
+  type ChainBox,
+  type ChainFollow,
+  type ChainShown,
+} from './chain-layout';
 import { ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
 import { nextTip } from './tips';
@@ -43,6 +50,8 @@ export function ChainFlow({
   follow: followProp,
   onFollowChange,
   onClear,
+  shown: shownProp,
+  onShownChange,
 }: {
   analysis: PairingAnalysis;
   ours: PairingRosterPlayer[];
@@ -57,6 +66,9 @@ export function ChainFlow({
   onFollowChange?: (follow: ChainFollow) => void;
   /** Clear was pressed: the page puts the round-1 defenders back to the suggested ones. */
   onClear?: () => void;
+  /** Which unlikely choices show, when the page keeps it (so it survives other defenders). */
+  shown?: ChainShown;
+  onShownChange?: (shown: ChainShown) => void;
 }) {
   const options = analysis.attackerOptions(d, e);
   const best = options.reduce((x, y) => (y.share > x.share ? y : x));
@@ -65,7 +77,9 @@ export function ChainFlow({
   // Cheap: the solver already cached every stage the chain walks through.
   // Their unlikely choices are shown by default (real opponents rate the games their own way);
   // ours, which are ours to make, only when asked for: they multiply the chain's size.
-  const [shown, setShown] = useState({ ours: false, theirs: true });
+  const [ownShown, setOwnShown] = useState<ChainShown>({ ours: false, theirs: true });
+  const shown = shownProp ?? ownShown;
+  const setShown = onShownChange ?? setOwnShown;
   const full = pairingChain(analysis, d, e, send.pair);
   // The live pairing so far; each choice depends on the ones before it.
   const [ownFollow, setOwnFollow] = useState<ChainFollow>({});
@@ -397,11 +411,12 @@ export function ChainFlow({
         <Button
           variant="default"
           onClick={() => {
-            // The whole pairing starts over: our best send, nothing followed, and (from the
-            // page) the suggested defenders.
+            // The whole pairing starts over: our best send, nothing followed, no unlikely
+            // choices shown, and (from the page) the suggested defenders.
             setSendKey(null);
             setPickedId(null);
             setFollow({});
+            setShown({ ours: false, theirs: false });
             onClear?.();
           }}
         >

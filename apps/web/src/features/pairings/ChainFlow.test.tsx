@@ -396,4 +396,25 @@ describe('ChainFlow', () => {
     );
     expect(screen.getByRole('button', { name: 'Clear' })).toBeEnabled();
   });
+
+  it('Clear also turns both unlikely-choice switches off', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    const theirs_ = screen.getByRole('switch', { name: /Show their unlikely choices/ });
+    const ours_ = screen.getByRole('switch', { name: /Show our unlikely choices/ });
+    fireEvent.click(ours_);
+    expect(ours_).toBeChecked();
+    expect(theirs_).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(ours_).not.toBeChecked();
+    expect(theirs_).not.toBeChecked();
+  });
 });

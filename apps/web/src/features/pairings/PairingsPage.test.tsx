@@ -195,4 +195,14 @@ describe('PairingsPage', () => {
     expect(screen.getByLabelText('You send')).toHaveValue('1,4');
     expect(screen.getByLabelText('They send')).toHaveValue('1,2');
   });
+
+  it('Clear turns the unlikely-choice switches off, and they stay off for other defenders', () => {
+    renderWithProviders(<PairingsPage />);
+    paste(SHEET);
+    fireEvent.click(screen.getByRole('button', { name: 'Use these ratings' }));
+    fireEvent.change(screen.getByLabelText('You defend'), { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(screen.getByRole('switch', { name: /Show their unlikely choices/ })).not.toBeChecked();
+    expect(screen.getByRole('switch', { name: /Show our unlikely choices/ })).not.toBeChecked();
+  });
 });
