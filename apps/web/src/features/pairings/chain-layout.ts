@@ -35,8 +35,10 @@ const WIDTHS = [160, 390, 330, 300];
 export const LINE = 16;
 const lines = (n: number) => 10 + n * LINE;
 const H = { root: lines(3), pick: lines(5), round2: lines(5), leaf: lines(4) };
-// Room between stacked boxes for the ▼ of one and the ▲ of the next (each 10 px, half outside).
-const GAP = 12;
+// The least room between stacked boxes: their ▼ and ▲ (each 10 px, half outside) and air.
+const GAP = 18;
+/** Room above the first box and below the last. */
+const EDGE = 12;
 const lineWidth = (reach: number) => Math.max(1.5, reach * 14);
 
 /** Which unlikely choices (under 2% for that side) to show: ours, theirs. */
@@ -82,7 +84,7 @@ export function visibleChain(chain: PairingChain, shown: ChainShown): PairingCha
 export function layoutChain(chain: PairingChain): ChainLayout {
   const nodes: ChainBox[] = [];
   const edges: ChainEdge[] = [];
-  let cursor = 0;
+  let cursor = EDGE;
   const place = (box: Omit<ChainBox, 'x' | 'y' | 'w'> & { y?: number }): ChainBox => {
     const full: ChainBox = {
       ...box,
@@ -92,6 +94,20 @@ export function layoutChain(chain: PairingChain): ChainLayout {
     };
     nodes.push(full);
     return full;
+  };
+  /**
+   * A box taller than the boxes it leads to: its whole group (everything placed from `from`) moves
+   * down by half the difference and the next group starts that much lower, so it never crowds a
+   * neighbour.
+   */
+  const fit = (from: number, kids: ChainBox[], h: number) => {
+    const first = kids[0];
+    const last = kids.at(-1);
+    if (!first || !last) return;
+    const need = h - (last.y + last.h - first.y);
+    if (need <= 0) return;
+    for (const n of nodes.slice(from)) n.y += need / 2;
+    cursor += need;
   };
   const middle = (kids: ChainBox[], h: number) =>
     kids.length === 0
@@ -103,8 +119,10 @@ export function layoutChain(chain: PairingChain): ChainLayout {
     send.picks.forEach((pick, pi) => {
       const reachPick = send.p * pick.p;
       const r2Boxes: ChainBox[] = [];
+      const pickFrom = nodes.length;
       pick.round2.forEach((r2, ri) => {
         const reachR2 = reachPick * r2.p;
+        const r2From = nodes.length;
         const leafBoxes = r2.leaves.map((leaf, li) => {
           const box = place({
             id: `l-${si}-${pi}-${ri}-${li}`,
@@ -121,6 +139,7 @@ export function layoutChain(chain: PairingChain): ChainLayout {
           cursor += H.leaf + GAP;
           return box;
         });
+        fit(r2From, leafBoxes, H.round2);
         const r2Box = place({
           id: `r-${si}-${pi}-${ri}`,
           column: 2,
@@ -136,8 +155,9 @@ export function layoutChain(chain: PairingChain): ChainLayout {
           edges.push({ from: r2Box.id, to: l.id, width: lineWidth(l.reach) }),
         );
         r2Boxes.push(r2Box);
-        cursor += GAP;
+        cursor += GAP / 2;
       });
+      fit(pickFrom, r2Boxes, H.pick);
       const pickBox = place({
         id: `p-${si}-${pi}`,
         column: 1,
@@ -151,14 +171,14 @@ export function layoutChain(chain: PairingChain): ChainLayout {
       });
       r2Boxes.forEach((r) => edges.push({ from: pickBox.id, to: r.id, width: lineWidth(r.reach) }));
       pickBoxes.push(pickBox);
-      cursor += GAP * 2;
+      cursor += GAP;
     });
   });
   const root = place({
     id: 'root',
     column: 0,
     h: H.root,
-    y: Math.max(0, middle(pickBoxes, H.root)),
+    y: Math.max(EDGE, middle(pickBoxes, H.root)),
     kind: 'root',
     share: 1,
     reach: 1,
@@ -166,6 +186,6 @@ export function layoutChain(chain: PairingChain): ChainLayout {
     ref: {},
   });
   pickBoxes.forEach((p) => edges.push({ from: root.id, to: p.id, width: lineWidth(p.reach) }));
-  const height = Math.max(...nodes.map((n) => n.y + n.h), H.root);
+  const height = Math.max(...nodes.map((n) => n.y + n.h), H.root) + EDGE;
   return { width: (COLS[3] ?? 0) + (WIDTHS[3] ?? 0), height, nodes, edges };
 }
