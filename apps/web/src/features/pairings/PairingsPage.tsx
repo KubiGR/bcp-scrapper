@@ -1,10 +1,18 @@
-import { pointsMatrix } from '@bcp/shared';
+import {
+  analysePairing,
+  pointsMatrix,
+  type PairingRating,
+  type PairingRosterPlayer,
+} from '@bcp/shared';
 import { Alert, Select, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { pairingQuery, pairingTeamsQuery, useSaveRating } from './pairing-queries';
+import { DefenderGrid } from './DefenderGrid';
+import { PairingSummary } from './PairingSummary';
 import { RatingsTable } from './RatingsTable';
 
 export function PairingsPage({
@@ -87,6 +95,50 @@ function Matchup({
           {save.error && <Alert color="red">Couldn’t save: {save.error.message}</Alert>}
         </Stack>
       </Panel>
+      <Analysis ours={ours} theirs={theirs} ratings={ratings} />
     </Stack>
+  );
+}
+
+/** Everything worked out from the ratings: re-solved whenever a chip changes. */
+function Analysis({
+  ours,
+  theirs,
+  ratings,
+}: {
+  ours: PairingRosterPlayer[];
+  theirs: PairingRosterPlayer[];
+  ratings: PairingRating[];
+}) {
+  const { points } = pointsMatrix(
+    ours.map((p) => p.id),
+    theirs.map((p) => p.id),
+    ratings,
+  );
+  const key = JSON.stringify(points);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` stands for `points` (same numbers, new array each render).
+  const analysis = useMemo(() => analysePairing(points), [key]);
+  const [square, setSquare] = useState<{ d: number; e: number } | null>(null);
+  const selected = square ?? {
+    d: analysis.safeDefender.index,
+    e: analysis.theirDefender.indexOf(Math.max(...analysis.theirDefender)),
+  };
+  return (
+    <>
+      <Panel title="Summary">
+        <PairingSummary analysis={analysis} ours={ours} theirs={theirs} />
+      </Panel>
+      <Panel title="Round 1 defenders">
+        <DefenderGrid
+          analysis={analysis}
+          ours={ours}
+          theirs={theirs}
+          selected={selected}
+          onSelect={(d, e) => {
+            setSquare({ d, e });
+          }}
+        />
+      </Panel>
+    </>
   );
 }
