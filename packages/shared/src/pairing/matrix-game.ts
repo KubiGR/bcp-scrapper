@@ -75,5 +75,7 @@ export function solveMatrixGame(a: number[][]): GameSolution {
     if (b < n) cols[b] = (t[i]?.[width - 1] ?? 0) / total;
   });
   const rows = Array.from({ length: m }, (_, i) => (obj[n + i] ?? 0) / total);
-  return { value: 1 / total - shift, rows, cols };
+  // Rounding can leave -1e-17 where a strategy is never played: show it as 0.
+  const clean = (xs: number[]) => xs.map((x) => (x < 0 ? 0 : x));
+  return { value: 1 / total - shift, rows: clean(rows), cols: clean(cols) };
 }

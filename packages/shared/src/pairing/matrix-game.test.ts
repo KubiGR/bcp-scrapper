@@ -55,4 +55,16 @@ describe('solveMatrixGame', () => {
       10,
     );
   });
+
+  it('never reports a negative probability', () => {
+    // The 3 v 3 round-2 table from R1 v Mighty Ducks, where rounding used to leave -3.6e-17.
+    const s = solveMatrixGame([
+      [27, 26.5, 27],
+      [30, 30, 27],
+      [27, 26.5, 27],
+    ]);
+    [...s.rows, ...s.cols].forEach((p) => {
+      expect(p).toBeGreaterThanOrEqual(0);
+    });
+  });
 });
