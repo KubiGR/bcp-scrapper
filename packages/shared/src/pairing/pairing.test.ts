@@ -1,4 +1,3 @@
-// packages/shared/src/pairing/pairing.test.ts
 import { describe, expect, it } from 'vitest';
 import { analysePairing } from './pairing';
 

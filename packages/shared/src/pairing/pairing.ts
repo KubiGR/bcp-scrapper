@@ -1,4 +1,3 @@
-// packages/shared/src/pairing/pairing.ts
 import { solveMatrixGame, type GameSolution } from './matrix-game';
 
 export type Pair = [number, number];

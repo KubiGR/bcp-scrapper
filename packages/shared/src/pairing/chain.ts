@@ -1,4 +1,3 @@
-// packages/shared/src/pairing/chain.ts
 import type { Pair, PairingAnalysis } from './pairing';
 
 export interface ChainLeaf {

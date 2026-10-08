@@ -1,4 +1,3 @@
-// packages/shared/src/pairing/api.ts
 import { z } from 'zod';
 import { PAIRING_CHIPS } from './scale';
 

@@ -1,4 +1,3 @@
-// packages/shared/src/pairing/scale.ts
 /** The rating chips, best first, as the team's sheet uses them. */
 export const PAIRING_CHIPS = ['BOUYA', 'GG', 'G', 'Y', 'R', 'RR', 'F'] as const;
 export type PairingChip = (typeof PAIRING_CHIPS)[number];

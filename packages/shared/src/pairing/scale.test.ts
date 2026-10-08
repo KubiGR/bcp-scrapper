@@ -1,4 +1,3 @@
-// packages/shared/src/pairing/scale.test.ts
 import { describe, expect, it } from 'vitest';
 import { CHIP_POINTS, pointsMatrix } from './scale';
 

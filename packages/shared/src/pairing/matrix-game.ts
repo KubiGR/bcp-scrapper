@@ -1,4 +1,3 @@
-// packages/shared/src/pairing/matrix-game.ts
 export interface GameSolution {
   /** The game's value for the row player. */
   value: number;

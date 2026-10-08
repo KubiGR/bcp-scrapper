@@ -1,4 +1,3 @@
-// packages/shared/src/pairing/matrix-game.test.ts
 import { describe, expect, it } from 'vitest';
 import { solveMatrixGame } from './matrix-game';
 

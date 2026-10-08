@@ -1,4 +1,3 @@
-// packages/shared/src/pairing/chain.test.ts
 import { describe, expect, it } from 'vitest';
 import { pairingChain } from './chain';
 import { analysePairing } from './pairing';

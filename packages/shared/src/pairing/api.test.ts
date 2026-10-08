@@ -1,4 +1,3 @@
-// packages/shared/src/pairing/api.test.ts
 import { describe, expect, it } from 'vitest';
 import { PairingResponseSchema, SaveRatingRequestSchema } from './api';
 
