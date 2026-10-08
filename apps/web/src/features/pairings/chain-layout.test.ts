@@ -35,4 +35,10 @@ describe('layoutChain', () => {
     const width = (id: string) => layout.edges.find((e) => e.to === id)?.width ?? 0;
     expect(width(picks[0]?.id ?? '')).toBeGreaterThan(width(picks[picks.length - 1]?.id ?? ''));
   });
+
+  it('the first box is narrow so the whole chain fits a wide screen', () => {
+    const root = layout.nodes.find((n) => n.kind === 'root');
+    expect(root?.w).toBeLessThanOrEqual(160);
+    expect(layout.width).toBeLessThanOrEqual(1270);
+  });
 });

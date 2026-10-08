@@ -29,8 +29,8 @@ export interface ChainLayout {
 }
 
 // Wide enough for the longest labels, e.g. "Emperor's Children v Adeptus Custodes" and its chip.
-const COLS = [0, 210, 630, 990];
-const WIDTHS = [180, 390, 330, 300];
+const COLS = [0, 190, 610, 970];
+const WIDTHS = [160, 390, 330, 300];
 /** Text lines are LINE apart; a pick lists its two games and who goes back, a final box its last three. */
 export const LINE = 16;
 const lines = (n: number) => 10 + n * LINE;

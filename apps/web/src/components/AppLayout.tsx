@@ -10,8 +10,8 @@ import { Logo } from './Logo';
 
 const FINDER_DEFAULTS = FinderSearchSchema.parse({});
 
-/** Pages that use the whole width (the matchups table), not the centred column. */
-const WIDE_PAGES = new Set(['/analysis/matchups']);
+/** Pages that use the whole width (the matchups table, the pairings chain), not the centred column. */
+const WIDE_PAGES = new Set(['/analysis/matchups', '/pairings']);
 
 const NAV_ITEMS = [
   { to: '/', label: 'Tournaments' },
