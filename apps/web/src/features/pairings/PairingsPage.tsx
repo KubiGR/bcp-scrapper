@@ -147,7 +147,16 @@ function Analysis({
           />
         </Panel>
       </Column>
-      <Panel title="The chain">
+      {/* At least the column's width, growing with the diagram up to the screen's. */}
+      <Panel
+        title="The chain"
+        style={{
+          width: 'fit-content',
+          minWidth: 'min(100%, var(--container-size-xl))',
+          maxWidth: '100%',
+          marginInline: 'auto',
+        }}
+      >
         <ChainFlow
           key={`${String(selected.d)}-${String(selected.e)}`}
           analysis={analysis}
