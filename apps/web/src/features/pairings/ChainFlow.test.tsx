@@ -358,18 +358,10 @@ describe('ChainFlow', () => {
         onDefendersChange={onDefenders}
       />,
     );
-    // Nothing chosen yet: the bar says what the chain is showing.
-    expect(screen.getByLabelText('You defend')).toHaveValue('');
-    expect(screen.getByLabelText('They defend')).toHaveValue('');
-    expect(screen.getByLabelText('You send')).toHaveValue('');
-    expect(
-      screen.getByRole('option', { name: 'Not set · suggested World Eaters' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('option', {
-        name: /^Not set · best: Emperor's Children \+ Adepta Sororitas/,
-      }),
-    ).toBeInTheDocument();
+    // The bar shows what the chain draws: the suggested defenders and our best send.
+    expect(screen.getByLabelText('You defend')).toHaveValue('3');
+    expect(screen.getByLabelText('They defend')).toHaveValue('4');
+    expect(screen.getByLabelText('You send')).toHaveValue('1,4');
     fireEvent.change(screen.getByLabelText('They defend'), { target: { value: '0' } });
     expect(onDefenders).toHaveBeenCalledWith(3, 0);
   });

@@ -86,15 +86,12 @@ describe('PairingsPage', () => {
     expect(
       screen.getByRole('button', { name: /^You defend Chaos Daemons, they defend Death Guard/ }),
     ).toHaveAttribute('aria-pressed', 'true');
-    // A grid square is planning: the bar goes back to nothing chosen, showing that square.
+    // A grid square shows in the bar too (as planning: nothing greys out).
     fireEvent.click(
       screen.getByRole('button', { name: /^You defend Space Marines, they defend Orks/ }),
     );
-    expect(screen.getByLabelText('You defend')).toHaveValue('');
-    expect(
-      screen.getByRole('option', { name: 'Not set · suggested Space Marines' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Not set · likely Orks' })).toBeInTheDocument();
+    expect(screen.getByLabelText('You defend')).toHaveValue('0');
+    expect(screen.getByLabelText('They defend')).toHaveValue('2');
   });
 
   it('players used up in the live pairing are greyed out in the table, their games marked', () => {
@@ -173,7 +170,6 @@ describe('PairingsPage', () => {
     other('You send');
     other('They send');
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
-    expect(start).toEqual({ youDefend: '', theyDefend: '', youSend: '' });
     expect(screen.getByLabelText('You defend')).toHaveValue(start.youDefend);
     expect(screen.getByLabelText('They defend')).toHaveValue(start.theyDefend);
     expect(screen.getByLabelText('You send')).toHaveValue(start.youSend);
