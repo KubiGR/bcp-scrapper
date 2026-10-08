@@ -11,6 +11,7 @@ import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { pairingQuery, pairingTeamsQuery, useSaveRating } from './pairing-queries';
+import { ChainFlow } from './ChainFlow';
 import { DefenderGrid } from './DefenderGrid';
 import { PairingSummary } from './PairingSummary';
 import { RatingsTable } from './RatingsTable';
@@ -137,6 +138,16 @@ function Analysis({
           onSelect={(d, e) => {
             setSquare({ d, e });
           }}
+        />
+      </Panel>
+      <Panel title="The chain">
+        <ChainFlow
+          key={`${String(selected.d)}-${String(selected.e)}`}
+          analysis={analysis}
+          ours={ours}
+          theirs={theirs}
+          d={selected.d}
+          e={selected.e}
         />
       </Panel>
     </>
