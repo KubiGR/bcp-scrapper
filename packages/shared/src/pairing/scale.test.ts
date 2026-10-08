@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHIP_POINTS, pointsMatrix } from './scale';
+import { CHIP_POINTS, pointsMatrix, ratingPoints } from './scale';
 
 describe('pointsMatrix', () => {
   it('reads chips into points, unrated games as Y (10), and counts the rated ones', () => {
@@ -17,5 +17,17 @@ describe('pointsMatrix', () => {
     ]);
     expect(rated).toBe(2);
     expect(CHIP_POINTS.GG).toBe(17);
+  });
+
+  it('a chip that can become another counts two thirds the first and one third the second', () => {
+    expect(ratingPoints('Y', 'R')).toBeCloseTo(9, 9);
+    expect(ratingPoints('G', 'GG')).toBeCloseTo(43 / 3, 9);
+    expect(ratingPoints('G')).toBe(13);
+    const { points } = pointsMatrix(
+      ['a'],
+      ['x'],
+      [{ playerId: 'a', opponentPlayerId: 'x', chip: 'Y', alt: 'R' }],
+    );
+    expect(points[0]?.[0]).toBeCloseTo(9, 9);
   });
 });

@@ -1,4 +1,5 @@
 import {
+  CHAIN_MIN_SHARE,
   pairingChain,
   type ChainLeaf,
   type PairingAnalysis,
@@ -6,19 +7,29 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { Group, NativeSelect, Stack, Switch, Text } from '@mantine/core';
-import { useState } from 'react';
+import { Button, Group, NativeSelect, Paper, Stack, Switch, Text } from '@mantine/core';
+import { useEffect, useRef, useState } from 'react';
 import classes from './ChainFlow.module.css';
-import { LINE, layoutChain, likelyOnly, type ChainBox } from './chain-layout';
+import { LINE, layoutChain, visibleChain, type ChainBox, type ChainFollow } from './chain-layout';
+import { ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
+import { nextTip } from './tips';
 
 const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
+/** A score difference as "+0.8", "−1.2" or "0.0". */
+const signed = (x: number) =>
+  Math.abs(x) < 0.05 ? '0.0' : `${x > 0 ? '+' : '−'}${Math.abs(x).toFixed(1)}`;
 const pct = (x: number) => (x > 0 && x < 0.005 ? '<1%' : `${Math.round(x * 100)}%`);
 /** A step's share of the one before it, and of the whole chain. */
 const shares = (box: ChainBox) => `${pct(box.share)} here · ${pct(box.reach)} overall`;
 /** A line of a box: text, or a game that forms at this step (drawn with its chip). */
 type Line = string | { game: [number, number] };
 const CHIP_W = 44;
+/** The strip for the chip a game can become. */
+const ALT_W = 16;
+/** The ▲ ▼ that step through a column. */
+const ARROW_W = 22;
+const ARROW_H = 10;
 
 /** The chain for one pair of round-1 defenders, as a flow diagram; click a final box for its line-up. */
 export function ChainFlow({
@@ -28,6 +39,7 @@ export function ChainFlow({
   ratings,
   d,
   e,
+  onDefendersChange,
 }: {
   analysis: PairingAnalysis;
   ours: PairingRosterPlayer[];
@@ -35,22 +47,45 @@ export function ChainFlow({
   ratings: PairingRating[];
   d: number;
   e: number;
+  /** The round-1 defenders chosen in the follow bar (the grid's square follows). */
+  onDefendersChange?: (d: number, e: number) => void;
 }) {
   const options = analysis.attackerOptions(d, e);
   const best = options.reduce((x, y) => (y.share > x.share ? y : x));
   const [sendKey, setSendKey] = useState<string | null>(null);
   const send = options.find((o) => o.pair.join() === sendKey) ?? best;
   // Cheap: the solver already cached every stage the chain walks through.
-  const [showUnlikely, setShowUnlikely] = useState(true);
+  // Their unlikely choices are shown by default (real opponents rate the games their own way);
+  // ours, which are ours to make, only when asked for: they multiply the chain's size.
+  const [shown, setShown] = useState({ ours: false, theirs: true });
   const full = pairingChain(analysis, d, e, send.pair);
-  const chain = showUnlikely ? full : likelyOnly(full);
+  // The live pairing so far; each choice depends on the ones before it.
+  const [follow, setFollow] = useState<ChainFollow>({});
+  const chain = visibleChain(full, shown, follow);
+  const ALL = [0, 1, 2, 3, 4];
+  const theirSend = full.sends.find((x) => x.theirs.join() === follow.theirSend)?.theirs;
+  const followOptions = (players: PairingRosterPlayer[], indexes: readonly number[]) => [
+    { value: '', label: 'Any' },
+    ...indexes.map((i) => ({ value: String(i), label: army(players[i]) })),
+  ];
+  // Our team's next decision, with what each option leads to.
+  const tip = nextTip(analysis, d, e, send.pair, follow);
+  const tipPlayers = tip?.side === 'ours' ? ours : theirs;
+  const mixed = !tip?.same && (tip?.options[1]?.chance ?? 0) >= CHAIN_MIN_SHARE;
+  /** Our row of the defender grid against their likely defender. */
+  const defenderExpected = (i: number) =>
+    (analysis.defenderGrid[i] ?? []).reduce(
+      (sum, v, j) => sum + v * (analysis.theirDefender[j] ?? 0),
+      0,
+    );
+  const pickNumber = (value: string) => (value === '' ? undefined : Number(value));
   const layout = layoutChain(chain);
   // The open line-up is remembered by its place in the chain, so it follows rating changes.
   const [pickedId, setPickedId] = useState<string | null>(null);
   const picked: ChainLeaf | null = layout.nodes.find((n) => n.id === pickedId)?.leaf ?? null;
-  const chipOf = new Map(ratings.map((r) => [`${r.playerId}|${r.opponentPlayerId}`, r.chip]));
-  const chip = ([a, b]: [number, number]): PairingChip | null =>
-    chipOf.get(`${ours[a]?.id ?? ''}|${theirs[b]?.id ?? ''}`) ?? null;
+  const ratingOf = new Map(ratings.map((r) => [`${r.playerId}|${r.opponentPlayerId}`, r]));
+  const rating = ([a, b]: [number, number]): PairingRating | undefined =>
+    ratingOf.get(`${ours[a]?.id ?? ''}|${theirs[b]?.id ?? ''}`);
   const label = (box: ChainBox): Line[] => {
     const s = box.ref.send !== undefined ? chain.sends[box.ref.send] : undefined;
     const p = s && box.ref.pick !== undefined ? s.picks[box.ref.pick] : undefined;
@@ -92,18 +127,21 @@ export function ChainFlow({
         </text>
       );
     const [a, b] = line.game;
-    const c = chip(line.game);
+    const r = rating(line.game);
+    const c: PairingChip | null = r?.chip ?? null;
     const name = `${army(ours[a])} v ${army(theirs[b])}`;
     const bx = box.x + box.w - 8 - CHIP_W;
+    // A game that can become another chip: its chip, then the other one in a narrower strip.
+    const mainW = r?.alt ? CHIP_W - ALT_W : CHIP_W;
     return (
-      <g key={i} role="img" aria-label={`${name}: ${c ?? 'unrated'}`}>
+      <g key={i} role="img" aria-label={`${name}: ${ratingName(c, r?.alt)}`}>
         <text x={box.x + 8} y={y} fill="var(--mantine-color-text)">
           {name}
         </text>
         <rect
           x={bx}
           y={y - 11}
-          width={CHIP_W}
+          width={mainW}
           height={14}
           rx={3}
           fill={c ? chipStyle(c).background : 'none'}
@@ -111,7 +149,7 @@ export function ChainFlow({
           strokeDasharray={c ? undefined : '3 2'}
         />
         <text
-          x={bx + CHIP_W / 2}
+          x={bx + mainW / 2}
           y={y}
           textAnchor="middle"
           fontWeight={700}
@@ -119,37 +157,273 @@ export function ChainFlow({
         >
           {c ?? '–'}
         </text>
+        {r?.alt && (
+          <>
+            <rect
+              x={bx + mainW + 1}
+              y={y - 11}
+              width={ALT_W - 1}
+              height={14}
+              rx={3}
+              fill={chipStyle(r.alt).background}
+            />
+            <text
+              x={bx + mainW + ALT_W / 2}
+              y={y - 1}
+              textAnchor="middle"
+              fontSize={8}
+              fontWeight={700}
+              fill={chipStyle(r.alt).color}
+            >
+              {r.alt}
+            </text>
+          </>
+        )}
       </g>
     );
   };
   const byId = new Map(layout.nodes.map((n) => [n.id, n]));
+
+  // ▲ ▼ on each box step through its column (one decision's options), top to bottom.
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [flashId, setFlashId] = useState<string | null>(null);
+  useEffect(() => {
+    if (flashId === null) return;
+    const timer = setTimeout(() => {
+      setFlashId(null);
+    }, 1200);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [flashId]);
+  const columns = new Map<number, ChainBox[]>();
+  for (const box of layout.nodes) {
+    if (box.column === 0) continue;
+    columns.set(box.column, [...(columns.get(box.column) ?? []), box]);
+  }
+  for (const list of columns.values()) list.sort((a, b) => a.y - b.y);
+  const jump = (to: ChainBox) => {
+    const top = svgRef.current?.getBoundingClientRect().top ?? 0;
+    window.scrollTo({
+      top: window.scrollY + top + to.y + to.h / 2 - window.innerHeight / 2,
+      behavior: 'smooth',
+    });
+    setFlashId(to.id);
+  };
+  const arrow = (box: ChainBox, to: ChainBox | undefined, dir: 'up' | 'down') => {
+    if (!to) return null;
+    // Centred on the box's top edge (▲) or bottom edge (▼), half outside it.
+    const x = box.x + box.w / 2 - ARROW_W / 2;
+    const y = (dir === 'up' ? box.y : box.y + box.h) - ARROW_H / 2;
+    const go = () => {
+      jump(to);
+    };
+    return (
+      <g
+        key={`${box.id}-${dir}`}
+        role="button"
+        tabIndex={0}
+        className={classes.arrow}
+        aria-label={dir === 'up' ? 'Previous in this column' : 'Next in this column'}
+        onClick={go}
+        onKeyDown={(ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault();
+            go();
+          }
+        }}
+      >
+        <rect x={x} y={y} width={ARROW_W} height={ARROW_H} rx={3} />
+        <text x={x + ARROW_W / 2} y={y + ARROW_H - 2} textAnchor="middle">
+          {dir === 'up' ? '▲' : '▼'}
+        </text>
+      </g>
+    );
+  };
+
   return (
     <Stack gap="sm">
       <Group align="flex-end" gap="lg">
+        <Stack gap={6}>
+          <Switch
+            label="Show their unlikely choices"
+            description="Choices the model thinks they won't make (under 2%)"
+            checked={shown.theirs}
+            onChange={(ev) => {
+              setShown({ ...shown, theirs: ev.currentTarget.checked });
+            }}
+          />
+          <Switch
+            label="Show our unlikely choices"
+            description="Choices the model advises against (under 2%); makes the chain much longer"
+            checked={shown.ours}
+            onChange={(ev) => {
+              setShown({ ...shown, ours: ev.currentTarget.checked });
+            }}
+          />
+        </Stack>
+      </Group>
+      <Group align="flex-end" gap="sm" wrap="wrap">
+        <Text size="sm" fw={600} w="100%">
+          Follow the pairing
+        </Text>
+        <NativeSelect
+          label="You defend"
+          value={String(d)}
+          onChange={(ev) => {
+            onDefendersChange?.(Number(ev.currentTarget.value), e);
+          }}
+          data={ours.map((p, i) => ({
+            value: String(i),
+            label: `${army(p)} (expected ${defenderExpected(i).toFixed(1)})`,
+          }))}
+          w={250}
+        />
+        <NativeSelect
+          label="They defend"
+          value={String(e)}
+          onChange={(ev) => {
+            onDefendersChange?.(d, Number(ev.currentTarget.value));
+          }}
+          data={theirs.map((p, i) => ({
+            value: String(i),
+            label: `${army(p)} (${pct(analysis.theirDefender[i] ?? 0)})`,
+          }))}
+          w={250}
+        />
         <NativeSelect
           label="You send"
           value={send.pair.join()}
           onChange={(ev) => {
             setSendKey(ev.currentTarget.value);
+            setFollow({});
             setPickedId(null);
           }}
           data={options.map((o) => ({
             value: o.pair.join(),
             label: `${o.pair.map((a) => army(ours[a])).join(' + ')} (${o.likely.toFixed(1)}${o === best ? ', best' : ''})`,
           }))}
-          maw={420}
+          w={360}
         />
-        <Switch
-          label="Show their unlikely choices"
-          description="Choices the model thinks they won't make (under 2%)"
-          checked={showUnlikely}
+        <NativeSelect
+          label="They send"
+          value={follow.theirSend ?? ''}
           onChange={(ev) => {
-            setShowUnlikely(ev.currentTarget.checked);
+            const v = ev.currentTarget.value;
+            setFollow({
+              theyTake: follow.theyTake,
+              ourR2: follow.ourR2,
+              theirSend: v || undefined,
+            });
           }}
+          data={[
+            { value: '', label: 'Any' },
+            ...full.sends.map((x) => ({
+              value: x.theirs.join(),
+              label: `${x.theirs.map((t) => army(theirs[t])).join(' + ')} · ${pct(x.p)} · ${x.value.toFixed(1)} for you (${signed(x.value - full.value)})`,
+            })),
+          ]}
+          w={420}
         />
+        <NativeSelect
+          label="You take"
+          disabled={!theirSend}
+          value={follow.weTake === undefined ? '' : String(follow.weTake)}
+          onChange={(ev) => {
+            setFollow({
+              ...follow,
+              weTake: pickNumber(ev.currentTarget.value),
+              theirR2: undefined,
+            });
+          }}
+          data={followOptions(theirs, theirSend ?? [])}
+          w={190}
+        />
+        <NativeSelect
+          label="They take"
+          value={follow.theyTake === undefined ? '' : String(follow.theyTake)}
+          onChange={(ev) => {
+            setFollow({
+              ...follow,
+              theyTake: pickNumber(ev.currentTarget.value),
+              ourR2: undefined,
+            });
+          }}
+          data={followOptions(ours, send.pair)}
+          w={190}
+        />
+        <NativeSelect
+          label="Your round-2 defender"
+          disabled={follow.theyTake === undefined}
+          value={follow.ourR2 === undefined ? '' : String(follow.ourR2)}
+          onChange={(ev) => {
+            setFollow({ ...follow, ourR2: pickNumber(ev.currentTarget.value) });
+          }}
+          data={followOptions(
+            ours,
+            ALL.filter((a) => a !== d && a !== follow.theyTake),
+          )}
+          w={190}
+        />
+        <NativeSelect
+          label="Their round-2 defender"
+          disabled={follow.weTake === undefined}
+          value={follow.theirR2 === undefined ? '' : String(follow.theirR2)}
+          onChange={(ev) => {
+            setFollow({ ...follow, theirR2: pickNumber(ev.currentTarget.value) });
+          }}
+          data={followOptions(
+            theirs,
+            ALL.filter((t) => t !== e && t !== follow.weTake),
+          )}
+          w={190}
+        />
+        <Button
+          variant="default"
+          disabled={Object.values(follow).every((v) => v === undefined)}
+          onClick={() => {
+            setFollow({});
+          }}
+        >
+          Clear
+        </Button>
       </Group>
+      {tip && (
+        <Paper role="region" aria-label="Tip" withBorder p="xs" radius="sm">
+          <Text size="sm" fw={600}>
+            Tip · {tip.step}
+            {tip.same ? ' · any: they all come to the same' : ''}
+            {mixed
+              ? ` · the model mixes ${tip.options
+                  .filter((o) => o.chance >= CHAIN_MIN_SHARE)
+                  .map((o) => `${pct(o.chance)} ${army(tipPlayers[o.index])}`)
+                  .join(' / ')}: about equally good, so don't be predictable`
+              : ''}
+          </Text>
+          <Group gap="xl" mt={4}>
+            {tip.options.map((o, i) => (
+              <Stack key={o.index} gap={0}>
+                <Group gap={6}>
+                  <Text size="sm" fw={i === 0 ? 700 : 400}>
+                    {army(tipPlayers[o.index])}
+                  </Text>
+                  {i === 0 && !mixed && !tip.same && (
+                    <Text size="xs" c="teal">
+                      best
+                    </Text>
+                  )}
+                </Group>
+                <Text size="xs" c="dimmed" className="numeric">
+                  expected {o.expected.toFixed(1)} · worst {o.worst.toFixed(1)}
+                </Text>
+              </Stack>
+            ))}
+          </Group>
+        </Paper>
+      )}
       <div style={{ overflowX: 'auto' }}>
         <svg
+          ref={svgRef}
           role="group"
           aria-label={`Chain: you defend ${army(ours[d])}, they defend ${army(theirs[e])}, you send ${send.pair.map((a) => army(ours[a])).join(' + ')}`}
           width={layout.width}
@@ -195,7 +469,8 @@ export function ChainFlow({
                   height={box.h}
                   rx={6}
                   fill={fill}
-                  stroke={stroke}
+                  stroke={box.id === flashId ? 'var(--mantine-color-text)' : stroke}
+                  strokeWidth={box.id === flashId ? 3 : 1}
                 />
                 {lines.map((line, i) => drawLine(box, line, i))}
               </>
@@ -224,6 +499,12 @@ export function ChainFlow({
               <g key={box.id}>{content}</g>
             );
           })}
+          {[...columns.values()].flatMap((list) =>
+            list.flatMap((box, i) => [
+              arrow(box, list[i - 1], 'up'),
+              arrow(box, list[i + 1], 'down'),
+            ]),
+          )}
         </svg>
       </div>
       {picked && (

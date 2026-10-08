@@ -1,4 +1,4 @@
-import { CHAIN_MIN_SHARE, type ChainLeaf, type PairingChain } from '@bcp/shared';
+import { CHAIN_MIN_SHARE, type ChainChances, type ChainLeaf, type PairingChain } from '@bcp/shared';
 
 export interface ChainBox {
   id: string;
@@ -35,34 +35,107 @@ const WIDTHS = [160, 390, 330, 300];
 export const LINE = 16;
 const lines = (n: number) => 10 + n * LINE;
 const H = { root: lines(3), pick: lines(5), round2: lines(5), leaf: lines(4) };
-const GAP = 8;
+// The least room between stacked boxes: their ▼ and ▲ (each 10 px, half outside) and air.
+const GAP = 18;
+/** Room above the first box and below the last. */
+const EDGE = 12;
 const lineWidth = (reach: number) => Math.max(1.5, reach * 14);
 
-/** Only the branches the model thinks likely (2% or more of the step before); the rest go to "other". */
-export function likelyOnly(chain: PairingChain): PairingChain {
-  const keep = <T extends { p: number }>(items: T[]) => ({
-    kept: items.filter((x) => x.p >= CHAIN_MIN_SHARE),
-    gone: items.filter((x) => x.p < CHAIN_MIN_SHARE).reduce((sum, x) => sum + x.p, 0),
-  });
-  const sends = chain.sends.map((send) => {
-    const picks = keep(send.picks);
+/** Which unlikely choices (under 2% for that side) to show: ours, theirs. */
+export interface ChainShown {
+  ours: boolean;
+  theirs: boolean;
+}
+
+/**
+ * What has really happened in a live pairing, as far as it's got: their send (pair joined, e.g.
+ * "0,2"), which of it our defender took, which of ours theirs took, and both round-2 defenders.
+ */
+export interface ChainFollow {
+  theirSend?: string;
+  weTake?: number;
+  theyTake?: number;
+  ourR2?: number;
+  theirR2?: number;
+}
+
+/**
+ * The chain to draw: only what follows the live pairing, and of the rest only the likely choices
+ * (2% or more) for the sides not asked for. A followed choice shows however unlikely it is, and
+ * counts as certain; their unlikely sends only when followed (all six would swamp the chain).
+ */
+export function visibleChain(
+  chain: PairingChain,
+  shown: ChainShown,
+  follow: ChainFollow = {},
+): PairingChain {
+  const likely = (x: number) => x >= CHAIN_MIN_SHARE;
+  const visible = (x: ChainChances, oursFollowed: boolean, theirsFollowed: boolean) =>
+    (oursFollowed || shown.ours || likely(x.ourChance)) &&
+    (theirsFollowed || shown.theirs || likely(x.theirChance));
+  /**
+   * Of the steps that agree with the live pairing (`happened`), those shown, and the chance of the
+   * hidden ones ("other lines"); steps that didn't happen are simply gone.
+   */
+  const keep = <T extends { p: number }>(
+    items: T[],
+    happened: (x: T) => boolean,
+    show: (x: T) => boolean,
+  ) => {
+    const real = items.filter(happened);
+    return {
+      kept: real.filter(show),
+      gone: real.filter((x) => !show(x)).reduce((sum, x) => sum + x.p, 0),
+    };
+  };
+  // A followed choice really happened: it counts as certain, so chances after it start from there.
+  const given = <T extends ChainChances>(x: T, ours: boolean, theirs: boolean): T => {
+    const ourChance = ours ? 1 : x.ourChance;
+    const theirChance = theirs ? 1 : x.theirChance;
+    return { ...x, ourChance, theirChance, p: ourChance * theirChance };
+  };
+  const sendFollowed = follow.theirSend !== undefined;
+  const sendsKept = keep(
+    chain.sends.map((x) => (sendFollowed ? { ...x, p: 1 } : x)),
+    (x) => !sendFollowed || x.theirs.join() === follow.theirSend,
+    (x) => sendFollowed || likely(x.p),
+  );
+  const weTake = follow.weTake !== undefined;
+  const theyTake = follow.theyTake !== undefined;
+  const ourR2 = follow.ourR2 !== undefined;
+  const theirR2 = follow.theirR2 !== undefined;
+  const sends = sendsKept.kept.map((send) => {
+    const picks = keep(
+      send.picks.map((x) => given(x, weTake, theyTake)),
+      (x) =>
+        (!weTake || x.weTake === follow.weTake) && (!theyTake || x.theyTake === follow.theyTake),
+      (x) => visible(x, weTake, theyTake),
+    );
     return {
       ...send,
       other: send.other + picks.gone,
       picks: picks.kept.map((pick) => {
-        const round2 = keep(pick.round2);
+        const round2 = keep(
+          pick.round2.map((x) => given(x, ourR2, theirR2)),
+          (x) => (!ourR2 || x.d === follow.ourR2) && (!theirR2 || x.e === follow.theirR2),
+          (x) => visible(x, ourR2, theirR2),
+        );
         return {
           ...pick,
           other: pick.other + round2.gone,
           round2: round2.kept.map((r2) => {
-            const leaves = keep(r2.leaves);
+            const leaves = keep(
+              r2.leaves,
+              () => true,
+              (x) => visible(x, false, false),
+            );
             return { ...r2, other: r2.other + leaves.gone, leaves: leaves.kept };
           }),
         };
       }),
     };
   });
-  return { ...chain, sends };
+  return { ...chain, sends, other: chain.other + sendsKept.gone };
 }
 
 /**
@@ -72,7 +145,7 @@ export function likelyOnly(chain: PairingChain): PairingChain {
 export function layoutChain(chain: PairingChain): ChainLayout {
   const nodes: ChainBox[] = [];
   const edges: ChainEdge[] = [];
-  let cursor = 0;
+  let cursor = EDGE;
   const place = (box: Omit<ChainBox, 'x' | 'y' | 'w'> & { y?: number }): ChainBox => {
     const full: ChainBox = {
       ...box,
@@ -82,6 +155,20 @@ export function layoutChain(chain: PairingChain): ChainLayout {
     };
     nodes.push(full);
     return full;
+  };
+  /**
+   * A box taller than the boxes it leads to: its whole group (everything placed from `from`) moves
+   * down by half the difference and the next group starts that much lower, so it never crowds a
+   * neighbour.
+   */
+  const fit = (from: number, kids: ChainBox[], h: number) => {
+    const first = kids[0];
+    const last = kids.at(-1);
+    if (!first || !last) return;
+    const need = h - (last.y + last.h - first.y);
+    if (need <= 0) return;
+    for (const n of nodes.slice(from)) n.y += need / 2;
+    cursor += need;
   };
   const middle = (kids: ChainBox[], h: number) =>
     kids.length === 0
@@ -93,8 +180,10 @@ export function layoutChain(chain: PairingChain): ChainLayout {
     send.picks.forEach((pick, pi) => {
       const reachPick = send.p * pick.p;
       const r2Boxes: ChainBox[] = [];
+      const pickFrom = nodes.length;
       pick.round2.forEach((r2, ri) => {
         const reachR2 = reachPick * r2.p;
+        const r2From = nodes.length;
         const leafBoxes = r2.leaves.map((leaf, li) => {
           const box = place({
             id: `l-${si}-${pi}-${ri}-${li}`,
@@ -111,6 +200,7 @@ export function layoutChain(chain: PairingChain): ChainLayout {
           cursor += H.leaf + GAP;
           return box;
         });
+        fit(r2From, leafBoxes, H.round2);
         const r2Box = place({
           id: `r-${si}-${pi}-${ri}`,
           column: 2,
@@ -126,8 +216,9 @@ export function layoutChain(chain: PairingChain): ChainLayout {
           edges.push({ from: r2Box.id, to: l.id, width: lineWidth(l.reach) }),
         );
         r2Boxes.push(r2Box);
-        cursor += GAP;
+        cursor += GAP / 2;
       });
+      fit(pickFrom, r2Boxes, H.pick);
       const pickBox = place({
         id: `p-${si}-${pi}`,
         column: 1,
@@ -141,14 +232,14 @@ export function layoutChain(chain: PairingChain): ChainLayout {
       });
       r2Boxes.forEach((r) => edges.push({ from: pickBox.id, to: r.id, width: lineWidth(r.reach) }));
       pickBoxes.push(pickBox);
-      cursor += GAP * 2;
+      cursor += GAP;
     });
   });
   const root = place({
     id: 'root',
     column: 0,
     h: H.root,
-    y: Math.max(0, middle(pickBoxes, H.root)),
+    y: Math.max(EDGE, middle(pickBoxes, H.root)),
     kind: 'root',
     share: 1,
     reach: 1,
@@ -156,6 +247,6 @@ export function layoutChain(chain: PairingChain): ChainLayout {
     ref: {},
   });
   pickBoxes.forEach((p) => edges.push({ from: root.id, to: p.id, width: lineWidth(p.reach) }));
-  const height = Math.max(...nodes.map((n) => n.y + n.h), H.root);
+  const height = Math.max(...nodes.map((n) => n.y + n.h), H.root) + EDGE;
   return { width: (COLS[3] ?? 0) + (WIDTHS[3] ?? 0), height, nodes, edges };
 }

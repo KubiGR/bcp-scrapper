@@ -78,4 +78,24 @@ describe('pairingChain', () => {
         expect(pick.round2.reduce((sum, n) => sum + n.p, 0) + pick.other).toBeCloseTo(1, 6);
       }
   });
+
+  it('our own unlikely choices are there too, each step carrying both sides’ chances', () => {
+    for (const send of chain.sends) {
+      expect(send.picks).toHaveLength(4);
+      for (const pick of send.picks) {
+        expect(pick.p).toBeCloseTo(pick.ourChance * pick.theirChance, 12);
+        expect(pick.round2).toHaveLength(9);
+        for (const node of pick.round2) {
+          expect(node.p).toBeCloseTo(node.ourChance * node.theirChance, 12);
+          expect(node.leaves).toHaveLength(4);
+        }
+      }
+    }
+  });
+
+  it('keeps every pair they could send, however unlikely, so a live pairing can follow it', () => {
+    expect(chain.sends).toHaveLength(6);
+    expect(chain.other).toBe(0);
+    expect(chain.sends.reduce((sum, x) => sum + x.p, 0)).toBeCloseTo(1, 6);
+  });
 });

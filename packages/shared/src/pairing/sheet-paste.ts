@@ -5,11 +5,15 @@ const CHIPS = new Set<string>(PAIRING_CHIPS);
 /** The sheet's modifiers and preferred-layout badges: no chip of their own. */
 const MODIFIERS = new Set(['?', '+', 'A', 'B', 'C']);
 
-type Cell = { kind: 'chip'; chip: PairingChip } | { kind: 'blank' } | { kind: 'unreadable' };
+type Cell =
+  | { kind: 'chip'; chip: PairingChip; alt: PairingChip | null }
+  | { kind: 'blank' }
+  | { kind: 'unreadable' };
 
 /**
- * One copied cell: "GG", "g, y" (several chips: the first colour chip, as the sheet colours the
- * cell), "G, ?" or "G, A" (modifiers and layout badges ignored), "" or only modifiers (unrated); anything else is unreadable.
+ * One copied cell: "GG"; "g, y" (the first chip is the rating, the second what the game can
+ * become); "G, ?" or "G, A" (modifiers and layout badges ignored); "" or only modifiers
+ * (unrated). Anything else is unreadable.
  */
 function readCell(text: string): Cell {
   const tokens = text
@@ -17,8 +21,8 @@ function readCell(text: string): Cell {
     .map((t) => t.trim().toUpperCase())
     .filter((t) => t !== '');
   if (tokens.some((t) => !CHIPS.has(t) && !MODIFIERS.has(t))) return { kind: 'unreadable' };
-  const chip = tokens.find((t) => CHIPS.has(t));
-  return chip === undefined ? { kind: 'blank' } : { kind: 'chip', chip: chip as PairingChip };
+  const [chip, alt] = tokens.filter((t) => CHIPS.has(t)) as PairingChip[];
+  return chip === undefined ? { kind: 'blank' } : { kind: 'chip', chip, alt: alt ?? null };
 }
 
 /** A player as the sheet labels them: the army, and the name and list when copied along. */
@@ -31,6 +35,8 @@ export interface SheetPlayer {
 export interface SheetPaste {
   /** The size × size block of chips (null = unrated or unreadable), or null if none was found. */
   cells: (PairingChip | null)[][] | null;
+  /** What each game can become (a cell's second chip), null when it has none. */
+  alts: (PairingChip | null)[][] | null;
   /** [row, column] within the block of cells that weren't chips. */
   unreadable: [number, number][];
   /** Our players (the block's rows), from the cells to their left. */
@@ -135,6 +141,7 @@ export function parseSheetPaste(text: string, size = 5): SheetPaste {
   if (best === null) {
     return {
       cells: null,
+      alts: null,
       unreadable: [],
       ours: places.map((i) => playerFrom([], `Player ${i + 1}`)),
       theirs: places.map((j) => playerFrom([], `Opponent ${j + 1}`)),
@@ -156,5 +163,11 @@ export function parseSheetPaste(text: string, size = 5): SheetPaste {
       `Opponent ${j + 1}`,
     ),
   );
-  return { cells, unreadable, ours, theirs };
+  const alts = places.map((i) =>
+    places.map((j) => {
+      const cell = at(r + i, c + j);
+      return cell.kind === 'chip' ? cell.alt : null;
+    }),
+  );
+  return { cells, alts, unreadable, ours, theirs };
 }

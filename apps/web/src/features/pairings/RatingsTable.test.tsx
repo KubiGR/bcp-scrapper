@@ -16,6 +16,7 @@ describe('RatingsTable', () => {
         theirs={theirs}
         ratings={[{ playerId: 'A', opponentPlayerId: 'Y', chip: 'RR' }]}
         onRate={onRate}
+        onAlt={() => {}}
       />,
     );
     expect(screen.getByRole('button', { name: 'A v Y: RR' })).toBeInTheDocument();
@@ -32,10 +33,33 @@ describe('RatingsTable', () => {
         theirs={theirs}
         ratings={[{ playerId: 'A', opponentPlayerId: 'Y', chip: 'RR' }]}
         onRate={onRate}
+        onAlt={() => {}}
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'A v Y: RR' }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Clear' }));
     expect(onRate).toHaveBeenCalledWith('A', 'Y', null);
+  });
+
+  it('shows what a game can become, and sets or clears it from the same menu', () => {
+    const onAlt = vi.fn();
+    renderWithProviders(
+      <RatingsTable
+        ours={ours}
+        theirs={theirs}
+        ratings={[
+          { playerId: 'A', opponentPlayerId: 'X', chip: 'Y', alt: 'R' },
+          { playerId: 'A', opponentPlayerId: 'Y', chip: 'G' },
+        ]}
+        onRate={() => {}}
+        onAlt={onAlt}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'A v X: Y, can become R' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Can become: none' }));
+    expect(onAlt).toHaveBeenCalledWith('A', 'X', null);
+    fireEvent.click(screen.getByRole('button', { name: 'A v Y: G' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Can become GG' }));
+    expect(onAlt).toHaveBeenCalledWith('A', 'Y', 'GG');
   });
 });

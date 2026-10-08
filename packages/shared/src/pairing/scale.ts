@@ -23,6 +23,16 @@ export const CHIP_COLOURS: Record<PairingChip, string> = {
   F: '#674ea7',
 };
 
+/** How much a game's "can become" chip counts (the sheet's second chip); the first chip has the rest. */
+export const CAN_BECOME_WEIGHT = 1 / 3;
+
+/** A game's points: its chip, or mostly its chip and partly the one it can become. */
+export function ratingPoints(chip: PairingChip, alt?: PairingChip | null): number {
+  return alt
+    ? (1 - CAN_BECOME_WEIGHT) * CHIP_POINTS[chip] + CAN_BECOME_WEIGHT * CHIP_POINTS[alt]
+    : CHIP_POINTS[chip];
+}
+
 /** A game nobody has rated yet counts as even. */
 export const UNRATED_POINTS = 10;
 
@@ -30,16 +40,16 @@ export const UNRATED_POINTS = 10;
 export function pointsMatrix(
   ourIds: string[],
   theirIds: string[],
-  ratings: { playerId: string; opponentPlayerId: string; chip: PairingChip }[],
+  ratings: { playerId: string; opponentPlayerId: string; chip: PairingChip; alt?: PairingChip }[],
 ): { points: number[][]; rated: number } {
-  const byPair = new Map(ratings.map((r) => [`${r.playerId}|${r.opponentPlayerId}`, r.chip]));
+  const byPair = new Map(ratings.map((r) => [`${r.playerId}|${r.opponentPlayerId}`, r]));
   let rated = 0;
   const points = ourIds.map((o) =>
     theirIds.map((t) => {
-      const chip = byPair.get(`${o}|${t}`);
-      if (chip === undefined) return UNRATED_POINTS;
+      const rating = byPair.get(`${o}|${t}`);
+      if (rating === undefined) return UNRATED_POINTS;
       rated += 1;
-      return CHIP_POINTS[chip];
+      return ratingPoints(rating.chip, rating.alt);
     }),
   );
   return { points, rated };

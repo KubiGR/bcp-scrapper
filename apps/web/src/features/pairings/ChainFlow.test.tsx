@@ -1,6 +1,6 @@
 import { analysePairing } from '@bcp/shared';
 import { fireEvent, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/render';
 import { ChainFlow } from './ChainFlow';
 
@@ -223,5 +223,161 @@ describe('ChainFlow', () => {
     fireEvent.click(screen.getByRole('switch', { name: /Show their unlikely choices/ }));
     expect(screen.getAllByRole('button', { name: /Final line-up/ }).length).toBeLessThan(all);
     expect(screen.queryAllByText(/(^| )(0|<1)% here/)).toHaveLength(0);
+  });
+
+  it('a game that can become another chip says so', () => {
+    const ratings = ours.flatMap((o) =>
+      theirs.map((t) => ({
+        playerId: o.id,
+        opponentPlayerId: t.id,
+        chip: 'Y' as const,
+        alt: 'R' as const,
+      })),
+    );
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={ratings}
+        d={3}
+        e={4}
+      />,
+    );
+    expect(screen.getAllByRole('img', { name: /: Y, can become R$/ }).length).toBeGreaterThan(0);
+  });
+
+  it('our own unlikely choices are hidden until asked for', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    const shown = screen.getAllByRole('button', { name: /Final line-up/ }).length;
+    fireEvent.click(screen.getByRole('switch', { name: /Show our unlikely choices/ }));
+    expect(screen.getAllByRole('button', { name: /Final line-up/ }).length).toBeGreaterThan(shown);
+  });
+
+  it('arrows step to the previous or next box in the same column', () => {
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    const r2 = screen.getAllByText(/^R2: you /).length;
+    const sends = screen.getAllByText(/^Back to the pool/).length;
+    const leaves = screen.getAllByRole('button', { name: /Final line-up/ }).length;
+    // Every box but the last in its column can step down, every box but the first up.
+    expect(screen.getAllByRole('button', { name: 'Next in this column' })).toHaveLength(
+      sends - 1 + r2 - 1 + leaves - 1,
+    );
+    expect(screen.getAllByRole('button', { name: 'Previous in this column' })).toHaveLength(
+      sends - 1 + r2 - 1 + leaves - 1,
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Next in this column' })[0] as Element);
+    expect(scrollTo).toHaveBeenCalledOnce();
+    scrollTo.mockRestore();
+  });
+
+  it('following the live pairing narrows the chain to what happened', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    // They send Grey Knights + Orks; World Eaters takes Orks; Custodes takes Emperor's Children.
+    fireEvent.change(screen.getByLabelText('They send'), { target: { value: '0,2' } });
+    fireEvent.change(screen.getByLabelText('You take'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('They take'), { target: { value: '1' } });
+    const sends = screen.getAllByText(/^They send .* · (<1|\d+)%$/);
+    expect(sends).toHaveLength(1);
+    expect(sends[0]).toHaveTextContent(/^They send Grey Knights \+ Orks/);
+    expect(screen.getByRole('img', { name: /^World Eaters v Orks: / })).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: /^Emperor's Children v Adeptus Custodes: / }),
+    ).toBeInTheDocument();
+    // Round 2: Space Marines (left with Chaos Daemons and Sororitas) against Death Guard.
+    fireEvent.change(screen.getByLabelText('Your round-2 defender'), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText('Their round-2 defender'), { target: { value: '1' } });
+    expect(screen.getAllByText(/^R2: you /)).toHaveLength(1);
+    expect(screen.getByText('R2: you Space Marines')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(screen.getAllByText(/^R2: you /).length).toBeGreaterThan(1);
+  });
+
+  it('tips our next decision as the pairing goes', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    expect(screen.queryByRole('region', { name: 'Tip' })).toBeNull();
+    fireEvent.change(screen.getByLabelText('They send'), { target: { value: '1,2' } });
+    const tip = within(screen.getByRole('region', { name: 'Tip' }));
+    expect(tip.getByText(/You take/)).toBeInTheDocument();
+    expect(tip.getAllByText(/^(Death Guard|Orks)$/)).toHaveLength(2);
+    expect(tip.getAllByText(/expected [\d.]+ · worst [\d.]+/)).toHaveLength(2);
+    fireEvent.change(screen.getByLabelText('You take'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('They take'), { target: { value: '1' } });
+    expect(
+      within(screen.getByRole('region', { name: 'Tip' })).getByText(/Your round-2 defender/),
+    ).toBeInTheDocument();
+  });
+
+  it('the follow bar starts with both defenders and our send, and changing a defender is passed up', () => {
+    const onDefenders = vi.fn();
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+        onDefendersChange={onDefenders}
+      />,
+    );
+    expect(screen.getByLabelText('You defend')).toHaveValue('3');
+    expect(screen.getByLabelText('They defend')).toHaveValue('4');
+    fireEvent.change(screen.getByLabelText('They defend'), { target: { value: '0' } });
+    expect(onDefenders).toHaveBeenCalledWith(3, 0);
+  });
+
+  it('each send they could make says what it leaves us, against their best', () => {
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    const options = within(screen.getByLabelText('They send')).getAllByRole('option');
+    expect(options).toHaveLength(7);
+    for (const o of options.slice(1))
+      expect(o).toHaveTextContent(/ · (<1|\d+)% · [\d.]+ for you \((\+|−)?[\d.]+\)$/);
   });
 });
