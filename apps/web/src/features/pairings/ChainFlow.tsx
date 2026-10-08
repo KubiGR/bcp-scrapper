@@ -155,7 +155,7 @@ export function ChainFlow({
           width={layout.width}
           height={layout.height + 4}
           viewBox={`0 -2 ${layout.width} ${layout.height + 4}`}
-          style={{ font: '11px var(--mantine-font-family)' }}
+          style={{ font: '11px var(--mantine-font-family)', display: 'block', margin: '0 auto' }}
         >
           {layout.edges.map((edge) => {
             const a = byId.get(edge.from);
