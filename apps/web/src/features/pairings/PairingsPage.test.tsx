@@ -298,4 +298,23 @@ describe('PairingsPage', () => {
     expect(screen.getByText('Balkan · Dice Bunker v Mighty Ducks')).toBeInTheDocument();
     expect(screen.getByText(/^23 of 25 rated/)).toBeInTheDocument();
   });
+
+  it('ruling out their defenders in the grid updates the summary too', () => {
+    renderWithProviders(<PairingsPage />);
+    paste(SHEET);
+    fireEvent.click(screen.getByRole('button', { name: 'Use these ratings' }));
+    const summary = () => {
+      const group = screen
+        .getByText('Their likely defender')
+        .closest<HTMLElement>('.mantine-Group-root');
+      if (!group) throw new Error('no summary');
+      return within(group);
+    };
+    const likely = () =>
+      screen.getByText('Their likely defender').nextElementSibling?.textContent ?? '';
+    const before = likely();
+    fireEvent.click(screen.getByRole('button', { name: before }));
+    expect(likely()).not.toBe(before);
+    expect(summary().getByText(`without ${before}`)).toBeInTheDocument();
+  });
 });
