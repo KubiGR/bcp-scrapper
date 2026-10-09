@@ -5,7 +5,7 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { Menu, Table, Text, UnstyledButton } from '@mantine/core';
+import { Menu, Popover, Table, Text, UnstyledButton } from '@mantine/core';
 import { ChipLabel, ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
 import { DispositionBadge } from './DispositionBadge';
@@ -18,6 +18,45 @@ function spread(games: (PairingRating | undefined)[]): string {
   const mean = points.reduce((sum, v) => sum + v, 0) / points.length;
   const sd = Math.sqrt(points.reduce((sum, v) => sum + (v - mean) ** 2, 0) / points.length);
   return `${mean.toFixed(1)} ± ${sd.toFixed(1)}`;
+}
+
+/**
+ * A player as the team sheet heads a row or column: their name small, the army strong, the
+ * disposition badge with the detachments, and the short list behind a button (it opens on click).
+ */
+function PlayerHeading({ player }: { player: PairingRosterPlayer }) {
+  const army = player.faction ?? player.name;
+  return (
+    <div className={classes.heading}>
+      {player.name !== player.faction && <div className={classes.playerName}>{player.name}</div>}
+      <div className={classes.army}>{army}</div>
+      {(Boolean(player.disposition) || player.detachments.length > 0) && (
+        <div className={classes.detail}>
+          <DispositionBadge disposition={player.disposition} />
+          {player.detachments.length > 0 && <span>{player.detachments.join(' + ')}</span>}
+        </div>
+      )}
+      {player.list && (
+        <Popover position="bottom-start" withArrow shadow="md" width={260}>
+          <Popover.Target>
+            <UnstyledButton className={classes.listButton} aria-label={`${army} list`}>
+              List · {player.list.split('\n').length} units
+            </UnstyledButton>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <Text size="xs" fw={600} mb={4}>
+              {army}
+            </Text>
+            {player.list.split('\n').map((line, k) => (
+              <Text key={k} size="xs" lh={1.4}>
+                {line}
+              </Text>
+            ))}
+          </Popover.Dropdown>
+        </Popover>
+      )}
+    </div>
+  );
 }
 
 /** Our players (rows) against theirs (columns); click a cell to pick its chip. */
@@ -54,27 +93,7 @@ export function RatingsTable({
                 data-used={usedTheirs.has(j) || undefined}
                 className={usedTheirs.has(j) ? classes.used : undefined}
               >
-                {t.name !== t.faction && (
-                  <Text size="xs" c="dimmed">
-                    {t.name}
-                  </Text>
-                )}
-                <Text size="sm">{t.faction ?? '—'}</Text>
-                {t.detachments.length > 0 && (
-                  <Text size="xs" c="dimmed">
-                    {t.detachments.join(' + ')}
-                  </Text>
-                )}
-                {t.list && (
-                  <div className={classes.list}>
-                    {t.list.split('\n').map((line, k) => (
-                      <Text key={k} size="xs" c="dimmed" lh={1.25}>
-                        {line}
-                      </Text>
-                    ))}
-                  </div>
-                )}
-                <DispositionBadge disposition={t.disposition} />
+                <PlayerHeading player={t} />
               </th>
             ))}
             <th className={classes.avg}>Average</th>
@@ -88,13 +107,7 @@ export function RatingsTable({
                 data-used={usedOurs.has(i) || undefined}
                 className={usedOurs.has(i) ? classes.used : undefined}
               >
-                <Text size="sm">{o.faction ?? o.name}</Text>
-                {o.name !== o.faction && (
-                  <Text size="xs" c="dimmed">
-                    {o.name}
-                  </Text>
-                )}
-                <DispositionBadge disposition={o.disposition} />
+                <PlayerHeading player={o} />
               </th>
               {theirs.map((t, j) => {
                 const rating = ratingOf.get(`${o.id}|${t.id}`);

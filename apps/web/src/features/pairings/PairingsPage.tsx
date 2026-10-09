@@ -90,7 +90,7 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
   };
   // The live pairing: kept here so the ratings table can grey out who's used up.
   const [follow, setFollow] = useState<ChainFollow>({});
-  const [shown, setShown] = useState<ChainShown>({ ours: false, theirs: true });
+  const [shown, setShown] = useState<ChainShown>({ ours: false, theirs: false });
   const choose = (d: number, e: number) => {
     setSquare({ d, e });
     setFollow({});

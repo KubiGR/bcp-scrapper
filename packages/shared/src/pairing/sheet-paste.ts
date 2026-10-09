@@ -1,3 +1,4 @@
+import { knownDisposition } from '../army-list-parser';
 import { canonicalArmy } from '../factions';
 import { PAIRING_CHIPS, type PairingChip } from './scale';
 
@@ -29,6 +30,10 @@ function readCell(text: string): Cell {
 export interface SheetPlayer {
   army: string;
   name: string | null;
+  /** The detachment row under the army, when copied along. */
+  detachment: string | null;
+  /** From the sheet's codes (DRP, REC, PTF, PRT, T&H) or full names. */
+  disposition: string | null;
   list: string | null;
 }
 
@@ -101,14 +106,30 @@ const isLabel = (text: string) =>
  * Labels read from the cells beside a row or above a column, nearest the block last. The army is
  * the one the app recognises as an army (else the first label); the name is the label before it.
  */
+/** The team sheet's disposition codes (any case), and the full names. */
+const DISPOSITION_CODES: Readonly<Record<string, string>> = {
+  DRP: 'Disruption',
+  REC: 'Reconnaissance',
+  PTF: 'Purge the Foe',
+  PRT: 'Priority Assets',
+  'T&H': 'Take and Hold',
+};
+const dispositionOf = (text: string): string | null =>
+  DISPOSITION_CODES[text.toUpperCase()] ?? knownDisposition(text);
+
 function playerFrom(texts: string[], fallback: string): SheetPlayer {
-  const labels = texts.map((t) => t.trim()).filter(isLabel);
+  const all = texts.map((t) => t.trim()).filter(isLabel);
+  const disposition = all.map(dispositionOf).find((d) => d !== null) ?? null;
+  const labels = all.filter((t) => dispositionOf(t) === null);
   const at = labels.findIndex((t) => canonicalArmy(t) !== null);
   const armyAt = at === -1 ? 0 : at;
   const lists = texts.filter((t) => t.includes('\n')).map((t) => t.trim());
   return {
     army: labels[armyAt] ?? fallback,
     name: armyAt > 0 ? (labels[armyAt - 1] ?? null) : null,
+    // Under the army in the sheet's columns: the detachment(s).
+    detachment: labels[armyAt + 1] ?? null,
+    disposition,
     list: lists.reduce<string | null>((a, b) => (a === null || b.length > a.length ? b : a), null),
   };
 }

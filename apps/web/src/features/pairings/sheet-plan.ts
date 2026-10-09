@@ -68,7 +68,8 @@ export function planFromPaste({ cells, alts, ours, theirs }: SheetPaste): SheetP
     id: `${prefix}${String(i)}`,
     name: p.name ?? p.army,
     faction: p.army,
-    detachments: [],
+    detachments: p.detachment ? [p.detachment] : [],
+    disposition: p.disposition,
     list: p.list,
   });
   const plan = { ours: ours.map(player('us')), theirs: theirs.map(player('them')) };

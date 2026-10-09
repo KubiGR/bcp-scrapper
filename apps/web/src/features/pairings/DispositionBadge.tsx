@@ -9,7 +9,7 @@ export function DispositionBadge({ disposition }: { disposition: string | null |
       title={disposition}
       style={{
         display: 'inline-block',
-        marginTop: 4,
+        flex: 'none',
         padding: '0 6px',
         borderRadius: 3,
         fontSize: 'var(--mantine-font-size-xs)',

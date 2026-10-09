@@ -63,7 +63,7 @@ describe('RatingsTable', () => {
     expect(onAlt).toHaveBeenCalledWith('A', 'Y', 'GG');
   });
 
-  it('shows dispositions as the sheet’s badges, the short lists, and each row’s and column’s average', () => {
+  it('shows dispositions as the sheet’s badges, the short lists, and each row’s and column’s average', async () => {
     const us = [
       { ...p('A', 'Space Marines'), disposition: 'Disruption' },
       { ...p('B', 'World Eaters'), disposition: 'Take and Hold' },
@@ -88,7 +88,11 @@ describe('RatingsTable', () => {
     expect(screen.getByTitle('Disruption')).toHaveTextContent('DRP');
     expect(screen.getByTitle('Take and Hold')).toHaveTextContent('T&H');
     expect(screen.getByTitle('Purge the Foe')).toHaveTextContent('PTF');
-    expect(screen.getByText('6 Warbikers')).toBeInTheDocument();
+    // The short list opens from a button, so the headers stay short.
+    expect(screen.queryByText('6 Warbikers')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Orks list' }));
+    expect(await screen.findByText('6 Warbikers')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Necrons list' })).toBeNull();
     // Space Marines: G 13 and Y 10 → 11.5 ± 1.5; Orks column: G 13 and RR 2.5 → 7.8 ± 5.3.
     expect(screen.getByLabelText('Space Marines average')).toHaveTextContent('11.5 ± 1.5');
     expect(screen.getByLabelText('Orks average')).toHaveTextContent('7.8 ± 5.3');

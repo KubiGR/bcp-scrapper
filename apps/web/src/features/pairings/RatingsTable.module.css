@@ -28,10 +28,40 @@
   color: var(--mantine-color-dimmed);
   font-variant-numeric: tabular-nums;
 }
-/* The short list under an opponent's name. */
-.list {
-  margin-top: 2px;
+/* A player's heading, as the team sheet: name small, army strong, disposition with detachments. */
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   font-weight: 400;
+}
+.playerName {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--mantine-color-dimmed);
+  line-height: 1.2;
+}
+.army {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.detail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--mantine-color-dimmed);
+  line-height: 1.2;
+}
+.listButton {
+  align-self: flex-start;
+  font-size: 11px;
+  color: var(--mantine-color-anchor);
+}
+.listButton:hover {
+  text-decoration: underline;
 }
 .cell {
   width: 100%;
