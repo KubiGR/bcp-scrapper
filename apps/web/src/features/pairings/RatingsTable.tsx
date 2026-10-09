@@ -5,7 +5,7 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { Menu, Popover, Table, Text, UnstyledButton } from '@mantine/core';
+import { ActionIcon, Menu, Popover, Table, Text, UnstyledButton } from '@mantine/core';
 import { ChipLabel, ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
 import { DispositionBadge } from './DispositionBadge';
@@ -20,16 +20,23 @@ function spread(games: (PairingRating | undefined)[]): string {
   return `${mean.toFixed(1)} ± ${sd.toFixed(1)}`;
 }
 
-/** A small list symbol: three lines with bullets. */
+/** A clipboard with lines: the army list. */
 function ListIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
-      <circle cx="2.5" cy="4" r="1.3" />
-      <circle cx="2.5" cy="8" r="1.3" />
-      <circle cx="2.5" cy="12" r="1.3" />
-      <rect x="5.5" y="3.2" width="9" height="1.6" rx="0.8" />
-      <rect x="5.5" y="7.2" width="9" height="1.6" rx="0.8" />
-      <rect x="5.5" y="11.2" width="9" height="1.6" rx="0.8" />
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="5" y="4" width="14" height="17" rx="2" />
+      <path d="M9 4V3h6v1" />
+      <path d="M9 10h6M9 14h6M9 18h4" />
     </svg>
   );
 }
@@ -48,13 +55,9 @@ function PlayerHeading({ player }: { player: PairingRosterPlayer }) {
         {player.list && (
           <Popover position="bottom-start" withArrow shadow="md" width={260}>
             <Popover.Target>
-              <UnstyledButton
-                className={classes.listButton}
-                aria-label={`${army} list`}
-                title="List"
-              >
+              <ActionIcon variant="default" size="sm" aria-label={`${army} list`} title="List">
                 <ListIcon />
-              </UnstyledButton>
+              </ActionIcon>
             </Popover.Target>
             <Popover.Dropdown>
               <Text size="xs" fw={600} mb={4}>
@@ -116,7 +119,9 @@ export function RatingsTable({
                 <PlayerHeading player={t} />
               </th>
             ))}
-            <th className={classes.avg}>Average</th>
+            <th className={classes.avg}>
+              <span className={classes.averageLabel}>Average</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -205,7 +210,7 @@ export function RatingsTable({
           ))}
           <tr>
             <th scope="row">
-              <Text size="sm">Average</Text>
+              <span className={classes.averageLabel}>Average</span>
             </th>
             {theirs.map((t) => (
               <td

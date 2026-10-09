@@ -1,5 +1,5 @@
 import { EventListResponseSchema } from '@bcp/shared';
-import { Alert, Button, Group, NativeSelect, Stack, Text } from '@mantine/core';
+import { Alert, Button, Group, Select, Stack, Text } from '@mantine/core';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { apiGet } from '../../api/client';
@@ -81,52 +81,55 @@ export function TeamPicker({ onUse }: { onUse: (plan: SheetPlan) => void }) {
       },
     });
   };
-  const options = (list: { id: string; name: string; players: number }[]) => [
-    { value: '', label: 'Pick a team' },
-    ...list.map((t) => ({
+  const options = (list: { id: string; name: string; players: number }[]) =>
+    list.map((t) => ({
       value: t.id,
       label: t.players === PLAYERS ? t.name : `${t.name} (${String(t.players)} players)`,
-    })),
-  ];
+    }));
+  // A–Z, so a known event is quick to find (typing filters too).
+  const eventOptions = [...(events.data?.items ?? [])]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((e) => ({ value: e.bcpId, label: `${e.name} · ${e.startDate.slice(0, 10)}` }));
   return (
     <Stack gap="sm">
       <Group align="flex-end" gap="sm">
-        <NativeSelect
+        <Select
           label="Event"
-          value={event ?? ''}
-          onChange={(ev) => {
-            setEvent(ev.currentTarget.value || null);
+          placeholder="Pick a team event"
+          searchable
+          value={event}
+          onChange={(v) => {
+            setEvent(v);
             setTeam(null);
             setOpponent(null);
           }}
-          data={[
-            { value: '', label: 'Pick a team event' },
-            ...(events.data?.items ?? []).map((e) => ({
-              value: e.bcpId,
-              label: `${e.name} · ${e.startDate.slice(0, 10)}`,
-            })),
-          ]}
+          data={eventOptions}
+          nothingFoundMessage="No such team event"
           w={380}
         />
-        <NativeSelect
+        <Select
           label="Your team"
+          placeholder="Pick a team"
+          searchable
           disabled={event === null || teams.length === 0}
-          value={team ?? ''}
-          onChange={(ev) => {
-            setTeam(ev.currentTarget.value || null);
+          value={team}
+          onChange={(v) => {
+            setTeam(v);
             setOpponent(null);
           }}
           data={options(teams)}
+          nothingFoundMessage="No such team"
           w={260}
         />
-        <NativeSelect
+        <Select
           label="Opponent"
+          placeholder="Pick a team"
+          searchable
           disabled={team === null}
-          value={opponent ?? ''}
-          onChange={(ev) => {
-            setOpponent(ev.currentTarget.value || null);
-          }}
+          value={opponent}
+          onChange={setOpponent}
           data={options(teams.filter((t) => t.id !== team))}
+          nothingFoundMessage="No such team"
           w={260}
         />
       </Group>

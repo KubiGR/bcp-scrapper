@@ -73,6 +73,17 @@ afterEach(() => {
   localStorage.clear();
 });
 
+/** Pick from a searchable dropdown: type part of the name, then click the option. */
+async function choose(label: string, typed: string, option: RegExp) {
+  const input = await screen.findByRole('combobox', { name: label });
+  await vi.waitFor(() => {
+    expect(input).toBeEnabled();
+  });
+  fireEvent.click(input);
+  fireEvent.change(input, { target: { value: typed } });
+  fireEvent.click(await screen.findByRole('option', { name: option }));
+}
+
 describe('TeamPicker', () => {
   it('picks an event, our team and the opponent, then hands over both rosters with short lists', async () => {
     stubFetchRoutes({
@@ -82,11 +93,9 @@ describe('TeamPicker', () => {
     });
     const onUse = vi.fn();
     renderWithRouter(<TeamPicker onUse={onUse} />);
-    await screen.findByRole('option', { name: /^Balkan Team Championship/ });
-    fireEvent.change(screen.getByLabelText('Event'), { target: { value: 'E1' } });
-    await screen.findAllByRole('option', { name: 'Dice Bunker' });
-    fireEvent.change(screen.getByLabelText('Your team'), { target: { value: 'T1' } });
-    fireEvent.change(screen.getByLabelText('Opponent'), { target: { value: 'T2' } });
+    await choose('Event', 'balkan', /^Balkan Team Championship/);
+    await choose('Your team', 'dice', /^Dice Bunker/);
+    await choose('Opponent', 'duck', /^Mighty Ducks/);
     // One opponent's list isn't fetched yet: it comes without a short list.
     expect(await screen.findByText(/9 of 10 lists fetched/)).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Use these teams' }));
@@ -106,12 +115,31 @@ describe('TeamPicker', () => {
       'GET /api/players/': (url: string) => Response.json(list(url.split('/')[3] ?? '')),
     });
     renderWithRouter(<TeamPicker onUse={vi.fn()} />);
-    await screen.findByRole('option', { name: /^Balkan Team Championship/ });
-    fireEvent.change(screen.getByLabelText('Event'), { target: { value: 'E1' } });
-    await screen.findAllByRole('option', { name: 'Dice Bunker' });
-    fireEvent.change(screen.getByLabelText('Your team'), { target: { value: 'T1' } });
-    fireEvent.change(screen.getByLabelText('Opponent'), { target: { value: 'T2' } });
+    await choose('Event', 'balkan', /^Balkan Team Championship/);
+    await choose('Your team', 'dice', /^Dice Bunker/);
+    await choose('Opponent', 'duck', /^Mighty Ducks/);
     expect(await screen.findByText(/Mighty Ducks has 4 players/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Use these teams' })).toBeNull();
+  });
+
+  it('lists the events A–Z', async () => {
+    stubFetchRoutes({
+      'GET /api/events?': {
+        ...EVENTS,
+        items: [
+          { ...EVENTS.items[0], bcpId: 'E2', name: 'Zagreb Team Open' },
+          { ...EVENTS.items[0], bcpId: 'E3', name: 'Athens Team GT' },
+          EVENTS.items[0],
+        ],
+      },
+    });
+    renderWithRouter(<TeamPicker onUse={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('combobox', { name: 'Event' }));
+    const names = (await screen.findAllByRole('option')).map((o) => o.textContent);
+    expect(names.map((n) => n.split(' · ')[0])).toEqual([
+      'Athens Team GT',
+      'Balkan Team Championship 2026',
+      'Zagreb Team Open',
+    ]);
   });
 });
