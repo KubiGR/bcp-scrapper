@@ -42,16 +42,21 @@ function ListIcon() {
 }
 
 /**
- * A player as the team sheet heads a row or column: their name small, the army strong, the
- * disposition badge with the detachments, and a list symbol by the army that opens the short list.
+ * A player heading on three steady lines, the same in every row and column: the army (with the
+ * button that opens the short list), the player, then the disposition badge with the detachments.
+ * Lines too long end in "…" with the whole text on hover.
  */
 function PlayerHeading({ player }: { player: PairingRosterPlayer }) {
   const army = player.faction ?? player.name;
+  // BCP writes "Space Marines (Astartes)": the label drops the bracket, the hover keeps it.
+  const label = army.replace(/\s*\([^)]*\)\s*$/, '');
+  const detachments = player.detachments.join(' + ');
   return (
     <div className={classes.heading}>
-      {player.name !== player.faction && <div className={classes.playerName}>{player.name}</div>}
-      <div className={classes.army}>
-        <span>{army}</span>
+      <div className={classes.army} data-line="army">
+        <span className={classes.armyName} title={army}>
+          {label}
+        </span>
         {player.list && (
           <Popover position="bottom-start" withArrow shadow="md" width={260}>
             <Popover.Target>
@@ -72,12 +77,17 @@ function PlayerHeading({ player }: { player: PairingRosterPlayer }) {
           </Popover>
         )}
       </div>
-      {(Boolean(player.disposition) || player.detachments.length > 0) && (
-        <div className={classes.detail}>
-          <DispositionBadge disposition={player.disposition} />
-          {player.detachments.length > 0 && <span>{player.detachments.join(' + ')}</span>}
-        </div>
-      )}
+      <div className={classes.playerName} data-line="player" title={player.name}>
+        {player.name !== player.faction ? player.name : ' '}
+      </div>
+      <div className={classes.detail} data-line="detail">
+        <DispositionBadge disposition={player.disposition} />
+        {detachments && (
+          <span className={classes.detachments} title={detachments}>
+            {detachments}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

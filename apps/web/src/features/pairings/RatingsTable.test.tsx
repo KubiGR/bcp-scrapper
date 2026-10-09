@@ -100,4 +100,27 @@ describe('RatingsTable', () => {
     expect(screen.getByLabelText('Orks average')).toHaveTextContent('7.8 ± 5.3');
     expect(screen.getByLabelText('Necrons average')).toHaveTextContent('10.0 ± 0.0');
   });
+
+  it('each heading on three steady lines: army, player, disposition with detachments', () => {
+    const us = [
+      {
+        ...p('A', 'Space Marines (Astartes)'),
+        name: 'Christos M.',
+        disposition: 'Disruption',
+        detachments: ['Gladius Task Force'],
+      },
+    ];
+    renderWithProviders(
+      <RatingsTable ours={us} theirs={theirs} ratings={[]} onRate={() => {}} onAlt={() => {}} />,
+    );
+    // BCP's "(Astartes)" is dropped from the label but kept on hover.
+    const army = screen.getByText('Space Marines');
+    expect(army).toHaveAttribute('title', 'Space Marines (Astartes)');
+    const heading = army.closest('th');
+    const lines = [...(heading?.querySelectorAll('[data-line]') ?? [])].map((l) =>
+      l.getAttribute('data-line'),
+    );
+    expect(lines).toEqual(['army', 'player', 'detail']);
+    expect(screen.getByText('Gladius Task Force')).toHaveAttribute('title', 'Gladius Task Force');
+  });
 });

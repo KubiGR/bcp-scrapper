@@ -97,6 +97,7 @@ export function TeamPicker({ onUse }: { onUse: (plan: SheetPlan) => void }) {
           label="Event"
           placeholder="Pick a team event"
           searchable
+          selectFirstOptionOnChange
           value={event}
           onChange={(v) => {
             setEvent(v);
@@ -111,6 +112,7 @@ export function TeamPicker({ onUse }: { onUse: (plan: SheetPlan) => void }) {
           label="Your team"
           placeholder="Pick a team"
           searchable
+          selectFirstOptionOnChange
           disabled={event === null || teams.length === 0}
           value={team}
           onChange={(v) => {
@@ -125,6 +127,7 @@ export function TeamPicker({ onUse }: { onUse: (plan: SheetPlan) => void }) {
           label="Opponent"
           placeholder="Pick a team"
           searchable
+          selectFirstOptionOnChange
           disabled={team === null}
           value={opponent}
           onChange={setOpponent}
