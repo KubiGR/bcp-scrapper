@@ -123,4 +123,21 @@ describe('summary and defender grid', () => {
     fireEvent.click(custodes);
     expect(custodes).toHaveAttribute('aria-pressed', 'false');
   });
+
+  it('says their defenders can be clicked to rule out, and marks them with an eye', () => {
+    renderWithProviders(
+      <DefenderGrid
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        selected={{ d: 3, e: 4 }}
+        onSelect={() => {}}
+      />,
+    );
+    expect(screen.getByText(/Click a defender of theirs to rule them out/)).toBeInTheDocument();
+    const orks = screen.getByRole('button', { name: /^Orks/ });
+    expect(orks.querySelector('[data-icon="eye"]')).not.toBeNull();
+    fireEvent.click(orks);
+    expect(orks.querySelector('[data-icon="eye-off"]')).not.toBeNull();
+  });
 });
