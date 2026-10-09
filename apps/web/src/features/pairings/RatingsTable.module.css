@@ -9,15 +9,77 @@
 .table th {
   font-weight: 600;
   text-align: left;
-  vertical-align: bottom;
+  vertical-align: top;
   padding: 2px 4px;
 }
 .table tbody th {
   vertical-align: middle;
 }
 .names {
-  width: 11rem;
+  width: 13rem;
 }
+.avg {
+  width: 6.5rem;
+  text-align: right !important;
+}
+/* "Average", small like the other labels. */
+.averageLabel {
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 600;
+  color: var(--mantine-color-dimmed);
+}
+/* An average, as the sheet's AVERAGE SCORES: dimmed, to the right. */
+.average {
+  text-align: right;
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-dimmed);
+  font-variant-numeric: tabular-nums;
+}
+/* A player heading: three steady lines (army, player, disposition + detachments). */
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  font-weight: 400;
+}
+.army {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  line-height: 1.25;
+}
+/* The army may take two lines; it matters most. */
+.armyName {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.playerName,
+.detachments {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.playerName {
+  font-size: 11px;
+  color: var(--mantine-color-dimmed);
+  line-height: 1.2;
+}
+.detail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 18px;
+  font-size: 11px;
+  color: var(--mantine-color-dimmed);
+  line-height: 1.2;
+}
+
 .cell {
   width: 100%;
   min-width: 64px;

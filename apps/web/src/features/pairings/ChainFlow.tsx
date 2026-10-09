@@ -76,9 +76,8 @@ export function ChainFlow({
   const [sendKey, setSendKey] = useState<string | null>(null);
   const send = options.find((o) => o.pair.join() === sendKey) ?? best;
   // Cheap: the solver already cached every stage the chain walks through.
-  // Their unlikely choices are shown by default (real opponents rate the games their own way);
-  // ours, which are ours to make, only when asked for: they multiply the chain's size.
-  const [ownShown, setOwnShown] = useState<ChainShown>({ ours: false, theirs: true });
+  // Unlikely choices (theirs or ours) only when asked for: they multiply the chain's size.
+  const [ownShown, setOwnShown] = useState<ChainShown>({ ours: false, theirs: false });
   const shown = shownProp ?? ownShown;
   const setShown = onShownChange ?? setOwnShown;
   const full = pairingChain(analysis, d, e, send.pair);

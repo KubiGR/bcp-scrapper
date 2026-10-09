@@ -1,7 +1,9 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderWithProviders } from '../../test/render';
+import { parseSheetPaste } from '@bcp/shared';
 import { PairingsPage } from './PairingsPage';
+import { planFromPaste, writePlan } from './sheet-plan';
 
 const row = (...cells: string[]) => cells.join('\t');
 const SHEET = [
@@ -204,5 +206,96 @@ describe('PairingsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
     expect(screen.getByRole('switch', { name: /Show their unlikely choices/ })).not.toBeChecked();
     expect(screen.getByRole('switch', { name: /Show our unlikely choices/ })).not.toBeChecked();
+  });
+
+  it('starts from the tournament or from a paste', () => {
+    renderWithProviders(<PairingsPage />);
+    expect(screen.getByText('From the tournament')).toBeInTheDocument();
+    expect(screen.getByText('Paste from your sheet')).toBeInTheDocument();
+  });
+
+  it('teams from an event: named on the page, and a pasted sheet goes onto them by army', () => {
+    const pasted = planFromPaste(parseSheetPaste(SHEET));
+    if (!pasted) throw new Error('no plan');
+    // The event lists both teams in another order, and has no ratings yet.
+    writePlan({
+      ours: [...pasted.ours].reverse(),
+      theirs: [...pasted.theirs].reverse(),
+      ratings: [],
+      source: {
+        event: 'E1',
+        team: 'T1',
+        opponent: 'T2',
+        eventName: 'Balkan Team Championship 2026',
+        teamName: 'Dice Bunker',
+        opponentName: 'Mighty Ducks',
+      },
+    });
+    renderWithProviders(<PairingsPage />);
+    expect(
+      screen.getByText('Balkan Team Championship 2026 · Dice Bunker v Mighty Ducks'),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^0 of 25 rated/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Paste from sheet' }));
+    const dialog = within(screen.getByRole('dialog'));
+    fireEvent.change(dialog.getByLabelText('Copied cells'), { target: { value: SHEET } });
+    expect(dialog.getByText(/^23 chips · 1 blank · 1 unreadable/)).toBeInTheDocument();
+    expect(dialog.getByText(/^23 ratings matched by army/)).toBeInTheDocument();
+    fireEvent.click(dialog.getByRole('button', { name: 'Use these ratings' }));
+    expect(screen.getByText(/^23 of 25 rated/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Space Marines v George: GG' })).toBeInTheDocument();
+  });
+
+  it('rows and columns are grouped by disposition in the same order', () => {
+    const pasted = planFromPaste(parseSheetPaste(SHEET));
+    if (!pasted) throw new Error('no plan');
+    const order = ['Take and Hold', 'Disruption', null, 'Purge the Foe', 'Reconnaissance'];
+    writePlan({
+      ...pasted,
+      ours: pasted.ours.map((x, i) => ({ ...x, disposition: order[i] ?? null })),
+      theirs: pasted.theirs.map((x, i) => ({ ...x, disposition: order[4 - i] ?? null })),
+    });
+    renderWithProviders(<PairingsPage />);
+    const table = within(screen.getByRole('table', { name: 'Ratings' }));
+    const rowArmies = table
+      .getAllByRole('rowheader')
+      .slice(0, 5)
+      .map((h) => h.querySelector('[data-line="army"] span')?.textContent);
+    // Disruption, Reconnaissance, Purge the Foe, Take and Hold, then the one without.
+    expect(rowArmies).toEqual([
+      'Emperor’s Children',
+      'Adepta Sororitas',
+      'World Eaters',
+      'Space Marines',
+      'Chaos Daemons',
+    ]);
+    // Their columns in the same order of dispositions.
+    const columnCodes = table
+      .getAllByRole('columnheader')
+      .flatMap((h) => [...h.querySelectorAll('[title]')].map((b) => b.getAttribute('title')))
+      .filter((t): t is string => t !== null && /^(Disruption|Reconnaissance|Purge|Take)/.test(t));
+    expect(columnCodes).toEqual(['Disruption', 'Reconnaissance', 'Purge the Foe', 'Take and Hold']);
+  });
+
+  it('says ratings are saved in this browser, and reopens a saved pairing', async () => {
+    const pasted = planFromPaste(parseSheetPaste(SHEET));
+    if (!pasted) throw new Error('no plan');
+    const source = (opponent: string, opponentName: string) => ({
+      event: 'E1',
+      team: 'T1',
+      opponent,
+      eventName: 'Balkan',
+      teamName: 'Dice Bunker',
+      opponentName,
+    });
+    writePlan({ ...pasted, source: source('T2', 'Mighty Ducks') });
+    writePlan({ ...pasted, ratings: [], source: source('T3', 'Dragon Tale') });
+    renderWithProviders(<PairingsPage />);
+    expect(screen.getByText(/saved in this browser/)).toBeInTheDocument();
+    expect(screen.getByText('Balkan · Dice Bunker v Dragon Tale')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('combobox', { name: 'Saved pairings' }));
+    fireEvent.click(await screen.findByRole('option', { name: /Mighty Ducks · 23 rated/ }));
+    expect(screen.getByText('Balkan · Dice Bunker v Mighty Ducks')).toBeInTheDocument();
+    expect(screen.getByText(/^23 of 25 rated/)).toBeInTheDocument();
   });
 });

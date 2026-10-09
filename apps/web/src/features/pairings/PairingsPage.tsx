@@ -5,17 +5,28 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { Button, Container, Group, Modal, Stack, Text, Title } from '@mantine/core';
+import { Button, Container, Group, Modal, Select, Stack, Text, Title } from '@mantine/core';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { Panel } from '../../components/Panel';
 import type { ChainFollow, ChainShown } from './chain-layout';
 import { ChainFlow } from './ChainFlow';
 import { DefenderGrid } from './DefenderGrid';
+import { FetchListsButton } from './FetchListsButton';
+import { byDisposition } from './disposition-style';
 import { PairingSummary } from './PairingSummary';
 import { PasteBox } from './PasteBox';
 import { RatingsTable } from './RatingsTable';
-import { altPlan, ratePlan, readPlan, writePlan, type SheetPlan } from './sheet-plan';
+import {
+  altPlan,
+  ratePlan,
+  readPlan,
+  savedPlan,
+  savedPlans,
+  writePlan,
+  type SheetPlan,
+} from './sheet-plan';
+import { TeamPicker } from './TeamPicker';
 import { usedPlayers } from './used-players';
 
 /** The page is full width for the chain; everything else keeps the usual centred column. */
@@ -40,6 +51,13 @@ export function PairingsPage() {
       <Column>
         <Stack gap="lg">
           <Title order={2}>Pairings</Title>
+          <Panel title="From the tournament">
+            <TeamPicker
+              onUse={(next) => {
+                use(withSavedRatings(next));
+              }}
+            />
+          </Panel>
           <Panel title="Paste from your sheet">
             <PasteBox onUse={use} />
           </Panel>
@@ -50,10 +68,61 @@ export function PairingsPage() {
   return <Planner plan={plan} use={use} />;
 }
 
+const pairingName = (p: SheetPlan) =>
+  `${p.source?.eventName ?? 'Event'} · ${p.source?.teamName ?? '?'} v ${p.source?.opponentName ?? '?'}`;
+const keyOf = (p: SheetPlan) =>
+  p.source ? `${p.source.event}|${p.source.team}|${p.source.opponent}` : '';
+
+/** The pairings of event teams kept in this browser, to reopen one with its ratings. */
+function SavedPairings({
+  current,
+  onOpen,
+}: {
+  current: SheetPlan;
+  onOpen: (plan: SheetPlan) => void;
+}) {
+  const saved = savedPlans();
+  if (saved.length === 0) return null;
+  return (
+    <Select
+      aria-label="Saved pairings"
+      placeholder="Saved pairings"
+      size="xs"
+      w={300}
+      searchable
+      value={keyOf(current) || null}
+      onChange={(key) => {
+        const plan = saved.find((p) => keyOf(p) === key);
+        if (plan) onOpen(plan);
+      }}
+      data={saved.map((p) => ({
+        value: keyOf(p),
+        label: `${pairingName(p)} · ${String(p.ratings.length)} rated`,
+      }))}
+    />
+  );
+}
+
+/** Teams picked again: the ratings given before for this pairing come back. */
+function withSavedRatings(plan: SheetPlan): SheetPlan {
+  const saved = plan.source ? savedPlan(plan.source) : null;
+  if (!saved) return plan;
+  const ours = new Set(plan.ours.map((p) => p.id));
+  const theirs = new Set(plan.theirs.map((p) => p.id));
+  return {
+    ...plan,
+    ratings: saved.ratings.filter((r) => ours.has(r.playerId) && theirs.has(r.opponentPlayerId)),
+  };
+}
+
 /** The pasted sheet, its analysis and a live pairing being followed. */
 function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => void }) {
   const [pasting, setPasting] = useState(false);
-  const { ours, theirs, ratings } = plan;
+  const [picking, setPicking] = useState(false);
+  const { ratings, source } = plan;
+  // Grouped by disposition, both sides in the same order (ratings follow the players).
+  const ours = byDisposition(plan.ours);
+  const theirs = byDisposition(plan.theirs);
   const { points, rated } = pointsMatrix(
     ours.map((p) => p.id),
     theirs.map((p) => p.id),
@@ -69,7 +138,7 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
   };
   // The live pairing: kept here so the ratings table can grey out who's used up.
   const [follow, setFollow] = useState<ChainFollow>({});
-  const [shown, setShown] = useState<ChainShown>({ ours: false, theirs: true });
+  const [shown, setShown] = useState<ChainShown>({ ours: false, theirs: false });
   const choose = (d: number, e: number) => {
     setSquare({ d, e });
     setFollow({});
@@ -78,6 +147,11 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
     <Stack gap="lg">
       <Column>
         <Title order={2}>Pairings</Title>
+        {source && (
+          <Text c="dimmed" size="sm">
+            {pairingName(plan)}
+          </Text>
+        )}
       </Column>
       <Column>
         <Panel title="Rate the games">
@@ -96,17 +170,31 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
             />
             <Group justify="space-between">
               <Text size="xs" c="dimmed">
-                {rated} of 25 rated{rated < 25 ? ' · unrated games count as Y (even)' : ''}
+                {rated} of 25 rated{rated < 25 ? ' · unrated games count as Y (even)' : ''} · saved
+                in this browser
               </Text>
-              <Button
-                variant="default"
-                size="xs"
-                onClick={() => {
-                  setPasting(true);
-                }}
-              >
-                Paste again
-              </Button>
+              <Group gap="xs">
+                <SavedPairings current={plan} onOpen={use} />
+                <FetchListsButton plan={plan} onRefresh={use} />
+                <Button
+                  variant="default"
+                  size="xs"
+                  onClick={() => {
+                    setPicking(true);
+                  }}
+                >
+                  Pick teams
+                </Button>
+                <Button
+                  variant="default"
+                  size="xs"
+                  onClick={() => {
+                    setPasting(true);
+                  }}
+                >
+                  {source ? 'Paste from sheet' : 'Paste again'}
+                </Button>
+              </Group>
             </Group>
           </Stack>
         </Panel>
@@ -120,9 +208,25 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
         size="lg"
       >
         <PasteBox
+          onto={source ? plan : undefined}
           onUse={(next) => {
             use(next);
             setPasting(false);
+          }}
+        />
+      </Modal>
+      <Modal
+        opened={picking}
+        onClose={() => {
+          setPicking(false);
+        }}
+        title="Pick the teams"
+        size="xl"
+      >
+        <TeamPicker
+          onUse={(next) => {
+            use(withSavedRatings(next));
+            setPicking(false);
           }}
         />
       </Modal>

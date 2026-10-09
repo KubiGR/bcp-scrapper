@@ -62,4 +62,88 @@ describe('RatingsTable', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Can become GG' }));
     expect(onAlt).toHaveBeenCalledWith('A', 'Y', 'GG');
   });
+
+  it('shows dispositions as the sheet’s badges, the short lists, and each row’s and column’s average', async () => {
+    const us = [
+      { ...p('A', 'Space Marines'), disposition: 'Disruption' },
+      { ...p('B', 'World Eaters'), disposition: 'Take and Hold' },
+    ];
+    const them = [
+      { ...p('X', 'Orks'), disposition: 'Purge the Foe', list: 'Warboss on Warbike\n6 Warbikers' },
+      { ...p('Y', 'Necrons'), disposition: null },
+    ];
+    renderWithProviders(
+      <RatingsTable
+        ours={us}
+        theirs={them}
+        ratings={[
+          { playerId: 'A', opponentPlayerId: 'X', chip: 'G' },
+          { playerId: 'A', opponentPlayerId: 'Y', chip: 'Y' },
+          { playerId: 'B', opponentPlayerId: 'X', chip: 'RR' },
+        ]}
+        onRate={() => {}}
+        onAlt={() => {}}
+      />,
+    );
+    expect(screen.getByTitle('Disruption')).toHaveTextContent('DRP');
+    expect(screen.getByTitle('Take and Hold')).toHaveTextContent('T&H');
+    expect(screen.getByTitle('Purge the Foe')).toHaveTextContent('PTF');
+    // The short list opens from a button, so the headers stay short.
+    expect(screen.queryByText('6 Warbikers')).toBeNull();
+    // Just a list symbol by the army: no "List · N units" text.
+    expect(screen.queryByText(/units/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Orks list' }));
+    expect(await screen.findByText('6 Warbikers')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Necrons list' })).toBeNull();
+    // Space Marines: G 13 and Y 10 → 11.5 ± 1.5; Orks column: G 13 and RR 2.5 → 7.8 ± 5.3.
+    expect(screen.getByLabelText('Space Marines average')).toHaveTextContent('11.5 ± 1.5');
+    expect(screen.getByLabelText('Orks average')).toHaveTextContent('7.8 ± 5.3');
+    expect(screen.getByLabelText('Necrons average')).toHaveTextContent('10.0 ± 0.0');
+  });
+
+  it('each heading on three steady lines: army, player, disposition with detachments', () => {
+    const us = [
+      {
+        ...p('A', 'Space Marines (Astartes)'),
+        name: 'Christos M.',
+        disposition: 'Disruption',
+        detachments: ['Gladius Task Force'],
+      },
+    ];
+    renderWithProviders(
+      <RatingsTable ours={us} theirs={theirs} ratings={[]} onRate={() => {}} onAlt={() => {}} />,
+    );
+    // BCP's "(Astartes)" is dropped from the label but kept on hover.
+    const army = screen.getByText('Space Marines');
+    expect(army).toHaveAttribute('title', 'Space Marines (Astartes)');
+    const heading = army.closest('th');
+    const lines = [...(heading?.querySelectorAll('[data-line]') ?? [])].map((l) =>
+      l.getAttribute('data-line'),
+    );
+    expect(lines).toEqual(['army', 'player', 'detail']);
+    expect(screen.getByText('Gladius Task Force')).toBeInTheDocument();
+  });
+
+  it('the cell menu marks the current chip and what it can become', () => {
+    renderWithProviders(
+      <RatingsTable
+        ours={ours}
+        theirs={theirs}
+        ratings={[{ playerId: 'A', opponentPlayerId: 'X', chip: 'Y', alt: 'R' }]}
+        onRate={() => {}}
+        onAlt={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'A v X: Y, can become R' }));
+    const menu = within(screen.getByRole('menu'));
+    expect(menu.getByRole('menuitem', { name: 'Y' })).toHaveAttribute('data-selected', 'true');
+    expect(menu.getByRole('menuitem', { name: 'G' })).not.toHaveAttribute('data-selected');
+    expect(menu.getByRole('menuitem', { name: 'Can become R' })).toHaveAttribute(
+      'data-selected',
+      'true',
+    );
+    expect(menu.getByRole('menuitem', { name: 'Can become: none' })).not.toHaveAttribute(
+      'data-selected',
+    );
+  });
 });

@@ -1,0 +1,26 @@
+/* One of their defenders: a button that rules it out (or back in). */
+.defender {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 4px;
+  margin-left: -4px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.defender:hover,
+.defender:focus-visible {
+  background: var(--mantine-color-default-hover);
+}
+.defender svg {
+  flex: none;
+  color: var(--mantine-color-dimmed);
+}
+.defender:hover svg {
+  color: var(--mantine-color-text);
+}
+.ruledOut {
+  text-decoration: line-through;
+  opacity: 0.5;
+}

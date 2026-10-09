@@ -1,5 +1,7 @@
-import type { PairingAnalysis, PairingRosterPlayer } from '@bcp/shared';
-import { Table, Tooltip, UnstyledButton } from '@mantine/core';
+import { solveMatrixGame, type PairingAnalysis, type PairingRosterPlayer } from '@bcp/shared';
+import { Table, Text, Tooltip, UnstyledButton } from '@mantine/core';
+import { useState } from 'react';
+import classes from './DefenderGrid.module.css';
 
 const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
 /** Green above 50, orange below, stronger the further from even. */
@@ -29,6 +31,28 @@ const SUMMARIES = [
   { key: 'worst', title: 'Worst', help: 'The lowest square: the most their defender can hurt.' },
 ] as const;
 
+/** An open eye (counted) or a crossed one (ruled out). */
+function EyeIcon({ off }: { off: boolean }) {
+  return (
+    <svg
+      data-icon={off ? 'eye-off' : 'eye'}
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+      {off && <path d="M3 3l18 18" />}
+    </svg>
+  );
+}
+
 export function DefenderGrid({
   analysis,
   ours,
@@ -42,88 +66,141 @@ export function DefenderGrid({
   selected: { d: number; e: number };
   onSelect: (d: number, e: number) => void;
 }) {
+  // Their defenders you're sure they won't pick: left out of every row's numbers.
+  const [ruledOut, setRuledOut] = useState<ReadonlySet<number>>(new Set());
+  const kept = theirs.map((_, e) => e).filter((e) => !ruledOut.has(e));
+  // Their likely defender among the ones left, solved again (not just the old odds renormalised).
+  const mix = new Map<number, number>();
+  if (ruledOut.size === 0) theirs.forEach((_, e) => mix.set(e, analysis.theirDefender[e] ?? 0));
+  else {
+    const cols = solveMatrixGame(
+      analysis.defenderGrid.map((row) => kept.map((e) => row[e] ?? 0)),
+    ).cols;
+    kept.forEach((e, j) => mix.set(e, cols[j] ?? 0));
+  }
+  const toggle = (e: number) => {
+    const next = new Set(ruledOut);
+    if (next.has(e)) next.delete(e);
+    else if (kept.length > 1) next.add(e);
+    setRuledOut(next);
+  };
   return (
-    <Table.ScrollContainer minWidth={420}>
-      <Table withRowBorders={false} verticalSpacing={2} fz="xs">
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>You ↓ / them →</Table.Th>
-            {theirs.map((t) => (
-              <Table.Th key={t.id}>{army(t)}</Table.Th>
-            ))}
-            {SUMMARIES.map((m, i) => (
-              <Table.Th
-                key={m.key}
-                style={
-                  i === 0 ? { borderLeft: '1px solid var(--mantine-color-default-border)' } : {}
-                }
-              >
-                <Tooltip label={m.help} multiline w={240}>
-                  <span tabIndex={0}>{m.title}</span>
-                </Tooltip>
-              </Table.Th>
-            ))}
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {analysis.defenderGrid.map((row, d) => {
-            const values = {
-              average: row.reduce((sum, v) => sum + v, 0) / row.length,
-              expected: row.reduce((sum, v, e) => sum + v * (analysis.theirDefender[e] ?? 0), 0),
-              best: Math.max(...row),
-              worst: Math.min(...row),
-            };
-            return (
-              <Table.Tr key={ours[d]?.id ?? d}>
-                <Table.Th scope="row">{army(ours[d])}</Table.Th>
-                {row.map((v, e) => (
-                  <Table.Td key={theirs[e]?.id ?? e} p={2}>
+    <>
+      <Text size="xs" c="dimmed" mb={4}>
+        Click a defender of theirs to rule them out if they won’t pick them: the row numbers then
+        leave them out.
+      </Text>
+      <Table.ScrollContainer minWidth={420}>
+        <Table withRowBorders={false} verticalSpacing={2} fz="xs">
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>You ↓ / them →</Table.Th>
+              {theirs.map((t, e) => (
+                <Table.Th key={t.id}>
+                  <Tooltip
+                    label={
+                      ruledOut.has(e)
+                        ? 'Ruled out: click if they might defend with it after all'
+                        : 'Click if they won’t defend with it: the numbers leave it out'
+                    }
+                    multiline
+                    w={240}
+                  >
                     <UnstyledButton
-                      className="numeric"
-                      aria-label={`You defend ${army(ours[d])}, they defend ${army(theirs[e])}: ${v.toFixed(1)}`}
-                      aria-pressed={selected.d === d && selected.e === e}
+                      aria-pressed={ruledOut.has(e)}
+                      aria-label={`${army(t)}${ruledOut.has(e) ? ' (won’t defend)' : ''}`}
+                      className={classes.defender}
                       onClick={() => {
-                        onSelect(d, e);
-                      }}
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        textAlign: 'center',
-                        padding: '6px 4px',
-                        borderRadius: 4,
-                        background: tint(v),
-                        outline:
-                          selected.d === d && selected.e === e
-                            ? '2px solid var(--mantine-color-text)'
-                            : undefined,
+                        toggle(e);
                       }}
                     >
-                      {v.toFixed(1)}
+                      <span className={ruledOut.has(e) ? classes.ruledOut : undefined}>
+                        {army(t)}
+                      </span>
+                      <EyeIcon off={ruledOut.has(e)} />
                     </UnstyledButton>
-                  </Table.Td>
-                ))}
-                {SUMMARIES.map((m, i) => (
-                  <Table.Td
-                    key={m.key}
-                    p={2}
-                    aria-label={`${army(ours[d])} ${m.key}`}
-                    className="numeric"
-                    style={{
-                      textAlign: 'center',
-                      fontSize: 'var(--mantine-font-size-md)',
-                      background: tint(values[m.key]),
-                      borderLeft:
-                        i === 0 ? '1px solid var(--mantine-color-default-border)' : undefined,
-                    }}
-                  >
-                    {values[m.key].toFixed(1)}
-                  </Table.Td>
-                ))}
-              </Table.Tr>
-            );
-          })}
-        </Table.Tbody>
-      </Table>
-    </Table.ScrollContainer>
+                  </Tooltip>
+                </Table.Th>
+              ))}
+              {SUMMARIES.map((m, i) => (
+                <Table.Th
+                  key={m.key}
+                  style={
+                    i === 0 ? { borderLeft: '1px solid var(--mantine-color-default-border)' } : {}
+                  }
+                >
+                  <Tooltip label={m.help} multiline w={240}>
+                    <span tabIndex={0}>{m.title}</span>
+                  </Tooltip>
+                </Table.Th>
+              ))}
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {analysis.defenderGrid.map((row, d) => {
+              const left = kept.map((e) => row[e] ?? 0);
+              const values = {
+                average: left.reduce((sum, v) => sum + v, 0) / left.length,
+                expected: kept.reduce((sum, e) => sum + (row[e] ?? 0) * (mix.get(e) ?? 0), 0),
+                best: Math.max(...left),
+                worst: Math.min(...left),
+              };
+              return (
+                <Table.Tr key={ours[d]?.id ?? d}>
+                  <Table.Th scope="row">{army(ours[d])}</Table.Th>
+                  {row.map((v, e) => (
+                    <Table.Td
+                      key={theirs[e]?.id ?? e}
+                      p={2}
+                      style={ruledOut.has(e) ? { opacity: 0.3 } : undefined}
+                    >
+                      <UnstyledButton
+                        className="numeric"
+                        aria-label={`You defend ${army(ours[d])}, they defend ${army(theirs[e])}: ${v.toFixed(1)}`}
+                        aria-pressed={selected.d === d && selected.e === e}
+                        onClick={() => {
+                          onSelect(d, e);
+                        }}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          textAlign: 'center',
+                          padding: '6px 4px',
+                          borderRadius: 4,
+                          background: tint(v),
+                          outline:
+                            selected.d === d && selected.e === e
+                              ? '2px solid var(--mantine-color-text)'
+                              : undefined,
+                        }}
+                      >
+                        {v.toFixed(1)}
+                      </UnstyledButton>
+                    </Table.Td>
+                  ))}
+                  {SUMMARIES.map((m, i) => (
+                    <Table.Td
+                      key={m.key}
+                      p={2}
+                      aria-label={`${army(ours[d])} ${m.key}`}
+                      className="numeric"
+                      style={{
+                        textAlign: 'center',
+                        fontSize: 'var(--mantine-font-size-md)',
+                        background: tint(values[m.key]),
+                        borderLeft:
+                          i === 0 ? '1px solid var(--mantine-color-default-border)' : undefined,
+                      }}
+                    >
+                      {values[m.key].toFixed(1)}
+                    </Table.Td>
+                  ))}
+                </Table.Tr>
+              );
+            })}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
+    </>
   );
 }

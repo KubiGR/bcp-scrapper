@@ -207,7 +207,7 @@ describe('ChainFlow', () => {
     expect(screen.getAllByText(/^You send .+ \+ .+$/)).toHaveLength(r2);
   });
 
-  it('the toggle hides what the model thinks they won’t do', () => {
+  it('the toggle shows what the model thinks they won’t do (off at first)', () => {
     renderWithProviders(
       <ChainFlow
         analysis={analysePairing(R1)}
@@ -218,11 +218,12 @@ describe('ChainFlow', () => {
         e={4}
       />,
     );
-    const all = screen.getAllByRole('button', { name: /Final line-up/ }).length;
-    expect(screen.getAllByText(/^0% here/).length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole('switch', { name: /Show their unlikely choices/ }));
-    expect(screen.getAllByRole('button', { name: /Final line-up/ }).length).toBeLessThan(all);
+    // Off at first: only what the model thinks likely.
+    const likely = screen.getAllByRole('button', { name: /Final line-up/ }).length;
     expect(screen.queryAllByText(/(^| )(0|<1)% here/)).toHaveLength(0);
+    fireEvent.click(screen.getByRole('switch', { name: /Show their unlikely choices/ }));
+    expect(screen.getAllByRole('button', { name: /Final line-up/ }).length).toBeGreaterThan(likely);
+    expect(screen.getAllByText(/^0% here/).length).toBeGreaterThan(0);
   });
 
   it('a game that can become another chip says so', () => {
@@ -411,7 +412,9 @@ describe('ChainFlow', () => {
     );
     const theirs_ = screen.getByRole('switch', { name: /Show their unlikely choices/ });
     const ours_ = screen.getByRole('switch', { name: /Show our unlikely choices/ });
+    expect(theirs_).not.toBeChecked();
     fireEvent.click(ours_);
+    fireEvent.click(theirs_);
     expect(ours_).toBeChecked();
     expect(theirs_).toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));

@@ -143,7 +143,65 @@ describe('parseSheetPaste', () => {
   it('names the players by place when only the chips were copied', () => {
     const text = Array.from({ length: 5 }, () => row('G', 'G', 'G', 'G', 'G')).join('\n');
     const { ours, theirs } = parseSheetPaste(text);
-    expect(ours[0]).toEqual({ army: 'Player 1', name: null, list: null });
-    expect(theirs[4]).toEqual({ army: 'Opponent 5', name: null, list: null });
+    expect(ours[0]).toEqual({
+      army: 'Player 1',
+      name: null,
+      detachment: null,
+      disposition: null,
+      list: null,
+    });
+    expect(theirs[4]).toEqual({
+      army: 'Opponent 5',
+      name: null,
+      detachment: null,
+      disposition: null,
+      list: null,
+    });
+  });
+
+  it('reads the sheet’s disposition codes and the detachment row for both sides', () => {
+    const text = [
+      row('', '', '', '', 'George', 'Ioannis', 'John', 'Panagiotis', 'Petros'),
+      row(
+        '',
+        '',
+        '',
+        '',
+        'Grey Knights',
+        'Death Guard',
+        'Orks',
+        'Chaos Space Marines',
+        'Adeptus Custodes',
+      ),
+      row(
+        '',
+        '',
+        '',
+        '',
+        'Argent Assault + Banishers',
+        'Contagion Engines',
+        'War Horde',
+        'Devotees',
+        'Lions of the Emperor',
+      ),
+      row('', '', '', '', 'DRP', 'REC', 'PTF', 'PRT', 'T&H'),
+      row('Space Marines', 'DRP', '11.4 ± 3.8', '', 'GG', 'Y', 'Y', 'R', 'G'),
+      row('Emperor’s Children', 'REC', '10.1', '', 'Y', 'G', 'RR', 'G', 'G'),
+      row('Chaos Daemons', 'T&H', '7.9', '', 'R', 'G', 'Y', 'R', 'RR'),
+      row('World Eaters', 'PTF', '10.9', '', 'G', 'Y', 'R', 'G', 'G'),
+      row('Adepta Sororitas', 'PRT', '9.1', '', 'G', 'R', 'Y', 'RR', 'BOUYA'),
+    ].join('\n');
+    const { ours, theirs } = parseSheetPaste(text);
+    expect(ours.map((p) => p.disposition)).toEqual([
+      'Disruption',
+      'Reconnaissance',
+      'Take and Hold',
+      'Purge the Foe',
+      'Priority Assets',
+    ]);
+    expect(theirs[0]?.disposition).toBe('Disruption');
+    expect(theirs[0]?.detachment).toBe('Argent Assault + Banishers');
+    expect(theirs[2]?.detachment).toBe('War Horde');
+    expect(ours[0]?.detachment).toBeNull();
   });
 });

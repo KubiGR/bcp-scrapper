@@ -313,6 +313,87 @@ Detachment: Carnival of Excess`;
   it('reads Windows line endings', () => {
     expect(parseArmyList(GW_EN.replace(/\n/g, '\r\n')).army).toBe('Thousand Sons');
   });
+
+  it('reads a GW app export with several detachments and "Force Disposition:"', () => {
+    const text = [
+      'My list (copy 2) (2000 points)',
+      '',
+      'Space Marines',
+      'Deathwatch Support (1 Detachment Point)',
+      'Terminator Storm Force (1 Detachment Point)',
+      'Assault Brethren (1 Detachment Point)',
+      'Strike Force (2000 points)',
+      'Force Disposition: Disruption',
+      '',
+      'ATTACHED UNITS',
+      '',
+      'Attached unit 1',
+      'Cato Sicarius (115 points)',
+    ].join('\n');
+    expect(parseArmyList(text)).toEqual({
+      army: 'Space Marines (Astartes)',
+      detachments: ['Deathwatch Support', 'Terminator Storm Force', 'Assault Brethren'],
+      disposition: 'Disruption',
+      format: 'gw-app',
+    });
+  });
+
+  it('reads a +++ template whose detachment is a "(3 Detachment Points)" line with the disposition under it', () => {
+    const text = [
+      '++++++++++++++++++++++++++++++++++++++++',
+      'Player Name: SOMEONE',
+      'Team Name: Some Team',
+      'Factions Used: Death Guard',
+      'Army Points: 2000',
+      'Army Enhancements: Tendrilous Emissions on Lord of Virulence',
+      'Detachment Rule: Miasmic Bombardment & Warped and Rusted Animus',
+      'Death Guard',
+      'Contagion Engines and Mortarion’s Hammer (3 Detachment Points)',
+      'Reconnaissance',
+      '++++++++++++++++++++++++++++++++++++++++',
+      '',
+      'Attached Units',
+    ].join('\n');
+    expect(parseArmyList(text)).toEqual({
+      army: 'Death Guard',
+      detachments: ["Contagion Engines and Mortarion's Hammer"],
+      disposition: 'Reconnaissance',
+      format: 'template',
+    });
+  });
+
+  it('reads battle sizes written with a space for thousands, "(2 000 Points)"', () => {
+    const text = [
+      'WE berzerker and butchers (2 000 Points)',
+      '',
+      'World Eaters',
+      'Berzerker Warband and Butchers of Khorne (3 Detachment Points)',
+      'Take and Hold',
+      'Strike Force (2 000 Points)',
+    ].join('\n');
+    expect(parseArmyList(text)).toMatchObject({
+      army: 'World Eaters',
+      detachments: ['Berzerker Warband and Butchers of Khorne'],
+      disposition: 'Take and Hold',
+    });
+  });
+
+  it('reads "Detachment:" and "Disposition:" fields without a "Factions used:" line', () => {
+    const text = [
+      'BTC - Cursed Legion',
+      'Warhammer 40,000 · Necrons',
+      '2000 / 2000 pts',
+      'Detachment: Cursed Legion, Skyshroud Spearhead',
+      'Disposition: Purge the Foe',
+      'Warlord: Imotekh the Stormlord',
+    ].join('\n');
+    expect(parseArmyList(text)).toEqual({
+      army: 'Necrons',
+      detachments: ['Cursed Legion', 'Skyshroud Spearhead'],
+      disposition: 'Purge the Foe',
+      format: 'template',
+    });
+  });
 });
 
 describe('splitDetachments', () => {

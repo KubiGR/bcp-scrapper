@@ -1,4 +1,4 @@
-import { analysePairing } from '@bcp/shared';
+import { analysePairing, solveMatrixGame } from '@bcp/shared';
 import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/render';
@@ -86,5 +86,58 @@ describe('summary and defender grid', () => {
     expect(cells.getByLabelText('World Eaters best')).toHaveTextContent(
       Math.max(...row).toFixed(1),
     );
+  });
+
+  it('a defender of theirs marked as one they won’t pick drops out of every row’s numbers', () => {
+    const analysis = analysePairing(R1);
+    renderWithProviders(
+      <DefenderGrid
+        analysis={analysis}
+        ours={ours}
+        theirs={theirs}
+        selected={{ d: 3, e: 4 }}
+        onSelect={() => {}}
+      />,
+    );
+    const custodes = screen.getByRole('button', { name: /^Adeptus Custodes/ });
+    fireEvent.click(custodes);
+    expect(custodes).toHaveAttribute('aria-pressed', 'true');
+    const kept = [0, 1, 2, 3];
+    const row = kept.map((e) => analysis.defenderGrid[3]?.[e] ?? 0);
+    // Their likely defender, solved again among the ones left.
+    const mix = solveMatrixGame(analysis.defenderGrid.map((r) => kept.map((e) => r[e] ?? 0))).cols;
+    const cells = within(screen.getByRole('row', { name: /^World Eaters/ }));
+    expect(cells.getByLabelText('World Eaters average')).toHaveTextContent(
+      (row.reduce((a, v) => a + v, 0) / 4).toFixed(1),
+    );
+    expect(cells.getByLabelText('World Eaters worst')).toHaveTextContent(
+      Math.min(...row).toFixed(1),
+    );
+    expect(cells.getByLabelText('World Eaters best')).toHaveTextContent(
+      Math.max(...row).toFixed(1),
+    );
+    expect(cells.getByLabelText('World Eaters expected')).toHaveTextContent(
+      row.reduce((a, v, j) => a + v * (mix[j] ?? 0), 0).toFixed(1),
+    );
+    // And back.
+    fireEvent.click(custodes);
+    expect(custodes).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('says their defenders can be clicked to rule out, and marks them with an eye', () => {
+    renderWithProviders(
+      <DefenderGrid
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        selected={{ d: 3, e: 4 }}
+        onSelect={() => {}}
+      />,
+    );
+    expect(screen.getByText(/Click a defender of theirs to rule them out/)).toBeInTheDocument();
+    const orks = screen.getByRole('button', { name: /^Orks/ });
+    expect(orks.querySelector('[data-icon="eye"]')).not.toBeNull();
+    fireEvent.click(orks);
+    expect(orks.querySelector('[data-icon="eye-off"]')).not.toBeNull();
   });
 });
