@@ -90,6 +90,8 @@ describe('RatingsTable', () => {
     expect(screen.getByTitle('Purge the Foe')).toHaveTextContent('PTF');
     // The short list opens from a button, so the headers stay short.
     expect(screen.queryByText('6 Warbikers')).toBeNull();
+    // Just a list symbol by the army: no "List · N units" text.
+    expect(screen.queryByText(/units/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Orks list' }));
     expect(await screen.findByText('6 Warbikers')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Necrons list' })).toBeNull();

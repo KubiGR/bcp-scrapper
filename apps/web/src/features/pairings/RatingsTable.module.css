@@ -42,6 +42,9 @@
   line-height: 1.2;
 }
 .army {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: var(--mantine-font-size-sm);
   font-weight: 600;
   line-height: 1.2;
@@ -56,12 +59,16 @@
   line-height: 1.2;
 }
 .listButton {
-  align-self: flex-start;
-  font-size: 11px;
-  color: var(--mantine-color-anchor);
+  display: inline-flex;
+  flex: none;
+  padding: 2px;
+  border-radius: 3px;
+  color: var(--mantine-color-dimmed);
 }
-.listButton:hover {
-  text-decoration: underline;
+.listButton:hover,
+.listButton:focus-visible {
+  color: var(--mantine-color-text);
+  background: var(--mantine-color-default-hover);
 }
 .cell {
   width: 100%;

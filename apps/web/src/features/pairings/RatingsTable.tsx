@@ -20,40 +20,60 @@ function spread(games: (PairingRating | undefined)[]): string {
   return `${mean.toFixed(1)} ± ${sd.toFixed(1)}`;
 }
 
+/** A small list symbol: three lines with bullets. */
+function ListIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
+      <circle cx="2.5" cy="4" r="1.3" />
+      <circle cx="2.5" cy="8" r="1.3" />
+      <circle cx="2.5" cy="12" r="1.3" />
+      <rect x="5.5" y="3.2" width="9" height="1.6" rx="0.8" />
+      <rect x="5.5" y="7.2" width="9" height="1.6" rx="0.8" />
+      <rect x="5.5" y="11.2" width="9" height="1.6" rx="0.8" />
+    </svg>
+  );
+}
+
 /**
  * A player as the team sheet heads a row or column: their name small, the army strong, the
- * disposition badge with the detachments, and the short list behind a button (it opens on click).
+ * disposition badge with the detachments, and a list symbol by the army that opens the short list.
  */
 function PlayerHeading({ player }: { player: PairingRosterPlayer }) {
   const army = player.faction ?? player.name;
   return (
     <div className={classes.heading}>
       {player.name !== player.faction && <div className={classes.playerName}>{player.name}</div>}
-      <div className={classes.army}>{army}</div>
+      <div className={classes.army}>
+        <span>{army}</span>
+        {player.list && (
+          <Popover position="bottom-start" withArrow shadow="md" width={260}>
+            <Popover.Target>
+              <UnstyledButton
+                className={classes.listButton}
+                aria-label={`${army} list`}
+                title="List"
+              >
+                <ListIcon />
+              </UnstyledButton>
+            </Popover.Target>
+            <Popover.Dropdown>
+              <Text size="xs" fw={600} mb={4}>
+                {army}
+              </Text>
+              {player.list.split('\n').map((line, k) => (
+                <Text key={k} size="xs" lh={1.4}>
+                  {line}
+                </Text>
+              ))}
+            </Popover.Dropdown>
+          </Popover>
+        )}
+      </div>
       {(Boolean(player.disposition) || player.detachments.length > 0) && (
         <div className={classes.detail}>
           <DispositionBadge disposition={player.disposition} />
           {player.detachments.length > 0 && <span>{player.detachments.join(' + ')}</span>}
         </div>
-      )}
-      {player.list && (
-        <Popover position="bottom-start" withArrow shadow="md" width={260}>
-          <Popover.Target>
-            <UnstyledButton className={classes.listButton} aria-label={`${army} list`}>
-              List · {player.list.split('\n').length} units
-            </UnstyledButton>
-          </Popover.Target>
-          <Popover.Dropdown>
-            <Text size="xs" fw={600} mb={4}>
-              {army}
-            </Text>
-            {player.list.split('\n').map((line, k) => (
-              <Text key={k} size="xs" lh={1.4}>
-                {line}
-              </Text>
-            ))}
-          </Popover.Dropdown>
-        </Popover>
       )}
     </div>
   );
