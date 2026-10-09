@@ -1,7 +1,9 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderWithProviders } from '../../test/render';
+import { parseSheetPaste } from '@bcp/shared';
 import { PairingsPage } from './PairingsPage';
+import { planFromPaste, writePlan } from './sheet-plan';
 
 const row = (...cells: string[]) => cells.join('\t');
 const SHEET = [
@@ -204,5 +206,43 @@ describe('PairingsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
     expect(screen.getByRole('switch', { name: /Show their unlikely choices/ })).not.toBeChecked();
     expect(screen.getByRole('switch', { name: /Show our unlikely choices/ })).not.toBeChecked();
+  });
+
+  it('starts from the tournament or from a paste', () => {
+    renderWithProviders(<PairingsPage />);
+    expect(screen.getByText('From the tournament')).toBeInTheDocument();
+    expect(screen.getByText('Paste from your sheet')).toBeInTheDocument();
+  });
+
+  it('teams from an event: named on the page, and a pasted sheet goes onto them by army', () => {
+    const pasted = planFromPaste(parseSheetPaste(SHEET));
+    if (!pasted) throw new Error('no plan');
+    // The event lists both teams in another order, and has no ratings yet.
+    writePlan({
+      ours: [...pasted.ours].reverse(),
+      theirs: [...pasted.theirs].reverse(),
+      ratings: [],
+      source: {
+        event: 'E1',
+        team: 'T1',
+        opponent: 'T2',
+        eventName: 'Balkan Team Championship 2026',
+        teamName: 'Dice Bunker',
+        opponentName: 'Mighty Ducks',
+      },
+    });
+    renderWithProviders(<PairingsPage />);
+    expect(
+      screen.getByText('Balkan Team Championship 2026 · Dice Bunker v Mighty Ducks'),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^0 of 25 rated/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Paste from sheet' }));
+    const dialog = within(screen.getByRole('dialog'));
+    fireEvent.change(dialog.getByLabelText('Copied cells'), { target: { value: SHEET } });
+    expect(dialog.getByText(/^23 chips · 1 blank · 1 unreadable/)).toBeInTheDocument();
+    expect(dialog.getByText(/^23 ratings matched by army/)).toBeInTheDocument();
+    fireEvent.click(dialog.getByRole('button', { name: 'Use these ratings' }));
+    expect(screen.getByText(/^23 of 25 rated/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Space Marines v George: GG' })).toBeInTheDocument();
   });
 });

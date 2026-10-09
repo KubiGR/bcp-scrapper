@@ -1,13 +1,24 @@
 import {
   PAIRING_CHIPS,
+  ratingPoints,
   type PairingChip,
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { Menu, Table, Text, Tooltip, UnstyledButton } from '@mantine/core';
+import { Menu, Table, Text, UnstyledButton } from '@mantine/core';
 import { ChipLabel, ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
+import { DispositionBadge } from './DispositionBadge';
 import classes from './RatingsTable.module.css';
+
+/** A row's or column's rated games as the team sheet shows them: "11.5 ± 1.5" (mean ± spread). */
+function spread(games: (PairingRating | undefined)[]): string {
+  const points = games.flatMap((r) => (r ? [ratingPoints(r.chip, r.alt)] : []));
+  if (points.length === 0) return '–';
+  const mean = points.reduce((sum, v) => sum + v, 0) / points.length;
+  const sd = Math.sqrt(points.reduce((sum, v) => sum + (v - mean) ** 2, 0) / points.length);
+  return `${mean.toFixed(1)} ± ${sd.toFixed(1)}`;
+}
 
 /** Our players (rows) against theirs (columns); click a cell to pick its chip. */
 export function RatingsTable({
@@ -43,31 +54,30 @@ export function RatingsTable({
                 data-used={usedTheirs.has(j) || undefined}
                 className={usedTheirs.has(j) ? classes.used : undefined}
               >
-                <Tooltip
-                  label={
-                    <Text size="xs" style={{ whiteSpace: 'pre-wrap' }}>
-                      {t.list ?? 'No list'}
-                    </Text>
-                  }
-                  multiline
-                  w={320}
-                >
-                  <span tabIndex={0}>
-                    {t.name !== t.faction && (
-                      <Text size="xs" c="dimmed">
-                        {t.name}
+                {t.name !== t.faction && (
+                  <Text size="xs" c="dimmed">
+                    {t.name}
+                  </Text>
+                )}
+                <Text size="sm">{t.faction ?? '—'}</Text>
+                {t.detachments.length > 0 && (
+                  <Text size="xs" c="dimmed">
+                    {t.detachments.join(' + ')}
+                  </Text>
+                )}
+                {t.list && (
+                  <div className={classes.list}>
+                    {t.list.split('\n').map((line, k) => (
+                      <Text key={k} size="xs" c="dimmed" lh={1.25}>
+                        {line}
                       </Text>
-                    )}
-                    <Text size="sm">{t.faction ?? '—'}</Text>
-                    {t.detachments.length > 0 && (
-                      <Text size="xs" c="dimmed">
-                        {t.detachments.join(' + ')}
-                      </Text>
-                    )}
-                  </span>
-                </Tooltip>
+                    ))}
+                  </div>
+                )}
+                <DispositionBadge disposition={t.disposition} />
               </th>
             ))}
+            <th className={classes.avg}>Average</th>
           </tr>
         </thead>
         <tbody>
@@ -84,6 +94,7 @@ export function RatingsTable({
                     {o.name}
                   </Text>
                 )}
+                <DispositionBadge disposition={o.disposition} />
               </th>
               {theirs.map((t, j) => {
                 const rating = ratingOf.get(`${o.id}|${t.id}`);
@@ -154,8 +165,26 @@ export function RatingsTable({
                   </td>
                 );
               })}
+              <td aria-label={`${o.faction ?? o.name} average`} className={classes.average}>
+                {spread(theirs.map((t) => ratingOf.get(`${o.id}|${t.id}`)))}
+              </td>
             </tr>
           ))}
+          <tr>
+            <th scope="row">
+              <Text size="sm">Average</Text>
+            </th>
+            {theirs.map((t) => (
+              <td
+                key={t.id}
+                aria-label={`${t.faction ?? t.name} average`}
+                className={classes.average}
+              >
+                {spread(ours.map((o) => ratingOf.get(`${o.id}|${t.id}`)))}
+              </td>
+            ))}
+            <td />
+          </tr>
         </tbody>
       </table>
     </Table.ScrollContainer>

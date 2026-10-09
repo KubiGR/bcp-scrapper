@@ -1,17 +1,21 @@
 import { parseSheetPaste } from '@bcp/shared';
 import { Alert, Button, Group, Stack, Text, Textarea } from '@mantine/core';
 import { useState } from 'react';
-import { planFromPaste, type SheetPlan } from './sheet-plan';
+import { planFromPaste, ratingsFromPaste, type SheetPlan } from './sheet-plan';
 
 /**
  * Where the team's sheet is pasted: copy the ratings block (with the army and name headers around
- * it) and check what was found before using it.
+ * it) and check what was found before using it. `onto` is a plan of an event's teams: then only
+ * the chips are taken, each row and column going to the player with that army.
  */
-export function PasteBox({ onUse }: { onUse: (plan: SheetPlan) => void }) {
+export function PasteBox({ onUse, onto }: { onUse: (plan: SheetPlan) => void; onto?: SheetPlan }) {
   const [text, setText] = useState('');
   const paste = parseSheetPaste(text);
-  const plan = planFromPaste(paste);
-  const chips = plan?.ratings.length ?? 0;
+  const pasted = planFromPaste(paste);
+  const matched = onto && pasted ? ratingsFromPaste(paste, onto) : null;
+  const plan = onto && matched ? { ...onto, ratings: matched.ratings } : pasted;
+  // What the paste itself holds (how many reached the event's players is said apart).
+  const chips = pasted?.ratings.length ?? 0;
   const unreadable = paste.unreadable.length;
   const armies = (players: SheetPlan['ours']) => players.map((p) => p.faction).join(' · ');
   return (
@@ -34,12 +38,28 @@ export function PasteBox({ onUse }: { onUse: (plan: SheetPlan) => void }) {
             {chips} chips · {25 - chips - unreadable} blank · {unreadable} unreadable
             {unreadable > 0 ? ' (left unrated)' : ''}
           </Text>
-          <Text size="xs" c="dimmed">
-            You: {armies(plan.ours)}
-          </Text>
-          <Text size="xs" c="dimmed">
-            Them: {armies(plan.theirs)}
-          </Text>
+          {matched ? (
+            <>
+              <Text size="xs" c="dimmed">
+                {matched.ratings.length} ratings matched by army to the event&apos;s players.
+              </Text>
+              {matched.unmatched.length > 0 && (
+                <Alert color="yellow">
+                  No player with these armies, so their games are left out:{' '}
+                  {matched.unmatched.join(', ')}
+                </Alert>
+              )}
+            </>
+          ) : (
+            <>
+              <Text size="xs" c="dimmed">
+                You: {armies(plan.ours)}
+              </Text>
+              <Text size="xs" c="dimmed">
+                Them: {armies(plan.theirs)}
+              </Text>
+            </>
+          )}
           <Group justify="flex-end">
             <Button
               onClick={() => {

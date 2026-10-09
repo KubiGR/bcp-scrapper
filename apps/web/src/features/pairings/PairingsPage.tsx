@@ -15,7 +15,8 @@ import { DefenderGrid } from './DefenderGrid';
 import { PairingSummary } from './PairingSummary';
 import { PasteBox } from './PasteBox';
 import { RatingsTable } from './RatingsTable';
-import { altPlan, ratePlan, readPlan, writePlan, type SheetPlan } from './sheet-plan';
+import { altPlan, ratePlan, readPlan, savedPlan, writePlan, type SheetPlan } from './sheet-plan';
+import { TeamPicker } from './TeamPicker';
 import { usedPlayers } from './used-players';
 
 /** The page is full width for the chain; everything else keeps the usual centred column. */
@@ -40,6 +41,13 @@ export function PairingsPage() {
       <Column>
         <Stack gap="lg">
           <Title order={2}>Pairings</Title>
+          <Panel title="From the tournament">
+            <TeamPicker
+              onUse={(next) => {
+                use(withSavedRatings(next));
+              }}
+            />
+          </Panel>
           <Panel title="Paste from your sheet">
             <PasteBox onUse={use} />
           </Panel>
@@ -50,10 +58,23 @@ export function PairingsPage() {
   return <Planner plan={plan} use={use} />;
 }
 
+/** Teams picked again: the ratings given before for this pairing come back. */
+function withSavedRatings(plan: SheetPlan): SheetPlan {
+  const saved = plan.source ? savedPlan(plan.source) : null;
+  if (!saved) return plan;
+  const ours = new Set(plan.ours.map((p) => p.id));
+  const theirs = new Set(plan.theirs.map((p) => p.id));
+  return {
+    ...plan,
+    ratings: saved.ratings.filter((r) => ours.has(r.playerId) && theirs.has(r.opponentPlayerId)),
+  };
+}
+
 /** The pasted sheet, its analysis and a live pairing being followed. */
 function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => void }) {
   const [pasting, setPasting] = useState(false);
-  const { ours, theirs, ratings } = plan;
+  const [picking, setPicking] = useState(false);
+  const { ours, theirs, ratings, source } = plan;
   const { points, rated } = pointsMatrix(
     ours.map((p) => p.id),
     theirs.map((p) => p.id),
@@ -78,6 +99,13 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
     <Stack gap="lg">
       <Column>
         <Title order={2}>Pairings</Title>
+        {source && (
+          <Text c="dimmed" size="sm">
+            {[source.eventName, `${source.teamName ?? ''} v ${source.opponentName ?? ''}`]
+              .filter(Boolean)
+              .join(' · ')}
+          </Text>
+        )}
       </Column>
       <Column>
         <Panel title="Rate the games">
@@ -98,15 +126,26 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
               <Text size="xs" c="dimmed">
                 {rated} of 25 rated{rated < 25 ? ' · unrated games count as Y (even)' : ''}
               </Text>
-              <Button
-                variant="default"
-                size="xs"
-                onClick={() => {
-                  setPasting(true);
-                }}
-              >
-                Paste again
-              </Button>
+              <Group gap="xs">
+                <Button
+                  variant="default"
+                  size="xs"
+                  onClick={() => {
+                    setPicking(true);
+                  }}
+                >
+                  Pick teams
+                </Button>
+                <Button
+                  variant="default"
+                  size="xs"
+                  onClick={() => {
+                    setPasting(true);
+                  }}
+                >
+                  {source ? 'Paste from sheet' : 'Paste again'}
+                </Button>
+              </Group>
             </Group>
           </Stack>
         </Panel>
@@ -120,9 +159,25 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
         size="lg"
       >
         <PasteBox
+          onto={source ? plan : undefined}
           onUse={(next) => {
             use(next);
             setPasting(false);
+          }}
+        />
+      </Modal>
+      <Modal
+        opened={picking}
+        onClose={() => {
+          setPicking(false);
+        }}
+        title="Pick the teams"
+        size="xl"
+      >
+        <TeamPicker
+          onUse={(next) => {
+            use(withSavedRatings(next));
+            setPicking(false);
           }}
         />
       </Modal>

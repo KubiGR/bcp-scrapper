@@ -18,6 +18,21 @@
 .names {
   width: 11rem;
 }
+.avg {
+  width: 6.5rem;
+}
+/* An average, as the sheet's AVERAGE SCORES: dimmed, centred. */
+.average {
+  text-align: center;
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-dimmed);
+  font-variant-numeric: tabular-nums;
+}
+/* The short list under an opponent's name. */
+.list {
+  margin-top: 2px;
+  font-weight: 400;
+}
 .cell {
   width: 100%;
   min-width: 64px;

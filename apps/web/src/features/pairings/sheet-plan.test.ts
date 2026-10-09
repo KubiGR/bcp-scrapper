@@ -1,6 +1,14 @@
 import { parseSheetPaste } from '@bcp/shared';
 import { afterEach, describe, expect, it } from 'vitest';
-import { altPlan, planFromPaste, ratePlan, readPlan, writePlan } from './sheet-plan';
+import {
+  altPlan,
+  planFromPaste,
+  ratePlan,
+  ratingsFromPaste,
+  readPlan,
+  savedPlan,
+  writePlan,
+} from './sheet-plan';
 
 const SHEET = [
   '\tGrey Knights\tDeath Guard\tOrks\tChaos Space Marines\tAdeptus Custodes',
@@ -74,5 +82,41 @@ describe('the sheet plan', () => {
     });
     const plain = altPlan(changed, 'us0', 'them1', null);
     expect(plain.ratings).toContainEqual({ playerId: 'us0', opponentPlayerId: 'them1', chip: 'G' });
+  });
+
+  it('a plan from an event is kept per opponent, so going back to one brings its ratings back', () => {
+    const plan = planFromPaste(parseSheetPaste(SHEET));
+    if (!plan) throw new Error('no plan');
+    const first = { ...plan, source: { event: 'E1', team: 'T1', opponent: 'T2' } };
+    const second = { ...plan, ratings: [], source: { event: 'E1', team: 'T1', opponent: 'T3' } };
+    writePlan(first);
+    writePlan(second);
+    expect(readPlan()?.source?.opponent).toBe('T3');
+    expect(savedPlan({ event: 'E1', team: 'T1', opponent: 'T2' })?.ratings).toHaveLength(23);
+    expect(savedPlan({ event: 'E1', team: 'T1', opponent: 'T9' })).toBeNull();
+  });
+
+  it('a pasted sheet onto an event’s players: rows and columns matched by army, not position', () => {
+    const plan = planFromPaste(parseSheetPaste(SHEET));
+    if (!plan) throw new Error('no plan');
+    // The event lists the same armies in another order.
+    const event = { ...plan, ours: [...plan.ours].reverse(), theirs: [...plan.theirs].reverse() };
+    const { ratings, unmatched } = ratingsFromPaste(parseSheetPaste(SHEET), event);
+    expect(unmatched).toEqual([]);
+    // Space Marines v Grey Knights is GG whatever the order.
+    expect(ratings).toContainEqual({ playerId: 'us0', opponentPlayerId: 'them0', chip: 'GG' });
+    expect(ratings).toHaveLength(23);
+  });
+
+  it('armies the paste can’t match are named, and their games left out', () => {
+    const plan = planFromPaste(parseSheetPaste(SHEET));
+    if (!plan) throw new Error('no plan');
+    const event = {
+      ...plan,
+      ours: plan.ours.map((p, i) => (i === 0 ? { ...p, faction: 'Necrons' } : p)),
+    };
+    const { ratings, unmatched } = ratingsFromPaste(parseSheetPaste(SHEET), event);
+    expect(unmatched).toEqual(['Space Marines']);
+    expect(ratings.some((r) => r.playerId === 'us0')).toBe(false);
   });
 });

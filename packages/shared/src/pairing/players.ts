@@ -1,6 +1,6 @@
 import type { PairingChip } from './scale';
 
-/** One player in the pairings planner, as read from the team's sheet. */
+/** One player in the pairings planner, from the team's sheet or the event. */
 export interface PairingRosterPlayer {
   id: string;
   /** The player's name, when the sheet has it. */
@@ -8,8 +8,10 @@ export interface PairingRosterPlayer {
   /** The army (as the sheet writes it). */
   faction: string | null;
   detachments: string[];
-  /** The list text, when the sheet has it. */
+  /** The list, short (one unit per line), when known. */
   list: string | null;
+  /** The army's disposition, e.g. "Take and Hold", when known (from the event). */
+  disposition?: string | null;
 }
 
 /** Our player's chip against one of theirs. */
