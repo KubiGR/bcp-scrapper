@@ -1,5 +1,6 @@
-import type { PairingAnalysis, PairingRosterPlayer } from '@bcp/shared';
+import { solveMatrixGame, type PairingAnalysis, type PairingRosterPlayer } from '@bcp/shared';
 import { Table, Tooltip, UnstyledButton } from '@mantine/core';
+import { useState } from 'react';
 
 const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
 /** Green above 50, orange below, stronger the further from even. */
@@ -42,14 +43,57 @@ export function DefenderGrid({
   selected: { d: number; e: number };
   onSelect: (d: number, e: number) => void;
 }) {
+  // Their defenders you're sure they won't pick: left out of every row's numbers.
+  const [ruledOut, setRuledOut] = useState<ReadonlySet<number>>(new Set());
+  const kept = theirs.map((_, e) => e).filter((e) => !ruledOut.has(e));
+  // Their likely defender among the ones left, solved again (not just the old odds renormalised).
+  const mix = new Map<number, number>();
+  if (ruledOut.size === 0) theirs.forEach((_, e) => mix.set(e, analysis.theirDefender[e] ?? 0));
+  else {
+    const cols = solveMatrixGame(
+      analysis.defenderGrid.map((row) => kept.map((e) => row[e] ?? 0)),
+    ).cols;
+    kept.forEach((e, j) => mix.set(e, cols[j] ?? 0));
+  }
+  const toggle = (e: number) => {
+    const next = new Set(ruledOut);
+    if (next.has(e)) next.delete(e);
+    else if (kept.length > 1) next.add(e);
+    setRuledOut(next);
+  };
   return (
     <Table.ScrollContainer minWidth={420}>
       <Table withRowBorders={false} verticalSpacing={2} fz="xs">
         <Table.Thead>
           <Table.Tr>
             <Table.Th>You ↓ / them →</Table.Th>
-            {theirs.map((t) => (
-              <Table.Th key={t.id}>{army(t)}</Table.Th>
+            {theirs.map((t, e) => (
+              <Table.Th key={t.id}>
+                <Tooltip
+                  label={
+                    ruledOut.has(e)
+                      ? 'Ruled out: click if they might defend with it after all'
+                      : 'Click if they won’t defend with it: the numbers leave it out'
+                  }
+                  multiline
+                  w={240}
+                >
+                  <UnstyledButton
+                    aria-pressed={ruledOut.has(e)}
+                    aria-label={`${army(t)}${ruledOut.has(e) ? ' (won’t defend)' : ''}`}
+                    onClick={() => {
+                      toggle(e);
+                    }}
+                    style={{
+                      fontWeight: 600,
+                      textDecoration: ruledOut.has(e) ? 'line-through' : undefined,
+                      opacity: ruledOut.has(e) ? 0.5 : 1,
+                    }}
+                  >
+                    {army(t)}
+                  </UnstyledButton>
+                </Tooltip>
+              </Table.Th>
             ))}
             {SUMMARIES.map((m, i) => (
               <Table.Th
@@ -67,17 +111,22 @@ export function DefenderGrid({
         </Table.Thead>
         <Table.Tbody>
           {analysis.defenderGrid.map((row, d) => {
+            const left = kept.map((e) => row[e] ?? 0);
             const values = {
-              average: row.reduce((sum, v) => sum + v, 0) / row.length,
-              expected: row.reduce((sum, v, e) => sum + v * (analysis.theirDefender[e] ?? 0), 0),
-              best: Math.max(...row),
-              worst: Math.min(...row),
+              average: left.reduce((sum, v) => sum + v, 0) / left.length,
+              expected: kept.reduce((sum, e) => sum + (row[e] ?? 0) * (mix.get(e) ?? 0), 0),
+              best: Math.max(...left),
+              worst: Math.min(...left),
             };
             return (
               <Table.Tr key={ours[d]?.id ?? d}>
                 <Table.Th scope="row">{army(ours[d])}</Table.Th>
                 {row.map((v, e) => (
-                  <Table.Td key={theirs[e]?.id ?? e} p={2}>
+                  <Table.Td
+                    key={theirs[e]?.id ?? e}
+                    p={2}
+                    style={ruledOut.has(e) ? { opacity: 0.3 } : undefined}
+                  >
                     <UnstyledButton
                       className="numeric"
                       aria-label={`You defend ${army(ours[d])}, they defend ${army(theirs[e])}: ${v.toFixed(1)}`}
