@@ -5,18 +5,27 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { Button, Container, Group, Modal, Stack, Text, Title } from '@mantine/core';
+import { Button, Container, Group, Modal, Select, Stack, Text, Title } from '@mantine/core';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { Panel } from '../../components/Panel';
 import type { ChainFollow, ChainShown } from './chain-layout';
 import { ChainFlow } from './ChainFlow';
 import { DefenderGrid } from './DefenderGrid';
+import { FetchListsButton } from './FetchListsButton';
 import { byDisposition } from './disposition-style';
 import { PairingSummary } from './PairingSummary';
 import { PasteBox } from './PasteBox';
 import { RatingsTable } from './RatingsTable';
-import { altPlan, ratePlan, readPlan, savedPlan, writePlan, type SheetPlan } from './sheet-plan';
+import {
+  altPlan,
+  ratePlan,
+  readPlan,
+  savedPlan,
+  savedPlans,
+  writePlan,
+  type SheetPlan,
+} from './sheet-plan';
 import { TeamPicker } from './TeamPicker';
 import { usedPlayers } from './used-players';
 
@@ -57,6 +66,41 @@ export function PairingsPage() {
     );
   }
   return <Planner plan={plan} use={use} />;
+}
+
+const pairingName = (p: SheetPlan) =>
+  `${p.source?.eventName ?? 'Event'} · ${p.source?.teamName ?? '?'} v ${p.source?.opponentName ?? '?'}`;
+const keyOf = (p: SheetPlan) =>
+  p.source ? `${p.source.event}|${p.source.team}|${p.source.opponent}` : '';
+
+/** The pairings of event teams kept in this browser, to reopen one with its ratings. */
+function SavedPairings({
+  current,
+  onOpen,
+}: {
+  current: SheetPlan;
+  onOpen: (plan: SheetPlan) => void;
+}) {
+  const saved = savedPlans();
+  if (saved.length === 0) return null;
+  return (
+    <Select
+      aria-label="Saved pairings"
+      placeholder="Saved pairings"
+      size="xs"
+      w={300}
+      searchable
+      value={keyOf(current) || null}
+      onChange={(key) => {
+        const plan = saved.find((p) => keyOf(p) === key);
+        if (plan) onOpen(plan);
+      }}
+      data={saved.map((p) => ({
+        value: keyOf(p),
+        label: `${pairingName(p)} · ${String(p.ratings.length)} rated`,
+      }))}
+    />
+  );
 }
 
 /** Teams picked again: the ratings given before for this pairing come back. */
@@ -105,9 +149,7 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
         <Title order={2}>Pairings</Title>
         {source && (
           <Text c="dimmed" size="sm">
-            {[source.eventName, `${source.teamName ?? ''} v ${source.opponentName ?? ''}`]
-              .filter(Boolean)
-              .join(' · ')}
+            {pairingName(plan)}
           </Text>
         )}
       </Column>
@@ -128,9 +170,12 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
             />
             <Group justify="space-between">
               <Text size="xs" c="dimmed">
-                {rated} of 25 rated{rated < 25 ? ' · unrated games count as Y (even)' : ''}
+                {rated} of 25 rated{rated < 25 ? ' · unrated games count as Y (even)' : ''} · saved
+                in this browser
               </Text>
               <Group gap="xs">
+                <SavedPairings current={plan} onOpen={use} />
+                <FetchListsButton plan={plan} onRefresh={use} />
                 <Button
                   variant="default"
                   size="xs"

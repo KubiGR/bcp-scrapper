@@ -276,4 +276,26 @@ describe('PairingsPage', () => {
       .filter((t): t is string => t !== null && /^(Disruption|Reconnaissance|Purge|Take)/.test(t));
     expect(columnCodes).toEqual(['Disruption', 'Reconnaissance', 'Purge the Foe', 'Take and Hold']);
   });
+
+  it('says ratings are saved in this browser, and reopens a saved pairing', async () => {
+    const pasted = planFromPaste(parseSheetPaste(SHEET));
+    if (!pasted) throw new Error('no plan');
+    const source = (opponent: string, opponentName: string) => ({
+      event: 'E1',
+      team: 'T1',
+      opponent,
+      eventName: 'Balkan',
+      teamName: 'Dice Bunker',
+      opponentName,
+    });
+    writePlan({ ...pasted, source: source('T2', 'Mighty Ducks') });
+    writePlan({ ...pasted, ratings: [], source: source('T3', 'Dragon Tale') });
+    renderWithProviders(<PairingsPage />);
+    expect(screen.getByText(/saved in this browser/)).toBeInTheDocument();
+    expect(screen.getByText('Balkan · Dice Bunker v Dragon Tale')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('combobox', { name: 'Saved pairings' }));
+    fireEvent.click(await screen.findByRole('option', { name: /Mighty Ducks · 23 rated/ }));
+    expect(screen.getByText('Balkan · Dice Bunker v Mighty Ducks')).toBeInTheDocument();
+    expect(screen.getByText(/^23 of 25 rated/)).toBeInTheDocument();
+  });
 });

@@ -7,6 +7,7 @@ import {
   ratingsFromPaste,
   readPlan,
   savedPlan,
+  savedPlans,
   writePlan,
 } from './sheet-plan';
 
@@ -118,5 +119,19 @@ describe('the sheet plan', () => {
     const { ratings, unmatched } = ratingsFromPaste(parseSheetPaste(SHEET), event);
     expect(unmatched).toEqual(['Space Marines']);
     expect(ratings.some((r) => r.playerId === 'us0')).toBe(false);
+  });
+
+  it('lists the pairings kept in this browser, most recent first', () => {
+    const plan = planFromPaste(parseSheetPaste(SHEET));
+    if (!plan) throw new Error('no plan');
+    writePlan({
+      ...plan,
+      source: { event: 'E1', team: 'T1', opponent: 'T2', opponentName: 'Ducks' },
+    });
+    writePlan({ ...plan, ratings: [], source: { event: 'E1', team: 'T1', opponent: 'T3' } });
+    expect(savedPlans().map((p) => [p.source?.opponent, p.ratings.length])).toEqual([
+      ['T3', 0],
+      ['T2', 23],
+    ]);
   });
 });

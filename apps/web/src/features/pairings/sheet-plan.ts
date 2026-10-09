@@ -160,6 +160,14 @@ function readSaved(): [string, unknown][] {
   }
 }
 
+/** Every pairing of event teams kept in this browser, most recent first. */
+export function savedPlans(): SheetPlan[] {
+  return readSaved().flatMap(([, plan]) => {
+    const parsed = PlanSchema.safeParse(plan);
+    return parsed.success ? [parsed.data] : [];
+  });
+}
+
 /** The plan kept for this pairing of an event's teams (its ratings), if any. */
 export function savedPlan(source: PlanSource): SheetPlan | null {
   const found = readSaved().find(([key]) => key === sourceKey(source));
