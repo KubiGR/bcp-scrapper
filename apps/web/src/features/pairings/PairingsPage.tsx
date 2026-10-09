@@ -12,6 +12,7 @@ import { Panel } from '../../components/Panel';
 import type { ChainFollow, ChainShown } from './chain-layout';
 import { ChainFlow } from './ChainFlow';
 import { DefenderGrid } from './DefenderGrid';
+import { byDisposition } from './disposition-style';
 import { PairingSummary } from './PairingSummary';
 import { PasteBox } from './PasteBox';
 import { RatingsTable } from './RatingsTable';
@@ -74,7 +75,10 @@ function withSavedRatings(plan: SheetPlan): SheetPlan {
 function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => void }) {
   const [pasting, setPasting] = useState(false);
   const [picking, setPicking] = useState(false);
-  const { ours, theirs, ratings, source } = plan;
+  const { ratings, source } = plan;
+  // Grouped by disposition, both sides in the same order (ratings follow the players).
+  const ours = byDisposition(plan.ours);
+  const theirs = byDisposition(plan.theirs);
   const { points, rated } = pointsMatrix(
     ours.map((p) => p.id),
     theirs.map((p) => p.id),

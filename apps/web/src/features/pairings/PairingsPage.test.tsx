@@ -245,4 +245,35 @@ describe('PairingsPage', () => {
     expect(screen.getByText(/^23 of 25 rated/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Space Marines v George: GG' })).toBeInTheDocument();
   });
+
+  it('rows and columns are grouped by disposition in the same order', () => {
+    const pasted = planFromPaste(parseSheetPaste(SHEET));
+    if (!pasted) throw new Error('no plan');
+    const order = ['Take and Hold', 'Disruption', null, 'Purge the Foe', 'Reconnaissance'];
+    writePlan({
+      ...pasted,
+      ours: pasted.ours.map((x, i) => ({ ...x, disposition: order[i] ?? null })),
+      theirs: pasted.theirs.map((x, i) => ({ ...x, disposition: order[4 - i] ?? null })),
+    });
+    renderWithProviders(<PairingsPage />);
+    const table = within(screen.getByRole('table', { name: 'Ratings' }));
+    const rowArmies = table
+      .getAllByRole('rowheader')
+      .slice(0, 5)
+      .map((h) => h.querySelector('[data-line="army"] span')?.textContent);
+    // Disruption, Reconnaissance, Purge the Foe, Take and Hold, then the one without.
+    expect(rowArmies).toEqual([
+      'Emperor’s Children',
+      'Adepta Sororitas',
+      'World Eaters',
+      'Space Marines',
+      'Chaos Daemons',
+    ]);
+    // Their columns in the same order of dispositions.
+    const columnCodes = table
+      .getAllByRole('columnheader')
+      .flatMap((h) => [...h.querySelectorAll('[title]')].map((b) => b.getAttribute('title')))
+      .filter((t): t is string => t !== null && /^(Disruption|Reconnaissance|Purge|Take)/.test(t));
+    expect(columnCodes).toEqual(['Disruption', 'Reconnaissance', 'Purge the Foe', 'Take and Hold']);
+  });
 });
