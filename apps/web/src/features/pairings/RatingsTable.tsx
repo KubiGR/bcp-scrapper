@@ -20,6 +20,31 @@ function spread(games: (PairingRating | undefined)[]): string {
   return `${mean.toFixed(1)} ± ${sd.toFixed(1)}`;
 }
 
+/** A chip's colour, beside its name in the cell menu. */
+function Swatch({ chip }: { chip: PairingChip }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        display: 'inline-block',
+        width: 12,
+        height: 12,
+        borderRadius: 3,
+        background: chipStyle(chip).background,
+      }}
+    />
+  );
+}
+
+/** The menu's mark for what is chosen now. */
+function Check() {
+  return (
+    <span aria-hidden="true" style={{ color: 'var(--mantine-color-teal-5)', fontWeight: 700 }}>
+      ✓
+    </span>
+  );
+}
+
 /** A clipboard with lines: the army list. */
 function ListIcon() {
   return (
@@ -168,6 +193,10 @@ export function RatingsTable({
                         {PAIRING_CHIPS.map((c) => (
                           <Menu.Item
                             key={c}
+                            data-selected={c === chip || undefined}
+                            fw={c === chip ? 700 : undefined}
+                            leftSection={<Swatch chip={c} />}
+                            rightSection={c === chip ? <Check /> : undefined}
                             onClick={() => {
                               onRate(o.id, t.id, c);
                             }}
@@ -191,6 +220,10 @@ export function RatingsTable({
                               <Menu.Item
                                 key={c}
                                 aria-label={`Can become ${c}`}
+                                data-selected={c === rating?.alt || undefined}
+                                fw={c === rating?.alt ? 700 : undefined}
+                                leftSection={<Swatch chip={c} />}
+                                rightSection={c === rating?.alt ? <Check /> : undefined}
                                 onClick={() => {
                                   onAlt(o.id, t.id, c);
                                 }}
@@ -200,6 +233,9 @@ export function RatingsTable({
                             ))}
                             <Menu.Item
                               aria-label="Can become: none"
+                              data-selected={!rating?.alt || undefined}
+                              fw={!rating?.alt ? 700 : undefined}
+                              rightSection={!rating?.alt ? <Check /> : undefined}
                               onClick={() => {
                                 onAlt(o.id, t.id, null);
                               }}

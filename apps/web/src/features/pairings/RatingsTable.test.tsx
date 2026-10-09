@@ -123,4 +123,27 @@ describe('RatingsTable', () => {
     expect(lines).toEqual(['army', 'player', 'detail']);
     expect(screen.getByText('Gladius Task Force')).toHaveAttribute('title', 'Gladius Task Force');
   });
+
+  it('the cell menu marks the current chip and what it can become', () => {
+    renderWithProviders(
+      <RatingsTable
+        ours={ours}
+        theirs={theirs}
+        ratings={[{ playerId: 'A', opponentPlayerId: 'X', chip: 'Y', alt: 'R' }]}
+        onRate={() => {}}
+        onAlt={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'A v X: Y, can become R' }));
+    const menu = within(screen.getByRole('menu'));
+    expect(menu.getByRole('menuitem', { name: 'Y' })).toHaveAttribute('data-selected', 'true');
+    expect(menu.getByRole('menuitem', { name: 'G' })).not.toHaveAttribute('data-selected');
+    expect(menu.getByRole('menuitem', { name: 'Can become R' })).toHaveAttribute(
+      'data-selected',
+      'true',
+    );
+    expect(menu.getByRole('menuitem', { name: 'Can become: none' })).not.toHaveAttribute(
+      'data-selected',
+    );
+  });
 });
