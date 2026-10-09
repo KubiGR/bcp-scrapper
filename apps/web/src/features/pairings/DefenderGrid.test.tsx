@@ -140,4 +140,22 @@ describe('summary and defender grid', () => {
     fireEvent.click(orks);
     expect(orks.querySelector('[data-icon="eye-off"]')).not.toBeNull();
   });
+
+  it('gives their defenders equal columns, whatever the length of the army name', () => {
+    renderWithProviders(
+      <DefenderGrid
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        selected={{ d: 0, e: 0 }}
+        onSelect={vi.fn()}
+      />,
+    );
+    const table = screen.getByRole('table');
+    expect(table.style.tableLayout).toBe('fixed');
+    const cols = [...table.querySelectorAll('col')].map((c) => c.style.width);
+    // The name column, five equal defender columns, then the four summaries.
+    expect(cols).toHaveLength(10);
+    expect(new Set(cols.slice(1, 6)).size).toBe(1);
+  });
 });

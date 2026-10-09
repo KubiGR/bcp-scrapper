@@ -92,8 +92,18 @@ export function DefenderGrid({
         Click a defender of theirs to rule them out if they won’t pick them: the row numbers then
         leave them out.
       </Text>
-      <Table.ScrollContainer minWidth={420}>
-        <Table withRowBorders={false} verticalSpacing={2} fz="xs">
+      <Table.ScrollContainer minWidth={760}>
+        {/* Fixed layout: their defenders share the room equally, however long the army name. */}
+        <Table withRowBorders={false} verticalSpacing={2} fz="xs" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: 170 }} />
+            {theirs.map((t) => (
+              <col key={t.id} />
+            ))}
+            {SUMMARIES.map((m) => (
+              <col key={m.key} style={{ width: 72 }} />
+            ))}
+          </colgroup>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>You ↓ / them →</Table.Th>
