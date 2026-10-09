@@ -121,7 +121,7 @@ describe('RatingsTable', () => {
       l.getAttribute('data-line'),
     );
     expect(lines).toEqual(['army', 'player', 'detail']);
-    expect(screen.getByText('Gladius Task Force')).toHaveAttribute('title', 'Gladius Task Force');
+    expect(screen.getByText('Gladius Task Force')).toBeInTheDocument();
   });
 
   it('the cell menu marks the current chip and what it can become', () => {

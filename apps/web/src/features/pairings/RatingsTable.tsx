@@ -7,6 +7,7 @@ import {
 } from '@bcp/shared';
 import { ActionIcon, Menu, Popover, Table, Text, UnstyledButton } from '@mantine/core';
 import { ChipLabel, ratingName } from './ChipLabel';
+import { Clipped } from './Clipped';
 import { chipStyle } from './chip-style';
 import { DispositionBadge } from './DispositionBadge';
 import classes from './RatingsTable.module.css';
@@ -69,7 +70,7 @@ function ListIcon() {
 /**
  * A player heading on three steady lines, the same in every row and column: the army (with the
  * button that opens the short list), the player, then the disposition badge with the detachments.
- * Lines too long end in "…" with the whole text on hover.
+ * Lines too long end in "…", with the whole text in a tooltip on hover.
  */
 function PlayerHeading({ player }: { player: PairingRosterPlayer }) {
   const army = player.faction ?? player.name;
@@ -102,16 +103,12 @@ function PlayerHeading({ player }: { player: PairingRosterPlayer }) {
           </Popover>
         )}
       </div>
-      <div className={classes.playerName} data-line="player" title={player.name}>
-        {player.name !== player.faction ? player.name : ' '}
+      <div className={classes.playerName} data-line="player">
+        <Clipped>{player.name !== player.faction ? player.name : ' '}</Clipped>
       </div>
       <div className={classes.detail} data-line="detail">
         <DispositionBadge disposition={player.disposition} />
-        {detachments && (
-          <span className={classes.detachments} title={detachments}>
-            {detachments}
-          </span>
-        )}
+        {detachments && <Clipped className={classes.detachments}>{detachments}</Clipped>}
       </div>
     </div>
   );
