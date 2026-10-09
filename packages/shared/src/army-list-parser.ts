@@ -1,7 +1,7 @@
 import { canonicalArmy } from './factions';
 
 /** Bump when the parser changes: stored lists with an older version are re-read on startup. */
-export const PARSER_VERSION = 6;
+export const PARSER_VERSION = 8;
 
 /** What a list says about the army; only these three things are ever read from list text. */
 export interface ParsedList {
@@ -34,8 +34,8 @@ const UNKNOWN: ParsedList = { army: null, detachments: [], disposition: null, fo
 const DETACHMENT_LINE = /^(.+?)\s*\((\d{1,2})\s+([^\d()]+)\)\s*$/;
 /** A unit's cost, `(45 pts)`, or a stratagem's, `(2 CP)`: never a detachment line. */
 const UNIT_POINTS = /^(?:pts|points?|punkte|puntos|pkt|cp|command points?)\.?$/i;
-/** A title or battle-size line: `(2000 points)`, `(2,000 Points)`, `(2.000 puntos)` (1000+). */
-const POINTS_LINE = /\(\s*\d[.,]?\d{3}\s*[^\d()]*\)\s*$/;
+/** A title or battle-size line: `(2000 points)`, `(2,000 Points)`, `(2.000 puntos)`, `(2 000 Points)` (1000+). */
+const POINTS_LINE = /\(\s*\d[.,\s]?\d{3}\s*[^\d()]*\)\s*$/;
 
 /** Chapters the GW app writes under "Space Marines" that BCP lists as factions of their own. */
 const OWN_FACTION_CHAPTERS = new Set([
@@ -49,24 +49,45 @@ const OWN_FACTION_CHAPTERS = new Set([
 /** The army as BCP names the faction, or null when the name isn't a known faction. */
 const cleanArmy = (name: string) => canonicalArmy(name);
 
-/**
- * The detachment line is followed, within two lines, by the battle size ("Strike Force (2000
- * points)"), which keeps a unit line like "Captain (80 pts)" in free text from matching.
- */
-const isDetachmentAt = (lines: string[], i: number) => {
-  const match = DETACHMENT_LINE.exec(lines[i] ?? '');
-  return (
-    match !== null &&
-    !UNIT_POINTS.test(match[3]?.trim() ?? '') &&
-    [lines[i + 1], lines[i + 2]].some((line) => line !== undefined && POINTS_LINE.test(line))
-  );
+/** A `Name (N Detachment Points)` line (not a unit's or stratagem's cost). */
+const isDetachmentLine = (line: string | undefined) => {
+  const match = DETACHMENT_LINE.exec(line ?? '');
+  return match !== null && !UNIT_POINTS.test(match[3]?.trim() ?? '');
 };
 
-/** The GW app export: [title] / blank / army / [sub-army] / detachment / disposition / size. */
+/**
+ * The detachment lines (one, or several in a row) followed, within two lines, by the battle size
+ * ("Strike Force (2000 points)"), which keeps a unit line like "Captain (80 pts)" in free text from
+ * matching. Returns the first and last line of the run.
+ */
+function detachmentRun(lines: string[]): { first: number; last: number } | null {
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!isDetachmentLine(lines[i])) continue;
+    let last = i;
+    while (isDetachmentLine(lines[last + 1])) last += 1;
+    if (
+      [lines[last + 1], lines[last + 2]].some(
+        (line) => line !== undefined && POINTS_LINE.test(line),
+      )
+    )
+      return { first: i, last };
+    i = last;
+  }
+  return null;
+}
+
+/** `Force Disposition: Disruption` / `Disposition: …` near the header, or a plain known one. */
+const DISPOSITION_FIELD = /^\s*(?:Force )?Disposition:\s*(.+)$/i;
+
+/**
+ * The GW app export: [title] / blank / army / [sub-army] / detachment(s) / [disposition] / size /
+ * [Force Disposition: …].
+ */
 function gwApp(lines: string[]): ParsedList | null {
-  const at = lines.findIndex((_, i) => isDetachmentAt(lines, i));
-  if (at < 1) return null;
-  // The contiguous non-empty block ending at the detachment line: [title] army [sub-army].
+  const run = detachmentRun(lines);
+  if (run === null || run.first < 1) return null;
+  const at = run.first;
+  // The contiguous non-empty block ending at the detachment lines: [title] army [sub-army].
   let start = at;
   while (start > 0 && lines[start - 1]?.trim() !== '') start -= 1;
   const block = lines.slice(start, at).map((line) => line.trim());
@@ -81,12 +102,21 @@ function gwApp(lines: string[]): ParsedList | null {
     first === 'Space Marines' && second !== undefined && OWN_FACTION_CHAPTERS.has(second)
       ? second
       : (block.find((line) => cleanArmy(line) !== null) ?? first);
-  const detachment = DETACHMENT_LINE.exec(lines[at] ?? '')?.[1]?.trim() ?? '';
-  const next = lines[at + 1]?.trim() ?? '';
+  const detachments = lines
+    .slice(run.first, run.last + 1)
+    .map((line) => DETACHMENT_LINE.exec(line)?.[1]?.trim() ?? '')
+    .filter((name) => name !== '')
+    .map(cleanDetachmentName);
+  // The disposition: plain right after the detachments, or a "Force Disposition:" line nearby.
+  const next = lines[run.last + 1]?.trim() ?? '';
+  const plain = next.includes('(') ? null : knownDisposition(next);
+  const labelled = knownDisposition(
+    field(lines.slice(run.last + 1, run.last + 5), DISPOSITION_FIELD),
+  );
   return {
     army: cleanArmy(army),
-    detachments: detachment === '' ? [] : [cleanDetachmentName(detachment)],
-    disposition: next.includes('(') ? null : knownDisposition(next),
+    detachments,
+    disposition: plain ?? labelled,
     format: 'gw-app',
   };
 }
@@ -151,17 +181,45 @@ function header(lines: string[]): ParsedList | null {
 /** `Factions used: …` / `Detachment(s): …` / `Disposition: …`. */
 function template(lines: string[]): ParsedList | null {
   const at = lines.findIndex((line) => /^\s*Factions? used:/i.test(line));
-  if (at < 0) return null;
+  if (at < 0) return fields(lines);
   // The army is on the same line or the first non-empty line after it; multi-faction lists name
   // the main army first.
   const inline = lines[at]?.replace(/^\s*Factions? used:/i, '').trim() ?? '';
   const first =
     inline !== '' ? inline : (lines.slice(at + 1).find((line) => line.trim() !== '') ?? '');
   const army = first.split(',')[0]?.trim() ?? '';
+  const named = commaList(field(lines, DETACHMENTS_FIELD));
+  // Without a "Detachment:" field, a `Name (3 Detachment Points)` line, its disposition under it.
+  const lineAt = named.length > 0 ? -1 : lines.findIndex((line) => isDetachmentLine(line));
+  const fromLine = DETACHMENT_LINE.exec(lines[lineAt] ?? '')?.[1]?.trim();
+  const detachments = fromLine ? [cleanDetachmentName(fromLine)] : named;
   return {
     army: army === '' ? null : cleanArmy(army),
-    detachments: commaList(field(lines, /^\s*Detachments?(?: used)?(?:\(s\))?:\s*(.+)$/i)),
-    disposition: knownDisposition(field(lines, /^\s*(?:Force )?Disposition:\s*(.+)$/i)),
+    detachments,
+    disposition:
+      knownDisposition(field(lines, DISPOSITION_FIELD)) ??
+      (lineAt >= 0 ? knownDisposition(lines[lineAt + 1] ?? null) : null),
+    format: 'template',
+  };
+}
+
+const DETACHMENTS_FIELD = /^\s*Detachments?(?: used)?(?:\(s\))?:\s*(.+)$/i;
+
+/**
+ * Lists with "Detachment:" (and usually "Disposition:") fields but no "Factions used:" line; the
+ * army is a known faction named on its own line or after "·" ("Warhammer 40,000 · Necrons").
+ */
+function fields(lines: string[]): ParsedList | null {
+  const detachments = commaList(field(lines, DETACHMENTS_FIELD));
+  if (detachments.length === 0) return null;
+  const army =
+    lines
+      .map((line) => cleanArmy(line.split('·').at(-1)?.trim() ?? ''))
+      .find((name) => name !== null) ?? null;
+  return {
+    army,
+    detachments,
+    disposition: knownDisposition(field(lines, DISPOSITION_FIELD)),
     format: 'template',
   };
 }
