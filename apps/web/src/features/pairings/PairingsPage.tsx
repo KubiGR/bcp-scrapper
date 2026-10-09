@@ -14,6 +14,7 @@ import { ChainFlow } from './ChainFlow';
 import { DefenderGrid } from './DefenderGrid';
 import { FetchListsButton } from './FetchListsButton';
 import { byDisposition } from './disposition-style';
+import { withRuledOut } from './ruled-out';
 import { PairingSummary } from './PairingSummary';
 import { PasteBox } from './PasteBox';
 import { RatingsTable } from './RatingsTable';
@@ -132,9 +133,12 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` stands for `points` (same numbers, new array each render).
   const analysis = useMemo(() => analysePairing(points), [key]);
   const [square, setSquare] = useState<{ d: number; e: number } | null>(null);
+  // Their defenders ruled out in the grid: the summary and the suggested square follow.
+  const [ruledOut, setRuledOut] = useState<ReadonlySet<number>>(new Set());
+  const view = withRuledOut(analysis, ruledOut);
   const selected = square ?? {
-    d: analysis.safeDefender.index,
-    e: analysis.theirDefender.indexOf(Math.max(...analysis.theirDefender)),
+    d: view.safeDefender.index,
+    e: view.theirDefender.indexOf(Math.max(...view.theirDefender)),
   };
   // The live pairing: kept here so the ratings table can grey out who's used up.
   const [follow, setFollow] = useState<ChainFollow>({});
@@ -246,6 +250,8 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
         }}
         shown={shown}
         onShownChange={setShown}
+        ruledOut={ruledOut}
+        onRuledOutChange={setRuledOut}
       />
     </Stack>
   );
@@ -264,6 +270,8 @@ function Analysis({
   onClear,
   shown,
   onShownChange,
+  ruledOut,
+  onRuledOutChange,
 }: {
   analysis: PairingAnalysis;
   ours: PairingRosterPlayer[];
@@ -276,12 +284,14 @@ function Analysis({
   onClear: () => void;
   shown: ChainShown;
   onShownChange: (shown: ChainShown) => void;
+  ruledOut: ReadonlySet<number>;
+  onRuledOutChange: (ruledOut: ReadonlySet<number>) => void;
 }) {
   return (
     <>
       <Column>
         <Panel title="Summary">
-          <PairingSummary analysis={analysis} ours={ours} theirs={theirs} />
+          <PairingSummary analysis={analysis} ours={ours} theirs={theirs} ruledOut={ruledOut} />
         </Panel>
       </Column>
       <Column>
@@ -292,6 +302,8 @@ function Analysis({
             theirs={theirs}
             selected={selected}
             onSelect={onSelect}
+            ruledOut={ruledOut}
+            onRuledOutChange={onRuledOutChange}
           />
         </Panel>
       </Column>

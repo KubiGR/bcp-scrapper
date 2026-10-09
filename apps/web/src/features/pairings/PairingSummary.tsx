@@ -1,5 +1,6 @@
 import type { PairingAnalysis, PairingRosterPlayer } from '@bcp/shared';
 import { Group, Stack, Text } from '@mantine/core';
+import { withRuledOut } from './ruled-out';
 
 const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
 const pct = (x: number) => `${Math.round(x * 100)}%`;
@@ -8,13 +9,18 @@ export function PairingSummary({
   analysis,
   ours,
   theirs,
+  ruledOut = new Set(),
 }: {
   analysis: PairingAnalysis;
   ours: PairingRosterPlayer[];
   theirs: PairingRosterPlayer[];
+  /** Their defenders ruled out in the grid: the picture without them. */
+  ruledOut?: ReadonlySet<number>;
 }) {
-  const likely = analysis.theirDefender.indexOf(Math.max(...analysis.theirDefender));
-  const mix = analysis.ourDefender
+  const view = withRuledOut(analysis, ruledOut);
+  const likely = view.theirDefender.indexOf(Math.max(...view.theirDefender));
+  const without = [...ruledOut].map((e) => army(theirs[e])).join(', ');
+  const mix = view.ourDefender
     .map((p, i) => ({ p, i }))
     .filter((x) => x.p > 0.005)
     .sort((a, b) => b.p - a.p)
@@ -37,14 +43,22 @@ export function PairingSummary({
   );
   return (
     <Group gap="xl" align="flex-start">
-      {stat('Expected team score (of 100)', analysis.value.toFixed(1), '50 is even')}
+      {stat(
+        'Expected team score (of 100)',
+        view.value.toFixed(1),
+        without ? `50 is even · without ${without}` : '50 is even',
+      )}
       {stat(
         'Safe defender',
-        army(ours[analysis.safeDefender.index]),
-        `at least ${analysis.safeDefender.worst.toFixed(1)}`,
+        army(ours[view.safeDefender.index]),
+        `at least ${view.safeDefender.worst.toFixed(1)}`,
       )}
       {stat('Unpredictable defender', mix, 'pick at random with these odds')}
-      {stat('Their likely defender', army(theirs[likely]))}
+      {stat(
+        'Their likely defender',
+        army(theirs[likely]),
+        without ? `without ${without}` : undefined,
+      )}
     </Group>
   );
 }

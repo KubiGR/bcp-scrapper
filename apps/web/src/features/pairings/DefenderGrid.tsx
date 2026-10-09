@@ -1,7 +1,8 @@
-import { solveMatrixGame, type PairingAnalysis, type PairingRosterPlayer } from '@bcp/shared';
+import type { PairingAnalysis, PairingRosterPlayer } from '@bcp/shared';
 import { Table, Text, Tooltip, UnstyledButton } from '@mantine/core';
 import { useState } from 'react';
 import classes from './DefenderGrid.module.css';
+import { withRuledOut } from './ruled-out';
 
 const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
 /** Green above 50, orange below, stronger the further from even. */
@@ -59,25 +60,26 @@ export function DefenderGrid({
   theirs,
   selected,
   onSelect,
+  ruledOut: ruledOutProp,
+  onRuledOutChange,
 }: {
   analysis: PairingAnalysis;
   ours: PairingRosterPlayer[];
   theirs: PairingRosterPlayer[];
   selected: { d: number; e: number };
   onSelect: (d: number, e: number) => void;
+  /** Their defenders ruled out, when the page keeps them (the summary follows). */
+  ruledOut?: ReadonlySet<number>;
+  onRuledOutChange?: (ruledOut: ReadonlySet<number>) => void;
 }) {
   // Their defenders you're sure they won't pick: left out of every row's numbers.
-  const [ruledOut, setRuledOut] = useState<ReadonlySet<number>>(new Set());
+  const [ownRuledOut, setOwnRuledOut] = useState<ReadonlySet<number>>(new Set());
+  const ruledOut = ruledOutProp ?? ownRuledOut;
+  const setRuledOut = onRuledOutChange ?? setOwnRuledOut;
   const kept = theirs.map((_, e) => e).filter((e) => !ruledOut.has(e));
   // Their likely defender among the ones left, solved again (not just the old odds renormalised).
-  const mix = new Map<number, number>();
-  if (ruledOut.size === 0) theirs.forEach((_, e) => mix.set(e, analysis.theirDefender[e] ?? 0));
-  else {
-    const cols = solveMatrixGame(
-      analysis.defenderGrid.map((row) => kept.map((e) => row[e] ?? 0)),
-    ).cols;
-    kept.forEach((e, j) => mix.set(e, cols[j] ?? 0));
-  }
+  const theirMix = withRuledOut(analysis, ruledOut).theirDefender;
+  const mix = new Map(kept.map((e) => [e, theirMix[e] ?? 0]));
   const toggle = (e: number) => {
     const next = new Set(ruledOut);
     if (next.has(e)) next.delete(e);
