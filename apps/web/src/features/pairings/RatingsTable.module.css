@@ -55,7 +55,7 @@
 /* The army may take two lines; it matters most. */
 .armyName {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .playerName,
 .detachments {
@@ -120,6 +120,10 @@
   opacity: 0.3;
 }
 @media (max-width: 48em) {
+  /* The list button drops under a long army name rather than breaking it mid-word. */
+  .army {
+    flex-wrap: wrap;
+  }
   .names {
     width: 8.5rem;
   }

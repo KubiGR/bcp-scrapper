@@ -137,7 +137,7 @@ export function RatingsTable({
   const locked = new Set(used?.games.map(([a, b]) => `${String(a)}|${String(b)}`));
   const ratingOf = new Map(ratings.map((r) => [`${r.playerId}|${r.opponentPlayerId}`, r]));
   return (
-    <Table.ScrollContainer minWidth={640}>
+    <Table.ScrollContainer minWidth={720}>
       <table className={classes.table} aria-label="Ratings">
         <thead>
           <tr>
