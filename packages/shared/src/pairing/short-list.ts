@@ -1,11 +1,18 @@
-/** A unit line: `Name (90 Points)`, `Name (90 pts)`, `Name x6 (140 pts)`. */
-const UNIT = /^(.+?)\s*\((\d{1,4})\s*(?:points?|pts)\.?\)\s*$/i;
+/**
+ * A unit line: `Name (90 Points)`, `Name (90 pts)`, `Name x6 (140 pts)`, and the count-first style
+ * with its gear after the points: `5x Name (260 pts): Vexilla`.
+ */
+const UNIT = /^(.+?)\s*\((\d{1,4})\s*(?:points?|pts)\.?\)\s*(?::.*)?$/i;
 /** A bullet under a unit: `• 9x Purifier` (a model or a weapon), with its indent. */
 const BULLET = /^(\s*)[•\-*]\s*(?:(\d+)x\s+)?(.+)$/;
 /** A sub-bullet (a model's weapon): `◦ 1x Storm bolter`. */
 const SUB = /^\s*◦/;
 /** `Warbikers x6`: the model count in the name. */
 const COUNT_IN_NAME = /^(.+?)\s+x(\d+)$/i;
+/** `5x Custodian Wardens`: the model count before the name. */
+const COUNT_FIRST = /^(\d+)x\s+(.+)$/i;
+/** `Char1: `: a character's place in the count-first style. */
+const CHARACTER_TAG = /^char\d+:\s*/i;
 
 interface Unit {
   name: string;
@@ -28,12 +35,16 @@ export function shortList(text: string | null): string[] {
     const points = Number(match[2]);
     // Titles and battle sizes ("Strike Force (2,000 Points)", "My list (1995 Points)").
     if (points >= 1000) continue;
-    let name = (match[1] ?? '').trim();
+    let name = (match[1] ?? '').trim().replace(CHARACTER_TAG, '');
     let models = 1;
     const inName = COUNT_IN_NAME.exec(name);
+    const first = COUNT_FIRST.exec(name);
     if (inName) {
       name = (inName[1] ?? name).trim();
       models = Number(inName[2]);
+    } else if (first) {
+      name = (first[2] ?? name).trim();
+      models = Number(first[1]);
     }
     // The bullets under it: models when any of them lists its own weapons.
     let counted = 0;
