@@ -5,9 +5,10 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { Button, Container, Group, Modal, Select, Stack, Text, Title } from '@mantine/core';
+import { Button, Container, Group, Modal, Stack, Text, Title } from '@mantine/core';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
+import { SearchSelect } from '../../components/SearchSelect';
 import { Panel } from '../../components/Panel';
 import type { ChainFollow, ChainShown } from './chain-layout';
 import { ChainFlow } from './ChainFlow';
@@ -86,12 +87,11 @@ function SavedPairings({
   const saved = savedPlans();
   if (saved.length === 0) return null;
   return (
-    <Select
+    <SearchSelect
       aria-label="Saved pairings"
       placeholder="Saved pairings"
       size="xs"
       w={300}
-      searchable
       value={keyOf(current) || null}
       onChange={(key) => {
         const plan = saved.find((p) => keyOf(p) === key);

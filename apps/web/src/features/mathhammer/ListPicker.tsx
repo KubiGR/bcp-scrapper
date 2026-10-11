@@ -4,7 +4,6 @@ import {
   Button,
   Group,
   SegmentedControl,
-  Select,
   Stack,
   Text,
   TextInput,
@@ -13,6 +12,7 @@ import {
 import { useDebouncedValue } from '@mantine/hooks';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { SearchSelect } from '../../components/SearchSelect';
 import { pickableUnits } from './datasheet-form';
 import { readList, storedListQuery, storedListsQuery } from './mathhammer-queries';
 
@@ -105,10 +105,9 @@ export function ListPicker({
             }}
           />
           {(found.data?.lists.length ?? 0) > 0 ? (
-            <Select
+            <SearchSelect
               size="xs"
               label={`${label} stored list`}
-              searchable
               w={360}
               data={(found.data?.lists ?? []).map((l) => ({
                 value: l.playerId,
@@ -142,10 +141,9 @@ export function ListPicker({
       )}
       {units.length > 0 && (
         <Group gap="xs" align="flex-end">
-          <Select
+          <SearchSelect
             size="xs"
             label={`${label} list unit`}
-            searchable
             w={360}
             data={units.map((u) => ({ value: String(u.index), label: u.label }))}
             value={unitIndex}

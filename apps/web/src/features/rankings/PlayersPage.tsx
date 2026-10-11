@@ -1,17 +1,7 @@
 import type { RankedPlayerRow } from '@bcp/shared';
-import {
-  Box,
-  Button,
-  Group,
-  Select,
-  Skeleton,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import { Box, Button, Group, Skeleton, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { SearchSelect } from '../../components/SearchSelect';
 import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
@@ -131,11 +121,10 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
           }}
           w={{ base: '100%', xs: 240 }}
         />
-        <Select
+        <SearchSelect
           label="Faction"
           placeholder="Any"
           clearable
-          searchable
           data={data?.factionOptions ?? []}
           value={search.faction ?? null}
           onChange={(value) => {
