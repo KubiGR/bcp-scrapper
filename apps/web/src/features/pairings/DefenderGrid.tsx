@@ -96,7 +96,7 @@ export function DefenderGrid({
         {/* Fixed layout: their defenders share the room equally, however long the army name. */}
         <Table withRowBorders={false} verticalSpacing={2} fz="xs" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: 170 }} />
+            <col className={classes.nameCol} />
             {theirs.map((t) => (
               <col key={t.id} />
             ))}
@@ -106,7 +106,7 @@ export function DefenderGrid({
           </colgroup>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>You ↓ / them →</Table.Th>
+              <Table.Th className={classes.name}>You ↓ / them →</Table.Th>
               {theirs.map((t, e) => (
                 <Table.Th key={t.id}>
                   <Tooltip
@@ -159,7 +159,9 @@ export function DefenderGrid({
               };
               return (
                 <Table.Tr key={ours[d]?.id ?? d}>
-                  <Table.Th scope="row">{army(ours[d])}</Table.Th>
+                  <Table.Th scope="row" className={classes.name}>
+                    {army(ours[d])}
+                  </Table.Th>
                   {row.map((v, e) => (
                     <Table.Td
                       key={theirs[e]?.id ?? e}

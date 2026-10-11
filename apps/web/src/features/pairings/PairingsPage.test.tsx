@@ -317,4 +317,44 @@ describe('PairingsPage', () => {
     expect(likely()).not.toBe(before);
     expect(summary().getByText(`without ${before}`)).toBeInTheDocument();
   });
+
+  it('another pairing starts fresh: nothing followed, no defender ruled out', async () => {
+    const pasted = planFromPaste(parseSheetPaste(SHEET));
+    if (!pasted) throw new Error('no plan');
+    const source = (opponent: string, opponentName: string) => ({
+      event: 'E1',
+      team: 'T1',
+      opponent,
+      eventName: 'Balkan',
+      teamName: 'Dice Bunker',
+      opponentName,
+    });
+    writePlan({ ...pasted, source: source('T2', 'Mighty Ducks') });
+    writePlan({ ...pasted, source: source('T3', 'Dragon Tale') });
+    renderWithProviders(<PairingsPage />);
+    const table = () => within(screen.getByRole('table', { name: 'Ratings' }));
+    fireEvent.change(screen.getByLabelText('You defend'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Orks' }));
+    expect(table().getByRole('rowheader', { name: /World Eaters/ })).toHaveAttribute(
+      'data-used',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('combobox', { name: 'Saved pairings' }));
+    fireEvent.click(await screen.findByRole('option', { name: /Mighty Ducks/ }));
+    expect(screen.getByText('Balkan · Dice Bunker v Mighty Ducks')).toBeInTheDocument();
+    expect(table().getByRole('rowheader', { name: /World Eaters/ })).not.toHaveAttribute(
+      'data-used',
+    );
+    expect(screen.getByRole('button', { name: 'Orks' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('Clear also brings back the defenders ruled out in the grid', () => {
+    renderWithProviders(<PairingsPage />);
+    paste(SHEET);
+    fireEvent.click(screen.getByRole('button', { name: 'Use these ratings' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Orks' }));
+    expect(screen.getByRole('button', { name: /Orks \(won’t defend\)/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(screen.getByRole('button', { name: 'Orks' })).toHaveAttribute('aria-pressed', 'false');
+  });
 });

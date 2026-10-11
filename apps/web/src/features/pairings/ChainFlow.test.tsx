@@ -475,4 +475,32 @@ describe('ChainFlow', () => {
     // World Eaters v Orks 7, Emperor's Children v Custodes 11.5, SM v GK 17, CD v CSM 7, AS v DG 7.
     expect(final.getByText(/^Final line-up · total 49\.5$/)).toBeInTheDocument();
   });
+
+  it('on a phone the wide diagram waits behind a button; following the pairing does not', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('max-width'),
+      media: query,
+      onchange: null,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => false,
+    }));
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    expect(screen.getByLabelText('You defend')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /^Chain:/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show the chain diagram' }));
+    expect(screen.getByRole('group', { name: /^Chain:/ })).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
 });

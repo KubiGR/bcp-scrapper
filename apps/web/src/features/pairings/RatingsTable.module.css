@@ -103,3 +103,27 @@
   outline-offset: 1px;
   border-radius: 4px;
 }
+
+/* Our names stay in view while the opponents scroll by (on a phone). */
+.table thead th:first-child,
+.table tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--mantine-color-dark-7);
+}
+/* A used-up name fades its text, not its backing (the chips would show through). */
+.table tbody th.used {
+  opacity: 1;
+}
+.table tbody th.used > * {
+  opacity: 0.3;
+}
+@media (max-width: 48em) {
+  .names {
+    width: 8.5rem;
+  }
+  .avg {
+    width: 4.5rem;
+  }
+}
