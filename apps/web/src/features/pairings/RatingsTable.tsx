@@ -14,11 +14,10 @@ import {
   Table,
   Text,
   UnstyledButton,
-  VisuallyHidden,
 } from '@mantine/core';
 import { ChipLabel, ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
-import { shortArmy } from './army-name';
+import { fullArmy, shortArmy } from './army-name';
 import { DispositionBadge } from './DispositionBadge';
 import classes from './RatingsTable.module.css';
 
@@ -113,48 +112,37 @@ function PlayerDetails({ player }: { player: PairingRosterPlayer }) {
 }
 
 /**
- * A player heading on two steady lines, the same in every row and column: the short army (with
- * the list button), then the player, cut with "…". A tap on the player (or the list button) opens
- * everything in full: disposition, detachments and the short list.
+ * A player heading on two steady lines, the same in every row and column: the short army (with a
+ * mark when there's a list), then the player, cut with "…". A tap anywhere on it opens everything
+ * in full: disposition, detachments and the short list.
  */
 function PlayerHeading({ player }: { player: PairingRosterPlayer }) {
   const army = player.faction ?? player.name;
   // Short ("Chaos Space Marines" → "CSM"); the hover keeps the full name.
   const label = player.faction ? shortArmy(player.faction) : player.name;
-  const popover = { position: 'bottom-start', withArrow: true, shadow: 'md', width: 280 } as const;
   return (
-    <div className={classes.heading}>
-      <div className={classes.army} data-line="army">
-        <span className={classes.armyName} title={army}>
-          <span aria-hidden="true">{label}</span>
-          <VisuallyHidden>{army}</VisuallyHidden>
-        </span>
-        {player.list && (
-          <Popover {...popover}>
-            <Popover.Target>
-              <ActionIcon variant="default" size="sm" aria-label={`${army} list`} title="List">
+    <Popover position="bottom-start" withArrow shadow="md" width={280}>
+      <Popover.Target>
+        <UnstyledButton className={classes.heading} aria-label={`${army} details`}>
+          <div className={classes.army} data-line="army">
+            <span className={classes.armyName} title={army}>
+              <span aria-hidden="true">{label}</span>
+            </span>
+            {player.list && (
+              <ActionIcon component="span" variant="default" size="sm" data-list-mark title="List">
                 <ListIcon />
               </ActionIcon>
-            </Popover.Target>
-            <Popover.Dropdown role="dialog" aria-label={`${army} details`}>
-              <PlayerDetails player={player} />
-            </Popover.Dropdown>
-          </Popover>
-        )}
-      </div>
-      <Popover {...popover}>
-        <Popover.Target>
-          <UnstyledButton className={classes.details} aria-label={`${army} details`}>
-            <div className={classes.playerName} data-line="player">
-              {player.name !== player.faction ? player.name : ' '}
-            </div>
-          </UnstyledButton>
-        </Popover.Target>
-        <Popover.Dropdown role="dialog" aria-label={`${army} details`}>
-          <PlayerDetails player={player} />
-        </Popover.Dropdown>
-      </Popover>
-    </div>
+            )}
+          </div>
+          <div className={classes.playerName} data-line="player">
+            {player.name !== player.faction ? player.name : ' '}
+          </div>
+        </UnstyledButton>
+      </Popover.Target>
+      <Popover.Dropdown role="dialog" aria-label={`${army} details`}>
+        <PlayerDetails player={player} />
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 
@@ -189,6 +177,7 @@ export function RatingsTable({
             {theirs.map((t, j) => (
               <th
                 key={t.id}
+                aria-label={fullArmy(t)}
                 data-used={usedTheirs.has(j) || undefined}
                 className={usedTheirs.has(j) ? classes.used : undefined}
               >
@@ -205,6 +194,7 @@ export function RatingsTable({
             <tr key={o.id}>
               <th
                 scope="row"
+                aria-label={fullArmy(o)}
                 data-used={usedOurs.has(i) || undefined}
                 className={usedOurs.has(i) ? classes.used : undefined}
               >

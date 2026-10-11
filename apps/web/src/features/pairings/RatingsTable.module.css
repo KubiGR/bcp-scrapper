@@ -35,13 +35,20 @@
   color: var(--mantine-color-dimmed);
   font-variant-numeric: tabular-nums;
 }
-/* A player heading: two steady lines (army, player). */
+/* A player heading: two steady lines (army, player); the whole of it is a button that opens
+   everything in full. */
 .heading {
   display: flex;
   flex-direction: column;
   gap: 3px;
+  width: 100%;
   min-width: 0;
+  /* A long name ends in "…" inside the column, never past it. */
+  overflow: hidden;
   font-weight: 400;
+  text-align: left;
+  border-radius: 4px;
+  cursor: pointer;
 }
 .army {
   display: flex;
@@ -58,6 +65,7 @@
   overflow-wrap: break-word;
 }
 .playerName {
+  width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -119,15 +127,6 @@
   }
 }
 
-/* The player line: a tap opens everything in full. */
-.details {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.details:hover .playerName {
+.heading:hover .playerName {
   color: var(--mantine-color-text);
 }

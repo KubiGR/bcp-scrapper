@@ -307,7 +307,7 @@ describe('PairingsPage', () => {
     const likely = () =>
       screen.getByText('Their likely defender').nextElementSibling?.textContent ?? '';
     const before = likely();
-    fireEvent.click(screen.getByText(before, { selector: 'button span' }));
+    fireEvent.click(screen.getByText(before, { selector: 'button[aria-pressed] span' }));
     expect(likely()).not.toBe(before);
     expect(summary().getByText(`without ${before}`)).toBeInTheDocument();
   });

@@ -90,10 +90,15 @@ describe('RatingsTable', () => {
     expect(screen.queryByText('6 Warbikers')).toBeNull();
     // Just a list symbol by the army: no "List · N units" text.
     expect(screen.queryByText(/units/)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Orks list' }));
+    // A tap anywhere on the heading (army, list mark, player) opens it.
+    fireEvent.click(screen.getByText('Orks', { selector: '[aria-hidden]' }));
     expect(await screen.findByText('6 Warbikers')).toBeInTheDocument();
     expect(screen.getByTitle('Purge the Foe')).toHaveTextContent('PTF');
-    expect(screen.queryByRole('button', { name: 'Necrons list' })).toBeNull();
+    // The list mark only shows for players with a list.
+    const marks = (army: string) =>
+      screen.getByRole('button', { name: `${army} details` }).querySelectorAll('[data-list-mark]');
+    expect(marks('Orks')).toHaveLength(1);
+    expect(marks('Necrons')).toHaveLength(0);
     // Space Marines: G 13 and Y 10 → 11.5 ± 1.5; Orks column: G 13 and RR 2.5 → 7.8 ± 5.3.
     expect(screen.getByLabelText('Space Marines average')).toHaveTextContent('11.5 ± 1.5');
     expect(screen.getByLabelText('Orks average')).toHaveTextContent('7.8 ± 5.3');
