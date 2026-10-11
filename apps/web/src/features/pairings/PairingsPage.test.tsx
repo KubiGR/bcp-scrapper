@@ -264,11 +264,11 @@ describe('PairingsPage', () => {
     // Disruption, Reconnaissance, Purge the Foe, Take and Hold, then the one without.
     expect(rowArmies).toEqual(['EC', 'Sisters', 'WE', 'SM', 'Daemons']);
     // Their columns in the same order of dispositions.
-    const columnCodes = table
+    const columnArmies = table
       .getAllByRole('columnheader')
-      .flatMap((h) => [...h.querySelectorAll('[title]')].map((b) => b.getAttribute('title')))
-      .filter((t): t is string => t !== null && /^(Disruption|Reconnaissance|Purge|Take)/.test(t));
-    expect(columnCodes).toEqual(['Disruption', 'Reconnaissance', 'Purge the Foe', 'Take and Hold']);
+      .flatMap((h) => [...h.querySelectorAll('[data-line="army"] [aria-hidden]')])
+      .map((a) => a.textContent);
+    expect(columnArmies).toEqual(['CSM', 'GK', 'DG', 'Custodes', 'Orks']);
   });
 
   it('says ratings are saved in this browser, and reopens a saved pairing', async () => {

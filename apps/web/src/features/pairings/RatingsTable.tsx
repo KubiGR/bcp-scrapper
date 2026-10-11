@@ -7,6 +7,7 @@ import {
 } from '@bcp/shared';
 import {
   ActionIcon,
+  Group,
   Menu,
   Popover,
   Stack,
@@ -76,12 +77,6 @@ function ListIcon() {
   );
 }
 
-/**
- * A player heading on three steady lines, the same in every row and column: the army (with the
- * button that opens the short list), the player, then the disposition badge with the detachments.
- * Lines too long end in "…"; a tap on the player or detachments (or the list button) opens
- * everything in full, with the short list.
- */
 /** Everything about a player in full, with the short list: what a heading's popups show. */
 function PlayerDetails({ player }: { player: PairingRosterPlayer }) {
   const detachments = player.detachments.join(' + ');
@@ -92,9 +87,12 @@ function PlayerDetails({ player }: { player: PairingRosterPlayer }) {
       </Text>
       {player.name !== player.faction && <Text size="xs">{player.name}</Text>}
       {player.disposition && (
-        <Text size="xs" c="dimmed">
-          {player.disposition}
-        </Text>
+        <Group gap={6}>
+          <DispositionBadge disposition={player.disposition} />
+          <Text size="xs" c="dimmed">
+            {player.disposition}
+          </Text>
+        </Group>
       )}
       {detachments && (
         <Text size="xs" c="dimmed">
@@ -114,11 +112,15 @@ function PlayerDetails({ player }: { player: PairingRosterPlayer }) {
   );
 }
 
+/**
+ * A player heading on two steady lines, the same in every row and column: the short army (with
+ * the list button), then the player, cut with "…". A tap on the player (or the list button) opens
+ * everything in full: disposition, detachments and the short list.
+ */
 function PlayerHeading({ player }: { player: PairingRosterPlayer }) {
   const army = player.faction ?? player.name;
   // Short ("Chaos Space Marines" → "CSM"); the hover keeps the full name.
   const label = player.faction ? shortArmy(player.faction) : player.name;
-  const detachments = player.detachments.join(' + ');
   const popover = { position: 'bottom-start', withArrow: true, shadow: 'md', width: 280 } as const;
   return (
     <div className={classes.heading}>
@@ -145,10 +147,6 @@ function PlayerHeading({ player }: { player: PairingRosterPlayer }) {
           <UnstyledButton className={classes.details} aria-label={`${army} details`}>
             <div className={classes.playerName} data-line="player">
               {player.name !== player.faction ? player.name : ' '}
-            </div>
-            <div className={classes.detail} data-line="detail">
-              <DispositionBadge disposition={player.disposition} />
-              {detachments && <span className={classes.detachments}>{detachments}</span>}
             </div>
           </UnstyledButton>
         </Popover.Target>

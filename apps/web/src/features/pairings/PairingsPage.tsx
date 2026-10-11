@@ -91,7 +91,7 @@ function SavedPairings({
       aria-label="Saved pairings"
       placeholder="Saved pairings"
       size="xs"
-      w={300}
+      w={{ base: '100%', xs: 300 }}
       value={keyOf(current) || null}
       onChange={(key) => {
         const plan = saved.find((p) => keyOf(p) === key);
