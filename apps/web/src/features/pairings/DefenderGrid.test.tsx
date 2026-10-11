@@ -37,8 +37,8 @@ describe('summary and defender grid', () => {
     expect(screen.getByText('49.7')).toBeInTheDocument();
     expect(screen.getByText('Expected team score (of 100)')).toBeInTheDocument();
     // World Eaters is both the safe defender and in the unpredictable mix.
-    expect(screen.getAllByText(/World Eaters/).length).toBeGreaterThan(0);
-    expect(screen.getByText('Adeptus Custodes')).toBeInTheDocument();
+    expect(screen.getAllByText(/WE/).length).toBeGreaterThan(0);
+    expect(screen.getByText('Custodes')).toBeInTheDocument();
   });
 
   it('shows every defender pair and selects one on click', () => {

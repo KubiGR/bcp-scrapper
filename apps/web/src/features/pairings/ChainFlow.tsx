@@ -23,8 +23,9 @@ import { ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
 import { bestAgainst, breakEven, nextTip, safest } from './tips';
 import { usedPlayers } from './used-players';
+import { armyLabel, fullArmy } from './army-name';
 
-const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
+const army = armyLabel;
 /** A score difference as "+0.8", "−1.2" or "0.0". */
 const signed = (x: number) =>
   Math.abs(x) < 0.05 ? '0.0' : `${x > 0 ? '+' : '−'}${Math.abs(x).toFixed(1)}`;
@@ -199,7 +200,11 @@ export function ChainFlow({
     // A game that can become another chip: its chip, then the other one in a narrower strip.
     const mainW = r?.alt ? CHIP_W - ALT_W : CHIP_W;
     return (
-      <g key={i} role="img" aria-label={`${name}: ${ratingName(c, r?.alt)}`}>
+      <g
+        key={i}
+        role="img"
+        aria-label={`${fullArmy(ours[a])} v ${fullArmy(theirs[b])}: ${ratingName(c, r?.alt)}`}
+      >
         <text x={box.x + 8} y={y} fill="var(--mantine-color-text)">
           {name}
         </text>
@@ -636,7 +641,7 @@ export function ChainFlow({
           <svg
             ref={svgRef}
             role="group"
-            aria-label={`Chain: you defend ${army(ours[d])}, they defend ${army(theirs[e])}, you send ${send.pair.map((a) => army(ours[a])).join(' + ')}`}
+            aria-label={`Chain: you defend ${fullArmy(ours[d])}, they defend ${fullArmy(theirs[e])}, you send ${send.pair.map((a) => fullArmy(ours[a])).join(' + ')}`}
             width={layout.width}
             height={layout.height + 4}
             viewBox={`0 -2 ${layout.width} ${layout.height + 4}`}

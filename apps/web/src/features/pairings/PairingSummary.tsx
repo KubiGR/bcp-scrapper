@@ -2,8 +2,9 @@ import type { PairingAnalysis, PairingRosterPlayer } from '@bcp/shared';
 import { Group, Stack, Text } from '@mantine/core';
 import type { ReactNode } from 'react';
 import { withRuledOut } from './ruled-out';
+import { armyLabel } from './army-name';
 
-const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
+const army = armyLabel;
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 export function PairingSummary({

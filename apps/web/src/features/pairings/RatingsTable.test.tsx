@@ -113,9 +113,9 @@ describe('RatingsTable', () => {
     renderWithProviders(
       <RatingsTable ours={us} theirs={theirs} ratings={[]} onRate={() => {}} onAlt={() => {}} />,
     );
-    // BCP's "(Astartes)" is dropped from the label but kept on hover.
-    const army = screen.getByText('Space Marines');
-    expect(army).toHaveAttribute('title', 'Space Marines (Astartes)');
+    // The short name shows; the full one is kept on hover.
+    const army = screen.getByText('SM');
+    expect(army.parentElement).toHaveAttribute('title', 'Space Marines (Astartes)');
     const heading = army.closest('th');
     const lines = [...(heading?.querySelectorAll('[data-line]') ?? [])].map((l) =>
       l.getAttribute('data-line'),

@@ -260,15 +260,9 @@ describe('PairingsPage', () => {
     const rowArmies = table
       .getAllByRole('rowheader')
       .slice(0, 5)
-      .map((h) => h.querySelector('[data-line="army"] span')?.textContent);
+      .map((h) => h.querySelector('[data-line="army"] [aria-hidden]')?.textContent);
     // Disruption, Reconnaissance, Purge the Foe, Take and Hold, then the one without.
-    expect(rowArmies).toEqual([
-      'Emperor’s Children',
-      'Adepta Sororitas',
-      'World Eaters',
-      'Space Marines',
-      'Chaos Daemons',
-    ]);
+    expect(rowArmies).toEqual(['EC', 'Sisters', 'WE', 'SM', 'Daemons']);
     // Their columns in the same order of dispositions.
     const columnCodes = table
       .getAllByRole('columnheader')
@@ -313,7 +307,7 @@ describe('PairingsPage', () => {
     const likely = () =>
       screen.getByText('Their likely defender').nextElementSibling?.textContent ?? '';
     const before = likely();
-    fireEvent.click(screen.getByRole('button', { name: before }));
+    fireEvent.click(screen.getByText(before, { selector: 'button span' }));
     expect(likely()).not.toBe(before);
     expect(summary().getByText(`without ${before}`)).toBeInTheDocument();
   });
