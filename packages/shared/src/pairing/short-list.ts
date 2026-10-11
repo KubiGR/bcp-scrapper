@@ -46,19 +46,24 @@ export function shortList(text: string | null): string[] {
       name = (first[2] ?? name).trim();
       models = Number(first[1]);
     }
-    // The bullets under it: models when any of them lists its own weapons.
-    let counted = 0;
-    let multiModel = false;
+    // The bullets under it: models when any of them lists its own weapons. Models are the
+    // counted bullets ("• 9x Khorne Berzerker") up to the last one with its own "◦" gear; extras
+    // after it ("• 1x Icon of Khorne") and uncounted ones ("• Attached as: Bodyguard") aren't.
+    const bullets: { count: number; gear: boolean }[] = [];
     for (let j = i + 1; j < lines.length; j += 1) {
       const line = lines[j] ?? '';
       if (line.trim() === '' || UNIT.test(line.trim())) break;
+      const last = bullets.at(-1);
       if (SUB.test(line)) {
-        multiModel = true;
+        if (last) last.gear = true;
         continue;
       }
       const bullet = BULLET.exec(line);
-      if (bullet) counted += Number(bullet[2] ?? 1);
+      if (bullet) bullets.push({ count: bullet[2] ? Number(bullet[2]) : 0, gear: false });
     }
+    const lastModel = bullets.findLastIndex((b) => b.gear);
+    const multiModel = lastModel !== -1;
+    const counted = bullets.slice(0, lastModel + 1).reduce((sum, b) => sum + b.count, 0);
     if (multiModel) models = counted;
     units.push({ name, models });
   }
