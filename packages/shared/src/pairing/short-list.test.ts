@@ -105,4 +105,33 @@ describe('shortList', () => {
       '2x4 Witchseekers',
     ]);
   });
+
+  it('counts only models (lines with their own gear), not icons or "Attached as"', () => {
+    const list = [
+      'Khorne Berzerkers (170 Points)',
+      '  • Attached as: Bodyguard (Battleline)',
+      '  • 1x Khorne Berzerker Champion',
+      '     ◦ 1x Chainblade',
+      '  • 9x Khorne Berzerker',
+      '     ◦ 7x Bolt pistol',
+      '  • 1x Icon of Khorne',
+      '',
+      'Exalted Eightbound (130 Points)',
+      '  • Attached as: Bodyguard',
+      '  • 1x Exalted Eightbound Champion',
+      '     ◦ 1x Chainblades',
+      '  • 2x Exalted Eightbound',
+      '     ◦ 2x Chainblades',
+      '',
+      'Jakhals (65 Points)',
+      '  • 1x Jakhal Pack Leader',
+      '     ◦ 1x Autopistol',
+      '  • 1x Dishonoured',
+      '     ◦ 1x Skullsmasher and mangler',
+      '  • 8x Jakhal',
+      '     ◦ 8x Autopistol',
+      '  • 1x Icon of Khorne',
+    ].join('\n');
+    expect(shortList(list)).toEqual(['10 Khorne Berzerkers', '3 Exalted Eightbound', '10 Jakhals']);
+  });
 });
