@@ -260,21 +260,15 @@ describe('PairingsPage', () => {
     const rowArmies = table
       .getAllByRole('rowheader')
       .slice(0, 5)
-      .map((h) => h.querySelector('[data-line="army"] span')?.textContent);
+      .map((h) => h.querySelector('[data-line="army"] [aria-hidden]')?.textContent);
     // Disruption, Reconnaissance, Purge the Foe, Take and Hold, then the one without.
-    expect(rowArmies).toEqual([
-      'Emperor’s Children',
-      'Adepta Sororitas',
-      'World Eaters',
-      'Space Marines',
-      'Chaos Daemons',
-    ]);
+    expect(rowArmies).toEqual(['EC', 'Sisters', 'WE', 'SM', 'Daemons']);
     // Their columns in the same order of dispositions.
-    const columnCodes = table
+    const columnArmies = table
       .getAllByRole('columnheader')
-      .flatMap((h) => [...h.querySelectorAll('[title]')].map((b) => b.getAttribute('title')))
-      .filter((t): t is string => t !== null && /^(Disruption|Reconnaissance|Purge|Take)/.test(t));
-    expect(columnCodes).toEqual(['Disruption', 'Reconnaissance', 'Purge the Foe', 'Take and Hold']);
+      .flatMap((h) => [...h.querySelectorAll('[data-line="army"] [aria-hidden]')])
+      .map((a) => a.textContent);
+    expect(columnArmies).toEqual(['CSM', 'GK', 'DG', 'Custodes', 'Orks']);
   });
 
   it('says ratings are saved in this browser, and reopens a saved pairing', async () => {
@@ -313,8 +307,48 @@ describe('PairingsPage', () => {
     const likely = () =>
       screen.getByText('Their likely defender').nextElementSibling?.textContent ?? '';
     const before = likely();
-    fireEvent.click(screen.getByRole('button', { name: before }));
+    fireEvent.click(screen.getByText(before, { selector: 'button[aria-pressed] span' }));
     expect(likely()).not.toBe(before);
     expect(summary().getByText(`without ${before}`)).toBeInTheDocument();
+  });
+
+  it('another pairing starts fresh: nothing followed, no defender ruled out', async () => {
+    const pasted = planFromPaste(parseSheetPaste(SHEET));
+    if (!pasted) throw new Error('no plan');
+    const source = (opponent: string, opponentName: string) => ({
+      event: 'E1',
+      team: 'T1',
+      opponent,
+      eventName: 'Balkan',
+      teamName: 'Dice Bunker',
+      opponentName,
+    });
+    writePlan({ ...pasted, source: source('T2', 'Mighty Ducks') });
+    writePlan({ ...pasted, source: source('T3', 'Dragon Tale') });
+    renderWithProviders(<PairingsPage />);
+    const table = () => within(screen.getByRole('table', { name: 'Ratings' }));
+    fireEvent.change(screen.getByLabelText('You defend'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Orks' }));
+    expect(table().getByRole('rowheader', { name: /World Eaters/ })).toHaveAttribute(
+      'data-used',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('combobox', { name: 'Saved pairings' }));
+    fireEvent.click(await screen.findByRole('option', { name: /Mighty Ducks/ }));
+    expect(screen.getByText('Balkan · Dice Bunker v Mighty Ducks')).toBeInTheDocument();
+    expect(table().getByRole('rowheader', { name: /World Eaters/ })).not.toHaveAttribute(
+      'data-used',
+    );
+    expect(screen.getByRole('button', { name: 'Orks' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('Clear also brings back the defenders ruled out in the grid', () => {
+    renderWithProviders(<PairingsPage />);
+    paste(SHEET);
+    fireEvent.click(screen.getByRole('button', { name: 'Use these ratings' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Orks' }));
+    expect(screen.getByRole('button', { name: /Orks \(won’t defend\)/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(screen.getByRole('button', { name: 'Orks' })).toHaveAttribute('aria-pressed', 'false');
   });
 });

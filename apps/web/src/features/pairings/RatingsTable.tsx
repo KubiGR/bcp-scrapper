@@ -5,10 +5,19 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { ActionIcon, Menu, Popover, Table, Text, UnstyledButton } from '@mantine/core';
+import {
+  ActionIcon,
+  Group,
+  Menu,
+  Popover,
+  Stack,
+  Table,
+  Text,
+  UnstyledButton,
+} from '@mantine/core';
 import { ChipLabel, ratingName } from './ChipLabel';
-import { Clipped } from './Clipped';
 import { chipStyle } from './chip-style';
+import { fullArmy, shortArmy } from './army-name';
 import { DispositionBadge } from './DispositionBadge';
 import classes from './RatingsTable.module.css';
 
@@ -67,50 +76,73 @@ function ListIcon() {
   );
 }
 
+/** Everything about a player in full, with the short list: what a heading's popups show. */
+function PlayerDetails({ player }: { player: PairingRosterPlayer }) {
+  const detachments = player.detachments.join(' + ');
+  return (
+    <Stack gap={2}>
+      <Text size="xs" fw={600}>
+        {player.faction ?? player.name}
+      </Text>
+      {player.name !== player.faction && <Text size="xs">{player.name}</Text>}
+      {player.disposition && (
+        <Group gap={6}>
+          <DispositionBadge disposition={player.disposition} />
+          <Text size="xs" c="dimmed">
+            {player.disposition}
+          </Text>
+        </Group>
+      )}
+      {detachments && (
+        <Text size="xs" c="dimmed">
+          {detachments}
+        </Text>
+      )}
+      {player.list && (
+        <Stack gap={0} mt={6}>
+          {player.list.split('\n').map((line, k) => (
+            <Text key={k} size="xs" lh={1.4}>
+              {line}
+            </Text>
+          ))}
+        </Stack>
+      )}
+    </Stack>
+  );
+}
+
 /**
- * A player heading on three steady lines, the same in every row and column: the army (with the
- * button that opens the short list), the player, then the disposition badge with the detachments.
- * Lines too long end in "…", with the whole text in a tooltip on hover.
+ * A player heading on two steady lines, the same in every row and column: the short army (with a
+ * mark when there's a list), then the player, cut with "…". A tap anywhere on it opens everything
+ * in full: disposition, detachments and the short list.
  */
 function PlayerHeading({ player }: { player: PairingRosterPlayer }) {
   const army = player.faction ?? player.name;
-  // BCP writes "Space Marines (Astartes)": the label drops the bracket, the hover keeps it.
-  const label = army.replace(/\s*\([^)]*\)\s*$/, '');
-  const detachments = player.detachments.join(' + ');
+  // Short ("Chaos Space Marines" → "CSM"); the hover keeps the full name.
+  const label = player.faction ? shortArmy(player.faction) : player.name;
   return (
-    <div className={classes.heading}>
-      <div className={classes.army} data-line="army">
-        <span className={classes.armyName} title={army}>
-          {label}
-        </span>
-        {player.list && (
-          <Popover position="bottom-start" withArrow shadow="md" width={260}>
-            <Popover.Target>
-              <ActionIcon variant="default" size="sm" aria-label={`${army} list`} title="List">
+    <Popover position="bottom-start" withArrow shadow="md" width={280}>
+      <Popover.Target>
+        <UnstyledButton className={classes.heading} aria-label={`${army} details`}>
+          <div className={classes.army} data-line="army">
+            <span className={classes.armyName} title={army}>
+              <span aria-hidden="true">{label}</span>
+            </span>
+            {player.list && (
+              <ActionIcon component="span" variant="default" size="sm" data-list-mark title="List">
                 <ListIcon />
               </ActionIcon>
-            </Popover.Target>
-            <Popover.Dropdown>
-              <Text size="xs" fw={600} mb={4}>
-                {army}
-              </Text>
-              {player.list.split('\n').map((line, k) => (
-                <Text key={k} size="xs" lh={1.4}>
-                  {line}
-                </Text>
-              ))}
-            </Popover.Dropdown>
-          </Popover>
-        )}
-      </div>
-      <div className={classes.playerName} data-line="player">
-        <Clipped>{player.name !== player.faction ? player.name : ' '}</Clipped>
-      </div>
-      <div className={classes.detail} data-line="detail">
-        <DispositionBadge disposition={player.disposition} />
-        {detachments && <Clipped className={classes.detachments}>{detachments}</Clipped>}
-      </div>
-    </div>
+            )}
+          </div>
+          <div className={classes.playerName} data-line="player">
+            {player.name !== player.faction ? player.name : ' '}
+          </div>
+        </UnstyledButton>
+      </Popover.Target>
+      <Popover.Dropdown role="dialog" aria-label={`${army} details`}>
+        <PlayerDetails player={player} />
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 
@@ -137,7 +169,7 @@ export function RatingsTable({
   const locked = new Set(used?.games.map(([a, b]) => `${String(a)}|${String(b)}`));
   const ratingOf = new Map(ratings.map((r) => [`${r.playerId}|${r.opponentPlayerId}`, r]));
   return (
-    <Table.ScrollContainer minWidth={560}>
+    <Table.ScrollContainer minWidth={600}>
       <table className={classes.table} aria-label="Ratings">
         <thead>
           <tr>
@@ -145,6 +177,7 @@ export function RatingsTable({
             {theirs.map((t, j) => (
               <th
                 key={t.id}
+                aria-label={fullArmy(t)}
                 data-used={usedTheirs.has(j) || undefined}
                 className={usedTheirs.has(j) ? classes.used : undefined}
               >
@@ -161,6 +194,7 @@ export function RatingsTable({
             <tr key={o.id}>
               <th
                 scope="row"
+                aria-label={fullArmy(o)}
                 data-used={usedOurs.has(i) || undefined}
                 className={usedOurs.has(i) ? classes.used : undefined}
               >

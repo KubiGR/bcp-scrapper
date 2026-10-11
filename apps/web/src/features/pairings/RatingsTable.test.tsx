@@ -63,7 +63,7 @@ describe('RatingsTable', () => {
     expect(onAlt).toHaveBeenCalledWith('A', 'Y', 'GG');
   });
 
-  it('shows dispositions as the sheet’s badges, the short lists, and each row’s and column’s average', async () => {
+  it('keeps dispositions and short lists in the popup, and shows each row’s and column’s average', async () => {
     const us = [
       { ...p('A', 'Space Marines'), disposition: 'Disruption' },
       { ...p('B', 'World Eaters'), disposition: 'Take and Hold' },
@@ -85,23 +85,27 @@ describe('RatingsTable', () => {
         onAlt={() => {}}
       />,
     );
-    expect(screen.getByTitle('Disruption')).toHaveTextContent('DRP');
-    expect(screen.getByTitle('Take and Hold')).toHaveTextContent('T&H');
-    expect(screen.getByTitle('Purge the Foe')).toHaveTextContent('PTF');
-    // The short list opens from a button, so the headers stay short.
+    // Dispositions and short lists open from a button, so the headers stay short.
+    expect(screen.queryByTitle('Purge the Foe')).toBeNull();
     expect(screen.queryByText('6 Warbikers')).toBeNull();
     // Just a list symbol by the army: no "List · N units" text.
     expect(screen.queryByText(/units/)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Orks list' }));
+    // A tap anywhere on the heading (army, list mark, player) opens it.
+    fireEvent.click(screen.getByText('Orks', { selector: '[aria-hidden]' }));
     expect(await screen.findByText('6 Warbikers')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Necrons list' })).toBeNull();
+    expect(screen.getByTitle('Purge the Foe')).toHaveTextContent('PTF');
+    // The list mark only shows for players with a list.
+    const marks = (army: string) =>
+      screen.getByRole('button', { name: `${army} details` }).querySelectorAll('[data-list-mark]');
+    expect(marks('Orks')).toHaveLength(1);
+    expect(marks('Necrons')).toHaveLength(0);
     // Space Marines: G 13 and Y 10 → 11.5 ± 1.5; Orks column: G 13 and RR 2.5 → 7.8 ± 5.3.
     expect(screen.getByLabelText('Space Marines average')).toHaveTextContent('11.5 ± 1.5');
     expect(screen.getByLabelText('Orks average')).toHaveTextContent('7.8 ± 5.3');
     expect(screen.getByLabelText('Necrons average')).toHaveTextContent('10.0 ± 0.0');
   });
 
-  it('each heading on three steady lines: army, player, disposition with detachments', () => {
+  it('each heading on two lines, army and player; detachments in the popup', async () => {
     const us = [
       {
         ...p('A', 'Space Marines (Astartes)'),
@@ -113,15 +117,17 @@ describe('RatingsTable', () => {
     renderWithProviders(
       <RatingsTable ours={us} theirs={theirs} ratings={[]} onRate={() => {}} onAlt={() => {}} />,
     );
-    // BCP's "(Astartes)" is dropped from the label but kept on hover.
-    const army = screen.getByText('Space Marines');
-    expect(army).toHaveAttribute('title', 'Space Marines (Astartes)');
+    // The short name shows; the full one is kept on hover.
+    const army = screen.getByText('SM');
+    expect(army.parentElement).toHaveAttribute('title', 'Space Marines (Astartes)');
     const heading = army.closest('th');
     const lines = [...(heading?.querySelectorAll('[data-line]') ?? [])].map((l) =>
       l.getAttribute('data-line'),
     );
-    expect(lines).toEqual(['army', 'player', 'detail']);
-    expect(screen.getByText('Gladius Task Force')).toBeInTheDocument();
+    expect(lines).toEqual(['army', 'player']);
+    expect(screen.queryByText('Gladius Task Force')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Space Marines (Astartes) details' }));
+    expect(await screen.findByText('Gladius Task Force')).toBeInTheDocument();
   });
 
   it('the cell menu marks the current chip and what it can become', () => {
@@ -145,5 +151,26 @@ describe('RatingsTable', () => {
     expect(menu.getByRole('menuitem', { name: 'Can become: none' })).not.toHaveAttribute(
       'data-selected',
     );
+  });
+
+  it('a tap on the player or detachments opens their details in full, with the list', async () => {
+    const us = [
+      {
+        ...p('A', 'Emperor’s Children'),
+        name: 'Vasilis “Griffith” Tzachis',
+        disposition: 'Reconnaissance',
+        detachments: ['Court of the Phoenician', 'Frenzied Host'],
+        list: '5 Noise Marines',
+      },
+    ];
+    renderWithProviders(
+      <RatingsTable ours={us} theirs={theirs} ratings={[]} onRate={() => {}} onAlt={() => {}} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Emperor’s Children details' }));
+    const details = within(await screen.findByRole('dialog'));
+    expect(details.getByText('Vasilis “Griffith” Tzachis')).toBeInTheDocument();
+    expect(details.getByText('Reconnaissance')).toBeInTheDocument();
+    expect(details.getByText('Court of the Phoenician + Frenzied Host')).toBeInTheDocument();
+    expect(details.getByText('5 Noise Marines')).toBeInTheDocument();
   });
 });

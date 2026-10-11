@@ -1,7 +1,8 @@
 import type { DetachmentNamesResponse } from '@bcp/shared';
-import { Alert, Badge, Button, Group, Select, Skeleton, Stack, Table, Text } from '@mantine/core';
+import { Alert, Badge, Button, Group, Skeleton, Stack, Table, Text } from '@mantine/core';
 import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { SearchSelect } from '../../components/SearchSelect';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { plural } from '../../lib/format';
@@ -127,13 +128,12 @@ function NameRow({
       )}
       <Table.Td>
         <Group gap="xs">
-          <Select
+          <SearchSelect
             aria-label={`Link ${entry.name} to`}
             placeholder="Pick a detachment"
             data={targetOptions(entry, targets, faction)}
             value={target}
             onChange={setTarget}
-            searchable
             disabled={readOnly}
             w={{ base: '100%', xs: 240 }}
           />
@@ -356,7 +356,7 @@ export function DetachmentNamesCard() {
             </Alert>
           )}
           {factions.length > 0 && (
-            <Select
+            <SearchSelect
               label="Faction"
               data={[{ value: ALL, label: 'All factions' }, ...factions]}
               value={faction}
@@ -364,7 +364,6 @@ export function DetachmentNamesCard() {
                 setPicked(value ?? ALL);
               }}
               allowDeselect={false}
-              searchable
               w={{ base: '100%', xs: 280 }}
             />
           )}

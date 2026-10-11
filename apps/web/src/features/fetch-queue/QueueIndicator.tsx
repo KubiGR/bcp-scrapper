@@ -1,4 +1,4 @@
-import { Anchor, Popover, Stack, UnstyledButton } from '@mantine/core';
+import { Anchor, Popover, Stack, Text, UnstyledButton } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { formatDuration } from '../../lib/format';
@@ -35,16 +35,33 @@ export function QueueIndicator() {
       ]
         .filter(Boolean)
         .join(' · ');
+  // On a phone: one word, the rest in the popover.
+  const word = loginExpired
+    ? 'Login'
+    : state.paused
+      ? 'Paused'
+      : inProgress === 0 && autoEvents === 0
+        ? 'Failed'
+        : 'Fetching';
 
   return (
     <Popover position="bottom-end" width={300} shadow="md">
       <Popover.Target>
-        <UnstyledButton className={loginExpired ? classes.alert : classes.indicator}>
-          {label}
+        <UnstyledButton
+          className={loginExpired ? classes.alert : classes.indicator}
+          aria-label={label}
+        >
+          <span className={classes.full}>{label}</span>
+          <span className={classes.short} data-short>
+            {word}
+          </span>
         </UnstyledButton>
       </Popover.Target>
       <Popover.Dropdown>
         <Stack gap="xs">
+          <Text size="xs" ff="monospace" className={classes.phoneOnly}>
+            {label}
+          </Text>
           <QueueControls state={state} />
           <Anchor component={Link} to="/queue" size="sm">
             Details: failures and what’s next

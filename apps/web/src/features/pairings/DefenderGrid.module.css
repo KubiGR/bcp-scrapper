@@ -24,3 +24,19 @@
   text-decoration: line-through;
   opacity: 0.5;
 }
+
+/* Our defenders' column: narrower on a phone, and it stays in view while theirs scroll by. */
+.nameCol {
+  width: 170px;
+}
+.name {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--mantine-color-dark-7);
+}
+@media (max-width: 48em) {
+  .nameCol {
+    width: 84px;
+  }
+}

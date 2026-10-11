@@ -1,6 +1,6 @@
 import type { MathhammerList } from '@bcp/shared';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
 import { ListPicker } from './ListPicker';
 import { CAPTAIN, INTERCESSORS } from './unit-fixtures';
@@ -35,6 +35,10 @@ const list: MathhammerList = {
     },
   ],
 };
+
+afterEach(() => {
+  localStorage.clear();
+});
 
 describe('ListPicker', () => {
   it('reads a pasted list, offers its units, says what it couldn’t read, and uses the pick', async () => {
@@ -90,5 +94,23 @@ describe('ListPicker', () => {
     fireEvent.click(await screen.findByRole('combobox', { name: 'Attacker stored list' }));
     fireEvent.click(await screen.findByRole('option', { name: /Ada · Big GT/ }));
     expect(await screen.findByRole('combobox', { name: 'Attacker list unit' })).toBeInTheDocument();
+  });
+
+  it('remembers a pasted list in this browser, read again next time', async () => {
+    const fetchMock = stubFetchRoutes({ 'POST /api/mathhammer/list': list });
+    const first = renderWithProviders(<ListPicker label="Attacker" onPick={vi.fn()} />);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Attacker list' }), {
+      target: { value: 'my list' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Read list' }));
+    await screen.findByRole('combobox', { name: 'Attacker list unit' });
+    first.unmount();
+    fetchMock.mockClear();
+    renderWithProviders(<ListPicker label="Attacker" onPick={vi.fn()} />);
+    expect(screen.getByRole('textbox', { name: 'Attacker list' })).toHaveValue('my list');
+    expect(await screen.findByRole('combobox', { name: 'Attacker list unit' })).toBeInTheDocument();
+    // Each side keeps its own.
+    renderWithProviders(<ListPicker label="Defender" onPick={vi.fn()} />);
+    expect(screen.getByRole('textbox', { name: 'Defender list' })).toHaveValue('');
   });
 });

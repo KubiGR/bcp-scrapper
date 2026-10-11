@@ -60,3 +60,16 @@ describe('DefenderPanel changes from the datasheet', () => {
     expect(screen.getByRole('button', { name: 'Reset switches' })).toBeDisabled();
   });
 });
+
+describe('DefenderPanel with a remembered list', () => {
+  it('opens on the list, already read', async () => {
+    localStorage.setItem('mathhammer:list:Defender', 'my list');
+    stubFetchRoutes({
+      'POST /api/mathhammer/list': { army: null, units: [], datasheets: [] },
+    });
+    renderWithProviders(<DefenderPanel defender={defaultForm().defender} onChange={vi.fn()} />);
+    expect(screen.getByRole('textbox', { name: 'Defender list' })).toHaveValue('my list');
+    expect(await screen.findByText('No units found in this list')).toBeInTheDocument();
+    localStorage.clear();
+  });
+});

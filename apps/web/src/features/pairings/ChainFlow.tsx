@@ -8,6 +8,7 @@ import {
   type PairingRosterPlayer,
 } from '@bcp/shared';
 import { Button, Group, NativeSelect, Paper, Stack, Switch, Table, Text } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { useEffect, useRef, useState } from 'react';
 import classes from './ChainFlow.module.css';
 import {
@@ -22,8 +23,9 @@ import { ratingName } from './ChipLabel';
 import { chipStyle } from './chip-style';
 import { bestAgainst, breakEven, nextTip, safest } from './tips';
 import { usedPlayers } from './used-players';
+import { armyLabel, fullArmy } from './army-name';
 
-const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
+const army = armyLabel;
 /** A score difference as "+0.8", "−1.2" or "0.0". */
 const signed = (x: number) =>
   Math.abs(x) < 0.05 ? '0.0' : `${x > 0 ? '+' : '−'}${Math.abs(x).toFixed(1)}`;
@@ -86,6 +88,9 @@ export function ChainFlow({
   const follow = followProp ?? ownFollow;
   const setFollow = onFollowChange ?? setOwnFollow;
   const chain = visibleChain(full, shown, follow);
+  // On a phone the diagram is far wider than the screen: it waits behind a button.
+  const phone = useMediaQuery('(max-width: 48em)', false, { getInitialValueInEffect: false });
+  const [diagramOpen, setDiagramOpen] = useState(false);
   const ALL = [0, 1, 2, 3, 4];
   const theirSend = full.sends.find((x) => x.theirs.join() === follow.theirSend)?.theirs;
   const followOptions = (players: PairingRosterPlayer[], indexes: readonly number[]) => [
@@ -195,7 +200,11 @@ export function ChainFlow({
     // A game that can become another chip: its chip, then the other one in a narrower strip.
     const mainW = r?.alt ? CHIP_W - ALT_W : CHIP_W;
     return (
-      <g key={i} role="img" aria-label={`${name}: ${ratingName(c, r?.alt)}`}>
+      <g
+        key={i}
+        role="img"
+        aria-label={`${fullArmy(ours[a])} v ${fullArmy(theirs[b])}: ${ratingName(c, r?.alt)}`}
+      >
         <text x={box.x + 8} y={y} fill="var(--mantine-color-text)">
           {name}
         </text>
@@ -339,7 +348,7 @@ export function ChainFlow({
             value: String(i),
             label: `${army(p)} (expected ${defenderExpected(i).toFixed(1)})`,
           }))}
-          w={300}
+          w={{ base: '100%', sm: 300 }}
         />
         <NativeSelect
           label="They defend"
@@ -352,7 +361,7 @@ export function ChainFlow({
             value: String(i),
             label: `${army(p)} (${pct(analysis.theirDefender[i] ?? 0)})`,
           }))}
-          w={300}
+          w={{ base: '100%', sm: 300 }}
         />
         <NativeSelect
           label="You send"
@@ -367,7 +376,7 @@ export function ChainFlow({
             value: o.pair.join(),
             label: `${o.pair.map((a) => army(ours[a])).join(' + ')} (${o.likely.toFixed(1)}${o === best ? ', best' : ''})`,
           }))}
-          w={500}
+          w={{ base: '100%', sm: 500 }}
         />
         <NativeSelect
           label="They send"
@@ -391,7 +400,7 @@ export function ChainFlow({
               label: `${x.theirs.map((t) => army(theirs[t])).join(' + ')} · ${pct(x.p)} · ${x.value.toFixed(1)} for you (${signed(x.value - full.value)})`,
             })),
           ]}
-          w={420}
+          w={{ base: '100%', sm: 420 }}
         />
         <NativeSelect
           label="You take"
@@ -406,7 +415,7 @@ export function ChainFlow({
             });
           }}
           data={followOptions(theirs, theirSend ?? [])}
-          w={190}
+          w={{ base: 'calc(50% - var(--mantine-spacing-sm) / 2)', sm: 190 }}
         />
         <NativeSelect
           label="They take"
@@ -420,7 +429,7 @@ export function ChainFlow({
             });
           }}
           data={followOptions(ours, send.pair)}
-          w={190}
+          w={{ base: 'calc(50% - var(--mantine-spacing-sm) / 2)', sm: 190 }}
         />
         <NativeSelect
           label="Your round-2 defender"
@@ -437,7 +446,7 @@ export function ChainFlow({
             ours,
             ALL.filter((a) => a !== d && a !== follow.theyTake),
           )}
-          w={190}
+          w={{ base: 'calc(50% - var(--mantine-spacing-sm) / 2)', sm: 190 }}
         />
         <NativeSelect
           label="Their round-2 defender"
@@ -454,7 +463,7 @@ export function ChainFlow({
             theirs,
             ALL.filter((t) => t !== e && t !== follow.weTake),
           )}
-          w={190}
+          w={{ base: 'calc(50% - var(--mantine-spacing-sm) / 2)', sm: 190 }}
         />
         <NativeSelect
           label="You take (round 2)"
@@ -464,7 +473,7 @@ export function ChainFlow({
             setFollow({ ...follow, weTake2: pickNumber(ev.currentTarget.value) });
           }}
           data={followOptions(theirs, theirRound2Attackers)}
-          w={190}
+          w={{ base: 'calc(50% - var(--mantine-spacing-sm) / 2)', sm: 190 }}
         />
         <NativeSelect
           label="They take (round 2)"
@@ -474,7 +483,7 @@ export function ChainFlow({
             setFollow({ ...follow, theyTake2: pickNumber(ev.currentTarget.value) });
           }}
           data={followOptions(ours, ourRound2Attackers)}
-          w={190}
+          w={{ base: 'calc(50% - var(--mantine-spacing-sm) / 2)', sm: 190 }}
         />
         <Button
           variant="default"
@@ -577,7 +586,7 @@ export function ChainFlow({
                   label: `They ${tip.replies.verb} ${army(replyPlayers[r.index])}`,
                 })),
               ]}
-              w={280}
+              w={{ base: '100%', sm: 280 }}
             />
             {read === null && (
               <Text size="sm" fw={600}>
@@ -615,92 +624,106 @@ export function ChainFlow({
           </Stack>
         </Paper>
       )}
-      <div style={{ overflowX: 'auto' }}>
-        <svg
-          ref={svgRef}
-          role="group"
-          aria-label={`Chain: you defend ${army(ours[d])}, they defend ${army(theirs[e])}, you send ${send.pair.map((a) => army(ours[a])).join(' + ')}`}
-          width={layout.width}
-          height={layout.height + 4}
-          viewBox={`0 -2 ${layout.width} ${layout.height + 4}`}
-          style={{ font: '11px var(--mantine-font-family)', display: 'block', margin: '0 auto' }}
+      {phone && (
+        <Button
+          variant="default"
+          size="xs"
+          style={{ alignSelf: 'flex-start' }}
+          onClick={() => {
+            setDiagramOpen(!diagramOpen);
+          }}
         >
-          {layout.edges.map((edge) => {
-            const a = byId.get(edge.from);
-            const b = byId.get(edge.to);
-            if (!a || !b) return null;
-            const x1 = a.x + a.w,
-              y1 = a.y + a.h / 2,
-              x2 = b.x,
-              y2 = b.y + b.h / 2,
-              mid = (x1 + x2) / 2;
-            return (
-              <path
-                key={edge.to}
-                d={`M${x1} ${y1} C${mid} ${y1} ${mid} ${y2} ${x2} ${y2}`}
-                fill="none"
-                stroke="var(--mantine-color-teal-6)"
-                strokeOpacity={0.55}
-                strokeWidth={edge.width}
-              />
-            );
-          })}
-          {layout.nodes.map((box) => {
-            const leaf = box.leaf;
-            const lines = label(box);
-            const fill =
-              box.id === pickedId
-                ? 'var(--mantine-color-default-hover)'
-                : 'var(--mantine-color-body)';
-            const stroke =
-              box.value >= 50 ? 'var(--mantine-color-teal-6)' : 'var(--mantine-color-orange-6)';
-            const content = (
-              <>
-                <rect
-                  x={box.x}
-                  y={box.y}
-                  width={box.w}
-                  height={box.h}
-                  rx={6}
-                  fill={fill}
-                  stroke={box.id === flashId ? 'var(--mantine-color-text)' : stroke}
-                  strokeWidth={box.id === flashId ? 3 : 1}
+          {diagramOpen ? 'Hide the chain diagram' : 'Show the chain diagram'}
+        </Button>
+      )}
+      {(!phone || diagramOpen) && (
+        <div style={{ overflowX: 'auto' }}>
+          <svg
+            ref={svgRef}
+            role="group"
+            aria-label={`Chain: you defend ${fullArmy(ours[d])}, they defend ${fullArmy(theirs[e])}, you send ${send.pair.map((a) => fullArmy(ours[a])).join(' + ')}`}
+            width={layout.width}
+            height={layout.height + 4}
+            viewBox={`0 -2 ${layout.width} ${layout.height + 4}`}
+            style={{ font: '11px var(--mantine-font-family)', display: 'block', margin: '0 auto' }}
+          >
+            {layout.edges.map((edge) => {
+              const a = byId.get(edge.from);
+              const b = byId.get(edge.to);
+              if (!a || !b) return null;
+              const x1 = a.x + a.w,
+                y1 = a.y + a.h / 2,
+                x2 = b.x,
+                y2 = b.y + b.h / 2,
+                mid = (x1 + x2) / 2;
+              return (
+                <path
+                  key={edge.to}
+                  d={`M${x1} ${y1} C${mid} ${y1} ${mid} ${y2} ${x2} ${y2}`}
+                  fill="none"
+                  stroke="var(--mantine-color-teal-6)"
+                  strokeOpacity={0.55}
+                  strokeWidth={edge.width}
                 />
-                {lines.map((line, i) => drawLine(box, line, i))}
-              </>
-            );
-            return leaf ? (
-              <g
-                key={box.id}
-                role="button"
-                tabIndex={0}
-                className={classes.leaf}
-                aria-label={`Final line-up, total ${box.value.toFixed(1)}`}
-                aria-pressed={box.id === pickedId}
-                onClick={() => {
-                  setPickedId(box.id);
-                }}
-                onKeyDown={(ev) => {
-                  if (ev.key === 'Enter' || ev.key === ' ') {
-                    ev.preventDefault();
+              );
+            })}
+            {layout.nodes.map((box) => {
+              const leaf = box.leaf;
+              const lines = label(box);
+              const fill =
+                box.id === pickedId
+                  ? 'var(--mantine-color-default-hover)'
+                  : 'var(--mantine-color-body)';
+              const stroke =
+                box.value >= 50 ? 'var(--mantine-color-teal-6)' : 'var(--mantine-color-orange-6)';
+              const content = (
+                <>
+                  <rect
+                    x={box.x}
+                    y={box.y}
+                    width={box.w}
+                    height={box.h}
+                    rx={6}
+                    fill={fill}
+                    stroke={box.id === flashId ? 'var(--mantine-color-text)' : stroke}
+                    strokeWidth={box.id === flashId ? 3 : 1}
+                  />
+                  {lines.map((line, i) => drawLine(box, line, i))}
+                </>
+              );
+              return leaf ? (
+                <g
+                  key={box.id}
+                  role="button"
+                  tabIndex={0}
+                  className={classes.leaf}
+                  aria-label={`Final line-up, total ${box.value.toFixed(1)}`}
+                  aria-pressed={box.id === pickedId}
+                  onClick={() => {
                     setPickedId(box.id);
-                  }
-                }}
-              >
-                {content}
-              </g>
-            ) : (
-              <g key={box.id}>{content}</g>
-            );
-          })}
-          {[...columns.values()].flatMap((list) =>
-            list.flatMap((box, i) => [
-              arrow(box, list[i - 1], 'up'),
-              arrow(box, list[i + 1], 'down'),
-            ]),
-          )}
-        </svg>
-      </div>
+                  }}
+                  onKeyDown={(ev) => {
+                    if (ev.key === 'Enter' || ev.key === ' ') {
+                      ev.preventDefault();
+                      setPickedId(box.id);
+                    }
+                  }}
+                >
+                  {content}
+                </g>
+              ) : (
+                <g key={box.id}>{content}</g>
+              );
+            })}
+            {[...columns.values()].flatMap((list) =>
+              list.flatMap((box, i) => [
+                arrow(box, list[i - 1], 'up'),
+                arrow(box, list[i + 1], 'down'),
+              ]),
+            )}
+          </svg>
+        </div>
+      )}
       {picked && (
         <Stack gap={2} role="region" aria-label="Line-up">
           <Text size="sm" fw={600}>

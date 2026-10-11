@@ -8,7 +8,7 @@ describe('AppLayout', () => {
   it('shows the logo next to the site name', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/fetch-queue': null });
     renderWithRouter(<AppLayout />);
-    const home = await screen.findByRole('link', { name: 'BCP Analyzer' });
+    const home = await screen.findByRole('link', { name: 'Logis' });
     expect(home.querySelector('svg[data-logo]')).not.toBeNull();
   });
 
@@ -16,17 +16,17 @@ describe('AppLayout', () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/fetch-queue': null });
     const { unmount } = renderWithRouter(<AppLayout />, '/analysis/matchups');
     const content = () => screen.getByRole('main').querySelector('.mantine-Container-root');
-    await screen.findByRole('link', { name: 'BCP Analyzer' });
+    await screen.findByRole('link', { name: 'Logis' });
     expect(content()).toHaveAttribute('data-fluid');
     unmount();
 
     const pairings = renderWithRouter(<AppLayout />, '/pairings');
-    await screen.findByRole('link', { name: 'BCP Analyzer' });
+    await screen.findByRole('link', { name: 'Logis' });
     expect(content()).toHaveAttribute('data-fluid');
     pairings.unmount();
 
     renderWithRouter(<AppLayout />, '/analysis/meta');
-    await screen.findByRole('link', { name: 'BCP Analyzer' });
+    await screen.findByRole('link', { name: 'Logis' });
     expect(content()).not.toHaveAttribute('data-fluid');
   });
 

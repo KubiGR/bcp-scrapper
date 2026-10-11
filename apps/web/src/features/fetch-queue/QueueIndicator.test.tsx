@@ -5,7 +5,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
 import { listJobTotals } from '../../test/sample-data';
@@ -133,5 +133,14 @@ describe('QueueIndicator', () => {
     expect(
       await screen.findByRole('button', { name: 'Fetching · auto: 1 event left' }),
     ).toBeInTheDocument();
+  });
+
+  it('has one word for a phone: the full status stays its name', async () => {
+    stubFetchRoutes({
+      'GET /api/fetch-queue': state({ paused: true, pausedReason: 'user' }),
+    });
+    renderInRouter();
+    const button = await screen.findByRole('button', { name: 'Fetching · paused' });
+    expect(within(button).getByText('Paused')).toHaveAttribute('data-short');
   });
 });

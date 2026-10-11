@@ -4,15 +4,15 @@ import {
   Button,
   Group,
   SegmentedControl,
-  Select,
   Stack,
   Text,
   TextInput,
   Textarea,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { SearchSelect } from '../../components/SearchSelect';
 import { pickableUnits } from './datasheet-form';
 import { readList, storedListQuery, storedListsQuery } from './mathhammer-queries';
 
@@ -25,9 +25,28 @@ const unreadOf = (list: MathhammerList, index: number) => [
   ),
 ];
 
+/** The list last read for a side, kept in this browser. */
+const storageKey = (label: string) => `mathhammer:list:${label}`;
+function savedList(label: string): string {
+  try {
+    return localStorage.getItem(storageKey(label)) ?? '';
+  } catch {
+    return '';
+  }
+}
+/** Whether a side has a list remembered: it then opens on it. */
+export const hasSavedList = (label: string) => savedList(label).trim() !== '';
+function saveList(label: string, text: string) {
+  try {
+    localStorage.setItem(storageKey(label), text);
+  } catch {
+    // Private mode or storage off: the list just isn't remembered.
+  }
+}
+
 /**
  * Picks a unit from an army list: pasted (GW app or NewRecruit export) or a stored BCP list found
- * by player or event. "Use" fills the side.
+ * by player or event. "Use" fills the side. The pasted list is remembered in this browser.
  */
 export function ListPicker({
   label,
@@ -37,12 +56,20 @@ export function ListPicker({
   onPick: (list: MathhammerList, index: number) => void;
 }) {
   const [from, setFrom] = useState<'paste' | 'bcp'>('paste');
-  const [text, setText] = useState('');
+  const [text, setText] = useState(() => savedList(label));
+  // The text read (the saved one comes back read).
+  const [readText, setReadText] = useState(text);
   const [search, setSearch] = useState('');
   const [debounced] = useDebouncedValue(search, 300);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [unitIndex, setUnitIndex] = useState<string | null>(null);
-  const pasted = useMutation({ mutationFn: readList });
+  const pasted = useQuery({
+    queryKey: ['mathhammer', 'read-list', readText],
+    queryFn: () => readList(readText),
+    enabled: readText.trim() !== '',
+    staleTime: Infinity,
+    retry: false,
+  });
   const found = useQuery(storedListsQuery(debounced));
   const stored = useQuery({ ...storedListQuery(playerId ?? ''), enabled: playerId !== null });
   const list = from === 'paste' ? pasted.data : stored.data;
@@ -82,11 +109,14 @@ export function ListPicker({
           />
           <Button
             size="xs"
-            loading={pasted.isPending}
+            loading={pasted.isFetching}
             disabled={text.trim() === ''}
             onClick={() => {
               setUnitIndex(null);
-              pasted.mutate(text);
+              setReadText(text);
+              saveList(label, text);
+              // The same text again: read it again.
+              if (text === readText) void pasted.refetch();
             }}
           >
             Read list
@@ -105,10 +135,9 @@ export function ListPicker({
             }}
           />
           {(found.data?.lists.length ?? 0) > 0 ? (
-            <Select
+            <SearchSelect
               size="xs"
               label={`${label} stored list`}
-              searchable
               w={360}
               data={(found.data?.lists ?? []).map((l) => ({
                 value: l.playerId,
@@ -142,10 +171,9 @@ export function ListPicker({
       )}
       {units.length > 0 && (
         <Group gap="xs" align="flex-end">
-          <Select
+          <SearchSelect
             size="xs"
             label={`${label} list unit`}
-            searchable
             w={360}
             data={units.map((u) => ({ value: String(u.index), label: u.label }))}
             value={unitIndex}

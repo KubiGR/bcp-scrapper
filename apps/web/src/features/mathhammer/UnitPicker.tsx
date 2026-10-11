@@ -2,6 +2,7 @@ import type { UnitDatasheet } from '@bcp/shared';
 import { Alert, Button, Group, MultiSelect, Select, Stack } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { SearchSelect } from '../../components/SearchSelect';
 import { factionsQuery, unitsQuery } from './mathhammer-queries';
 import { Check } from './inputs';
 
@@ -51,10 +52,9 @@ export function UnitPicker({
   return (
     <Stack gap="xs">
       <Group gap="xs" align="flex-end">
-        <Select
+        <SearchSelect
           size="xs"
           label={`${label} faction`}
-          searchable
           w={200}
           data={(factions.data?.factions ?? []).map((f) => f.faction)}
           value={faction}
@@ -64,10 +64,9 @@ export function UnitPicker({
             setAttachIds([]);
           }}
         />
-        <Select
+        <SearchSelect
           size="xs"
           label={`${label} unit`}
-          searchable
           w={240}
           disabled={faction === null}
           data={sheets.map((s) => ({

@@ -1,4 +1,4 @@
-# BCP Analyzer
+# Logis
 
 Finds big Warhammer 40k tournaments on [Best Coast Pairings](https://www.bestcoastpairings.com),
 fetches army lists on demand, and analyses how team events were paired and played.

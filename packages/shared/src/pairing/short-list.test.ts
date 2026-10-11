@@ -69,4 +69,40 @@ describe('shortList', () => {
     expect(shortList(null)).toEqual([]);
     expect(shortList('just some notes about my army')).toEqual([]);
   });
+
+  it('reads the count-first style: "5x Unit (260 pts): gear", characters as "Char1: 1x Name"', () => {
+    const list = [
+      '+ TOTAL ARMY POINTS: 1995pts',
+      '',
+      "Char1: 1x Trajann Valoris (135 pts): Warlord, Eagle's Scream, Watcher's Axe",
+      '',
+      'Char2: 1x Valerian (120 pts): Gnosis',
+      'Leading Custodian Wardens',
+      '5x Custodian Wardens (260 pts)',
+      '• 4x Custodian Warden (Guardian Spear): 4 with Guardian Spear',
+      '• 1x Custodian Warden: Vexilla, Guardian Spear',
+      '  Attached to Valerian',
+      '',
+      '6x Allarus Custodians (360 pts): 6 with Balistus grenade launcher, Guardian Spear',
+      '6x Allarus Custodians (360 pts): 6 with Balistus grenade launcher, Guardian Spear',
+      '',
+      '4x Prosecutors (50 pts)',
+      '• 1x Prosecutor Sister Superior: Boltgun, Close combat weapon',
+      '• 3x Prosecutor: 3 with Boltgun, Close combat weapon',
+      '4x Witchseekers (50 pts)',
+      '• 1x Witchseeker Sister Superior: Close combat weapon, Witchseeker flamer',
+      '• 3x Witchseeker: 3 with Close combat weapon, Witchseeker flamer',
+      '4x Witchseekers (50 pts)',
+      '• 1x Witchseeker Sister Superior: Close combat weapon, Witchseeker flamer',
+      '• 3x Witchseeker: 3 with Close combat weapon, Witchseeker flamer',
+    ].join('\n');
+    expect(shortList(list)).toEqual([
+      'Trajann Valoris',
+      'Valerian',
+      '5 Custodian Wardens',
+      '2x6 Allarus Custodians',
+      '4 Prosecutors',
+      '2x4 Witchseekers',
+    ]);
+  });
 });
