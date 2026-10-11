@@ -24,7 +24,7 @@ import {
 } from './form-state';
 import { Check, CheckGrid, changedProps, Num } from './inputs';
 import inputClasses from './inputs.module.css';
-import { ListPicker } from './ListPicker';
+import { hasSavedList, ListPicker } from './ListPicker';
 import { UnitPicker } from './UnitPicker';
 
 function GroupEditor({
@@ -169,7 +169,9 @@ export function DefenderPanel({
   defender: DefenderForm;
   onChange: (next: DefenderForm) => void;
 }) {
-  const [from, setFrom] = useState<'unit' | 'list'>('unit');
+  const [from, setFrom] = useState<'unit' | 'list'>(() =>
+    hasSavedList('Defender') ? 'list' : 'unit',
+  );
   const set = (patch: Partial<DefenderForm>) => {
     onChange({ ...defender, ...patch });
   };

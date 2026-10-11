@@ -10,7 +10,7 @@ import {
   type WeaponRow,
 } from './form-state';
 import { DiceInput } from './inputs';
-import { ListPicker } from './ListPicker';
+import { hasSavedList, ListPicker } from './ListPicker';
 import { SwitchesEditor } from './SwitchesEditor';
 import { UnitPicker } from './UnitPicker';
 import { WeaponEditor } from './WeaponEditor';
@@ -26,7 +26,9 @@ export function AttackerPanel({
   best: Record<string, string>;
   onChange: (next: MathhammerForm) => void;
 }) {
-  const [from, setFrom] = useState<'unit' | 'list'>('unit');
+  const [from, setFrom] = useState<'unit' | 'list'>(() =>
+    hasSavedList('Attacker') ? 'list' : 'unit',
+  );
   // Weapons that sit out stay hidden behind one line per reason, unless asked for.
   const [showIdle, setShowIdle] = useState(false);
   const idle = new Map<string, string[]>();
