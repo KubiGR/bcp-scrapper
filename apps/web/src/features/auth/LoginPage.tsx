@@ -48,7 +48,7 @@ export function LoginPage({ next }: LoginPageProps) {
         <form onSubmit={submit}>
           <Stack gap="md">
             <Title order={1} size="h3">
-              BCP Analyzer
+              Logis
             </Title>
             {me.error && <ErrorState error={me.error} onRetry={() => void me.refetch()} />}
             <TextInput

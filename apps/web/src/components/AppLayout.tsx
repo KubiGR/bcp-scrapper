@@ -59,7 +59,7 @@ export function AppLayout() {
               />
               <Link to="/" search={FINDER_DEFAULTS} className={classes.brand} onClick={menu.close}>
                 <Logo size={26} />
-                BCP Analyzer
+                Logis
               </Link>
             </Group>
             <Group gap="xl" wrap="nowrap" className={classes.actions}>

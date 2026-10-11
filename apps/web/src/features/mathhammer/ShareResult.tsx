@@ -112,7 +112,7 @@ function ShareCard({ form, calculation, result }: ShareProps) {
       <DamageChart woundsDealt={result.woundsDealt} />
       <Breakdown steps={result.breakdown} fit />
       <Text size="xs" c="dimmed" ta="right">
-        BCP Analyzer · Mathhammer · exact chances
+        Logis · Mathhammer · exact chances
       </Text>
     </Stack>
   );
