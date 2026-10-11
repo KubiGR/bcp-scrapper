@@ -131,3 +131,17 @@
     width: 4.5rem;
   }
 }
+
+/* The player and detachments lines: a tap opens them in full. */
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.details:hover .playerName,
+.details:hover .detail {
+  color: var(--mantine-color-text);
+}

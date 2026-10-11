@@ -9,13 +9,13 @@ import {
   ActionIcon,
   Menu,
   Popover,
+  Stack,
   Table,
   Text,
   UnstyledButton,
   VisuallyHidden,
 } from '@mantine/core';
 import { ChipLabel, ratingName } from './ChipLabel';
-import { Clipped } from './Clipped';
 import { chipStyle } from './chip-style';
 import { shortArmy } from './army-name';
 import { DispositionBadge } from './DispositionBadge';
@@ -79,13 +79,47 @@ function ListIcon() {
 /**
  * A player heading on three steady lines, the same in every row and column: the army (with the
  * button that opens the short list), the player, then the disposition badge with the detachments.
- * Lines too long end in "…", with the whole text in a tooltip on hover.
+ * Lines too long end in "…"; a tap on the player or detachments (or the list button) opens
+ * everything in full, with the short list.
  */
+/** Everything about a player in full, with the short list: what a heading's popups show. */
+function PlayerDetails({ player }: { player: PairingRosterPlayer }) {
+  const detachments = player.detachments.join(' + ');
+  return (
+    <Stack gap={2}>
+      <Text size="xs" fw={600}>
+        {player.faction ?? player.name}
+      </Text>
+      {player.name !== player.faction && <Text size="xs">{player.name}</Text>}
+      {player.disposition && (
+        <Text size="xs" c="dimmed">
+          {player.disposition}
+        </Text>
+      )}
+      {detachments && (
+        <Text size="xs" c="dimmed">
+          {detachments}
+        </Text>
+      )}
+      {player.list && (
+        <Stack gap={0} mt={6}>
+          {player.list.split('\n').map((line, k) => (
+            <Text key={k} size="xs" lh={1.4}>
+              {line}
+            </Text>
+          ))}
+        </Stack>
+      )}
+    </Stack>
+  );
+}
+
 function PlayerHeading({ player }: { player: PairingRosterPlayer }) {
   const army = player.faction ?? player.name;
   // Short ("Chaos Space Marines" → "CSM"); the hover keeps the full name.
   const label = player.faction ? shortArmy(player.faction) : player.name;
   const detachments = player.detachments.join(' + ');
+  const popover = { position: 'bottom-start', withArrow: true, shadow: 'md', width: 280 } as const;
   return (
     <div className={classes.heading}>
       <div className={classes.army} data-line="army">
@@ -94,32 +128,34 @@ function PlayerHeading({ player }: { player: PairingRosterPlayer }) {
           <VisuallyHidden>{army}</VisuallyHidden>
         </span>
         {player.list && (
-          <Popover position="bottom-start" withArrow shadow="md" width={260}>
+          <Popover {...popover}>
             <Popover.Target>
               <ActionIcon variant="default" size="sm" aria-label={`${army} list`} title="List">
                 <ListIcon />
               </ActionIcon>
             </Popover.Target>
-            <Popover.Dropdown>
-              <Text size="xs" fw={600} mb={4}>
-                {army}
-              </Text>
-              {player.list.split('\n').map((line, k) => (
-                <Text key={k} size="xs" lh={1.4}>
-                  {line}
-                </Text>
-              ))}
+            <Popover.Dropdown role="dialog" aria-label={`${army} details`}>
+              <PlayerDetails player={player} />
             </Popover.Dropdown>
           </Popover>
         )}
       </div>
-      <div className={classes.playerName} data-line="player">
-        <Clipped>{player.name !== player.faction ? player.name : ' '}</Clipped>
-      </div>
-      <div className={classes.detail} data-line="detail">
-        <DispositionBadge disposition={player.disposition} />
-        {detachments && <Clipped className={classes.detachments}>{detachments}</Clipped>}
-      </div>
+      <Popover {...popover}>
+        <Popover.Target>
+          <UnstyledButton className={classes.details} aria-label={`${army} details`}>
+            <div className={classes.playerName} data-line="player">
+              {player.name !== player.faction ? player.name : ' '}
+            </div>
+            <div className={classes.detail} data-line="detail">
+              <DispositionBadge disposition={player.disposition} />
+              {detachments && <span className={classes.detachments}>{detachments}</span>}
+            </div>
+          </UnstyledButton>
+        </Popover.Target>
+        <Popover.Dropdown role="dialog" aria-label={`${army} details`}>
+          <PlayerDetails player={player} />
+        </Popover.Dropdown>
+      </Popover>
     </div>
   );
 }

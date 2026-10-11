@@ -146,4 +146,25 @@ describe('RatingsTable', () => {
       'data-selected',
     );
   });
+
+  it('a tap on the player or detachments opens their details in full, with the list', async () => {
+    const us = [
+      {
+        ...p('A', 'Emperor’s Children'),
+        name: 'Vasilis “Griffith” Tzachis',
+        disposition: 'Reconnaissance',
+        detachments: ['Court of the Phoenician', 'Frenzied Host'],
+        list: '5 Noise Marines',
+      },
+    ];
+    renderWithProviders(
+      <RatingsTable ours={us} theirs={theirs} ratings={[]} onRate={() => {}} onAlt={() => {}} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Emperor’s Children details' }));
+    const details = within(await screen.findByRole('dialog'));
+    expect(details.getByText('Vasilis “Griffith” Tzachis')).toBeInTheDocument();
+    expect(details.getByText('Reconnaissance')).toBeInTheDocument();
+    expect(details.getByText('Court of the Phoenician + Frenzied Host')).toBeInTheDocument();
+    expect(details.getByText('5 Noise Marines')).toBeInTheDocument();
+  });
 });
