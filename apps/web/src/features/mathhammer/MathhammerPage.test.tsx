@@ -161,6 +161,8 @@ describe('percent', () => {
 describe('picking units', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    // A list read is remembered in the browser; each test starts without one.
+    localStorage.clear();
   });
 
   const choose = async (label: string, option: string) => {
