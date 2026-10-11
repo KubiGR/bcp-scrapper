@@ -1,7 +1,8 @@
 import { EventListResponseSchema } from '@bcp/shared';
-import { Alert, Button, Group, Select, Stack, Text } from '@mantine/core';
+import { Alert, Button, Group, Stack, Text } from '@mantine/core';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { SearchSelect } from '../../components/SearchSelect';
 import { apiGet } from '../../api/client';
 import { AnchorLink } from '../../components/AnchorLink';
 import { playerListQuery, playersQuery } from '../event/event-queries';
@@ -93,10 +94,9 @@ export function TeamPicker({ onUse }: { onUse: (plan: SheetPlan) => void }) {
   return (
     <Stack gap="sm">
       <Group align="flex-end" gap="sm">
-        <Select
+        <SearchSelect
           label="Event"
           placeholder="Pick a team event"
-          searchable
           selectFirstOptionOnChange
           value={event}
           onChange={(v) => {
@@ -108,10 +108,9 @@ export function TeamPicker({ onUse }: { onUse: (plan: SheetPlan) => void }) {
           nothingFoundMessage="No such team event"
           w={380}
         />
-        <Select
+        <SearchSelect
           label="Your team"
           placeholder="Pick a team"
-          searchable
           selectFirstOptionOnChange
           disabled={event === null || teams.length === 0}
           value={team}
@@ -123,10 +122,9 @@ export function TeamPicker({ onUse }: { onUse: (plan: SheetPlan) => void }) {
           nothingFoundMessage="No such team"
           w={260}
         />
-        <Select
+        <SearchSelect
           label="Opponent"
           placeholder="Pick a team"
-          searchable
           selectFirstOptionOnChange
           disabled={team === null}
           value={opponent}
