@@ -158,4 +158,17 @@ describe('summary and defender grid', () => {
     expect(cols).toHaveLength(10);
     expect(new Set(cols.slice(1, 6)).size).toBe(1);
   });
+
+  it('lists the unpredictable mix one defender per line, so a long army name wraps on a phone', () => {
+    const game = solveMatrixGame(analysePairing(R1).defenderGrid);
+    renderWithProviders(
+      <PairingSummary analysis={analysePairing(R1)} ours={ours} theirs={theirs} />,
+    );
+    const mix = screen.getByRole('list', { name: 'Unpredictable defender' });
+    const picked = game.rows.filter((p) => p > 0.005).length;
+    expect(within(mix).getAllByRole('listitem')).toHaveLength(picked);
+    expect(mix.closest('[data-stat]')).toHaveStyle({ minWidth: '0px' });
+    // The numeric font, but names may wrap.
+    expect(mix.parentElement).toHaveStyle({ whiteSpace: 'normal' });
+  });
 });
