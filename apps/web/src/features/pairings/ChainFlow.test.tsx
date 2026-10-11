@@ -49,7 +49,7 @@ describe('ChainFlow', () => {
     const fifties = screen.getAllByRole('button', { name: 'Final line-up, total 50.0' });
     fireEvent.click(fifties.at(-1) as Element);
     expect(screen.getByText('Line-up · Total 50.0')).toBeInTheDocument();
-    expect(screen.getAllByText(/World Eaters v Death Guard/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/WE v DG/).length).toBeGreaterThan(0);
   });
 
   it('redraws for another send', () => {
@@ -308,7 +308,7 @@ describe('ChainFlow', () => {
     fireEvent.change(screen.getByLabelText('They take'), { target: { value: '1' } });
     const sends = screen.getAllByText(/^They send .* · (<1|\d+)%$/);
     expect(sends).toHaveLength(1);
-    expect(sends[0]).toHaveTextContent(/^They send Grey Knights \+ Orks/);
+    expect(sends[0]).toHaveTextContent(/^They send GK \+ Orks/);
     expect(screen.getByRole('img', { name: /^World Eaters v Orks: / })).toBeInTheDocument();
     expect(
       screen.getByRole('img', { name: /^Emperor's Children v Adeptus Custodes: / }),
@@ -317,7 +317,7 @@ describe('ChainFlow', () => {
     fireEvent.change(screen.getByLabelText('Your round-2 defender'), { target: { value: '0' } });
     fireEvent.change(screen.getByLabelText('Their round-2 defender'), { target: { value: '1' } });
     expect(screen.getAllByText(/^R2: you /)).toHaveLength(1);
-    expect(screen.getByText('R2: you Space Marines')).toBeInTheDocument();
+    expect(screen.getByText('R2: you SM')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
     expect(screen.getAllByText(/^R2: you /).length).toBeGreaterThan(1);
   });
@@ -338,7 +338,7 @@ describe('ChainFlow', () => {
     const tip = within(screen.getByRole('region', { name: 'Tip' }));
     expect(tip.getByText(/You take/)).toBeInTheDocument();
     // Each option by name above its numbers, and again as a row of the answers table.
-    expect(tip.getAllByText(/^(Death Guard|Orks)$/)).toHaveLength(4);
+    expect(tip.getAllByText(/^(DG|Orks)$/)).toHaveLength(4);
     expect(tip.getAllByText(/expected [\d.]+ · best [\d.]+ · worst [\d.]+/)).toHaveLength(2);
     fireEvent.change(screen.getByLabelText('You take'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('They take'), { target: { value: '1' } });
@@ -436,19 +436,13 @@ describe('ChainFlow', () => {
     fireEvent.change(screen.getByLabelText('They send'), { target: { value: '1,2' } });
     const tip = within(screen.getByRole('region', { name: 'Tip' }));
     // Their defender takes one of our attackers: Emperor's Children or Adepta Sororitas.
-    expect(
-      tip.getByRole('columnheader', { name: /^If they take Emperor's Children/ }),
-    ).toBeInTheDocument();
-    expect(
-      tip.getByRole('columnheader', { name: /^If they take Adepta Sororitas/ }),
-    ).toBeInTheDocument();
+    expect(tip.getByRole('columnheader', { name: /^If they take EC/ })).toBeInTheDocument();
+    expect(tip.getByRole('columnheader', { name: /^If they take Sisters/ })).toBeInTheDocument();
     expect(tip.getAllByRole('row')).toHaveLength(3);
     // No read yet: still one name to go with.
     expect(tip.getByText(/^No read: /)).toBeInTheDocument();
     fireEvent.change(tip.getByLabelText('Your read'), { target: { value: '1' } });
-    expect(
-      tip.getByText(/^If they take Adepta Sororitas: take (Death Guard|Orks) → [\d.]+$/),
-    ).toBeInTheDocument();
+    expect(tip.getByText(/^If they take Sisters: take (DG|Orks) → [\d.]+$/)).toBeInTheDocument();
   });
 
   it('locking in the round-2 picks gives the final line-up, and the tip is done', () => {
@@ -474,5 +468,33 @@ describe('ChainFlow', () => {
     expect(final.getAllByText(/ v /)).toHaveLength(5);
     // World Eaters v Orks 7, Emperor's Children v Custodes 11.5, SM v GK 17, CD v CSM 7, AS v DG 7.
     expect(final.getByText(/^Final line-up · total 49\.5$/)).toBeInTheDocument();
+  });
+
+  it('on a phone the wide diagram waits behind a button; following the pairing does not', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('max-width'),
+      media: query,
+      onchange: null,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => false,
+    }));
+    renderWithProviders(
+      <ChainFlow
+        analysis={analysePairing(R1)}
+        ours={ours}
+        theirs={theirs}
+        ratings={[]}
+        d={3}
+        e={4}
+      />,
+    );
+    expect(screen.getByLabelText('You defend')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /^Chain:/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show the chain diagram' }));
+    expect(screen.getByRole('group', { name: /^Chain:/ })).toBeInTheDocument();
+    vi.unstubAllGlobals();
   });
 });

@@ -66,7 +66,8 @@ export function PairingsPage() {
       </Column>
     );
   }
-  return <Planner plan={plan} use={use} />;
+  // Each pairing starts fresh: nothing followed, no defender ruled out.
+  return <Planner key={keyOf(plan)} plan={plan} use={use} />;
 }
 
 const pairingName = (p: SheetPlan) =>
@@ -247,6 +248,7 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
           setSquare(null);
           setFollow({});
           setShown({ ours: false, theirs: false });
+          setRuledOut(new Set());
         }}
         shown={shown}
         onShownChange={setShown}

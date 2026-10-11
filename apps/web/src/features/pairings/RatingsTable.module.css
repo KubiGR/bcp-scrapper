@@ -55,7 +55,7 @@
 /* The army may take two lines; it matters most. */
 .armyName {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .playerName,
 .detachments {
@@ -102,4 +102,32 @@
   outline: 2px solid var(--mantine-color-text);
   outline-offset: 1px;
   border-radius: 4px;
+}
+
+/* Our names stay in view while the opponents scroll by (on a phone). */
+.table thead th:first-child,
+.table tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--mantine-color-dark-7);
+}
+/* A used-up name fades its text, not its backing (the chips would show through). */
+.table tbody th.used {
+  opacity: 1;
+}
+.table tbody th.used > * {
+  opacity: 0.3;
+}
+@media (max-width: 48em) {
+  /* The list button drops under a long army name rather than breaking it mid-word. */
+  .army {
+    flex-wrap: wrap;
+  }
+  .names {
+    width: 8.5rem;
+  }
+  .avg {
+    width: 4.5rem;
+  }
 }

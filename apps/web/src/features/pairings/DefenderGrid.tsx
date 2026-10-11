@@ -1,10 +1,11 @@
 import type { PairingAnalysis, PairingRosterPlayer } from '@bcp/shared';
-import { Table, Text, Tooltip, UnstyledButton } from '@mantine/core';
+import { Table, Text, Tooltip, UnstyledButton, VisuallyHidden } from '@mantine/core';
 import { useState } from 'react';
 import classes from './DefenderGrid.module.css';
 import { withRuledOut } from './ruled-out';
+import { armyLabel, fullArmy } from './army-name';
 
-const army = (p: PairingRosterPlayer | undefined) => p?.faction ?? p?.name ?? '?';
+const army = armyLabel;
 /** Green above 50, orange below, stronger the further from even. */
 const tint = (v: number) => {
   const t = Math.max(-1, Math.min(1, (v - 50) / 4));
@@ -96,7 +97,7 @@ export function DefenderGrid({
         {/* Fixed layout: their defenders share the room equally, however long the army name. */}
         <Table withRowBorders={false} verticalSpacing={2} fz="xs" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: 170 }} />
+            <col className={classes.nameCol} />
             {theirs.map((t) => (
               <col key={t.id} />
             ))}
@@ -106,7 +107,7 @@ export function DefenderGrid({
           </colgroup>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>You ↓ / them →</Table.Th>
+              <Table.Th className={classes.name}>You ↓ / them →</Table.Th>
               {theirs.map((t, e) => (
                 <Table.Th key={t.id}>
                   <Tooltip
@@ -120,7 +121,7 @@ export function DefenderGrid({
                   >
                     <UnstyledButton
                       aria-pressed={ruledOut.has(e)}
-                      aria-label={`${army(t)}${ruledOut.has(e) ? ' (won’t defend)' : ''}`}
+                      aria-label={`${fullArmy(t)}${ruledOut.has(e) ? ' (won’t defend)' : ''}`}
                       className={classes.defender}
                       onClick={() => {
                         toggle(e);
@@ -159,7 +160,12 @@ export function DefenderGrid({
               };
               return (
                 <Table.Tr key={ours[d]?.id ?? d}>
-                  <Table.Th scope="row">{army(ours[d])}</Table.Th>
+                  <Table.Th scope="row" className={classes.name}>
+                    <span aria-hidden="true" title={fullArmy(ours[d])}>
+                      {army(ours[d])}
+                    </span>
+                    <VisuallyHidden>{fullArmy(ours[d])}</VisuallyHidden>
+                  </Table.Th>
                   {row.map((v, e) => (
                     <Table.Td
                       key={theirs[e]?.id ?? e}
@@ -168,7 +174,7 @@ export function DefenderGrid({
                     >
                       <UnstyledButton
                         className="numeric"
-                        aria-label={`You defend ${army(ours[d])}, they defend ${army(theirs[e])}: ${v.toFixed(1)}`}
+                        aria-label={`You defend ${fullArmy(ours[d])}, they defend ${fullArmy(theirs[e])}: ${v.toFixed(1)}`}
                         aria-pressed={selected.d === d && selected.e === e}
                         onClick={() => {
                           onSelect(d, e);
@@ -194,7 +200,7 @@ export function DefenderGrid({
                     <Table.Td
                       key={m.key}
                       p={2}
-                      aria-label={`${army(ours[d])} ${m.key}`}
+                      aria-label={`${fullArmy(ours[d])} ${m.key}`}
                       className="numeric"
                       style={{
                         textAlign: 'center',

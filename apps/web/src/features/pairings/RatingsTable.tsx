@@ -5,10 +5,19 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { ActionIcon, Menu, Popover, Table, Text, UnstyledButton } from '@mantine/core';
+import {
+  ActionIcon,
+  Menu,
+  Popover,
+  Table,
+  Text,
+  UnstyledButton,
+  VisuallyHidden,
+} from '@mantine/core';
 import { ChipLabel, ratingName } from './ChipLabel';
 import { Clipped } from './Clipped';
 import { chipStyle } from './chip-style';
+import { shortArmy } from './army-name';
 import { DispositionBadge } from './DispositionBadge';
 import classes from './RatingsTable.module.css';
 
@@ -74,14 +83,15 @@ function ListIcon() {
  */
 function PlayerHeading({ player }: { player: PairingRosterPlayer }) {
   const army = player.faction ?? player.name;
-  // BCP writes "Space Marines (Astartes)": the label drops the bracket, the hover keeps it.
-  const label = army.replace(/\s*\([^)]*\)\s*$/, '');
+  // Short ("Chaos Space Marines" → "CSM"); the hover keeps the full name.
+  const label = player.faction ? shortArmy(player.faction) : player.name;
   const detachments = player.detachments.join(' + ');
   return (
     <div className={classes.heading}>
       <div className={classes.army} data-line="army">
         <span className={classes.armyName} title={army}>
-          {label}
+          <span aria-hidden="true">{label}</span>
+          <VisuallyHidden>{army}</VisuallyHidden>
         </span>
         {player.list && (
           <Popover position="bottom-start" withArrow shadow="md" width={260}>
@@ -137,7 +147,7 @@ export function RatingsTable({
   const locked = new Set(used?.games.map(([a, b]) => `${String(a)}|${String(b)}`));
   const ratingOf = new Map(ratings.map((r) => [`${r.playerId}|${r.opponentPlayerId}`, r]));
   return (
-    <Table.ScrollContainer minWidth={560}>
+    <Table.ScrollContainer minWidth={720}>
       <table className={classes.table} aria-label="Ratings">
         <thead>
           <tr>
