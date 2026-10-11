@@ -19,11 +19,20 @@
   outline-offset: 2px;
 }
 
+/* A phone shows one word; the full status is in the popover. */
+.short,
+.phoneOnly {
+  display: none;
+}
+
 @media (max-width: 35.99375em) {
-  .indicator,
-  .alert {
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .full {
+    display: none;
+  }
+  .short {
+    display: inline;
+  }
+  .phoneOnly {
+    display: block;
   }
 }
