@@ -1,0 +1,3 @@
+# Private, for friends: no crawling.
+User-agent: *
+Disallow: /
