@@ -1,11 +1,14 @@
 import type { EventListItem, EventListResponse } from '@bcp/shared';
-import { Text, UnstyledButton, type MantineTheme } from '@mantine/core';
+import { Box, Table, Text, UnstyledButton, type MantineTheme } from '@mantine/core';
+import { Fragment } from 'react';
 import { DataTable } from 'mantine-datatable';
 import { EventStatusBadges } from '../../components/EventStatusBadges';
 import { Panel } from '../../components/Panel';
-import { formatEventDates, formatEventSize } from '../../lib/format';
+import { formatEventDates } from '../../lib/format';
 import classes from './EventsTable.module.css';
-import { FINDER_PAGE_SIZE, type FinderSearch } from './finder-search';
+import { FINDER_PAGE_SIZES, type FinderPageSize, type FinderSearch } from './finder-search';
+import { SizeBadge } from './SizeBadge';
+import { weekOf } from './week';
 import { UpdateLabel } from '../updates/UpdateLabel';
 
 type EventSort = FinderSearch['sort'];
@@ -25,6 +28,8 @@ interface EventsTableProps {
   fetching: boolean;
   page: number;
   onPageChange: (page: number) => void;
+  perPage: FinderPageSize;
+  onPerPageChange: (perPage: FinderPageSize) => void;
   onOpen: (eventId: string) => void;
   emptyText: string;
 }
@@ -45,20 +50,66 @@ export function EventsTable({
   fetching,
   page,
   onPageChange,
+  perPage,
+  onPerPageChange,
   onOpen,
   emptyText,
 }: EventsTableProps) {
+  const records = response?.items ?? [];
+  // By date, the server sends a week at a time (biggest first): each week's first event names it.
+  const weekStarts = new Map<string, string>();
+  // Every other week shaded, so the weeks read as groups.
+  const shade = new Map<string, 'even' | 'odd'>();
+  if (sort === 'date') {
+    let last: string | null = null;
+    let weeks = 0;
+    for (const event of records) {
+      const week = weekOf(event.startDate);
+      if (week.key !== last) {
+        weekStarts.set(event.bcpId, week.label);
+        weeks += 1;
+      }
+      shade.set(event.bcpId, weeks % 2 === 1 ? 'even' : 'odd');
+      last = week.key;
+    }
+  }
   return (
     <Panel p={0}>
       <DataTable<EventListItem>
-        records={response?.items ?? []}
+        records={records}
+        rowFactory={({ record, children, rowProps }) => {
+          const week = weekStarts.get(record.bcpId);
+          const row = <Table.Tr {...rowProps}>{children}</Table.Tr>;
+          if (week === undefined) return row;
+          // A heading row across the table before each week's first event.
+          return (
+            <Fragment key={record.bcpId}>
+              <Table.Tr className={classes.weekRow}>
+                <Table.Td colSpan={99} className={classes.week}>
+                  {week}
+                </Table.Td>
+              </Table.Tr>
+              {row}
+            </Fragment>
+          );
+        }}
+        customRowAttributes={(event) => {
+          const parity = shade.get(event.bcpId);
+          return parity ? { 'data-week-shade': parity } : {};
+        }}
         idAccessor="bcpId"
         fetching={fetching}
         minHeight={240}
         highlightOnHover
         noRecordsText={emptyText}
         totalRecords={response?.total ?? 0}
-        recordsPerPage={FINDER_PAGE_SIZE}
+        recordsPerPage={perPage}
+        recordsPerPageOptions={[...FINDER_PAGE_SIZES]}
+        recordsPerPageLabel="Per page"
+        onRecordsPerPageChange={(n) => {
+          const size = FINDER_PAGE_SIZES.find((option) => option === n);
+          if (size !== undefined) onPerPageChange(size);
+        }}
         page={page}
         onPageChange={onPageChange}
         sortStatus={{ columnAccessor: ACCESSOR_BY_SORT[sort], direction: dir }}
@@ -104,8 +155,11 @@ export function EventsTable({
                     {event.name}
                   </Text>
                 </UnstyledButton>
+                <Box hiddenFrom="sm" mt={4}>
+                  <SizeBadge playerCount={event.playerCount} />
+                </Box>
                 <Text size="xs" c="dimmed" hiddenFrom="sm">
-                  {`${formatEventDates(event.startDate, event.endDate)} · ${placeOf(event)} · ${formatEventSize(event)}`}
+                  {`${formatEventDates(event.startDate, event.endDate)} · ${placeOf(event)}`}
                 </Text>
               </>
             ),
@@ -123,9 +177,14 @@ export function EventsTable({
             textAlign: 'right',
             visibleMediaQuery: wide,
             render: (event) => (
-              <Text size="sm" className="numeric">
-                {formatEventSize(event)}
-              </Text>
+              <>
+                <SizeBadge playerCount={event.playerCount} />
+                {event.teamCount !== null && (
+                  <Text size="xs" c="dimmed" className="numeric">
+                    {`${event.teamCount} ${event.teamCount === 1 ? 'team' : 'teams'}`}
+                  </Text>
+                )}
+              </>
             ),
           },
           {

@@ -15,3 +15,24 @@
   outline: 1px solid var(--mantine-color-neon-5);
   outline-offset: 2px;
 }
+
+/* By date: a heading row names each week; every other week is shaded, so the weeks read as
+   groups. */
+.weekRow > td {
+  padding: 10px var(--mantine-spacing-sm) 6px !important;
+  border-top: 2px solid var(--mantine-color-neon-7) !important;
+  background: var(--mantine-color-dark-8);
+}
+
+.week {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mantine-color-neon-3);
+}
+
+tr[data-week-shade='odd'] > td {
+  background: rgb(255 255 255 / 0.035);
+}

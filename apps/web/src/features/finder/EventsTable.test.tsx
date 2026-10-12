@@ -26,6 +26,8 @@ beforeEach(() => {
 const props = {
   sort: 'date' as const,
   dir: 'desc' as const,
+  perPage: 25 as const,
+  onPerPageChange: vi.fn(),
   onSortChange: vi.fn(),
   fetching: false,
   page: 1,
@@ -69,7 +71,9 @@ describe('EventsTable', () => {
         }}
       />,
     );
-    expect(screen.getByText('432 players · 108 teams')).toBeInTheDocument();
+    // The size as a badge (a major event), the teams under it.
+    expect(screen.getAllByText('432 players')[0]).toHaveAttribute('data-tier', 'major');
+    expect(screen.getByText('108 teams')).toBeInTheDocument();
     expect(screen.getByText('Teams')).toBeInTheDocument();
     // Phrasing content only inside a button: no <p>.
     expect(screen.getByRole('button', { name: 'Sample Team Open' }).querySelector('p')).toBeNull();
@@ -98,7 +102,7 @@ describe('EventsTable', () => {
     expect(screen.getByText('—')).toBeInTheDocument();
   });
 
-  it('names the dates, place and size under the name too, for phones where those columns are hidden', () => {
+  it('names the dates and place under the name, and the size badge by it, for phones where those columns are hidden', () => {
     const event = anEvent({ city: 'Athens', country: 'Greece', playerCount: 44, teamCount: null });
     renderWithProviders(
       <EventsTable
@@ -107,11 +111,13 @@ describe('EventsTable', () => {
         response={{ items: [event], total: 1, page: 1, pageSize: 25 }}
       />,
     );
-    const line = `${formatEventDates(event.startDate, event.endDate)} · Athens, Greece · 44 players`;
+    const line = `${formatEventDates(event.startDate, event.endDate)} · Athens, Greece`;
     // Compared raw: the dates hold a thin space the default text matcher would normalize.
     expect(
       screen.getByText((_, element) => element?.tagName === 'P' && element.textContent === line),
     ).toBeInTheDocument();
+    // Once in the name cell (phones), once in the Size column.
+    expect(screen.getAllByText('44 players')).toHaveLength(2);
   });
 
   it('sorts by size or date from the headers: high to low, low to high, then off', () => {
@@ -156,5 +162,50 @@ describe('EventsTable', () => {
       />,
     );
     expect(screen.getByText('Nothing here')).toBeInTheDocument();
+  });
+
+  it('by date, starts each week with its name; by size, it is one list', () => {
+    const response = {
+      items: [
+        anEvent({ bcpId: 'E1', name: 'Big GT', startDate: '2026-04-10T08:00:00.000Z' }),
+        anEvent({ bcpId: 'E2', name: 'Small RTT', startDate: '2026-04-12T08:00:00.000Z' }),
+        anEvent({ bcpId: 'E3', name: 'March Open', startDate: '2026-03-28T08:00:00.000Z' }),
+      ],
+      total: 3,
+      page: 1,
+      pageSize: 25,
+    };
+    const { rerender } = renderWithProviders(
+      <EventsTable {...props} onOpen={vi.fn()} response={response} />,
+    );
+    expect(screen.getAllByText(/^Week of /).map((w) => w.textContent)).toEqual([
+      'Week of 6–12 Apr',
+      'Week of 23–29 Mar',
+    ]);
+    // Every other week is shaded, so the weeks read as groups.
+    const shade = (name: string) =>
+      screen.getByText(name).closest('tr')?.getAttribute('data-week-shade');
+    expect([shade('Big GT'), shade('Small RTT'), shade('March Open')]).toEqual([
+      'even',
+      'even',
+      'odd',
+    ]);
+    rerender(<EventsTable {...props} sort="players" onOpen={vi.fn()} response={response} />);
+    expect(screen.queryByText(/^Week of /)).toBeNull();
+  });
+
+  it('offers 25, 50 or 100 events per page', async () => {
+    const onPerPageChange = vi.fn();
+    renderWithProviders(
+      <EventsTable
+        {...props}
+        onPerPageChange={onPerPageChange}
+        onOpen={vi.fn()}
+        response={{ items: [anEvent()], total: 120, page: 1, pageSize: 25 }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '25' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: '100' }));
+    expect(onPerPageChange).toHaveBeenCalledWith(100);
   });
 });

@@ -9,7 +9,11 @@ export const SIZE_PRESETS = [
   { value: '200', label: '200+', minPlayers: 200 },
 ] as const;
 
-export const FINDER_PAGE_SIZE = 25;
+/** Events per page to choose from; the first is the default. */
+export const FINDER_PAGE_SIZES = [25, 50, 100] as const;
+export type FinderPageSize = (typeof FINDER_PAGE_SIZES)[number];
+const isPageSize = (n: number): n is FinderPageSize =>
+  (FINDER_PAGE_SIZES as readonly number[]).includes(n);
 /** The "Latest" view: events that started in the last 30 days (spec §10). */
 export const LATEST_VIEW_DAYS = 30;
 
@@ -31,6 +35,7 @@ export const FinderSearchSchema = z.object({
   /** `asc`: oldest or smallest first. */
   dir: z.enum(['asc', 'desc']).catch('desc'),
   page: z.coerce.number().int().positive().catch(1),
+  per: z.coerce.number().refine(isPageSize).catch(FINDER_PAGE_SIZES[0]),
 });
 export type FinderSearch = z.infer<typeof FinderSearchSchema>;
 
@@ -81,7 +86,7 @@ export function toEventsQueryString(search: FinderSearch, now: Date): string {
     type: search.type,
     sort: search.sort,
     page: String(search.page),
-    pageSize: String(FINDER_PAGE_SIZE),
+    pageSize: String(search.per),
   });
   if (search.dir === 'asc') params.set('dir', 'asc');
   if (maxPlayers !== undefined) params.set('maxPlayers', String(maxPlayers));
