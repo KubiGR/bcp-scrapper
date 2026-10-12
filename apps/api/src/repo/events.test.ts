@@ -104,10 +104,11 @@ describe('event upserts', () => {
 });
 
 describe('searchEvents', () => {
-  it('lists newest first with a total', async () => {
+  it('lists newest week first, biggest first within a week, with a total', async () => {
     const result = await searchEvents(db, query({}), ALL_EVENTS);
     expect(result.total).toBe(3);
-    expect(result.items.map((e) => e.bcpId)).toEqual(['EVTSMALL001', 'EVTSINGLE01', 'EVTTEAM0001']);
+    // 10 and 12 April share a week (Monday to Sunday): the 64 players before the smaller one.
+    expect(result.items.map((e) => e.bcpId)).toEqual(['EVTSINGLE01', 'EVTSMALL001', 'EVTTEAM0001']);
   });
 
   it('filters by minimum players, type, name, country and date', async () => {
@@ -117,7 +118,7 @@ describe('searchEvents', () => {
     expect(await ids({ minPlayers: '40' })).toEqual(['EVTSINGLE01']);
     expect(await ids({ minPlayers: '1', maxPlayers: '10' })).toEqual(['EVTTEAM0001']);
     expect(await ids({ type: 'teams' })).toEqual(['EVTTEAM0001']);
-    expect(await ids({ type: 'singles' })).toEqual(['EVTSMALL001', 'EVTSINGLE01']);
+    expect(await ids({ type: 'singles' })).toEqual(['EVTSINGLE01', 'EVTSMALL001']);
     expect(await ids({ q: 'team open' })).toEqual(['EVTTEAM0001']);
     expect(await ids({ country: 'germany' })).toEqual(['EVTSINGLE01']);
     expect(await ids({ from: '2026-04-01', to: '2026-04-10' })).toEqual(['EVTSINGLE01']);
@@ -140,7 +141,8 @@ describe('searchEvents', () => {
       'EVTTEAM0001',
       'EVTSINGLE01',
     ]);
-    expect(await ids({ dir: 'asc' })).toEqual((await ids({})).reverse());
+    // Oldest week first; within a week still the biggest first.
+    expect(await ids({ dir: 'asc' })).toEqual(['EVTTEAM0001', 'EVTSINGLE01', 'EVTSMALL001']);
   });
 
   it('treats % and _ in the search text literally', async () => {

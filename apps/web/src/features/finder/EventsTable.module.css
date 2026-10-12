@@ -15,3 +15,17 @@
   outline: 1px solid var(--mantine-color-neon-5);
   outline-offset: 2px;
 }
+
+/* By date: each week's first event names the week, with a line above it. */
+.week {
+  margin-bottom: 2px;
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mantine-color-neon-4);
+}
+
+.weekStart td {
+  border-top: 1px solid var(--mantine-color-neon-8) !important;
+}

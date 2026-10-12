@@ -7,6 +7,7 @@ import { formatEventDates } from '../../lib/format';
 import classes from './EventsTable.module.css';
 import { FINDER_PAGE_SIZE, type FinderSearch } from './finder-search';
 import { SizeBadge } from './SizeBadge';
+import { weekOf } from './week';
 import { UpdateLabel } from '../updates/UpdateLabel';
 
 type EventSort = FinderSearch['sort'];
@@ -49,10 +50,24 @@ export function EventsTable({
   onOpen,
   emptyText,
 }: EventsTableProps) {
+  const records = response?.items ?? [];
+  // By date, the server sends a week at a time (biggest first): each week's first event names it.
+  const weekStarts = new Map<string, string>();
+  if (sort === 'date') {
+    let last: string | null = null;
+    for (const event of records) {
+      const week = weekOf(event.startDate);
+      if (week.key !== last) weekStarts.set(event.bcpId, week.label);
+      last = week.key;
+    }
+  }
   return (
     <Panel p={0}>
       <DataTable<EventListItem>
-        records={response?.items ?? []}
+        records={records}
+        rowClassName={(event, index) =>
+          index > 0 && weekStarts.has(event.bcpId) ? classes.weekStart : undefined
+        }
         idAccessor="bcpId"
         fetching={fetching}
         minHeight={240}
@@ -94,6 +109,9 @@ export function EventsTable({
             title: 'Tournament',
             render: (event) => (
               <>
+                {weekStarts.has(event.bcpId) && (
+                  <Text className={classes.week}>{weekStarts.get(event.bcpId)}</Text>
+                )}
                 <UnstyledButton
                   className={classes.eventName}
                   onClick={(e) => {

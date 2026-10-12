@@ -145,12 +145,14 @@ export async function searchEvents(
   if (query.q) filters.push(ilike(events.name, `%${escapeLike(query.q)}%`));
   const where = and(...filters);
 
-  // Ties fall back to newest first, then id, so paging is stable.
+  // Ties fall back to newest first, then id, so paging is stable. By date, events come a week
+  // (Monday to Sunday, UTC) at a time, the biggest first within each week.
   const direction = query.dir === 'asc' ? asc : desc;
+  const week = sql`date_trunc('week', ${events.startDate} at time zone 'UTC')`;
   const order =
     query.sort === 'players'
       ? [direction(events.playerCount), desc(events.startDate), events.id]
-      : [direction(events.startDate), events.id];
+      : [direction(week), desc(events.playerCount), direction(events.startDate), events.id];
 
   const [rows, total] = await Promise.all([
     db

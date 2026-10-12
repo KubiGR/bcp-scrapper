@@ -161,4 +161,26 @@ describe('EventsTable', () => {
     );
     expect(screen.getByText('Nothing here')).toBeInTheDocument();
   });
+
+  it('by date, starts each week with its name; by size, it is one list', () => {
+    const response = {
+      items: [
+        anEvent({ bcpId: 'E1', name: 'Big GT', startDate: '2026-04-10T08:00:00.000Z' }),
+        anEvent({ bcpId: 'E2', name: 'Small RTT', startDate: '2026-04-12T08:00:00.000Z' }),
+        anEvent({ bcpId: 'E3', name: 'March Open', startDate: '2026-03-28T08:00:00.000Z' }),
+      ],
+      total: 3,
+      page: 1,
+      pageSize: 25,
+    };
+    const { rerender } = renderWithProviders(
+      <EventsTable {...props} onOpen={vi.fn()} response={response} />,
+    );
+    expect(screen.getAllByText(/^Week of /).map((w) => w.textContent)).toEqual([
+      'Week of 6–12 Apr',
+      'Week of 23–29 Mar',
+    ]);
+    rerender(<EventsTable {...props} sort="players" onOpen={vi.fn()} response={response} />);
+    expect(screen.queryByText(/^Week of /)).toBeNull();
+  });
 });
