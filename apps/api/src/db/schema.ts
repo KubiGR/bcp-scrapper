@@ -297,6 +297,8 @@ export const users = pgTable(
     disabled: boolean('disabled').notNull().default(false),
     /** May use the pairings planner (admins always may). */
     canPair: boolean('can_pair').notNull().default(false),
+    /** Waiting for approval, but set aside by an admin: still locked out, not counted as waiting. */
+    ignored: boolean('ignored').notNull().default(false),
     ...auditColumns,
   },
   (t) => [uniqueIndex('users_username_lower_unique').on(sql`lower(${t.username})`)],
@@ -339,6 +341,8 @@ export const detachmentLinks = pgTable('detachment_links', {
   target: text('target'),
   /** Marked as not English (target null): left as it is, but out of Meta's detachment rows. */
   foreign: boolean('foreign').notNull().default(false),
+  /** Ignored as junk (target null): left as it is, out of the names to sort and of Meta. */
+  ignored: boolean('ignored').notNull().default(false),
   createdAt: timestamptz('created_at').notNull().defaultNow(),
 });
 

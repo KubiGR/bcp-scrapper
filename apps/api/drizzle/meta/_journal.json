@@ -120,6 +120,20 @@
       "when": 1791816864319,
       "tag": "0016_user-can-pair",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791819117877,
+      "tag": "0017_user-ignored",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791819380936,
+      "tag": "0018_detachment-ignored",
+      "breakpoints": true
     }
   ]
 }

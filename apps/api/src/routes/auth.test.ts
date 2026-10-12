@@ -123,6 +123,7 @@ describe('login', () => {
         mustChangePassword: false,
         disabled: false,
         canPair: false,
+        ignored: false,
       },
     });
   });

@@ -19,6 +19,7 @@ export interface SessionUser {
   mustChangePassword: boolean;
   disabled: boolean;
   canPair: boolean;
+  ignored: boolean;
 }
 
 /** The stored form of a session token: keyed with SESSION_SECRET, so a database leak alone is useless. */
@@ -68,6 +69,7 @@ export async function resolveSession(
         mustChangePassword: users.mustChangePassword,
         disabled: users.disabled,
         canPair: users.canPair,
+        ignored: users.ignored,
       },
       createdAt: sessions.createdAt,
       lastSeenAt: sessions.lastSeenAt,

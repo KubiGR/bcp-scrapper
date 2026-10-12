@@ -11,6 +11,7 @@ const userColumns = {
   mustChangePassword: users.mustChangePassword,
   disabled: users.disabled,
   canPair: users.canPair,
+  ignored: users.ignored,
 };
 
 export async function listUsers(db: Db): Promise<User[]> {

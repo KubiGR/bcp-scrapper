@@ -192,6 +192,24 @@ describe('detachment names', () => {
     expect((await detachmentNames(db)).unsure.map((u) => u.name)).toEqual(['Arrazadorez']);
   });
 
+  it('ignores a junk name: out of the lists to sort, out of Meta, listed apart, undoable', async () => {
+    const junk = 'See my notes below';
+    await storeList(db, 'PL-EVE', gwList('Chaos Daemons', junk));
+    expect((await detachmentNames(db)).unsure.map((u) => u.name)).toContain(junk);
+    await linkDetachment(db, junk, null, false, true);
+    const after = await detachmentNames(db);
+    expect(after.unsure.map((u) => u.name)).not.toContain(junk);
+    expect(after.foreign.map((f) => f.name)).not.toContain(junk);
+    expect(after.links).toEqual([]);
+    expect(after.ignored).toEqual([{ name: junk, lists: 1, factions: ['Chaos Daemons'] }]);
+    // Meta counts it as an unknown detachment, like a name that isn't English.
+    expect((await foreignDetachmentCheck(db))(junk)).toBe(true);
+    await unlinkDetachment(db, junk);
+    const undone = await detachmentNames(db);
+    expect(undone.unsure.map((u) => u.name)).toContain(junk);
+    expect(undone.ignored).toEqual([]);
+  });
+
   it('tells Meta which names are foreign: detected or marked, unless BCP uses them or they’re own', async () => {
     await linkDetachment(db, 'Arrazadorez', null, true);
     await linkDetachment(db, 'Del Rio Raiders', null);

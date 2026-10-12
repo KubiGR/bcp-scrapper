@@ -254,6 +254,43 @@ describe('Cloudflare Access login', () => {
     expect(after.user?.canPair).toBe(true);
   });
 
+  it('keeps the fetch queue’s controls for admins; an event’s own retry stays open', async () => {
+    const app = makeApp();
+    const anaJwt = await token({ email: 'ana@example.com' });
+    await send(app, 'GET', '/api/events', { jwt: anaJwt });
+    await approve('ana@example.com');
+    const as = (jwt: string, path: string, body: unknown = {}) =>
+      send(app, 'POST', path, { jwt, body });
+    expect((await as(anaJwt, '/api/fetch-queue/pause')).status).toBe(403);
+    expect((await as(anaJwt, '/api/fetch-queue/resume')).status).toBe(403);
+    expect((await as(anaJwt, '/api/fetch-queue/retry-failed')).status).toBe(403);
+    expect((await as(anaJwt, '/api/fetch-queue/retry-failed', { eventId: 'EVT1' })).status).toBe(
+      200,
+    );
+    const admin = await token();
+    expect((await as(admin, '/api/fetch-queue/pause')).status).toBe(200);
+    expect((await as(admin, '/api/fetch-queue/resume')).status).toBe(200);
+  });
+
+  it('lets an admin ignore someone waiting: still locked out, marked ignored', async () => {
+    const app = makeApp();
+    const admin = await token();
+    const boJwt = await token({ email: 'bo@example.com' });
+    await send(app, 'GET', '/api/events', { jwt: boJwt });
+    const list = (await (await send(app, 'GET', '/api/users', { jwt: admin })).json()) as {
+      users: { id: number; username: string; ignored: boolean }[];
+    };
+    const bo = list.users.find((u) => u.username === 'bo@example.com');
+    expect(bo?.ignored).toBe(false);
+    const ignored = await send(app, 'PATCH', `/api/users/${String(bo?.id)}`, {
+      jwt: admin,
+      body: { ignored: true },
+    });
+    expect(((await ignored.json()) as { user: { ignored: boolean } }).user.ignored).toBe(true);
+    // Ignored is not let in.
+    expect((await send(app, 'GET', '/api/events', { jwt: boJwt })).status).toBe(403);
+  });
+
   describe('the web app itself', () => {
     let dist: string;
     beforeEach(async () => {

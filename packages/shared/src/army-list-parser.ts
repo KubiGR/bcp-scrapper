@@ -1,7 +1,7 @@
 import { canonicalArmy } from './factions';
 
 /** Bump when the parser changes: stored lists with an older version are re-read on startup. */
-export const PARSER_VERSION = 8;
+export const PARSER_VERSION = 9;
 
 /** What a list says about the army; only these three things are ever read from list text. */
 export interface ParsedList {
@@ -50,6 +50,9 @@ const OWN_FACTION_CHAPTERS = new Set([
 const cleanArmy = (name: string) => canonicalArmy(name);
 
 /** A `Name (N Detachment Points)` line (not a unit's or stratagem's cost). */
+/** A template's field label before a detachment line, `Detachment Rule(s): …`. */
+const FIELD_LABEL = /^\s*[A-Za-z ()]+:\s*/;
+
 const isDetachmentLine = (line: string | undefined) => {
   const match = DETACHMENT_LINE.exec(line ?? '');
   return match !== null && !UNIT_POINTS.test(match[3]?.trim() ?? '');
@@ -104,7 +107,8 @@ function gwApp(lines: string[]): ParsedList | null {
       : (block.find((line) => cleanArmy(line) !== null) ?? first);
   const detachments = lines
     .slice(run.first, run.last + 1)
-    .map((line) => DETACHMENT_LINE.exec(line)?.[1]?.trim() ?? '')
+    // A field label some write first, "Detachments: …", isn't part of the name.
+    .map((line) => DETACHMENT_LINE.exec(line.replace(FIELD_LABEL, ''))?.[1]?.trim() ?? '')
     .filter((name) => name !== '')
     .map(cleanDetachmentName);
   // The disposition: plain right after the detachments, or a "Force Disposition:" line nearby.
@@ -190,8 +194,17 @@ function template(lines: string[]): ParsedList | null {
   const army = first.split(',')[0]?.trim() ?? '';
   const named = commaList(field(lines, DETACHMENTS_FIELD));
   // Without a "Detachment:" field, a `Name (3 Detachment Points)` line, its disposition under it.
-  const lineAt = named.length > 0 ? -1 : lines.findIndex((line) => isDetachmentLine(line));
-  const fromLine = DETACHMENT_LINE.exec(lines[lineAt] ?? '')?.[1]?.trim();
+  // A plain one first (the GW block's); else a field's, "Detachment Rule(s): …", label dropped.
+  const plainAt = lines.findIndex((line) => isDetachmentLine(line) && !FIELD_LABEL.test(line));
+  const lineAt =
+    named.length > 0
+      ? -1
+      : plainAt >= 0
+        ? plainAt
+        : lines.findIndex((line) => isDetachmentLine(line));
+  const fromLine = DETACHMENT_LINE.exec((lines[lineAt] ?? '').replace(FIELD_LABEL, ''))?.[1]
+    ?.trim()
+    .replace(/\s*\([^()]*\)/g, '');
   const detachments = fromLine ? [cleanDetachmentName(fromLine)] : named;
   return {
     army: army === '' ? null : cleanArmy(army),

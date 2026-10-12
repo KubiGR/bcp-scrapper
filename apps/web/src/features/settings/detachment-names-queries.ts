@@ -7,9 +7,21 @@ export const detachmentNamesQuery = queryOptions({
   queryFn: () => apiGet('/api/detachments', DetachmentNamesResponseSchema),
 });
 
-/** Links `name` to `target` (null: its own detachment; with `foreign`, not English). */
-export const linkDetachment = (name: string, target: string | null, foreign = false) =>
-  apiPost('/api/detachments/links', { name, target, foreign }, DetachmentNamesResponseSchema);
+/**
+ * Links `name` to `target` (null: its own detachment; with `foreign`, not English; with `ignored`,
+ * junk to leave alone).
+ */
+export const linkDetachment = (
+  name: string,
+  target: string | null,
+  foreign = false,
+  ignored = false,
+) =>
+  apiPost(
+    '/api/detachments/links',
+    { name, target, foreign, ...(ignored ? { ignored } : {}) },
+    DetachmentNamesResponseSchema,
+  );
 
 export const unlinkDetachment = (name: string) =>
   apiDelete(`/api/detachments/links/${encodeURIComponent(name)}`, DetachmentNamesResponseSchema);

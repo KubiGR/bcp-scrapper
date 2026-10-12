@@ -39,6 +39,7 @@
 
 .navLink {
   padding: 6px 2px;
+  white-space: nowrap;
   font-family: var(--mantine-font-family);
   font-size: var(--mantine-font-size-sm);
   text-decoration: none;

@@ -18,6 +18,7 @@ export function aUser(overrides: Partial<User> = {}): User {
     mustChangePassword: false,
     disabled: false,
     canPair: false,
+    ignored: false,
     ...overrides,
   };
 }
