@@ -98,6 +98,7 @@ export function authRoutes(deps: {
         role: user.role,
         mustChangePassword: user.mustChangePassword,
         disabled: user.disabled,
+        canPair: user.canPair,
       },
     };
     return c.json(body);

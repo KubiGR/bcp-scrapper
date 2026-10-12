@@ -1,6 +1,6 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { authOff } from '../features/auth/auth-test-utils';
+import { aUser, authOff, loggedIn } from '../features/auth/auth-test-utils';
 import { renderWithRouter, stubFetchRoutes } from '../test/render';
 import { AppLayout } from './AppLayout';
 
@@ -41,5 +41,29 @@ describe('AppLayout', () => {
     const menu = within(screen.getByRole('navigation', { name: 'Pages' }));
     fireEvent.click(menu.getByRole('link', { name: 'Meta' }));
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('signs the site: "by Andreas Dranidis" next to the name', async () => {
+    stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/fetch-queue': null });
+    renderWithRouter(<AppLayout />);
+    await screen.findByRole('link', { name: 'Logis' });
+    expect(screen.getByText('by Andreas Dranidis')).toBeInTheDocument();
+  });
+
+  it('shows Pairings to admins and to members given it, not to other members', async () => {
+    const pairingsLinks = async (user: ReturnType<typeof aUser>) => {
+      stubFetchRoutes({ 'GET /api/auth/me': loggedIn(user), 'GET /api/fetch-queue': null });
+      const view = renderWithRouter(<AppLayout />);
+      await screen.findByRole('link', { name: 'Logis' });
+      // Let /me arrive before counting.
+      await screen.findAllByRole('link', { name: 'Tournaments' });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const count = screen.queryAllByRole('link', { name: 'Pairings' }).length;
+      view.unmount();
+      return count;
+    };
+    expect(await pairingsLinks(aUser({ role: 'admin' }))).toBeGreaterThan(0);
+    expect(await pairingsLinks(aUser({ role: 'member', canPair: true }))).toBeGreaterThan(0);
+    expect(await pairingsLinks(aUser({ role: 'member', canPair: false }))).toBe(0);
   });
 });

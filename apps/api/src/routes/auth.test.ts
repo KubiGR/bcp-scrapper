@@ -122,6 +122,7 @@ describe('login', () => {
         role: 'admin',
         mustChangePassword: false,
         disabled: false,
+        canPair: false,
       },
     });
   });

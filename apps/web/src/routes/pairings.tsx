@@ -1,4 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { PairingsPage } from '../features/pairings/PairingsPage';
+import { PairingsAccess } from '../features/pairings/PairingsAccess';
 
-export const Route = createFileRoute('/pairings')({ component: PairingsPage });
+export const Route = createFileRoute('/pairings')({ component: PairingsAccess });

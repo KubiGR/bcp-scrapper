@@ -7,6 +7,7 @@ import {
   type ChangePasswordRequest,
   type CreateUserRequest,
   type LoginRequest,
+  type MeResponse,
   type UpdateUserRequest,
 } from '@bcp/shared';
 import { queryOptions } from '@tanstack/react-query';
@@ -21,6 +22,13 @@ export const meQuery = queryOptions({
   queryFn: () => apiGet('/api/auth/me', MeResponseSchema),
   staleTime: 5 * 60_000,
 });
+
+/**
+ * Who may use the pairings planner: everyone when logins are off, admins, and members an admin
+ * opened it to. Nobody while it's not known yet.
+ */
+export const canUsePairings = (me: MeResponse | undefined): boolean =>
+  me !== undefined && (!me.authRequired || me.user?.role === 'admin' || me.user?.canPair === true);
 
 export const usersQuery = queryOptions({
   queryKey: ['users'],

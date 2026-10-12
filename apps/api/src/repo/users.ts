@@ -10,6 +10,7 @@ const userColumns = {
   role: users.role,
   mustChangePassword: users.mustChangePassword,
   disabled: users.disabled,
+  canPair: users.canPair,
 };
 
 export async function listUsers(db: Db): Promise<User[]> {

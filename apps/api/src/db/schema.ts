@@ -295,6 +295,8 @@ export const users = pgTable(
     role: userRole('role').notNull().default('member'),
     mustChangePassword: boolean('must_change_password').notNull().default(false),
     disabled: boolean('disabled').notNull().default(false),
+    /** May use the pairings planner (admins always may). */
+    canPair: boolean('can_pair').notNull().default(false),
     ...auditColumns,
   },
   (t) => [uniqueIndex('users_username_lower_unique').on(sql`lower(${t.username})`)],

@@ -15,6 +15,28 @@
   color: var(--mantine-color-white);
 }
 
+/* The signature by the name: small, light and spaced, in another face than the wordmark. */
+.byline {
+  align-self: center;
+  /* Down onto the name's baseline. */
+  padding-top: 6px;
+  margin-left: -4px;
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--mantine-color-neon-5);
+  opacity: 0.75;
+}
+
+/* The smallest phones have no room for it beside the status. */
+@media (max-width: 359px) {
+  .byline {
+    display: none;
+  }
+}
+
 .navLink {
   padding: 6px 2px;
   font-family: var(--mantine-font-family);

@@ -77,7 +77,7 @@ export function UsersCard() {
       change,
     }: {
       user: User;
-      change: { role?: UserRole; disabled?: boolean };
+      change: { role?: UserRole; disabled?: boolean; canPair?: boolean };
     }) => updateUser(user.id, change),
     onSuccess: refresh,
   });
@@ -139,7 +139,17 @@ export function UsersCard() {
                           )}
                         </Group>
                       </Table.Td>
-                      <Table.Td>{user.role === 'admin' ? 'Admin' : 'Member'}</Table.Td>
+                      <Table.Td>
+                        <Group gap={6} wrap="nowrap">
+                          {user.role === 'admin' ? 'Admin' : 'Member'}
+                          {/* Admins always have the pairings planner; members only when given it. */}
+                          {user.role !== 'admin' && user.canPair && (
+                            <Text size="xs" c="neon.4">
+                              Pairings
+                            </Text>
+                          )}
+                        </Group>
+                      </Table.Td>
                       <Table.Td>
                         <Text size="sm" c={user.disabled ? 'red' : 'dimmed'}>
                           {statusOf(user, access)}
@@ -177,6 +187,15 @@ export function UsersCard() {
                                   }}
                                 >
                                   {user.role === 'admin' ? 'Make member' : 'Make admin'}
+                                </Menu.Item>
+                              )}
+                              {user.role !== 'admin' && (
+                                <Menu.Item
+                                  onClick={() => {
+                                    update.mutate({ user, change: { canPair: !user.canPair } });
+                                  }}
+                                >
+                                  {user.canPair ? 'Remove Pairings' : 'Allow Pairings'}
                                 </Menu.Item>
                               )}
                               <Menu.Item

@@ -17,6 +17,7 @@ export function aUser(overrides: Partial<User> = {}): User {
     role: 'admin',
     mustChangePassword: false,
     disabled: false,
+    canPair: false,
     ...overrides,
   };
 }

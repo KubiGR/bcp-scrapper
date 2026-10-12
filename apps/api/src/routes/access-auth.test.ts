@@ -233,6 +233,27 @@ describe('Cloudflare Access login', () => {
     expect((await send(app, 'GET', '/api/users', { jwt: ana2 })).status).toBe(403);
   });
 
+  it('lets an admin open the pairings planner to a member, who then sees it in /me', async () => {
+    const app = makeApp();
+    const admin = await token();
+    const anaJwt = await token({ email: 'ana@example.com' });
+    await send(app, 'GET', '/api/events', { jwt: anaJwt });
+    await approve('ana@example.com');
+    const before = (await (
+      await send(app, 'GET', '/api/auth/me', { jwt: anaJwt })
+    ).json()) as MeResponse;
+    expect(before.user?.canPair).toBe(false);
+    const changed = await send(app, 'PATCH', `/api/users/${String(before.user?.id)}`, {
+      jwt: admin,
+      body: { canPair: true },
+    });
+    expect(changed.status).toBe(200);
+    const after = (await (
+      await send(app, 'GET', '/api/auth/me', { jwt: anaJwt })
+    ).json()) as MeResponse;
+    expect(after.user?.canPair).toBe(true);
+  });
+
   describe('the web app itself', () => {
     let dist: string;
     beforeEach(async () => {

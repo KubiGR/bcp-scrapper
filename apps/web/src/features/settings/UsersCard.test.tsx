@@ -123,6 +123,30 @@ describe('UsersCard', () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(screen.queryByText('Users')).not.toBeInTheDocument();
   });
+
+  it('opens the pairings planner to a member, and shows who has it', async () => {
+    const fetchMock = stubUsers(
+      [me, { ...ana, canPair: true }, aUser({ id: 3, username: 'bo', role: 'member' })],
+      {
+        'PATCH /api/users/3': {
+          user: aUser({ id: 3, username: 'bo', role: 'member', canPair: true }),
+        },
+      },
+    );
+    renderWithProviders(<UsersCard />);
+    expect(await screen.findByText('ana')).toBeInTheDocument();
+    expect(within(rowOf('ana')).getByText('Pairings')).toBeInTheDocument();
+    expect(within(rowOf('bo')).queryByText('Pairings')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Actions for bo' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Allow Pairings' }));
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(
+        ([url, init]) => url === '/api/users/3' && init?.method === 'PATCH',
+      );
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string -- the body is a JSON string here
+      expect(JSON.parse(String(call?.[1]?.body))).toEqual({ canPair: true });
+    });
+  });
 });
 
 async function waitForCall(
