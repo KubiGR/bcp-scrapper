@@ -14,7 +14,14 @@ const search = (changes: Partial<FinderSearch>): FinderSearch => ({ ...defaults,
 
 describe('FinderSearchSchema', () => {
   it('defaults to the latest view of 40+ player events, newest first', () => {
-    expect(defaults).toEqual({ size: '40', type: 'all', sort: 'date', dir: 'desc', page: 1 });
+    expect(defaults).toEqual({
+      size: '40',
+      type: 'all',
+      sort: 'date',
+      dir: 'desc',
+      page: 1,
+      per: 25,
+    });
   });
 
   it('falls back to defaults for garbage instead of failing', () => {
@@ -27,7 +34,7 @@ describe('FinderSearchSchema', () => {
         sort: 1,
         page: -3,
       }),
-    ).toEqual({ size: '40', type: 'all', sort: 'date', dir: 'desc', page: 1 });
+    ).toEqual({ size: '40', type: 'all', sort: 'date', dir: 'desc', page: 1, per: 25 });
   });
 
   it('falls back to the default for the removed 16+ preset, e.g. from an old link', () => {
@@ -37,6 +44,7 @@ describe('FinderSearchSchema', () => {
       sort: 'date',
       dir: 'desc',
       page: 1,
+      per: 25,
     });
   });
 });
@@ -99,6 +107,16 @@ describe('toEventsQueryString', () => {
       q: 'open',
       country: 'Germany',
     });
+  });
+});
+
+describe('page size', () => {
+  it('is 25, 50 or 100 per page, 25 for anything else, and goes to the API', () => {
+    expect(FinderSearchSchema.parse({}).per).toBe(25);
+    expect(FinderSearchSchema.parse({ per: '100' }).per).toBe(100);
+    expect(FinderSearchSchema.parse({ per: '7' }).per).toBe(25);
+    const query = new URLSearchParams(toEventsQueryString(search({ per: 50 }), now));
+    expect(query.get('pageSize')).toBe('50');
   });
 });
 

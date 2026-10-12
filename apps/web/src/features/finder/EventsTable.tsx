@@ -5,7 +5,7 @@ import { EventStatusBadges } from '../../components/EventStatusBadges';
 import { Panel } from '../../components/Panel';
 import { formatEventDates } from '../../lib/format';
 import classes from './EventsTable.module.css';
-import { FINDER_PAGE_SIZE, type FinderSearch } from './finder-search';
+import { FINDER_PAGE_SIZES, type FinderPageSize, type FinderSearch } from './finder-search';
 import { SizeBadge } from './SizeBadge';
 import { weekOf } from './week';
 import { UpdateLabel } from '../updates/UpdateLabel';
@@ -27,6 +27,8 @@ interface EventsTableProps {
   fetching: boolean;
   page: number;
   onPageChange: (page: number) => void;
+  perPage: FinderPageSize;
+  onPerPageChange: (perPage: FinderPageSize) => void;
   onOpen: (eventId: string) => void;
   emptyText: string;
 }
@@ -47,17 +49,26 @@ export function EventsTable({
   fetching,
   page,
   onPageChange,
+  perPage,
+  onPerPageChange,
   onOpen,
   emptyText,
 }: EventsTableProps) {
   const records = response?.items ?? [];
   // By date, the server sends a week at a time (biggest first): each week's first event names it.
   const weekStarts = new Map<string, string>();
+  // Every other week shaded, so the weeks read as groups.
+  const shade = new Map<string, 'even' | 'odd'>();
   if (sort === 'date') {
     let last: string | null = null;
+    let weeks = 0;
     for (const event of records) {
       const week = weekOf(event.startDate);
-      if (week.key !== last) weekStarts.set(event.bcpId, week.label);
+      if (week.key !== last) {
+        weekStarts.set(event.bcpId, week.label);
+        weeks += 1;
+      }
+      shade.set(event.bcpId, weeks % 2 === 1 ? 'even' : 'odd');
       last = week.key;
     }
   }
@@ -68,13 +79,23 @@ export function EventsTable({
         rowClassName={(event, index) =>
           index > 0 && weekStarts.has(event.bcpId) ? classes.weekStart : undefined
         }
+        customRowAttributes={(event) => {
+          const parity = shade.get(event.bcpId);
+          return parity ? { 'data-week-shade': parity } : {};
+        }}
         idAccessor="bcpId"
         fetching={fetching}
         minHeight={240}
         highlightOnHover
         noRecordsText={emptyText}
         totalRecords={response?.total ?? 0}
-        recordsPerPage={FINDER_PAGE_SIZE}
+        recordsPerPage={perPage}
+        recordsPerPageOptions={[...FINDER_PAGE_SIZES]}
+        recordsPerPageLabel="Per page"
+        onRecordsPerPageChange={(n) => {
+          const size = FINDER_PAGE_SIZES.find((option) => option === n);
+          if (size !== undefined) onPerPageChange(size);
+        }}
         page={page}
         onPageChange={onPageChange}
         sortStatus={{ columnAccessor: ACCESSOR_BY_SORT[sort], direction: dir }}

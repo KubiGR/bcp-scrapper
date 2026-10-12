@@ -26,6 +26,8 @@ beforeEach(() => {
 const props = {
   sort: 'date' as const,
   dir: 'desc' as const,
+  perPage: 25 as const,
+  onPerPageChange: vi.fn(),
   onSortChange: vi.fn(),
   fetching: false,
   page: 1,
@@ -180,7 +182,30 @@ describe('EventsTable', () => {
       'Week of 6–12 Apr',
       'Week of 23–29 Mar',
     ]);
+    // Every other week is shaded, so the weeks read as groups.
+    const shade = (name: string) =>
+      screen.getByText(name).closest('tr')?.getAttribute('data-week-shade');
+    expect([shade('Big GT'), shade('Small RTT'), shade('March Open')]).toEqual([
+      'even',
+      'even',
+      'odd',
+    ]);
     rerender(<EventsTable {...props} sort="players" onOpen={vi.fn()} response={response} />);
     expect(screen.queryByText(/^Week of /)).toBeNull();
+  });
+
+  it('offers 25, 50 or 100 events per page', async () => {
+    const onPerPageChange = vi.fn();
+    renderWithProviders(
+      <EventsTable
+        {...props}
+        onPerPageChange={onPerPageChange}
+        onOpen={vi.fn()}
+        response={{ items: [anEvent()], total: 120, page: 1, pageSize: 25 }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '25' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: '100' }));
+    expect(onPerPageChange).toHaveBeenCalledWith(100);
   });
 });

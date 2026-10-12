@@ -66,6 +66,10 @@ export function FinderPage() {
           onPageChange={(page) => {
             update({ page });
           }}
+          perPage={search.per}
+          onPerPageChange={(per) => {
+            update({ per, page: 1 });
+          }}
           onOpen={(eventId) => {
             void navigate({
               to: '/events/$eventId',
