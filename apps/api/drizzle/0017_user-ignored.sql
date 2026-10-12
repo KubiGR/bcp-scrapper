@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "ignored" boolean DEFAULT false NOT NULL;

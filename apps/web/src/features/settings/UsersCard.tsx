@@ -78,7 +78,7 @@ export function UsersCard() {
       change,
     }: {
       user: User;
-      change: { role?: UserRole; disabled?: boolean; canPair?: boolean };
+      change: { role?: UserRole; disabled?: boolean; canPair?: boolean; ignored?: boolean };
     }) => updateUser(user.id, change),
     onSuccess: refresh,
   });
@@ -111,7 +111,10 @@ export function UsersCard() {
                 users={users.data.users.filter((u) => u.disabled)}
                 pending={update.isPending}
                 onApprove={(user) => {
-                  update.mutate({ user, change: { disabled: false } });
+                  update.mutate({ user, change: { disabled: false, ignored: false } });
+                }}
+                onIgnore={(user, ignored) => {
+                  update.mutate({ user, change: { ignored } });
                 }}
                 onRemove={setRemoving}
               />
@@ -318,56 +321,95 @@ export function UsersCard() {
   );
 }
 
-/** Through Access: who signed in and waits to be let in, each to approve or remove. */
+/**
+ * Through Access: who signed in and waits to be let in, each to approve, ignore or remove. The
+ * ignored stay locked out but out of the way, in a list of their own.
+ */
 function WaitingList({
   users,
   pending,
   onApprove,
+  onIgnore,
   onRemove,
 }: {
   users: User[];
   pending: boolean;
   onApprove: (user: User) => void;
+  onIgnore: (user: User, ignored: boolean) => void;
   onRemove: (user: User) => void;
 }) {
+  const [showIgnored, setShowIgnored] = useState(false);
+  const waiting = users.filter((u) => !u.ignored);
+  const ignored = users.filter((u) => u.ignored);
+  const row = (user: User) => (
+    <Group key={user.id} justify="space-between" wrap="nowrap">
+      <Text size="sm">{user.username}</Text>
+      <Group gap="xs" wrap="nowrap">
+        <Button
+          size="xs"
+          loading={pending}
+          aria-label={`Approve ${user.username}`}
+          onClick={() => {
+            onApprove(user);
+          }}
+        >
+          Approve
+        </Button>
+        <Button
+          size="xs"
+          variant="subtle"
+          color="gray"
+          aria-label={`${user.ignored ? 'Stop ignoring' : 'Ignore'} ${user.username}`}
+          onClick={() => {
+            onIgnore(user, !user.ignored);
+          }}
+        >
+          {user.ignored ? 'Stop ignoring' : 'Ignore'}
+        </Button>
+        <Button
+          size="xs"
+          variant="subtle"
+          color="red"
+          aria-label={`Remove ${user.username}`}
+          onClick={() => {
+            onRemove(user);
+          }}
+        >
+          Remove
+        </Button>
+      </Group>
+    </Group>
+  );
   return (
-    <Stack component="section" aria-label="Waiting for approval" gap="xs">
-      <Text size="sm" fw={600}>
-        Waiting for approval
-      </Text>
-      {users.length === 0 ? (
-        <Text size="sm" c="dimmed">
-          Nobody is waiting. Friends sign in with Google at this site's address and show up here.
+    <Stack gap="xs">
+      <Stack component="section" aria-label="Waiting for approval" gap="xs">
+        <Text size="sm" fw={600}>
+          Waiting for approval
         </Text>
-      ) : (
-        users.map((user) => (
-          <Group key={user.id} justify="space-between" wrap="nowrap">
-            <Text size="sm">{user.username}</Text>
-            <Group gap="xs" wrap="nowrap">
-              <Button
-                size="xs"
-                loading={pending}
-                aria-label={`Approve ${user.username}`}
-                onClick={() => {
-                  onApprove(user);
-                }}
-              >
-                Approve
-              </Button>
-              <Button
-                size="xs"
-                variant="subtle"
-                color="red"
-                aria-label={`Remove ${user.username}`}
-                onClick={() => {
-                  onRemove(user);
-                }}
-              >
-                Remove
-              </Button>
-            </Group>
-          </Group>
-        ))
+        {waiting.length === 0 ? (
+          <Text size="sm" c="dimmed">
+            Nobody is waiting. Friends sign in with Google at this site's address and show up here.
+          </Text>
+        ) : (
+          waiting.map(row)
+        )}
+      </Stack>
+      {ignored.length > 0 && (
+        <Stack gap="xs">
+          <Button
+            size="compact-xs"
+            variant="subtle"
+            color="gray"
+            style={{ alignSelf: 'flex-start' }}
+            aria-expanded={showIgnored}
+            onClick={() => {
+              setShowIgnored(!showIgnored);
+            }}
+          >
+            {`Ignored (${String(ignored.length)})`}
+          </Button>
+          {showIgnored && ignored.map(row)}
+        </Stack>
       )}
     </Stack>
   );

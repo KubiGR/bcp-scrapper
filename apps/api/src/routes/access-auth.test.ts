@@ -272,6 +272,25 @@ describe('Cloudflare Access login', () => {
     expect((await as(admin, '/api/fetch-queue/resume')).status).toBe(200);
   });
 
+  it('lets an admin ignore someone waiting: still locked out, marked ignored', async () => {
+    const app = makeApp();
+    const admin = await token();
+    const boJwt = await token({ email: 'bo@example.com' });
+    await send(app, 'GET', '/api/events', { jwt: boJwt });
+    const list = (await (await send(app, 'GET', '/api/users', { jwt: admin })).json()) as {
+      users: { id: number; username: string; ignored: boolean }[];
+    };
+    const bo = list.users.find((u) => u.username === 'bo@example.com');
+    expect(bo?.ignored).toBe(false);
+    const ignored = await send(app, 'PATCH', `/api/users/${String(bo?.id)}`, {
+      jwt: admin,
+      body: { ignored: true },
+    });
+    expect(((await ignored.json()) as { user: { ignored: boolean } }).user.ignored).toBe(true);
+    // Ignored is not let in.
+    expect((await send(app, 'GET', '/api/events', { jwt: boJwt })).status).toBe(403);
+  });
+
   describe('the web app itself', () => {
     let dist: string;
     beforeEach(async () => {

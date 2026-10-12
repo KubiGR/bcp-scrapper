@@ -14,6 +14,8 @@ export const UserSchema = z.object({
   disabled: z.boolean(),
   /** May use the pairings planner (admins always may). */
   canPair: z.boolean(),
+  /** Waiting for approval, but set aside: still locked out, not counted as waiting. */
+  ignored: z.boolean(),
 });
 export type User = z.infer<typeof UserSchema>;
 
@@ -70,10 +72,14 @@ export const UpdateUserRequestSchema = z
     role: UserRoleSchema.optional(),
     disabled: z.boolean().optional(),
     canPair: z.boolean().optional(),
+    ignored: z.boolean().optional(),
   })
   .refine(
     (value) =>
-      value.role !== undefined || value.disabled !== undefined || value.canPair !== undefined,
+      value.role !== undefined ||
+      value.disabled !== undefined ||
+      value.canPair !== undefined ||
+      value.ignored !== undefined,
     { message: 'Nothing to change' },
   );
 export type UpdateUserRequest = z.infer<typeof UpdateUserRequestSchema>;

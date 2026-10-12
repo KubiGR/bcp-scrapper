@@ -148,6 +148,40 @@ describe('UsersCard', () => {
       expect(JSON.parse(String(call?.[1]?.body))).toEqual({ canPair: true });
     });
   });
+
+  it('through Access: ignores someone waiting, who moves to an Ignored list', async () => {
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': viaAccess(me),
+      'GET /api/users': {
+        users: [
+          me,
+          aUser({ id: 2, username: 'ana@example.com', role: 'member', disabled: true }),
+          aUser({
+            id: 3,
+            username: 'spam@example.com',
+            role: 'member',
+            disabled: true,
+            ignored: true,
+          }),
+        ],
+      },
+      'PATCH /api/users/2': { user: aUser({ id: 2, disabled: true, ignored: true }) },
+    });
+    renderWithProviders(<UsersCard />);
+    const waiting = within(await screen.findByRole('region', { name: 'Waiting for approval' }));
+    expect(waiting.getByText('ana@example.com')).toBeInTheDocument();
+    expect(waiting.queryByText('spam@example.com')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Ignored (1)' }));
+    expect(await screen.findByText('spam@example.com')).toBeInTheDocument();
+    fireEvent.click(waiting.getByRole('button', { name: 'Ignore ana@example.com' }));
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(
+        ([url, init]) => url === '/api/users/2' && init?.method === 'PATCH',
+      );
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string -- the body is a JSON string here
+      expect(JSON.parse(String(call?.[1]?.body))).toEqual({ ignored: true });
+    });
+  });
 });
 
 async function waitForCall(
