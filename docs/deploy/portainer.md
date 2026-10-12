@@ -116,8 +116,13 @@ token for who the visitor is. Add these to the stack's variables and redeploy:
 | `ACCESS_AUD`         | The application's **Application Audience (AUD) Tag** (Access → Applications → your app → Overview) |
 | `ADMIN_EMAILS`       | Comma-separated emails of the admins; everyone else Access lets in is a member                     |
 
-- Anyone Access's policy admits gets an account on first visit; **remove people in Cloudflare's
-  policy**, not in the app (its Users card and password pages are hidden in this mode).
+- Anyone Access's policy admits gets an account on first visit, **waiting for approval**: until
+  an admin approves them (Settings → Users → Waiting for approval), every page shows them only a
+  "Waiting for approval" page, with no app and no data. Admins (`ADMIN_EMAILS`) never wait. So the
+  policy can simply allow any Google login (Include → Login Methods → Google) instead of listing
+  everyone's email: the app's approval is the gate.
+- Removing someone in the Users card takes their access away; if they sign in again they wait for
+  approval again. There are no passwords in this mode (no new accounts or resets in the app).
 - How long you stay signed in is Cloudflare's **Session Duration** (the application's settings,
   and Settings → Authentication → global session timeout); the app has no session of its own.
 - A request without a valid token for this application is refused, so a wrong value locks everyone

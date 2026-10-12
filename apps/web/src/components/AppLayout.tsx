@@ -3,7 +3,9 @@ import { useDisclosure } from '@mantine/hooks';
 import { Notifications } from '@mantine/notifications';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { FinderSearchSchema } from '../features/finder/finder-search';
+import { useQuery } from '@tanstack/react-query';
 import { AccountMenu } from '../features/auth/AccountMenu';
+import { canUsePairings, meQuery } from '../features/auth/auth-queries';
 import { QueueIndicator } from '../features/fetch-queue/QueueIndicator';
 import classes from './AppLayout.module.css';
 import { Logo } from './Logo';
@@ -31,6 +33,10 @@ const NAV_BREAKPOINT = 'lg';
 
 export function AppLayout() {
   const [menuOpen, menu] = useDisclosure(false);
+  const me = useQuery(meQuery);
+  // Pairings only for those it was opened to.
+  const pairings = canUsePairings(me.data);
+  const items = NAV_ITEMS.filter((item) => item.to !== '/pairings' || pairings);
   const wide = useRouterState({ select: (state) => WIDE_PAGES.has(state.location.pathname) });
   return (
     <AppShell
@@ -61,6 +67,7 @@ export function AppLayout() {
                 <Logo size={26} />
                 Logis
               </Link>
+              <span className={classes.byline}>by Andreas Dranidis</span>
             </Group>
             <Group gap="xl" wrap="nowrap" className={classes.actions}>
               <QueueIndicator />
@@ -71,7 +78,7 @@ export function AppLayout() {
                 wrap="nowrap"
                 visibleFrom={NAV_BREAKPOINT}
               >
-                {NAV_ITEMS.map((item) => (
+                {items.map((item) => (
                   <Link key={item.to} to={item.to} className={classes.navLink}>
                     {item.label}
                   </Link>
@@ -83,7 +90,7 @@ export function AppLayout() {
         </Container>
       </AppShell.Header>
       <AppShell.Navbar component="nav" aria-label="Pages" className={classes.menu} p="xs">
-        {NAV_ITEMS.map((item) => (
+        {items.map((item) => (
           <Link key={item.to} to={item.to} className={classes.menuLink} onClick={menu.close}>
             {item.label}
           </Link>

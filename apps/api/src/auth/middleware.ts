@@ -60,23 +60,45 @@ export function authMiddleware(deps: {
   const { db, options, allowedHosts, now } = deps;
   return createMiddleware<AuthEnv>(async (c, next) => {
     const path = c.req.path;
-    if (!options.required || !path.startsWith('/api/') || path === '/api/health') {
+    const api = path.startsWith('/api/');
+    if (!options.required || path === '/api/health') {
       await next();
       return;
     }
     const method = c.req.method;
-    if (!SAFE_METHODS.has(method) && !originAllowed(c.req.header('origin'), allowedHosts)) {
+    if (api && !SAFE_METHODS.has(method) && !originAllowed(c.req.header('origin'), allowedHosts)) {
       throw new ForbiddenError('Request from another site refused');
     }
     if (options.access !== undefined) {
+      // Every request, the web app's pages and files too: someone not yet approved sees only a
+      // page saying so, never the app.
       const jwt = c.req.header(ACCESS_JWT_HEADER);
       const email = jwt === undefined ? null : await verifyAccessToken(jwt, options.access);
-      if (email === null) throw new UnauthorizedError();
+      if (email === null) {
+        if (api) throw new UnauthorizedError();
+        return c.html(
+          gatePage('Not signed in', 'Open this site through its address to sign in.'),
+          401,
+        );
+      }
       const role = options.access.adminEmails.includes(email) ? 'admin' : 'member';
       const user = await findOrCreateAccessUser(db, email, role);
-      if (user.disabled) throw new ForbiddenError('This account is disabled');
+      if (user.disabled) {
+        if (api) throw new ForbiddenError('Waiting for approval');
+        return c.html(
+          gatePage(
+            'Waiting for approval',
+            `You're signed in as ${email}. The site's admin will let you in soon.`,
+          ),
+          403,
+        );
+      }
       // The environment decides who is an admin, whatever was stored.
       c.set('user', { ...user, role, mustChangePassword: false });
+      await next();
+      return;
+    }
+    if (!api) {
       await next();
       return;
     }
@@ -101,6 +123,29 @@ export function authMiddleware(deps: {
     }
     await next();
   });
+}
+
+const escapeHtml = (text: string) =>
+  text.replace(/[&<>"']/g, (ch) => `&#${String(ch.charCodeAt(0))};`);
+
+/** A page on its own, with no script: all someone not let in gets to see. */
+function gatePage(title: string, message: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Logis · ${escapeHtml(title)}</title>
+</head>
+<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f19;color:#e6e9ef;font-family:system-ui,sans-serif">
+<main style="max-width:360px;padding:24px;text-align:center">
+<h1 style="font-size:20px;letter-spacing:.12em;margin:0 0 12px">LOGIS</h1>
+<p style="font-size:16px;margin:0 0 8px">${escapeHtml(title)}</p>
+<p style="font-size:14px;color:#8b93a7;margin:0">${escapeHtml(message)}</p>
+</main>
+</body>
+</html>`;
 }
 
 const CONTENT_SECURITY_POLICY = [

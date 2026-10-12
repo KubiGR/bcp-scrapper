@@ -18,6 +18,7 @@ export interface SessionUser {
   role: 'admin' | 'member';
   mustChangePassword: boolean;
   disabled: boolean;
+  canPair: boolean;
 }
 
 /** The stored form of a session token: keyed with SESSION_SECRET, so a database leak alone is useless. */
@@ -66,6 +67,7 @@ export async function resolveSession(
         role: users.role,
         mustChangePassword: users.mustChangePassword,
         disabled: users.disabled,
+        canPair: users.canPair,
       },
       createdAt: sessions.createdAt,
       lastSeenAt: sessions.lastSeenAt,

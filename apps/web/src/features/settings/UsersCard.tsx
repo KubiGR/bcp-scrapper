@@ -1,6 +1,7 @@
 import type { User, UserRole } from '@bcp/shared';
 import {
   ActionIcon,
+  Badge,
   Alert,
   Button,
   Code,
@@ -35,17 +36,21 @@ interface OneTimePassword {
   password: string;
 }
 
-function statusOf(user: User): string {
-  if (user.disabled) return 'Disabled';
+function statusOf(user: User, access: boolean): string {
+  if (user.disabled) return access ? 'No access' : 'Disabled';
   if (user.mustChangePassword) return 'Awaiting first login';
   return 'Active';
 }
 
-/** Admins manage who can log in (only shown when logins are on). */
+/**
+ * Admins manage who can log in (only shown when logins are on). Through Cloudflare Access people
+ * arrive by themselves and wait to be approved; there are no passwords, and admins are named in
+ * the server's settings.
+ */
 export function UsersCard() {
   const me = useQuery(meQuery);
-  // Through Cloudflare Access there are no accounts here: admins are named in the server's settings.
-  const self = me.data?.authRequired === true && me.data.access !== true ? me.data.user : null;
+  const access = me.data?.access === true;
+  const self = me.data?.authRequired === true ? me.data.user : null;
   const isAdmin = self?.role === 'admin';
   const users = useQuery({ ...usersQuery, enabled: isAdmin });
   const queryClient = useQueryClient();
@@ -73,7 +78,7 @@ export function UsersCard() {
       change,
     }: {
       user: User;
-      change: { role?: UserRole; disabled?: boolean };
+      change: { role?: UserRole; disabled?: boolean; canPair?: boolean };
     }) => updateUser(user.id, change),
     onSuccess: refresh,
   });
@@ -100,87 +105,130 @@ export function UsersCard() {
             onRetry={() => void users.refetch()}
           />
         ) : (
-          <Table verticalSpacing="xs">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Username</Table.Th>
-                <Table.Th>Role</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th aria-label="Actions" />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {users.data.users.map((user) => (
-                <Table.Tr key={user.id}>
-                  <Table.Td>
-                    <Group gap={6} wrap="nowrap">
-                      <Text size="sm">{user.username}</Text>
-                      {user.id === self.id && (
-                        <Text size="xs" c="dimmed">
-                          you
-                        </Text>
-                      )}
-                    </Group>
-                  </Table.Td>
-                  <Table.Td>{user.role === 'admin' ? 'Admin' : 'Member'}</Table.Td>
-                  <Table.Td>
-                    <Text size="sm" c={user.disabled ? 'red' : 'dimmed'}>
-                      {statusOf(user)}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td ta="right">
-                    {user.id !== self.id && (
-                      <Menu position="bottom-end" withinPortal>
-                        <Menu.Target>
-                          <ActionIcon
-                            variant="subtle"
-                            color="gray"
-                            aria-label={`Actions for ${user.username}`}
-                          >
-                            ⋯
-                          </ActionIcon>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                          <Menu.Item
-                            onClick={() => {
-                              reset.mutate(user);
-                            }}
-                          >
-                            Reset password
-                          </Menu.Item>
-                          <Menu.Item
-                            onClick={() => {
-                              update.mutate({
-                                user,
-                                change: { role: user.role === 'admin' ? 'member' : 'admin' },
-                              });
-                            }}
-                          >
-                            {user.role === 'admin' ? 'Make member' : 'Make admin'}
-                          </Menu.Item>
-                          <Menu.Item
-                            onClick={() => {
-                              update.mutate({ user, change: { disabled: !user.disabled } });
-                            }}
-                          >
-                            {user.disabled ? 'Enable' : 'Disable'}
-                          </Menu.Item>
-                          <Menu.Item
-                            color="red"
-                            onClick={() => {
-                              setRemoving(user);
-                            }}
-                          >
-                            Remove
-                          </Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu>
-                    )}
-                  </Table.Td>
+          <>
+            {access && (
+              <WaitingList
+                users={users.data.users.filter((u) => u.disabled)}
+                pending={update.isPending}
+                onApprove={(user) => {
+                  update.mutate({ user, change: { disabled: false } });
+                }}
+                onRemove={setRemoving}
+              />
+            )}
+            <Table verticalSpacing="xs">
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Username</Table.Th>
+                  <Table.Th>Role</Table.Th>
+                  <Table.Th>Status</Table.Th>
+                  <Table.Th aria-label="Actions" />
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+              </Table.Thead>
+              <Table.Tbody>
+                {users.data.users
+                  .filter((user) => !access || !user.disabled)
+                  .map((user) => (
+                    <Table.Tr key={user.id}>
+                      <Table.Td>
+                        <Group gap={6} wrap="nowrap">
+                          <Text size="sm">{user.username}</Text>
+                          {user.id === self.id && (
+                            <Text size="xs" c="dimmed">
+                              you
+                            </Text>
+                          )}
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap={6} wrap="nowrap">
+                          {user.role === 'admin' ? (
+                            <Badge variant="outline" color="neon" size="sm">
+                              Admin
+                            </Badge>
+                          ) : (
+                            <Text size="sm">Member</Text>
+                          )}
+                          {/* Admins always have the pairings planner; members only when given it. */}
+                          {user.role !== 'admin' && user.canPair && (
+                            <Badge variant="light" color="neon" size="sm">
+                              Pairings
+                            </Badge>
+                          )}
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm" c={user.disabled ? 'red' : 'dimmed'}>
+                          {statusOf(user, access)}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td ta="right">
+                        {user.id !== self.id && (
+                          <Menu position="bottom-end" withinPortal>
+                            <Menu.Target>
+                              <ActionIcon
+                                variant="subtle"
+                                color="gray"
+                                aria-label={`Actions for ${user.username}`}
+                              >
+                                ⋯
+                              </ActionIcon>
+                            </Menu.Target>
+                            <Menu.Dropdown>
+                              {!access && (
+                                <Menu.Item
+                                  onClick={() => {
+                                    reset.mutate(user);
+                                  }}
+                                >
+                                  Reset password
+                                </Menu.Item>
+                              )}
+                              {!access && (
+                                <Menu.Item
+                                  onClick={() => {
+                                    update.mutate({
+                                      user,
+                                      change: { role: user.role === 'admin' ? 'member' : 'admin' },
+                                    });
+                                  }}
+                                >
+                                  {user.role === 'admin' ? 'Make member' : 'Make admin'}
+                                </Menu.Item>
+                              )}
+                              {user.role !== 'admin' && (
+                                <Menu.Item
+                                  onClick={() => {
+                                    update.mutate({ user, change: { canPair: !user.canPair } });
+                                  }}
+                                >
+                                  {user.canPair ? 'Remove Pairings' : 'Allow Pairings'}
+                                </Menu.Item>
+                              )}
+                              <Menu.Item
+                                onClick={() => {
+                                  update.mutate({ user, change: { disabled: !user.disabled } });
+                                }}
+                              >
+                                {user.disabled ? 'Enable' : 'Disable'}
+                              </Menu.Item>
+                              <Menu.Item
+                                color="red"
+                                onClick={() => {
+                                  setRemoving(user);
+                                }}
+                              >
+                                Remove
+                              </Menu.Item>
+                            </Menu.Dropdown>
+                          </Menu>
+                        )}
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+              </Table.Tbody>
+            </Table>
+          </>
         )}
 
         {actionError && (
@@ -219,13 +267,15 @@ export function UsersCard() {
           </Alert>
         )}
 
-        <AddUserForm
-          pending={create.isPending}
-          error={create.error}
-          onAdd={(username, role) => {
-            create.mutate({ username, role });
-          }}
-        />
+        {!access && (
+          <AddUserForm
+            pending={create.isPending}
+            error={create.error}
+            onAdd={(username, role) => {
+              create.mutate({ username, role });
+            }}
+          />
+        )}
       </Stack>
 
       <Modal
@@ -238,8 +288,9 @@ export function UsersCard() {
         {removing !== null && (
           <Stack gap="md">
             <Text size="sm">
-              Remove {removing.username}? They are logged out and can’t log in again. This can’t be
-              undone.
+              {access
+                ? `Remove ${removing.username}? They lose access; if they sign in again, they wait for approval again.`
+                : `Remove ${removing.username}? They are logged out and can’t log in again. This can’t be undone.`}
             </Text>
             <Group justify="flex-end">
               <Button
@@ -264,6 +315,61 @@ export function UsersCard() {
         )}
       </Modal>
     </Panel>
+  );
+}
+
+/** Through Access: who signed in and waits to be let in, each to approve or remove. */
+function WaitingList({
+  users,
+  pending,
+  onApprove,
+  onRemove,
+}: {
+  users: User[];
+  pending: boolean;
+  onApprove: (user: User) => void;
+  onRemove: (user: User) => void;
+}) {
+  return (
+    <Stack component="section" aria-label="Waiting for approval" gap="xs">
+      <Text size="sm" fw={600}>
+        Waiting for approval
+      </Text>
+      {users.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          Nobody is waiting. Friends sign in with Google at this site's address and show up here.
+        </Text>
+      ) : (
+        users.map((user) => (
+          <Group key={user.id} justify="space-between" wrap="nowrap">
+            <Text size="sm">{user.username}</Text>
+            <Group gap="xs" wrap="nowrap">
+              <Button
+                size="xs"
+                loading={pending}
+                aria-label={`Approve ${user.username}`}
+                onClick={() => {
+                  onApprove(user);
+                }}
+              >
+                Approve
+              </Button>
+              <Button
+                size="xs"
+                variant="subtle"
+                color="red"
+                aria-label={`Remove ${user.username}`}
+                onClick={() => {
+                  onRemove(user);
+                }}
+              >
+                Remove
+              </Button>
+            </Group>
+          </Group>
+        ))
+      )}
+    </Stack>
   );
 }
 

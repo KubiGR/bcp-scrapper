@@ -39,9 +39,13 @@ function refuse(message: string): never {
   throw new ValidationError([{ path: 'id', message }], message);
 }
 
-/** Admin-only user management (mounted only when logins are on). */
-export function userRoutes(deps: { db: Db }) {
-  const { db } = deps;
+/**
+ * Admin-only user management (mounted only when logins are on). `passwords`: our own logins, with
+ * new accounts and password resets; without (Cloudflare Access) people arrive by themselves and
+ * wait to be approved, so only listing, enabling/disabling and removing are offered.
+ */
+export function userRoutes(deps: { db: Db; passwords: boolean }) {
+  const { db, passwords } = deps;
   const app = new Hono<AuthEnv>();
   app.use('/users', requireAdmin);
   app.use('/users/*', requireAdmin);
@@ -63,39 +67,41 @@ export function userRoutes(deps: { db: Db }) {
     return c.json(body);
   });
 
-  app.post('/users', requireJson, async (c) => {
-    const { username, role } = parseInput(
-      CreateUserRequestSchema,
-      await c.req.json<unknown>().catch(() => null),
-    );
-    const taken = () =>
-      new ValidationError([{ path: 'username', message: 'Taken' }], 'That username is taken');
-    if (await usernameTaken(db, username)) throw taken();
-    const temporaryPassword = generateTemporaryPassword();
-    const user = await insertUser(db, {
-      username,
-      role,
-      passwordHash: await hashPassword(temporaryPassword),
-      mustChangePassword: true,
+  if (passwords)
+    app.post('/users', requireJson, async (c) => {
+      const { username, role } = parseInput(
+        CreateUserRequestSchema,
+        await c.req.json<unknown>().catch(() => null),
+      );
+      const taken = () =>
+        new ValidationError([{ path: 'username', message: 'Taken' }], 'That username is taken');
+      if (await usernameTaken(db, username)) throw taken();
+      const temporaryPassword = generateTemporaryPassword();
+      const user = await insertUser(db, {
+        username,
+        role,
+        passwordHash: await hashPassword(temporaryPassword),
+        mustChangePassword: true,
+      });
+      // Someone else took it in the meantime.
+      if (user === null) throw taken();
+      const body: CreateUserResponse = { user, temporaryPassword };
+      return c.json(body);
     });
-    // Someone else took it in the meantime.
-    if (user === null) throw taken();
-    const body: CreateUserResponse = { user, temporaryPassword };
-    return c.json(body);
-  });
 
-  app.post('/users/:id/reset-password', async (c) => {
-    const user = await target(c.req.param('id'));
-    if (user.id === c.get('user')?.id) refuse('Use Change password for your own account');
-    const temporaryPassword = generateTemporaryPassword();
-    await updateUser(db, user.id, {
-      passwordHash: await hashPassword(temporaryPassword),
-      mustChangePassword: true,
+  if (passwords)
+    app.post('/users/:id/reset-password', async (c) => {
+      const user = await target(c.req.param('id'));
+      if (user.id === c.get('user')?.id) refuse('Use Change password for your own account');
+      const temporaryPassword = generateTemporaryPassword();
+      await updateUser(db, user.id, {
+        passwordHash: await hashPassword(temporaryPassword),
+        mustChangePassword: true,
+      });
+      await deleteUserSessions(db, user.id);
+      const body: ResetPasswordResponse = { temporaryPassword };
+      return c.json(body);
     });
-    await deleteUserSessions(db, user.id);
-    const body: ResetPasswordResponse = { temporaryPassword };
-    return c.json(body);
-  });
 
   app.patch('/users/:id', requireJson, async (c) => {
     const change = parseInput(

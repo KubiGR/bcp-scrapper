@@ -12,6 +12,8 @@ export const UserSchema = z.object({
   role: UserRoleSchema,
   mustChangePassword: z.boolean(),
   disabled: z.boolean(),
+  /** May use the pairings planner (admins always may). */
+  canPair: z.boolean(),
 });
 export type User = z.infer<typeof UserSchema>;
 
@@ -64,10 +66,16 @@ export const ResetPasswordResponseSchema = z.object({ temporaryPassword: z.strin
 export type ResetPasswordResponse = z.infer<typeof ResetPasswordResponseSchema>;
 
 export const UpdateUserRequestSchema = z
-  .object({ role: UserRoleSchema.optional(), disabled: z.boolean().optional() })
-  .refine((value) => value.role !== undefined || value.disabled !== undefined, {
-    message: 'Nothing to change',
-  });
+  .object({
+    role: UserRoleSchema.optional(),
+    disabled: z.boolean().optional(),
+    canPair: z.boolean().optional(),
+  })
+  .refine(
+    (value) =>
+      value.role !== undefined || value.disabled !== undefined || value.canPair !== undefined,
+    { message: 'Nothing to change' },
+  );
 export type UpdateUserRequest = z.infer<typeof UpdateUserRequestSchema>;
 
 export const UsersResponseSchema = z.object({ users: z.array(UserSchema) });
