@@ -127,11 +127,13 @@ describe('ListDrawer', () => {
     );
     expect(screen.getByText("This list hasn't been fetched yet.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Fetch this list' }));
+    // The drawer also looks up the player's games; the queue request is the POST.
+    const queued = () => fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalled();
+      expect(queued()).toBeDefined();
     });
     // eslint-disable-next-line @typescript-eslint/no-base-to-string -- the body is a JSON string here
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(queued()?.[1]?.body))).toEqual({
       playerIds: ['PL-ADA'],
     });
   });
@@ -208,5 +210,55 @@ describe('ListDrawer', () => {
     );
     expect(screen.getByText('BCP hiccup')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  });
+
+  it('lists the player’s games in the event: opponent, army, result and who went first', async () => {
+    const opponent = {
+      id: 'PL-BOB',
+      name: 'Bob Bowman',
+      faction: 'Necrons',
+      factionGuessed: false,
+      teamId: null,
+      disposition: 'Take and Hold',
+      detachments: ['Awakened Dynasty'],
+    };
+    const ada = { ...opponent, id: 'PL-ADA', name: 'Ada Archer', faction: 'Space Marines' };
+    stubFetchRoutes({
+      'GET /api/events/EVT1/rounds': {
+        gamesAvailable: true,
+        rounds: [
+          {
+            round: 1,
+            bracket: false,
+            matchups: [],
+            games: [
+              {
+                id: 'G1',
+                tableNo: 4,
+                playerA: opponent,
+                playerB: ada,
+                gamePointsA: 40,
+                gamePointsB: 100,
+                vpA: null,
+                vpB: null,
+                firstTurn: 'b',
+                result: 'b_win',
+              },
+            ],
+          },
+        ],
+      },
+    });
+    renderWithProviders(
+      <ListDrawer eventId="EVT1" player={aPlayer({ listStatus: 'none' })} onClose={vi.fn()} />,
+    );
+    const games = await screen.findByRole('region', { name: 'Games' });
+    expect(games).toHaveTextContent('R1');
+    expect(games).toHaveTextContent('W');
+    expect(games).toHaveTextContent('100–40');
+    expect(games).toHaveTextContent('Bob Bowman');
+    expect(games).toHaveTextContent('Necrons');
+    expect(games).toHaveTextContent('Awakened Dynasty');
+    expect(games).toHaveTextContent('went first');
   });
 });
