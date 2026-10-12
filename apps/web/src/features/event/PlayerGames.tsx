@@ -1,11 +1,10 @@
-import { Badge, Stack, Table, Text } from '@mantine/core';
+import { Stack, Table, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { PlayerLine } from '../../components/PlayerLine';
 import { roundsQuery } from '../analysis/analysis-queries';
 import { formatPoints, outcomeLabel } from '../analysis/format';
+import classes from './PlayerGames.module.css';
 import { playerGames } from './player-games';
-
-const OUTCOME_COLOR = { win: 'teal', loss: 'red', draw: 'gray', bye: 'gray' } as const;
 
 /**
  * A player's games in the event, round by round: result, score, the opponent's army, and who went
@@ -32,17 +31,17 @@ export function PlayerGames({
         <Table.Tbody>
           {games.map((game) => (
             <Table.Tr key={game.round}>
-              <Table.Td w={36} className="numeric" c="dimmed">
+              <Table.Td className={`numeric ${classes.fit}`} c="dimmed">
                 R{game.round}
               </Table.Td>
-              <Table.Td w={44}>
+              <Table.Td className={classes.fit}>
                 {game.outcome && (
-                  <Badge size="sm" variant="light" color={OUTCOME_COLOR[game.outcome]}>
+                  <span className={classes.outcome} data-outcome={game.outcome}>
                     {outcomeLabel(game.outcome)}
-                  </Badge>
+                  </span>
                 )}
               </Table.Td>
-              <Table.Td w={64} className="numeric">
+              <Table.Td className={`numeric ${classes.fit}`}>
                 {game.opponent
                   ? `${formatPoints(game.points[0])}–${formatPoints(game.points[1])}`
                   : ''}
