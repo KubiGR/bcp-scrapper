@@ -109,7 +109,7 @@ export function DefenderGrid({
             <Table.Tr>
               <Table.Th className={classes.name}>You ↓ / them →</Table.Th>
               {theirs.map((t, e) => (
-                <Table.Th key={t.id}>
+                <Table.Th key={t.id} ta="center">
                   <Tooltip
                     label={
                       ruledOut.has(e)
@@ -138,6 +138,7 @@ export function DefenderGrid({
               {SUMMARIES.map((m, i) => (
                 <Table.Th
                   key={m.key}
+                  ta="center"
                   style={
                     i === 0 ? { borderLeft: '1px solid var(--mantine-color-default-border)' } : {}
                   }
