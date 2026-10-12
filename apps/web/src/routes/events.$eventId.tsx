@@ -18,14 +18,16 @@ function EventRoute() {
       eventId={eventId}
       tab={tab}
       onTabChange={(next) => {
-        void navigate({ search: { tab: next }, replace: true });
+        void navigate({ search: { tab: next }, replace: true, resetScroll: false });
       }}
       openListId={list ?? null}
       onOpenList={(playerId) => {
-        // Opening a list is a step Back undoes; closing it just tidies the address.
+        // Opening a list is a step Back undoes; closing it just tidies the address. Either way
+        // the page stays where it was scrolled to.
         void navigate({
           search: { tab, list: playerId ?? undefined },
           replace: playerId === null,
+          resetScroll: false,
         });
       }}
     />
