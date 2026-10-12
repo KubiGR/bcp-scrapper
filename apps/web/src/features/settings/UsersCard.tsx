@@ -1,6 +1,7 @@
 import type { User, UserRole } from '@bcp/shared';
 import {
   ActionIcon,
+  Badge,
   Alert,
   Button,
   Code,
@@ -141,12 +142,18 @@ export function UsersCard() {
                       </Table.Td>
                       <Table.Td>
                         <Group gap={6} wrap="nowrap">
-                          {user.role === 'admin' ? 'Admin' : 'Member'}
+                          {user.role === 'admin' ? (
+                            <Badge variant="outline" color="neon" size="sm">
+                              Admin
+                            </Badge>
+                          ) : (
+                            <Text size="sm">Member</Text>
+                          )}
                           {/* Admins always have the pairings planner; members only when given it. */}
                           {user.role !== 'admin' && user.canPair && (
-                            <Text size="xs" c="neon.4">
+                            <Badge variant="light" color="neon" size="sm">
                               Pairings
-                            </Text>
+                            </Badge>
                           )}
                         </Group>
                       </Table.Td>

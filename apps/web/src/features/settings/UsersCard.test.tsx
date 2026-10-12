@@ -135,7 +135,8 @@ describe('UsersCard', () => {
     );
     renderWithProviders(<UsersCard />);
     expect(await screen.findByText('ana')).toBeInTheDocument();
-    expect(within(rowOf('ana')).getByText('Pairings')).toBeInTheDocument();
+    expect(within(rowOf('ana')).getByText('Pairings')).toHaveClass('mantine-Badge-label');
+    expect(within(rowOf('kubi')).getByText('Admin')).toHaveClass('mantine-Badge-label');
     expect(within(rowOf('bo')).queryByText('Pairings')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Actions for bo' }));
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Allow Pairings' }));
