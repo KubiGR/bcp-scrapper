@@ -396,6 +396,14 @@ export const DetachmentNamesResponseSchema = z.object({
       marked: z.boolean(),
     }),
   ),
+  /** Names ignored as junk: lists keep them, Meta counts their players as "detachment unknown". */
+  ignored: z.array(
+    z.object({
+      name: z.string(),
+      lists: z.number().int().nonnegative(),
+      factions: z.array(z.string()),
+    }),
+  ),
   /**
    * Translations learned from BCP's detachment field (name → the detachment it's taken to mean),
    * with the target's factions; a hand link replaces one.
@@ -438,8 +446,10 @@ export const DetachmentLinkRequestSchema = z
     target: z.string().trim().min(1).max(200).nullable(),
     /** `name` isn't English (target must be null). */
     foreign: z.boolean().default(false),
+    /** `name` is junk to ignore (target must be null). */
+    ignored: z.boolean().default(false),
   })
-  .refine((request) => !request.foreign || request.target === null, {
+  .refine((request) => !(request.foreign || request.ignored) || request.target === null, {
     message: 'A name that isn’t English can’t link to a detachment',
     path: ['target'],
   });

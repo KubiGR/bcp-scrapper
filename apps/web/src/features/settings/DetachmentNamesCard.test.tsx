@@ -15,6 +15,7 @@ const names = (overrides: Partial<DetachmentNamesResponse> = {}): DetachmentName
     { name: 'Legión Sangrienta', lists: 3, factions: ['Chaos Daemons'], marked: false },
     { name: 'Arrazadorez', lists: 1, factions: ['Orks'], marked: true },
   ],
+  ignored: [],
   learned: [{ name: 'Cabalgata Sangrienta', target: 'Blood Legion', factions: ['Chaos Daemons'] }],
   targets: [
     { name: 'Blood Legion', factions: ['Chaos Daemons'], bsdata: false },
@@ -294,6 +295,35 @@ describe('DetachmentNamesCard', () => {
       name: 'Legión Sangrienta',
       target: null,
       foreign: false,
+    });
+  });
+
+  it('ignores a junk name, and lists the ignored apart to undo', async () => {
+    const junk = 'See my notes below';
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/detachments': names({
+        ignored: [{ name: junk, lists: 1, factions: ['Chaos Daemons'] }],
+      }),
+      'POST /api/detachments/links': names(),
+      'DELETE /api/detachments/links/': names(),
+    });
+    renderWithProviders(<DetachmentNamesCard />);
+    const ignored = within(await screen.findByRole('region', { name: 'Ignored' }));
+    fireEvent.click(ignored.getByRole('button', { name: `Undo Ignore for ${junk}` }));
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(true);
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Ignore Cabalgata del Caos' }));
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true);
+    });
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(JSON.parse(post?.[1]?.body as string)).toEqual({
+      name: 'Cabalgata del Caos',
+      target: null,
+      foreign: false,
+      ignored: true,
     });
   });
 

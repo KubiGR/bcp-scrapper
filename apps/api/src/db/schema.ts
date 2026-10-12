@@ -341,6 +341,8 @@ export const detachmentLinks = pgTable('detachment_links', {
   target: text('target'),
   /** Marked as not English (target null): left as it is, but out of Meta's detachment rows. */
   foreign: boolean('foreign').notNull().default(false),
+  /** Ignored as junk (target null): left as it is, out of the names to sort and of Meta. */
+  ignored: boolean('ignored').notNull().default(false),
   createdAt: timestamptz('created_at').notNull().defaultNow(),
 });
 

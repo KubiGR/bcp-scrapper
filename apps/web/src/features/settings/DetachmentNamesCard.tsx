@@ -24,6 +24,8 @@ interface LinkRequest {
   name: string;
   target: string | null;
   foreign: boolean;
+  /** Junk to leave alone. */
+  ignored?: boolean;
 }
 interface Pair {
   faction: string;
@@ -174,6 +176,19 @@ function NameRow({
               >
                 Not English
               </Button>
+              <Button
+                size="xs"
+                variant="subtle"
+                color="gray"
+                disabled={readOnly}
+                aria-label={`Ignore ${entry.name}`}
+                loading={linking.some((r) => r.name === entry.name && r.ignored === true)}
+                onClick={() => {
+                  link({ target: null, foreign: false, ignored: true });
+                }}
+              >
+                Ignore
+              </Button>
             </>
           ) : (
             <>
@@ -278,7 +293,8 @@ export function DetachmentNamesCard() {
   };
   const link = useMutation({
     mutationKey: ['detachment-link'],
-    mutationFn: ({ name, target, foreign }: LinkRequest) => linkDetachment(name, target, foreign),
+    mutationFn: ({ name, target, foreign, ignored }: LinkRequest) =>
+      linkDetachment(name, target, foreign, ignored),
     onSuccess: saved,
   });
   const unlink = useMutation({
@@ -312,6 +328,7 @@ export function DetachmentNamesCard() {
     faction === ALL || list.factions.includes(faction);
   const unsure = names.data?.unsure.filter(inFaction) ?? [];
   const foreign = names.data?.foreign.filter(inFaction) ?? [];
+  const ignored = names.data?.ignored.filter(inFaction) ?? [];
   const links = names.data?.links.filter(inFaction) ?? [];
   const learned = names.data?.learned.filter(inFaction) ?? [];
   // A faction BSData covers knows BSData's detachments; others the names BCP uses.
@@ -403,6 +420,40 @@ export function DetachmentNamesCard() {
                 detachment it means to count it.
               </Text>
               <NamesTable entries={foreign} foreign {...rowProps} />
+            </Stack>
+          )}
+          {ignored.length > 0 && (
+            <Stack component="section" aria-label="Ignored" gap={4}>
+              <Text size="sm" fw={600}>
+                Ignored
+              </Text>
+              <Text size="xs" c="dimmed">
+                Names that aren’t a detachment at all. Lists keep them; Meta counts them as
+                detachment unknown.
+              </Text>
+              {ignored.map((entry) => (
+                <Group key={entry.name} justify="space-between" wrap="nowrap">
+                  <Text size="sm">
+                    {entry.name}{' '}
+                    <Text span size="xs" c="dimmed" className="numeric">
+                      · {entry.lists} {entry.lists === 1 ? 'list' : 'lists'}
+                    </Text>
+                  </Text>
+                  <Button
+                    size="xs"
+                    variant="subtle"
+                    color="gray"
+                    disabled={readOnly}
+                    aria-label={`Undo Ignore for ${entry.name}`}
+                    loading={undoing.includes(entry.name)}
+                    onClick={() => {
+                      unlink.mutate(entry.name);
+                    }}
+                  >
+                    Undo
+                  </Button>
+                </Group>
+              ))}
             </Stack>
           )}
           {(wrong.length > 0 || kept.length > 0) && (

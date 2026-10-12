@@ -32,7 +32,8 @@ export async function foreignDetachmentCheck(db: Db): Promise<(name: string) => 
     db.select().from(detachmentLinks),
   ]);
   const bcp = new Set(bcpRows.map((row) => keyOf(row.name)));
-  const linked = new Map(links.map((link) => [link.nameKey, link.foreign]));
+  // Ignored names count as unknown in Meta, like names that aren't English.
+  const linked = new Map(links.map((link) => [link.nameKey, link.foreign || link.ignored]));
   return (name) => {
     const key = keyOf(name);
     if (bcp.has(key)) return false;
@@ -218,8 +219,12 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
     }
   }
   // Linked names are settled; those marked as not English stay listed, apart.
-  const settled = new Set(links.filter((link) => !link.foreign).map((link) => link.nameKey));
+  const settled = new Set(
+    links.filter((link) => !link.foreign && !link.ignored).map((link) => link.nameKey),
+  );
   const marked = new Set(links.filter((link) => link.foreign).map((link) => link.nameKey));
+  // Ignored as junk: listed apart, never among the names to sort.
+  const ignoredKeys = new Set(links.filter((link) => link.ignored).map((link) => link.nameKey));
   const unsure = new Map<string, { name: string; players: Set<string>; factions: Set<string> }>();
   const storedFactions = new Map<string, Set<string>>();
   for (const row of storedRows) {
@@ -236,7 +241,7 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
 
   // A name marked as its own detachment is a known one of its factions, and one to link others to.
   for (const link of links) {
-    if (link.foreign || link.target !== null || targets.has(link.nameKey)) continue;
+    if (link.foreign || link.ignored || link.target !== null || targets.has(link.nameKey)) continue;
     targets.set(link.nameKey, {
       name: link.name,
       factions: storedFactions.get(link.nameKey) ?? new Set<string>(),
@@ -244,7 +249,16 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
     });
   }
 
+  const all = [...unsure.values()].map((entry) => ({
+    name: entry.name,
+    lists: entry.players.size,
+    factions: sorted(entry.factions),
+  }));
+  const ignored = all
+    .filter((entry) => ignoredKeys.has(entry.name.toLowerCase()))
+    .sort((a, b) => b.lists - a.lists || a.name.localeCompare(b.name));
   const names = [...unsure.values()]
+    .filter((entry) => !ignoredKeys.has(entry.name.toLowerCase()))
     .map((entry) => ({
       name: entry.name,
       lists: entry.players.size,
@@ -262,6 +276,7 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
     // Names nobody knows need linking first ("Not linked yet" / "Not in English").
     if (unsure.has(row.name.toLowerCase())) continue;
     if (isForeign({ name: row.name, marked: marked.has(row.name.toLowerCase()) })) continue;
+    if (ignoredKeys.has(row.name.toLowerCase())) continue;
     const key = `${row.faction}\u0000${row.name.toLowerCase()}`;
     const entry = wrongLists.get(key) ?? {
       faction: row.faction,
@@ -283,6 +298,7 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
       .filter((entry) => !isForeign(entry))
       .map(({ name, lists, factions }) => ({ name, lists, factions })),
     foreign: names.filter(isForeign),
+    ignored,
     learned: learned.map((translation) => ({
       ...translation,
       factions: sorted(targets.get(translation.target.toLowerCase())?.factions ?? []),
@@ -309,7 +325,7 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
     kept: rules.keeps.map((keep) => ({ faction: keep.faction, name: keep.name })),
     // A linked name no longer appears in stored lists: it belongs to its target's factions.
     links: links
-      .filter((link) => !link.foreign)
+      .filter((link) => !link.foreign && !link.ignored)
       .map((link) => ({
         name: link.name,
         target: link.target,
@@ -323,28 +339,35 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
 }
 
 /**
- * Links `name` to `target` (null: its own detachment; with `foreign`, a name that isn't English)
- * and re-tidies every stored list.
+ * Links `name` to `target` (null: its own detachment; with `foreign`, a name that isn't English;
+ * with `ignored`, junk to leave alone) and re-tidies every stored list.
  */
 export async function linkDetachment(
   db: Db,
   name: string,
   target: string | null,
   foreign = false,
+  ignored = false,
 ): Promise<void> {
   const clean = cleanDetachmentName(name);
   const value = {
     nameKey: keyOf(clean),
     name: clean,
-    target: target === null || foreign ? null : cleanDetachmentName(target),
-    foreign,
+    target: target === null || foreign || ignored ? null : cleanDetachmentName(target),
+    foreign: foreign && !ignored,
+    ignored,
   };
   await db
     .insert(detachmentLinks)
     .values(value)
     .onConflictDoUpdate({
       target: detachmentLinks.nameKey,
-      set: { name: value.name, target: value.target, foreign: value.foreign },
+      set: {
+        name: value.name,
+        target: value.target,
+        foreign: value.foreign,
+        ignored: value.ignored,
+      },
     });
   await tidyDetachments(db);
 }

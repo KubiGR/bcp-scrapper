@@ -362,6 +362,25 @@ Detachment: Carnival of Excess`;
     });
   });
 
+  it('skips a "Detachment Rule(s): … (3 Detachment Points)" header line for the real one below', () => {
+    const text = [
+      'Player Name:  Ben',
+      'Team Name: BAMF',
+      'Factions Used: Emperor’s Children (Thrill Seekers)',
+      'Disposition: Reconnaissance ',
+      'Army Points: 2000',
+      'Detachment Rule(s): Carnival of Excess (Daemonic Empowerment) and Frenzied Host (Frantic Focus) (3 Detachment Points) ',
+      '',
+      'I’m being forced to play this… (2,000 Points)',
+      '',
+      'Emperor’s Children',
+      'Carnival of Excess and Frenzied Host (3 Detachment Points)',
+      'Reconnaissance',
+      'Strike Force (2,000 Points)',
+    ].join('\n');
+    expect(parseArmyList(text).detachments).toEqual(['Carnival of Excess and Frenzied Host']);
+  });
+
   it('reads battle sizes written with a space for thousands, "(2 000 Points)"', () => {
     const text = [
       'WE berzerker and butchers (2 000 Points)',
