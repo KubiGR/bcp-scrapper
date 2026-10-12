@@ -69,12 +69,12 @@ export function AppLayout() {
               </Link>
               <span className={classes.byline}>by Andreas Dranidis</span>
             </Group>
-            <Group gap="xl" wrap="nowrap" className={classes.actions}>
+            <Group gap="lg" wrap="nowrap" className={classes.actions}>
               <QueueIndicator />
               <Group
                 component="nav"
                 aria-label="Main"
-                gap="lg"
+                gap="md"
                 wrap="nowrap"
                 visibleFrom={NAV_BREAKPOINT}
               >
