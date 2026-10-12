@@ -69,7 +69,9 @@ describe('EventsTable', () => {
         }}
       />,
     );
-    expect(screen.getByText('432 players · 108 teams')).toBeInTheDocument();
+    // The size as a badge (a major event), the teams under it.
+    expect(screen.getAllByText('432 players')[0]).toHaveAttribute('data-tier', 'major');
+    expect(screen.getByText('108 teams')).toBeInTheDocument();
     expect(screen.getByText('Teams')).toBeInTheDocument();
     // Phrasing content only inside a button: no <p>.
     expect(screen.getByRole('button', { name: 'Sample Team Open' }).querySelector('p')).toBeNull();
@@ -98,7 +100,7 @@ describe('EventsTable', () => {
     expect(screen.getByText('—')).toBeInTheDocument();
   });
 
-  it('names the dates, place and size under the name too, for phones where those columns are hidden', () => {
+  it('names the dates and place under the name, and the size badge by it, for phones where those columns are hidden', () => {
     const event = anEvent({ city: 'Athens', country: 'Greece', playerCount: 44, teamCount: null });
     renderWithProviders(
       <EventsTable
@@ -107,11 +109,13 @@ describe('EventsTable', () => {
         response={{ items: [event], total: 1, page: 1, pageSize: 25 }}
       />,
     );
-    const line = `${formatEventDates(event.startDate, event.endDate)} · Athens, Greece · 44 players`;
+    const line = `${formatEventDates(event.startDate, event.endDate)} · Athens, Greece`;
     // Compared raw: the dates hold a thin space the default text matcher would normalize.
     expect(
       screen.getByText((_, element) => element?.tagName === 'P' && element.textContent === line),
     ).toBeInTheDocument();
+    // Once in the name cell (phones), once in the Size column.
+    expect(screen.getAllByText('44 players')).toHaveLength(2);
   });
 
   it('sorts by size or date from the headers: high to low, low to high, then off', () => {

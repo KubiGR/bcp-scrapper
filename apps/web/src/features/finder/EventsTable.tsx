@@ -1,11 +1,12 @@
 import type { EventListItem, EventListResponse } from '@bcp/shared';
-import { Text, UnstyledButton, type MantineTheme } from '@mantine/core';
+import { Box, Text, UnstyledButton, type MantineTheme } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
 import { EventStatusBadges } from '../../components/EventStatusBadges';
 import { Panel } from '../../components/Panel';
-import { formatEventDates, formatEventSize } from '../../lib/format';
+import { formatEventDates } from '../../lib/format';
 import classes from './EventsTable.module.css';
 import { FINDER_PAGE_SIZE, type FinderSearch } from './finder-search';
+import { SizeBadge } from './SizeBadge';
 import { UpdateLabel } from '../updates/UpdateLabel';
 
 type EventSort = FinderSearch['sort'];
@@ -104,8 +105,11 @@ export function EventsTable({
                     {event.name}
                   </Text>
                 </UnstyledButton>
+                <Box hiddenFrom="sm" mt={4}>
+                  <SizeBadge playerCount={event.playerCount} />
+                </Box>
                 <Text size="xs" c="dimmed" hiddenFrom="sm">
-                  {`${formatEventDates(event.startDate, event.endDate)} · ${placeOf(event)} · ${formatEventSize(event)}`}
+                  {`${formatEventDates(event.startDate, event.endDate)} · ${placeOf(event)}`}
                 </Text>
               </>
             ),
@@ -123,9 +127,14 @@ export function EventsTable({
             textAlign: 'right',
             visibleMediaQuery: wide,
             render: (event) => (
-              <Text size="sm" className="numeric">
-                {formatEventSize(event)}
-              </Text>
+              <>
+                <SizeBadge playerCount={event.playerCount} />
+                {event.teamCount !== null && (
+                  <Text size="xs" c="dimmed" className="numeric">
+                    {`${event.teamCount} ${event.teamCount === 1 ? 'team' : 'teams'}`}
+                  </Text>
+                )}
+              </>
             ),
           },
           {

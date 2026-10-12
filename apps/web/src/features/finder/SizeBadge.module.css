@@ -1,0 +1,33 @@
+/* The player count as a pill: dim for small events, brighter and bolder the bigger they are. */
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.badge[data-tier='small'] {
+  color: var(--mantine-color-dimmed);
+  border-color: var(--mantine-color-dark-4);
+}
+
+.badge[data-tier='medium'] {
+  color: var(--mantine-color-neon-3);
+  border-color: var(--mantine-color-neon-8);
+}
+
+.badge[data-tier='large'] {
+  font-weight: 700;
+  color: var(--mantine-color-dark-9);
+  background: var(--mantine-color-neon-5);
+}
+
+.badge[data-tier='major'] {
+  font-weight: 700;
+  color: var(--mantine-color-dark-9);
+  background: var(--mantine-color-yellow-5);
+}
