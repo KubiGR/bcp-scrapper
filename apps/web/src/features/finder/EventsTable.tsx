@@ -1,5 +1,6 @@
 import type { EventListItem, EventListResponse } from '@bcp/shared';
-import { Box, Text, UnstyledButton, type MantineTheme } from '@mantine/core';
+import { Box, Table, Text, UnstyledButton, type MantineTheme } from '@mantine/core';
+import { Fragment } from 'react';
 import { DataTable } from 'mantine-datatable';
 import { EventStatusBadges } from '../../components/EventStatusBadges';
 import { Panel } from '../../components/Panel';
@@ -76,9 +77,22 @@ export function EventsTable({
     <Panel p={0}>
       <DataTable<EventListItem>
         records={records}
-        rowClassName={(event, index) =>
-          index > 0 && weekStarts.has(event.bcpId) ? classes.weekStart : undefined
-        }
+        rowFactory={({ record, children, rowProps }) => {
+          const week = weekStarts.get(record.bcpId);
+          const row = <Table.Tr {...rowProps}>{children}</Table.Tr>;
+          if (week === undefined) return row;
+          // A heading row across the table before each week's first event.
+          return (
+            <Fragment key={record.bcpId}>
+              <Table.Tr className={classes.weekRow}>
+                <Table.Td colSpan={99} className={classes.week}>
+                  {week}
+                </Table.Td>
+              </Table.Tr>
+              {row}
+            </Fragment>
+          );
+        }}
         customRowAttributes={(event) => {
           const parity = shade.get(event.bcpId);
           return parity ? { 'data-week-shade': parity } : {};
@@ -130,9 +144,6 @@ export function EventsTable({
             title: 'Tournament',
             render: (event) => (
               <>
-                {weekStarts.has(event.bcpId) && (
-                  <Text className={classes.week}>{weekStarts.get(event.bcpId)}</Text>
-                )}
                 <UnstyledButton
                   className={classes.eventName}
                   onClick={(e) => {

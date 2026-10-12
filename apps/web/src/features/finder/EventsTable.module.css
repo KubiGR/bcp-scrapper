@@ -16,24 +16,21 @@
   outline-offset: 2px;
 }
 
-/* By date: each week's first event names the week, with a clear line above it; every other
-   week is shaded, so the weeks read as groups. */
+/* By date: a heading row names each week; every other week is shaded, so the weeks read as
+   groups. */
+.weekRow > td {
+  padding: 10px var(--mantine-spacing-sm) 6px !important;
+  border-top: 2px solid var(--mantine-color-neon-7) !important;
+  background: var(--mantine-color-dark-8);
+}
+
 .week {
-  display: inline-block;
-  margin-bottom: 4px;
-  padding: 1px 8px;
-  border-radius: 4px;
   font-family: var(--mantine-font-family-monospace);
   font-size: var(--mantine-font-size-xs);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--mantine-color-neon-3);
-  background: rgb(0 229 255 / 0.1);
-}
-
-.weekStart td {
-  border-top: 2px solid var(--mantine-color-neon-7) !important;
 }
 
 tr[data-week-shade='odd'] > td {
