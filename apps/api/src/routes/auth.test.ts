@@ -511,6 +511,8 @@ describe('security headers', () => {
       expect(response.headers.get('x-content-type-options'), path).toBe('nosniff');
       expect(response.headers.get('referrer-policy'), path).toBe('same-origin');
       expect(response.headers.get('x-frame-options'), path).toBe('DENY');
+      // Kept out of search engines: it's for friends, not the public.
+      expect(response.headers.get('x-robots-tag'), path).toBe('noindex, nofollow');
     }
   });
 

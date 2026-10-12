@@ -124,4 +124,6 @@ export const securityHeaders = createMiddleware(async (c, next) => {
   c.res.headers.set('X-Content-Type-Options', 'nosniff');
   c.res.headers.set('Referrer-Policy', 'same-origin');
   c.res.headers.set('X-Frame-Options', 'DENY');
+  // Private, for friends: kept out of search engines.
+  c.res.headers.set('X-Robots-Tag', 'noindex, nofollow');
 });
