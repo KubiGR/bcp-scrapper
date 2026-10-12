@@ -121,7 +121,7 @@ export function createApp(deps: AppDeps) {
   app.route('/api', syncRoutes(deps));
   app.route('/api', bcpRoutes(deps));
   app.route('/api', catalogRoutes({ ...deps, now }));
-  app.route('/api', fetchQueueRoutes(deps));
+  app.route('/api', fetchQueueRoutes({ ...deps, authRequired: auth.required }));
   app.route('/api', analysisRoutes(deps));
   app.route('/api', matchupsRoutes({ ...deps, now }));
   app.route('/api', playersSearchRoutes({ ...deps, now }));

@@ -254,6 +254,24 @@ describe('Cloudflare Access login', () => {
     expect(after.user?.canPair).toBe(true);
   });
 
+  it('keeps the fetch queue’s controls for admins; an event’s own retry stays open', async () => {
+    const app = makeApp();
+    const anaJwt = await token({ email: 'ana@example.com' });
+    await send(app, 'GET', '/api/events', { jwt: anaJwt });
+    await approve('ana@example.com');
+    const as = (jwt: string, path: string, body: unknown = {}) =>
+      send(app, 'POST', path, { jwt, body });
+    expect((await as(anaJwt, '/api/fetch-queue/pause')).status).toBe(403);
+    expect((await as(anaJwt, '/api/fetch-queue/resume')).status).toBe(403);
+    expect((await as(anaJwt, '/api/fetch-queue/retry-failed')).status).toBe(403);
+    expect((await as(anaJwt, '/api/fetch-queue/retry-failed', { eventId: 'EVT1' })).status).toBe(
+      200,
+    );
+    const admin = await token();
+    expect((await as(admin, '/api/fetch-queue/pause')).status).toBe(200);
+    expect((await as(admin, '/api/fetch-queue/resume')).status).toBe(200);
+  });
+
   describe('the web app itself', () => {
     let dist: string;
     beforeEach(async () => {

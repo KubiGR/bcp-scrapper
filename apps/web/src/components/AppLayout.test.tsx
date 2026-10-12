@@ -66,4 +66,28 @@ describe('AppLayout', () => {
     expect(await pairingsLinks(aUser({ role: 'member', canPair: true }))).toBeGreaterThan(0);
     expect(await pairingsLinks(aUser({ role: 'member', canPair: false }))).toBe(0);
   });
+
+  it('shows Settings to admins only (and to everyone when logins are off)', async () => {
+    const settingsLinks = async (me: Parameters<typeof stubFetchRoutes>[0][string]) => {
+      stubFetchRoutes({ 'GET /api/auth/me': me, 'GET /api/fetch-queue': null });
+      const view = renderWithRouter(<AppLayout />);
+      await screen.findAllByRole('link', { name: 'Tournaments' });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const count = screen.queryAllByRole('link', { name: 'Settings' }).length;
+      view.unmount();
+      return count;
+    };
+    expect(await settingsLinks(loggedIn(aUser({ role: 'admin' })))).toBeGreaterThan(0);
+    expect(await settingsLinks(authOff)).toBeGreaterThan(0);
+    expect(await settingsLinks(loggedIn(aUser({ role: 'member', canPair: true })))).toBe(0);
+    // The fetch queue too: its page and the status in the header.
+    stubFetchRoutes({
+      'GET /api/auth/me': loggedIn(aUser({ role: 'member' })),
+      'GET /api/fetch-queue': null,
+    });
+    renderWithRouter(<AppLayout />);
+    await screen.findAllByRole('link', { name: 'Tournaments' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryAllByRole('link', { name: 'Queue' })).toHaveLength(0);
+  });
 });

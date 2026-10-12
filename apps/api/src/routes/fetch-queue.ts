@@ -2,7 +2,8 @@ import { QueueListsRequestSchema, type BcpStatus } from '@bcp/shared';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { Db } from '../db/client';
-import { BcpAuthError } from '../errors';
+import type { AuthEnv } from '../auth/middleware';
+import { BcpAuthError, ForbiddenError } from '../errors';
 import { queueEventLists } from '../fetch-queue/queue-lists';
 import { queueEventPairings } from '../fetch-queue/queue-pairings';
 import type { FetchQueueWorker } from '../fetch-queue/worker';
@@ -30,10 +31,18 @@ export function fetchQueueRoutes(deps: {
   runner: SyncRunner;
   fetchQueue: FetchQueueWorker;
   bcpStatus: () => Promise<BcpStatus>;
+  authRequired?: boolean;
 }) {
   const { db, fetchQueue } = deps;
+  // The whole queue's controls (pause, resume, retry everything) are for admins; an event's own
+  // lists and pairings stay open to everyone signed in.
+  const adminOnly = (user: { role: string } | undefined) => {
+    if (deps.authRequired === true && user?.role !== 'admin') {
+      throw new ForbiddenError('Only admins can control the fetch queue');
+    }
+  };
   return (
-    new Hono()
+    new Hono<AuthEnv>()
       .post('/events/:id/lists/queue', requireJson, async (c) => {
         const id = c.req.param('id');
         // Not requireEvent: an event never synced yet still queues fine, since
@@ -60,15 +69,18 @@ export function fetchQueueRoutes(deps: {
           RetryFailedSchema,
           await c.req.json<unknown>().catch(() => null),
         );
+        if (eventId === undefined) adminOnly(c.get('user'));
         return c.json({ requeued: await retryFailedJobs(db, eventId, only, code) });
       })
       .get('/fetch-queue', async (c) => c.json(await fetchQueue.state()))
       .get('/fetch-queue/details', async (c) => c.json(await queueDetails(db)))
       .post('/fetch-queue/pause', requireJson, async (c) => {
+        adminOnly(c.get('user'));
         fetchQueue.pause('user');
         return c.json(await fetchQueue.state());
       })
       .post('/fetch-queue/resume', requireJson, async (c) => {
+        adminOnly(c.get('user'));
         if ((await fetchQueue.state()).pausedReason === 'login-rejected') {
           const { state } = await deps.bcpStatus();
           if (state === 'rejected' || state === 'missing') {

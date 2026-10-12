@@ -1,5 +1,6 @@
 import { Grid, Stack, Title } from '@mantine/core';
 import { createFileRoute } from '@tanstack/react-router';
+import { AdminOnly } from '../features/auth/AdminOnly';
 import { FetchQueueCard } from '../features/fetch-queue/FetchQueueCard';
 import { AutoFetchCard } from '../features/settings/AutoFetchCard';
 import { BsdataCard } from '../features/settings/BsdataCard';
@@ -9,7 +10,13 @@ import { BcpStatusCard } from '../features/settings/BcpStatusCard';
 import { DetachmentNamesCard } from '../features/settings/DetachmentNamesCard';
 import { UsersCard } from '../features/settings/UsersCard';
 
-export const Route = createFileRoute('/settings')({ component: SettingsPage });
+export const Route = createFileRoute('/settings')({
+  component: () => (
+    <AdminOnly>
+      <SettingsPage />
+    </AdminOnly>
+  ),
+});
 
 /** Two columns on wide screens: the app's state on the left, detachment names on the right. */
 function SettingsPage() {

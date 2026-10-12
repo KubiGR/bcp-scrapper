@@ -30,6 +30,10 @@ export const meQuery = queryOptions({
 export const canUsePairings = (me: MeResponse | undefined): boolean =>
   me !== undefined && (!me.authRequired || me.user?.role === 'admin' || me.user?.canPair === true);
 
+/** Admin pages (settings, the fetch queue): admins, or everyone when logins are off. */
+export const isAdminView = (me: MeResponse | undefined): boolean =>
+  me !== undefined && (!me.authRequired || me.user?.role === 'admin');
+
 export const usersQuery = queryOptions({
   queryKey: ['users'],
   queryFn: () => apiGet('/api/users', UsersResponseSchema),

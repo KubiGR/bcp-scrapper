@@ -5,7 +5,7 @@ import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { FinderSearchSchema } from '../features/finder/finder-search';
 import { useQuery } from '@tanstack/react-query';
 import { AccountMenu } from '../features/auth/AccountMenu';
-import { canUsePairings, meQuery } from '../features/auth/auth-queries';
+import { canUsePairings, isAdminView, meQuery } from '../features/auth/auth-queries';
 import { QueueIndicator } from '../features/fetch-queue/QueueIndicator';
 import classes from './AppLayout.module.css';
 import { Logo } from './Logo';
@@ -36,7 +36,13 @@ export function AppLayout() {
   const me = useQuery(meQuery);
   // Pairings only for those it was opened to.
   const pairings = canUsePairings(me.data);
-  const items = NAV_ITEMS.filter((item) => item.to !== '/pairings' || pairings);
+  // Settings and the fetch queue are for admins.
+  const admin = isAdminView(me.data);
+  const items = NAV_ITEMS.filter(
+    (item) =>
+      (item.to !== '/pairings' || pairings) &&
+      (admin || (item.to !== '/settings' && item.to !== '/queue')),
+  );
   const wide = useRouterState({ select: (state) => WIDE_PAGES.has(state.location.pathname) });
   return (
     <AppShell
@@ -70,7 +76,7 @@ export function AppLayout() {
               <span className={classes.byline}>by Andreas Dranidis</span>
             </Group>
             <Group gap="lg" wrap="nowrap" className={classes.actions}>
-              <QueueIndicator />
+              {admin && <QueueIndicator />}
               <Group
                 component="nav"
                 aria-label="Main"
