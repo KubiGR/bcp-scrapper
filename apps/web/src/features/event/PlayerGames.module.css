@@ -1,0 +1,28 @@
+/* Round, result and score: as wide as their content, never squeezed (the opponent takes the rest). */
+.fit {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* W / L / D / Bye: a small pill, green for a win, red for a loss. */
+.outcome {
+  display: inline-block;
+  min-width: 24px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 700;
+  color: var(--mantine-color-gray-4);
+  background: var(--mantine-color-dark-5);
+}
+
+.outcome[data-outcome='win'] {
+  color: var(--mantine-color-teal-3);
+  background: rgb(18 184 134 / 0.2);
+}
+
+.outcome[data-outcome='loss'] {
+  color: var(--mantine-color-red-3);
+  background: rgb(250 82 82 / 0.2);
+}

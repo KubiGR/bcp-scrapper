@@ -56,6 +56,7 @@ export function GamesTable({ games, onShowList, knownPlayerIds }: GamesTableProp
                     <Button
                       size="xs"
                       variant="light"
+                      style={{ flexShrink: 0 }}
                       aria-label={`Show ${game.playerA.name}'s list`}
                       onClick={() => onShowList?.(game.playerA.id)}
                     >
@@ -95,6 +96,7 @@ export function GamesTable({ games, onShowList, knownPlayerIds }: GamesTableProp
                           <Button
                             size="xs"
                             variant="light"
+                            style={{ flexShrink: 0 }}
                             aria-label={`Show ${playerB.name}'s list`}
                             onClick={() => onShowList?.(playerB.id)}
                           >

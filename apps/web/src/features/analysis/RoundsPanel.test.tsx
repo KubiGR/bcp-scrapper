@@ -144,4 +144,20 @@ describe('RoundsPanel', () => {
     expect(await screen.findByRole('dialog', { name: 'Rhea Stone' })).toBeInTheDocument();
     expect(await screen.findByText(/list text/)).toBeInTheDocument();
   });
+
+  it('filters a round to the games of a player, army or team, opening their matchups', async () => {
+    stubFetchRoutes({ 'GET /api/events/EVT1/rounds': rounds });
+    renderWithRouter(<RoundsPanel event={anEventDetail()} />);
+    const filter = await screen.findByRole('textbox', { name: 'Filter games' });
+    fireEvent.change(filter, { target: { value: 'necrons' } });
+    // Only the matching matchup, opened to its game.
+    expect(screen.queryByText(/Jade Court/)).toBeNull();
+    expect(screen.getByRole('button', { name: /Red Legion/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByText('Bea Moss')).toBeInTheDocument();
+    fireEvent.change(filter, { target: { value: 'tyranids' } });
+    expect(screen.getByText('No games match “tyranids” in this round.')).toBeInTheDocument();
+  });
 });

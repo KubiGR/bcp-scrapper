@@ -17,6 +17,7 @@ import { formatDuration } from '../../lib/format';
 import { queueLists } from '../fetch-queue/fetch-queue-api';
 import { fetchQueueQuery } from '../fetch-queue/fetch-queue-queries';
 import { eventQuery, playerListQuery } from './event-queries';
+import { PlayerGames } from './PlayerGames';
 
 interface ListDrawerProps {
   eventId: string;
@@ -78,6 +79,7 @@ export function ListDrawer({ eventId, player, onClose }: ListDrawerProps) {
       {player && (
         <Stack gap="md">
           <ShareListButton eventId={eventId} player={player} />
+          <PlayerGames eventId={eventId} playerId={player.bcpId} playerName={player.name} />
           <ListContent eventId={eventId} player={player} />
         </Stack>
       )}
