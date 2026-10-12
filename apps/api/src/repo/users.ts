@@ -74,11 +74,13 @@ function isUniqueViolation(error: unknown): boolean {
 export async function findOrCreateAccessUser(db: Db, email: string, role: UserRole): Promise<User> {
   const found = await findLoginUser(db, email);
   if (found !== null) return { ...found, role: found.role };
+  // Someone new waits for an admin to approve them (enable the account); admins don't.
   const created = await insertUser(db, {
     username: email,
     passwordHash: '!',
     role,
     mustChangePassword: false,
+    disabled: role !== 'admin',
   });
   if (created !== null) return created;
   // Another request created them first.
@@ -90,7 +92,13 @@ export async function findOrCreateAccessUser(db: Db, email: string, role: UserRo
 /** Adds a user; null when the username is taken (checked by the database, so races lose too). */
 export async function insertUser(
   db: Db,
-  values: { username: string; passwordHash: string; role: UserRole; mustChangePassword: boolean },
+  values: {
+    username: string;
+    passwordHash: string;
+    role: UserRole;
+    mustChangePassword: boolean;
+    disabled?: boolean;
+  },
 ): Promise<User | null> {
   try {
     const [row] = await db.insert(users).values(values).returning(userColumns);

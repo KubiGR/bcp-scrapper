@@ -23,15 +23,33 @@ function rowOf(name: string): HTMLElement {
 }
 
 describe('UsersCard', () => {
-  it('is not shown when Cloudflare Access does the login', async () => {
-    const fetchMock = stubFetchRoutes({ 'GET /api/auth/me': viaAccess(me) });
-    renderWithProviders(<UsersCard />);
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalled();
+  it('through Cloudflare Access: lists who waits to be let in, to approve or remove', async () => {
+    const bo = aUser({ id: 3, username: 'bo@example.com', role: 'member' });
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': viaAccess(me),
+      'GET /api/users': {
+        users: [me, { ...ana, username: 'ana@example.com', disabled: true }, bo],
+      },
+      'PATCH /api/users/2': { user: { ...ana, disabled: false } },
     });
-    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+    renderWithProviders(<UsersCard />);
+    const waiting = within(await screen.findByRole('region', { name: 'Waiting for approval' }));
+    expect(waiting.getByText('ana@example.com')).toBeInTheDocument();
+    expect(waiting.queryByText('bo@example.com')).toBeNull();
+    // No passwords through Access: no new accounts, no resets, and admins come from the server.
     expect(screen.queryByRole('button', { name: /Add user/ })).not.toBeInTheDocument();
-    expect(fetchMock.mock.calls.some(([url]) => url === '/api/users')).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Actions for bo@example.com' }));
+    expect(await screen.findByRole('menuitem', { name: 'Disable' })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: 'Reset password' })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: 'Make admin' })).toBeNull();
+    fireEvent.click(waiting.getByRole('button', { name: 'Approve ana@example.com' }));
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          ([url, init]) => url === '/api/users/2' && init?.method === 'PATCH',
+        ),
+      ).toBe(true);
+    });
   });
 
   it('lists the users with role and status', async () => {

@@ -1,10 +1,15 @@
 import type { MeResponse } from '@bcp/shared';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWK } from 'jose';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { eq } from 'drizzle-orm';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import type { Db } from '../db/client';
 import { users } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
+import { serveWebApp } from '../static';
 import { SyncRunner } from '../sync/runner';
 import { ALL_EVENTS, sampleSource, silentLogger, testFetchQueue } from '../test/helpers';
 
@@ -60,18 +65,28 @@ function makeApp() {
   });
 }
 
+/** A visitor who was let in: their account approved (enabled). */
+async function approve(email: string) {
+  await db.update(users).set({ disabled: false }).where(eq(users.username, email));
+}
+
 function send(
   app: ReturnType<typeof makeApp>,
   method: string,
   path: string,
-  options: { jwt?: string | null; origin?: string | null } = {},
+  options: { jwt?: string | null; origin?: string | null; body?: unknown } = {},
 ) {
   const headers: Record<string, string> = { host: HOST };
   if (options.jwt !== null && options.jwt !== undefined) {
     headers['cf-access-jwt-assertion'] = options.jwt;
   }
   if (method !== 'GET' && options.origin !== null) headers.origin = options.origin ?? ORIGIN;
-  return app.request(path, { method, headers });
+  if (options.body !== undefined) headers['content-type'] = 'application/json';
+  return app.request(path, {
+    method,
+    headers,
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+  });
 }
 
 beforeAll(async () => {
@@ -98,13 +113,18 @@ describe('Cloudflare Access login', () => {
     });
   });
 
-  it('makes anyone else a member, and remembers them as the same user next time', async () => {
+  it('makes anyone else a member who waits for approval, remembered as the same user', async () => {
     const app = makeApp();
     const jwt = await token({ email: 'Ana@Example.com' });
-    const first = (await (await send(app, 'GET', '/api/auth/me', { jwt })).json()) as MeResponse;
-    const again = (await (await send(app, 'GET', '/api/auth/me', { jwt })).json()) as MeResponse;
-    expect(first.user).toMatchObject({ username: 'ana@example.com', role: 'member' });
-    expect(again.user?.id).toBe(first.user?.id);
+    // Waiting: the API refuses them until an admin approves.
+    expect((await send(app, 'GET', '/api/auth/me', { jwt })).status).toBe(403);
+    expect((await send(app, 'GET', '/api/events', { jwt })).status).toBe(403);
+    expect(await db.select().from(users)).toMatchObject([
+      { username: 'ana@example.com', role: 'member', disabled: true },
+    ]);
+    await approve('ana@example.com');
+    const me = (await (await send(app, 'GET', '/api/auth/me', { jwt })).json()) as MeResponse;
+    expect(me.user).toMatchObject({ username: 'ana@example.com', role: 'member', disabled: false });
     expect(await db.select().from(users)).toHaveLength(1);
   });
 
@@ -120,6 +140,9 @@ describe('Cloudflare Access login', () => {
     const app = makeApp();
     expect((await send(app, 'GET', '/api/events', { jwt: await token() })).status).toBe(200);
     const member = await token({ email: 'ana@example.com' });
+    await send(app, 'GET', '/api/events', { jwt: member });
+    await approve('ana@example.com');
+    expect((await send(app, 'GET', '/api/events', { jwt: member })).status).toBe(200);
     expect((await send(app, 'POST', '/api/rules/refresh', { jwt: member })).status).toBe(403);
   });
 
@@ -171,12 +194,89 @@ describe('Cloudflare Access login', () => {
     expect(response.status).toBe(403);
   });
 
-  it('has no password routes or user management', async () => {
+  it('has no password routes: no login, password change, new password accounts or resets', async () => {
     const app = makeApp();
     const jwt = await token();
     expect((await send(app, 'POST', '/api/auth/login', { jwt })).status).toBe(404);
     expect((await send(app, 'POST', '/api/auth/password', { jwt })).status).toBe(404);
-    expect((await send(app, 'GET', '/api/users', { jwt })).status).toBe(404);
+    expect(
+      (await send(app, 'POST', '/api/users', { jwt, body: { username: 'x', role: 'member' } }))
+        .status,
+    ).toBe(404);
+    expect((await send(app, 'POST', '/api/users/1/reset-password', { jwt })).status).toBe(404);
+  });
+
+  it('lets an admin see who waits, approve them, or remove them', async () => {
+    const app = makeApp();
+    const admin = await token();
+    await send(app, 'GET', '/api/events', { jwt: admin });
+    await send(app, 'GET', '/api/events', { jwt: await token({ email: 'ana@example.com' }) });
+    await send(app, 'GET', '/api/events', { jwt: await token({ email: 'bo@example.com' }) });
+    const list = (await (await send(app, 'GET', '/api/users', { jwt: admin })).json()) as {
+      users: { id: number; username: string; disabled: boolean }[];
+    };
+    const ana = list.users.find((u) => u.username === 'ana@example.com');
+    const bo = list.users.find((u) => u.username === 'bo@example.com');
+    expect(ana?.disabled).toBe(true);
+    // Approve Ana, remove Bo.
+    const approved = await send(app, 'PATCH', `/api/users/${String(ana?.id)}`, {
+      jwt: admin,
+      body: { disabled: false },
+    });
+    expect(approved.status).toBe(200);
+    expect((await send(app, 'DELETE', `/api/users/${String(bo?.id)}`, { jwt: admin })).status).toBe(
+      200,
+    );
+    const ana2 = await token({ email: 'ana@example.com' });
+    expect((await send(app, 'GET', '/api/events', { jwt: ana2 })).status).toBe(200);
+    // A member can't manage users.
+    expect((await send(app, 'GET', '/api/users', { jwt: ana2 })).status).toBe(403);
+  });
+
+  describe('the web app itself', () => {
+    let dist: string;
+    beforeEach(async () => {
+      dist = await mkdtemp(join(tmpdir(), 'bcp-web-'));
+      await writeFile(
+        join(dist, 'index.html'),
+        '<!doctype html><script src="/assets/app.js"></script>',
+      );
+    });
+    const withWeb = () => {
+      const app = makeApp();
+      serveWebApp(app, dist);
+      return app;
+    };
+    afterEach(async () => {
+      await rm(dist, { recursive: true, force: true });
+    });
+
+    it('shows someone waiting only a page saying so: no app, no script', async () => {
+      const app = withWeb();
+      const jwt = await token({ email: 'ana@example.com' });
+      for (const path of ['/', '/events/X', '/assets/app.js', '/robots.txt']) {
+        const response = await send(app, 'GET', path, { jwt });
+        expect(response.status, path).toBe(403);
+        const html = await response.text();
+        expect(html, path).toContain('Waiting for approval');
+        expect(html, path).not.toContain('<script');
+      }
+    });
+
+    it('serves the app once approved, and to an admin', async () => {
+      const app = withWeb();
+      const jwt = await token({ email: 'ana@example.com' });
+      await send(app, 'GET', '/', { jwt });
+      await approve('ana@example.com');
+      expect(await (await send(app, 'GET', '/', { jwt })).text()).toContain('<script');
+      expect((await send(app, 'GET', '/', { jwt: await token() })).status).toBe(200);
+    });
+
+    it('serves nothing without a valid Access token', async () => {
+      const response = await send(withWeb(), 'GET', '/');
+      expect(response.status).toBe(401);
+      expect(await response.text()).not.toContain('<script');
+    });
   });
 
   it('leaves the health check open', async () => {
