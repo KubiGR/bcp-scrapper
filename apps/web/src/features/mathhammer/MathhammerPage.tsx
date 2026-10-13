@@ -1,12 +1,30 @@
 import { Grid, Stack, Text, Title } from '@mantine/core';
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { AttackerPanel } from './AttackerPanel';
 import { DefenderPanel } from './DefenderPanel';
 import { calculateForm } from './best';
 import { defaultForm } from './form-state';
 import { ResultPanel, type Outcome } from './ResultPanel';
+import { ResultSummary } from './ResultSummary';
 import classes from './MathhammerPage.module.css';
 import { SituationPanel } from './SituationPanel';
+
+/** Whether the element is on screen (always false where the browser can't tell). */
+function useInView(ref: RefObject<HTMLElement | null>): boolean {
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (el === null || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setInView(entry?.isIntersecting ?? false);
+    });
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+    };
+  }, [ref]);
+  return inView;
+}
 
 /** Exact chances for one unit's attacks into one target (11th edition). */
 export function MathhammerPage() {
@@ -14,6 +32,8 @@ export function MathhammerPage() {
   // Typing stays quick while a big calculation catches up.
   const settled = useDeferredValue(form);
   const outcome = useMemo<Outcome>(() => calculateForm(settled), [settled]);
+  const resultRef = useRef<HTMLDivElement>(null);
+  const resultInView = useInView(resultRef);
 
   return (
     <Stack gap="lg">
@@ -23,9 +43,9 @@ export function MathhammerPage() {
           Exact chances, worked out from the dice by 11th-edition rules.
         </Text>
       </Stack>
-      {/* Wide screens: attacker | defender | result, the result kept in view while scrolling. */}
+      {/* Attacker | defender side by side on wide screens, the result under them, full width. */}
       <Grid gap="lg">
-        <Grid.Col span={{ base: 12, lg: 5 }}>
+        <Grid.Col span={{ base: 12, lg: 7 }}>
           <Stack gap="lg">
             <AttackerPanel
               form={form}
@@ -40,7 +60,7 @@ export function MathhammerPage() {
             />
           </Stack>
         </Grid.Col>
-        <Grid.Col span={{ base: 12, lg: 4 }}>
+        <Grid.Col span={{ base: 12, lg: 5 }}>
           <DefenderPanel
             defender={form.defender}
             onChange={(defender) => {
@@ -48,12 +68,21 @@ export function MathhammerPage() {
             }}
           />
         </Grid.Col>
-        <Grid.Col span={{ base: 12, lg: 3 }}>
-          <div className={classes.result}>
+        <Grid.Col span={12}>
+          <div ref={resultRef} className={classes.result} role="region" aria-label="Full result">
             <ResultPanel outcome={outcome} form={settled} />
           </div>
         </Grid.Col>
       </Grid>
+      {/* While the full result is out of view, its headline numbers stay at the bottom. */}
+      {!resultInView && (
+        <ResultSummary
+          outcome={outcome}
+          onShow={() => {
+            resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+        />
+      )}
     </Stack>
   );
 }

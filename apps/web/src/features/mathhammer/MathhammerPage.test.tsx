@@ -133,8 +133,9 @@ describe('MathhammerPage', () => {
   it('says what it can’t read', async () => {
     renderWithProviders(<MathhammerPage />);
     fireEvent.change(weapon().getByLabelText('D'), { target: { value: 'D7' } });
-    expect(await screen.findByText('Can’t calculate')).toBeInTheDocument();
-    expect(screen.getByText(/Bolt rifle damage: can’t read “D7”/)).toBeInTheDocument();
+    const result = within(screen.getByRole('region', { name: 'Full result' }));
+    expect(await result.findByText('Can’t calculate')).toBeInTheDocument();
+    expect(result.getByText(/Bolt rifle damage: can’t read “D7”/)).toBeInTheDocument();
   });
 
   it('shows the leader’s chance once a Character is added', async () => {
@@ -143,7 +144,8 @@ describe('MathhammerPage', () => {
     fireEvent.click(
       within(screen.getByRole('group', { name: 'Models 2' })).getByLabelText('Character'),
     );
-    expect(await screen.findByText('Leader slain')).toBeInTheDocument();
+    const result = within(screen.getByRole('region', { name: 'Full result' }));
+    expect(await result.findByText('Leader slain')).toBeInTheDocument();
     expect(screen.getByText(/^Allocation: /)).toBeInTheDocument();
   });
 });

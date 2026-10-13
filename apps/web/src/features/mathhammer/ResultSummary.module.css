@@ -1,0 +1,18 @@
+/* Pinned to the bottom of the screen, over the page, while the full result is out of view. */
+.bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  padding: 10px var(--mantine-spacing-md);
+  background: var(--mantine-color-dark-8);
+  border-top: 1px solid var(--mantine-color-neon-8);
+  box-shadow: 0 -6px 18px rgb(0 0 0 / 0.35);
+}
+
+.label {
+  font-family: var(--mantine-font-family);
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-dimmed);
+}
