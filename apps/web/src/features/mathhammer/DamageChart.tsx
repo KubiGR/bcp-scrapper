@@ -91,7 +91,7 @@ export function DamageChart({ woundsDealt }: { woundsDealt: number[] }) {
   const quartileText = `Q1: ${String(qs[0])} · Q2: ${String(qs[1])} · Q3: ${String(qs[2])}`;
 
   return (
-    <Stack gap={4}>
+    <Stack gap={4} className={classes.block}>
       <Group justify="space-between" align="center">
         <Text size="sm" fw={600}>
           Damage dealt
