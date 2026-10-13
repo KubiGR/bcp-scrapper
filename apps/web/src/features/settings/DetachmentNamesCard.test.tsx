@@ -129,6 +129,26 @@ describe('DetachmentNamesCard', () => {
     expect(known.queryByText('War Horde')).not.toBeInTheDocument();
   });
 
+  it('stays on the faction being worked on, even when another has more left or it has none', async () => {
+    // After the save, Chaos Daemons has nothing left and Orks has the most.
+    const after = names({ unsure: [{ name: 'Horda de Guerra', lists: 4, factions: ['Orks'] }] });
+    stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/detachments': names(),
+      'POST /api/detachments/links': after,
+    });
+    renderWithProviders(<DetachmentNamesCard />);
+    const faction = await screen.findByRole('combobox', { name: 'Faction' });
+    expect(faction).toHaveValue('Chaos Daemons (2)');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Cabalgata del Caos is its own detachment' }),
+    );
+    await waitFor(() => {
+      expect(faction).toHaveValue('Chaos Daemons (0)');
+    });
+    expect(screen.queryByText('Horda de Guerra')).not.toBeInTheDocument();
+  });
+
   it('sorts the names on a column header', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': names() });
     renderWithProviders(<DetachmentNamesCard />);
