@@ -3,6 +3,11 @@
   position: relative;
 }
 
+/* The SVG scales with its width, labels too: past this it's only bigger, not clearer. */
+.block {
+  max-width: 720px;
+}
+
 .chart {
   display: block;
   width: 100%;

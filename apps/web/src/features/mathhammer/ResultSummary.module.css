@@ -1,0 +1,56 @@
+/* Pinned to the bottom of the screen, over the page, while the full result is out of view. */
+.bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  padding: 10px var(--mantine-spacing-md);
+  background: var(--mantine-color-dark-8);
+  border-top: 1px solid var(--mantine-color-neon-8);
+  box-shadow: 0 -6px 18px rgb(0 0 0 / 0.35);
+}
+
+.label {
+  font-family: var(--mantine-font-family);
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-dimmed);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-md);
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--mantine-spacing-md);
+  min-width: 0;
+}
+
+.show {
+  flex-shrink: 0;
+}
+
+/* A phone: the stats in even columns, so they read down as well as across. */
+@media (max-width: 600px) {
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+  }
+}
+
+@media (max-width: 600px) {
+  /* The button under the stats, so none of the columns is covered. */
+  .row {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .show {
+    margin-left: auto;
+  }
+}

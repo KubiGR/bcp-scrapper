@@ -18,16 +18,24 @@ function expectedSlain(change: (form: ReturnType<typeof defaultForm>) => void): 
 }
 
 const weapon = () => within(screen.getByRole('group', { name: 'Weapon 1' }));
+/** Opens a step: the page shows one at a time. */
+const goTo = (step: 'Attacker' | 'Defender' | 'Result') => {
+  fireEvent.click(screen.getByRole('tab', { name: new RegExp(step) }));
+};
+/** The result's headline, pinned under the attacker and defender steps. */
+const summary = () => screen.getByRole('region', { name: 'Result summary' });
 
 describe('MathhammerPage', () => {
   it('shows the result of the starting setup', () => {
     renderWithProviders(<MathhammerPage />);
+    goTo('Result');
     expect(screen.getByLabelText('Models slain')).toHaveTextContent(expectedSlain(() => undefined));
     expect(screen.getByRole('table', { name: 'Models slain, at least' })).toBeInTheDocument();
   });
 
   it('leads with the median, a whole number of models, with the average and the most likely', () => {
     renderWithProviders(<MathhammerPage />);
+    goTo('Result');
     const read = toCalculation(defaultForm());
     if (!('calculation' in read)) throw new Error(read.error);
     const { modelsSlain, averages } = calculate(read.calculation);
@@ -51,17 +59,20 @@ describe('MathhammerPage', () => {
 
   it('offers to share the result as an image', () => {
     renderWithProviders(<MathhammerPage />);
+    goTo('Result');
     fireEvent.click(screen.getByRole('button', { name: 'Share' }));
     expect(screen.getByTestId('share-card')).toBeInTheDocument();
   });
 
   it('charts the chance of each total of damage dealt', () => {
     renderWithProviders(<MathhammerPage />);
+    goTo('Result');
     expect(screen.getByRole('img', { name: /^Damage dealt: / })).toBeInTheDocument();
   });
 
   it('leaves out totals of models slain with less than a 1% chance', () => {
     renderWithProviders(<MathhammerPage />);
+    goTo('Result');
     const table = within(screen.getByRole('table', { name: 'Models slain, at least' }));
     expect(table.queryByText('<1%')).toBeNull();
     const last = table.getAllByRole('row').at(-1)?.textContent ?? '';
@@ -70,6 +81,7 @@ describe('MathhammerPage', () => {
 
   it('shows each weapon step by step under the result', () => {
     renderWithProviders(<MathhammerPage />);
+    goTo('Result');
     const steps = within(screen.getByRole('table', { name: 'Step by step' }));
     expect(steps.getAllByRole('rowheader').length).toBeGreaterThan(0);
   });
@@ -82,7 +94,7 @@ describe('MathhammerPage', () => {
       if (first !== undefined) form.weapons = [{ ...first, attacks: '4' }];
     });
     await waitFor(() => {
-      expect(screen.getByLabelText('Models slain')).toHaveTextContent(want);
+      expect(summary()).toHaveTextContent(`Models slain ${want}`);
     });
   });
 
@@ -92,9 +104,7 @@ describe('MathhammerPage', () => {
     fireEvent.change(ap, { target: { value: '-' } });
     expect(ap).toHaveValue('-');
     await waitFor(() => {
-      expect(screen.getByLabelText('Models slain')).toHaveTextContent(
-        expectedSlain(() => undefined),
-      );
+      expect(summary()).toHaveTextContent(`Models slain ${expectedSlain(() => undefined)}`);
     });
     fireEvent.change(ap, { target: { value: '-2' } });
     const want = expectedSlain((form) => {
@@ -102,12 +112,13 @@ describe('MathhammerPage', () => {
       if (first !== undefined) form.weapons = [{ ...first, ap: -2 }];
     });
     await waitFor(() => {
-      expect(screen.getByLabelText('Models slain')).toHaveTextContent(want);
+      expect(summary()).toHaveTextContent(`Models slain ${want}`);
     });
   });
 
   it('keeps typed numbers within the field’s limits', async () => {
     renderWithProviders(<MathhammerPage />);
+    goTo('Defender');
     const models = within(screen.getByRole('group', { name: 'Models 1' }));
     fireEvent.change(models.getByLabelText('Sv'), { target: { value: '1' } });
     const want = expectedSlain((form) => {
@@ -115,7 +126,7 @@ describe('MathhammerPage', () => {
       if (first !== undefined) form.defender.groups = [{ ...first, save: 2 }];
     });
     await waitFor(() => {
-      expect(screen.getByLabelText('Models slain')).toHaveTextContent(want);
+      expect(summary()).toHaveTextContent(`Models slain ${want}`);
     });
   });
 
@@ -126,24 +137,29 @@ describe('MathhammerPage', () => {
       form.situation = { ...form.situation, cover: false };
     });
     await waitFor(() => {
-      expect(screen.getByLabelText('Models slain')).toHaveTextContent(want);
+      expect(summary()).toHaveTextContent(`Models slain ${want}`);
     });
   });
 
   it('says what it can’t read', async () => {
     renderWithProviders(<MathhammerPage />);
     fireEvent.change(weapon().getByLabelText('D'), { target: { value: 'D7' } });
-    expect(await screen.findByText('Can’t calculate')).toBeInTheDocument();
-    expect(screen.getByText(/Bolt rifle damage: can’t read “D7”/)).toBeInTheDocument();
+    goTo('Result');
+    const result = within(screen.getByRole('region', { name: 'Full result' }));
+    expect(await result.findByText('Can’t calculate')).toBeInTheDocument();
+    expect(result.getByText(/Bolt rifle damage: can’t read “D7”/)).toBeInTheDocument();
   });
 
   it('shows the leader’s chance once a Character is added', async () => {
     renderWithProviders(<MathhammerPage />);
+    goTo('Defender');
     fireEvent.click(screen.getByRole('button', { name: 'Add models' }));
     fireEvent.click(
       within(screen.getByRole('group', { name: 'Models 2' })).getByLabelText('Character'),
     );
-    expect(await screen.findByText('Leader slain')).toBeInTheDocument();
+    goTo('Result');
+    const result = within(screen.getByRole('region', { name: 'Full result' }));
+    expect(await result.findByText('Leader slain')).toBeInTheDocument();
     expect(screen.getByText(/^Allocation: /)).toBeInTheDocument();
   });
 });
@@ -263,6 +279,7 @@ describe('picking units', () => {
   it('fills the defender from a pasted list unit, the character as its own row', async () => {
     stubFetchRoutes(listRoutes);
     renderWithProviders(<MathhammerPage />);
+    goTo('Defender');
     await pasteAndUse('Defender');
     expect(
       await screen.findByText('From datasheet: Intercessor Squad + Captain'),
@@ -290,5 +307,61 @@ describe('picking units', () => {
     });
     renderWithProviders(<MathhammerPage />);
     expect((await screen.findAllByText(/refresh it in Settings/)).length).toBeGreaterThan(0);
+  });
+});
+
+describe('MathhammerPage steps', () => {
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('starts on the attacker, one step at a time', () => {
+    renderWithProviders(<MathhammerPage />);
+    expect(screen.getByRole('tab', { name: /Attacker/, selected: true })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Weapon 1' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Models 1' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Full result' })).toBeNull();
+  });
+
+  it('walks attacker, defender, result with Next and back again', () => {
+    renderWithProviders(<MathhammerPage />);
+    fireEvent.click(screen.getByRole('button', { name: /Next: Defender/ }));
+    expect(screen.getByRole('group', { name: 'Models 1' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Weapon 1' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Next: Result/ }));
+    expect(screen.getByRole('region', { name: 'Full result' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Back: Defender/ }));
+    expect(screen.getByRole('group', { name: 'Models 1' })).toBeInTheDocument();
+  });
+
+  it('jumps to a step from its tab', () => {
+    renderWithProviders(<MathhammerPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Result/ }));
+    expect(screen.getByRole('region', { name: 'Full result' })).toBeInTheDocument();
+  });
+
+  it('keeps the result summary on the other steps, opening the result from it', () => {
+    renderWithProviders(<MathhammerPage />);
+    expect(screen.getByRole('region', { name: 'Result summary' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Full result' }));
+    expect(screen.getByRole('region', { name: 'Full result' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Result summary' })).toBeNull();
+  });
+
+  it('heads the page with its title alone', () => {
+    renderWithProviders(<MathhammerPage />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Mathhammer' })).toBeInTheDocument();
+    expect(screen.queryByText(/Exact chances/)).toBeNull();
+  });
+
+  it('shows no stray code comments as text', () => {
+    renderWithProviders(<MathhammerPage />);
+    expect(screen.queryByText(/^\s*\/\//)).toBeNull();
+  });
+
+  it('has no other layout to switch to', () => {
+    renderWithProviders(<MathhammerPage />);
+    expect(screen.queryByRole('radio', { name: 'Side by side' })).toBeNull();
+    expect(screen.queryByRole('radio', { name: 'Steps' })).toBeNull();
   });
 });
