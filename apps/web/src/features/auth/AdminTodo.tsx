@@ -1,8 +1,9 @@
-import { Anchor, Badge, Group, Popover, Stack, UnstyledButton } from '@mantine/core';
+import { Anchor, Popover, Stack, UnstyledButton } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { detachmentNamesQuery } from '../settings/detachment-names-queries';
+import classes from './AdminTodo.module.css';
 import { isAdminView, meQuery, usersQuery } from './auth-queries';
 
 const SITE_TITLE = 'Logis';
@@ -104,29 +105,20 @@ export function AdminTodo() {
             setOpen((o) => !o);
           }}
         >
-          <Badge
-            color="yellow"
-            variant="filled"
-            size="sm"
-            // Dark text: white on yellow can't be read.
-            c="dark.9"
-            style={{ cursor: 'pointer' }}
-          >
-            <Group gap={8} wrap="nowrap">
-              {waiting > 0 && (
-                <Group gap={3} wrap="nowrap">
-                  <PersonIcon />
-                  <span data-part="users">{waiting}</span>
-                </Group>
-              )}
-              {detachments > 0 && (
-                <Group gap={3} wrap="nowrap">
-                  <ListIcon />
-                  <span data-part="detachments">{detachments}</span>
-                </Group>
-              )}
-            </Group>
-          </Badge>
+          <span className={classes.todo}>
+            {waiting > 0 && (
+              <span className={classes.part}>
+                <PersonIcon />
+                <span data-part="users">{waiting}</span>
+              </span>
+            )}
+            {detachments > 0 && (
+              <span className={classes.part}>
+                <ListIcon />
+                <span data-part="detachments">{detachments}</span>
+              </span>
+            )}
+          </span>
         </UnstyledButton>
       </Popover.Target>
       <Popover.Dropdown>
