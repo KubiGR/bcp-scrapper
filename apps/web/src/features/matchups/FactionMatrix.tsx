@@ -196,9 +196,20 @@ export function FactionMatrix({
         >
           <Table.Thead>
             <Table.Tr>
-              <Table.Th className={classes.corner} data-testid="matrix-corner" />
-              {matrix.columns.map((faction) => (
-                <Table.Th key={faction} className={classes.stickyHeader} title={faction}>
+              <Table.Th
+                className={classes.corner}
+                data-testid="matrix-corner"
+                // Over every column heading, whose names lean into their neighbours'.
+                style={{ zIndex: matrix.columns.length + 3 }}
+              />
+              {matrix.columns.map((faction, i) => (
+                <Table.Th
+                  key={faction}
+                  className={classes.stickyHeader}
+                  title={faction}
+                  // Each heading over the next one, so a slanted name isn't hidden under it.
+                  style={{ zIndex: matrix.columns.length - i + 2 }}
+                >
                   <span className={classes.headerLabel}>{faction}</span>
                 </Table.Th>
               ))}
