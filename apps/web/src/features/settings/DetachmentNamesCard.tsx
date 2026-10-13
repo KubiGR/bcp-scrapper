@@ -61,9 +61,13 @@ function targetOptions(unsure: Unsure, targets: Target[], faction: string): stri
   return [...byBsdata(own), ...byBsdata(rest)].map((t) => t.name);
 }
 
-/** Factions with unsure, foreign or linked names, most unsure names first, as picker options. */
-function factionOptions(data: DetachmentNamesResponse) {
+/**
+ * Factions with unsure, foreign or linked names, most unsure names first, as picker options;
+ * `keep` (the picked one) stays listed even with nothing left.
+ */
+function factionOptions(data: DetachmentNamesResponse, keep: string | null) {
   const counts = new Map<string, number>();
+  if (keep !== null && keep !== ALL) counts.set(keep, 0);
   for (const named of [...data.links, ...data.foreign, ...data.learned]) {
     for (const f of named.factions) counts.set(f, counts.get(f) ?? 0);
   }
@@ -318,12 +322,17 @@ export function DetachmentNamesCard() {
   const unkeeping = usePending<Pair>(['detachment-unkeep']);
   const error = link.error ?? unlink.error ?? keep.error ?? unkeep.error;
   const [picked, setPicked] = useState<string | null>(null);
-  const factions = names.data ? factionOptions(names.data) : [];
-  // The picked faction, or the one with the most unsure names (a faction with none left drops out).
+  const factions = names.data ? factionOptions(names.data, picked) : [];
+  // The picked faction, or (until one is picked or worked on) the one with the most unsure names.
   const faction =
     picked === ALL || factions.some((f) => f.value === picked)
       ? (picked ?? ALL)
       : (factions[0]?.value ?? ALL);
+  // Work on a faction keeps it picked: it stays (even with nothing left) until another is picked.
+  const work = <T,>(mutation: { mutate: (value: T) => void }, value: T) => {
+    if (picked === null) setPicked(faction);
+    mutation.mutate(value);
+  };
   const inFaction = (list: { factions: string[] }) =>
     faction === ALL || list.factions.includes(faction);
   const unsure = names.data?.unsure.filter(inFaction) ?? [];
@@ -345,10 +354,10 @@ export function DetachmentNamesCard() {
     linking,
     undoing,
     onLink: (request) => {
-      link.mutate(request);
+      work(link, request);
     },
     onUndo: (name) => {
-      unlink.mutate(name);
+      work(unlink, name);
     },
   };
 
@@ -447,7 +456,7 @@ export function DetachmentNamesCard() {
                     aria-label={`Undo Ignore for ${entry.name}`}
                     loading={undoing.includes(entry.name)}
                     onClick={() => {
-                      unlink.mutate(entry.name);
+                      work(unlink, entry.name);
                     }}
                   >
                     Undo
@@ -485,7 +494,7 @@ export function DetachmentNamesCard() {
                     aria-label={`Keep ${pair.name} for ${pair.faction}`}
                     loading={keeping.some(samePair(pair))}
                     onClick={() => {
-                      keep.mutate({ faction: pair.faction, name: pair.name });
+                      work(keep, { faction: pair.faction, name: pair.name });
                     }}
                   >
                     Keep anyway
@@ -505,7 +514,7 @@ export function DetachmentNamesCard() {
                     aria-label={`Undo keep ${pair.name} for ${pair.faction}`}
                     loading={unkeeping.some(samePair(pair))}
                     onClick={() => {
-                      unkeep.mutate({ faction: pair.faction, name: pair.name });
+                      work(unkeep, { faction: pair.faction, name: pair.name });
                     }}
                   >
                     Undo
@@ -537,7 +546,7 @@ export function DetachmentNamesCard() {
                     aria-label={`${translation.name} is not ${translation.target}`}
                     loading={linking.some((r) => r.name === translation.name)}
                     onClick={() => {
-                      link.mutate({ name: translation.name, target: null, foreign: false });
+                      work(link, { name: translation.name, target: null, foreign: false });
                     }}
                   >
                     Not the same
@@ -565,7 +574,7 @@ export function DetachmentNamesCard() {
                     aria-label={`Undo link for ${linked.name}`}
                     loading={undoing.includes(linked.name)}
                     onClick={() => {
-                      unlink.mutate(linked.name);
+                      work(unlink, linked.name);
                     }}
                   >
                     Undo
