@@ -125,6 +125,15 @@ describe('detachments outside an army’s BSData list', () => {
     expect((await wrongPairCheck(db))('World Eaters', 'Berzérker Warband')).toBe(false);
   });
 
+  it('takes a small misspelling for the army’s detachment: "Berserker" for "Berzerker"', async () => {
+    await storeList(db, 'PL-EVE', gwList('World Eaters', 'Berserker Warband'));
+    expect((await detachmentNames(db)).wrong).toEqual([]);
+    const wrong = await wrongPairCheck(db);
+    expect(wrong('World Eaters', 'Berserker Warband')).toBe(false);
+    // Still a different detachment when it's far off.
+    expect(wrong('World Eaters', 'Berserker Horde')).toBe(true);
+  });
+
   it('counts a linked name as its target', async () => {
     await linkDetachment(db, 'Gore Band', 'Berzerker Warband');
     await storeList(db, 'PL-EVE', gwList('World Eaters', 'Gore Band'));
