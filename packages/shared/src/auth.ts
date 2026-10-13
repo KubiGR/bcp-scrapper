@@ -84,5 +84,11 @@ export const UpdateUserRequestSchema = z
   );
 export type UpdateUserRequest = z.infer<typeof UpdateUserRequestSchema>;
 
-export const UsersResponseSchema = z.object({ users: z.array(UserSchema) });
+/** A user as an admin's list shows them: when they were last seen too (ISO; null if never). */
+export const ListedUserSchema = UserSchema.extend({
+  lastSeenAt: z.string().nullable().default(null),
+});
+export type ListedUser = z.infer<typeof ListedUserSchema>;
+
+export const UsersResponseSchema = z.object({ users: z.array(ListedUserSchema) });
 export type UsersResponse = z.infer<typeof UsersResponseSchema>;

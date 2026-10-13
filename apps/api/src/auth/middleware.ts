@@ -4,7 +4,7 @@ import { getCookie } from 'hono/cookie';
 import { createMiddleware } from 'hono/factory';
 import type { Db } from '../db/client';
 import { ForbiddenError, UnauthorizedError } from '../errors';
-import { findOrCreateAccessUser } from '../repo/users';
+import { findOrCreateAccessUser, touchLastSeen } from '../repo/users';
 import { ACCESS_JWT_HEADER, verifyAccessToken, type AccessOptions } from './access';
 import { resolveSession, type SessionUser } from './sessions';
 
@@ -83,6 +83,8 @@ export function authMiddleware(deps: {
       }
       const role = options.access.adminEmails.includes(email) ? 'admin' : 'member';
       const user = await findOrCreateAccessUser(db, email, role);
+      // Those still waiting too: the admin sees whether they're still trying.
+      await touchLastSeen(db, user.id, now());
       if (user.disabled) {
         if (api) throw new ForbiddenError('Waiting for approval');
         return c.html(
@@ -110,6 +112,7 @@ export function authMiddleware(deps: {
         ? null
         : await resolveSession(db, options.secret, token, now());
     if (session !== null) {
+      await touchLastSeen(db, session.user.id, now());
       c.set('user', session.user);
       c.set('sessionHash', session.tokenHash);
     }

@@ -1,4 +1,4 @@
-import type { User } from '@bcp/shared';
+import type { ListedUser, User } from '@bcp/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
@@ -8,7 +8,7 @@ import { UsersCard } from './UsersCard';
 const me = aUser({ id: 1, username: 'kubi', role: 'admin' });
 const ana = aUser({ id: 2, username: 'ana', role: 'member' });
 
-function stubUsers(users: User[], extra: Record<string, unknown> = {}) {
+function stubUsers(users: (User | ListedUser)[], extra: Record<string, unknown> = {}) {
   return stubFetchRoutes({
     'GET /api/auth/me': loggedIn(me),
     'GET /api/users': { users },
@@ -50,6 +50,38 @@ describe('UsersCard', () => {
         ),
       ).toBe(true);
     });
+  });
+
+  it('says when each user was last seen', async () => {
+    const hoursAgo = new Date(Date.now() - 3 * 60 * 60_000 - 60_000).toISOString();
+    stubUsers([
+      { ...me, lastSeenAt: hoursAgo },
+      { ...ana, lastSeenAt: null },
+    ]);
+    renderWithProviders(<UsersCard />);
+    expect(await screen.findByText('ana')).toBeInTheDocument();
+    expect(within(rowOf('kubi')).getByText('Seen 3 h ago')).toBeInTheDocument();
+    expect(within(rowOf('ana')).getByText('Never seen')).toBeInTheDocument();
+  });
+
+  it('through Access: says when someone waiting was last seen', async () => {
+    stubFetchRoutes({
+      'GET /api/auth/me': viaAccess(me),
+      'GET /api/users': {
+        users: [
+          me,
+          {
+            ...ana,
+            username: 'ana@example.com',
+            disabled: true,
+            lastSeenAt: new Date(Date.now() - 5 * 60_000 - 1000).toISOString(),
+          },
+        ],
+      },
+    });
+    renderWithProviders(<UsersCard />);
+    const waiting = within(await screen.findByRole('region', { name: 'Waiting for approval' }));
+    expect(waiting.getByText('Seen 5 min ago')).toBeInTheDocument();
   });
 
   it('lists the users with role and status', async () => {
