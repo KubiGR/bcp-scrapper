@@ -1,3 +1,21 @@
+/* Damage dealt and models slain side by side, wrapping onto two rows when narrow. */
+.chances {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mantine-spacing-lg);
+  align-items: flex-start;
+}
+
+.damage {
+  flex: 2 1 420px;
+  max-width: 720px;
+}
+
+.slain {
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+
 /* The chance of slaying at least that many models. */
 .track {
   height: 5px;

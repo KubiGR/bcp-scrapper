@@ -99,38 +99,44 @@ export function ResultPanel({
             <Stat label="Leader slain" value={percent(result.leaderSlain)} />
           )}
         </Group>
-        <DamageChart woundsDealt={result.woundsDealt} />
-        {slain.length > 0 && (
-          <Table
-            aria-label="Models slain, at least"
-            withRowBorders={false}
-            verticalSpacing={2}
-            fz="xs"
-          >
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Models slain</Table.Th>
-                <Table.Th ta="right">Chance</Table.Th>
-                <Table.Th />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {slain.map((p, i) => (
-                <Table.Tr key={i}>
-                  <Table.Td className="numeric">{`${String(i + 1)}+`}</Table.Td>
-                  <Table.Td ta="right" className="numeric">
-                    {percent(p)}
-                  </Table.Td>
-                  <Table.Td w="60%">
-                    <div className={classes.track} aria-hidden>
-                      <div className={classes.bar} style={{ width: `${String(p * 100)}%` }} />
-                    </div>
-                  </Table.Td>
+        {/* Damage dealt with models slain to its right, under it where there's no room. */}
+        <div className={classes.chances}>
+          <div className={classes.damage}>
+            <DamageChart woundsDealt={result.woundsDealt} />
+          </div>
+          {slain.length > 0 && (
+            <Table
+              className={classes.slain}
+              aria-label="Models slain, at least"
+              withRowBorders={false}
+              verticalSpacing={2}
+              fz="xs"
+            >
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Models slain</Table.Th>
+                  <Table.Th ta="right">Chance</Table.Th>
+                  <Table.Th />
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        )}
+              </Table.Thead>
+              <Table.Tbody>
+                {slain.map((p, i) => (
+                  <Table.Tr key={i}>
+                    <Table.Td className="numeric">{`${String(i + 1)}+`}</Table.Td>
+                    <Table.Td ta="right" className="numeric">
+                      {percent(p)}
+                    </Table.Td>
+                    <Table.Td w="60%">
+                      <div className={classes.track} aria-hidden>
+                        <div className={classes.bar} style={{ width: `${String(p * 100)}%` }} />
+                      </div>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          )}
+        </div>
         {order !== undefined && groupNames.length > 1 && (
           <Text size="xs" c="dimmed">
             {`Allocation: ${order.map((g) => groupNames[g] ?? '?').join(' → ')}`}
