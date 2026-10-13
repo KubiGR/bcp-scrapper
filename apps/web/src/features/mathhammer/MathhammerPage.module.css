@@ -2,3 +2,9 @@
 .stepNav {
   padding-bottom: 56px;
 }
+
+@media (max-width: 600px) {
+  .stepNav {
+    padding-bottom: 140px;
+  }
+}

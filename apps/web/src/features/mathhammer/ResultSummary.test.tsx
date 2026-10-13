@@ -12,8 +12,15 @@ describe('ResultSummary', () => {
     const onShow = vi.fn();
     renderWithProviders(<ResultSummary outcome={outcome} onShow={onShow} />);
     const bar = screen.getByRole('region', { name: 'Result summary' });
+    const total = (key: 'attacks' | 'hits' | 'wounds' | 'unsaved') =>
+      outcome.result.breakdown.reduce((sum, step) => sum + step[key], 0).toFixed(2);
+    expect(bar).toHaveTextContent(`Attacks ${total('attacks')}`);
+    expect(bar).toHaveTextContent(`Hits ${total('hits')}`);
+    expect(bar).toHaveTextContent(`Wounds ${total('wounds')}`);
+    expect(bar).toHaveTextContent(`Unsaved ${total('unsaved')}`);
+    expect(bar).toHaveTextContent(`Damage ${outcome.result.averages.woundsDealt.toFixed(2)}`);
+    expect(bar).toHaveTextContent(`Wasted ${outcome.result.averages.wasted.toFixed(2)}`);
     expect(bar).toHaveTextContent(`Models slain ${outcome.result.averages.modelsSlain.toFixed(2)}`);
-    expect(bar).toHaveTextContent(`Wounds ${outcome.result.averages.woundsDealt.toFixed(2)}`);
     expect(bar).toHaveTextContent('Wipe');
     fireEvent.click(screen.getByRole('button', { name: 'Full result' }));
     expect(onShow).toHaveBeenCalled();

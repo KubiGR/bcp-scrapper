@@ -16,3 +16,41 @@
   font-size: var(--mantine-font-size-xs);
   color: var(--mantine-color-dimmed);
 }
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-md);
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--mantine-spacing-md);
+  min-width: 0;
+}
+
+.show {
+  flex-shrink: 0;
+}
+
+/* A phone: the stats in even columns, so they read down as well as across. */
+@media (max-width: 600px) {
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+  }
+}
+
+@media (max-width: 600px) {
+  /* The button under the stats, so none of the columns is covered. */
+  .row {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .show {
+    margin-left: auto;
+  }
+}
