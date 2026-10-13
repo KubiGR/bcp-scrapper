@@ -4,6 +4,7 @@ import {
   countedFaction,
   looksForeign,
   looseDetachmentKey,
+  matchDetachment,
   SPACE_MARINES,
   type DetachmentNamesResponse,
 } from '@bcp/shared';
@@ -95,15 +96,19 @@ async function bsdataRules(db: Db) {
   const kept = new Set(
     keeps.filter((keep) => !keep.ignored).map((keep) => `${keep.faction}\u0000${keep.nameKey}`),
   );
-  /** Whether a list's detachment is outside its army's BSData list (and not kept anyway). */
+  /**
+   * Whether a list's detachment is outside its army's BSData list (and not kept anyway). A small
+   * misspelling of one of the army's detachments ("Berserker" for "Berzerker") is that one.
+   */
   const wrong = (army: string | null, name: string) => {
     if (army === null) return false;
     const known = names.get(army);
     if (known === undefined) return false;
     const key = keyOf(name);
-    return (
-      !known.has(looseDetachmentKey(name)) && !own.has(key) && !kept.has(`${army}\u0000${key}`)
-    );
+    if (known.has(looseDetachmentKey(name)) || own.has(key) || kept.has(`${army}\u0000${key}`)) {
+      return false;
+    }
+    return matchDetachment(name, bsdata.get(army) ?? []) === null;
   };
   return { bsdata, keeps, wrong };
 }
