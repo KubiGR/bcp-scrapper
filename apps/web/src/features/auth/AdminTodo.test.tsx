@@ -54,7 +54,7 @@ describe('AdminTodo', () => {
     fireEvent.click(badge);
     expect(await screen.findByRole('link', { name: '1 waiting for approval' })).toHaveAttribute(
       'href',
-      '/settings',
+      '/settings?tab=users',
     );
     expect(screen.getByRole('link', { name: '3 detachment names to link' })).toBeInTheDocument();
     expect(

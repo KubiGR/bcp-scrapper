@@ -1,7 +1,7 @@
 import { Anchor, Badge, Popover, Stack, UnstyledButton } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { detachmentNamesQuery } from '../settings/detachment-names-queries';
 import { isAdminView, meQuery, usersQuery } from './auth-queries';
 
@@ -17,6 +17,7 @@ const plural = (n: number, one: string, many: string) => `${String(n)} ${n === 1
  */
 export function AdminTodo() {
   const me = useQuery(meQuery);
+  const [open, setOpen] = useState(false);
   const admin = isAdminView(me.data);
   const approving = admin && me.data?.access === true;
   const users = useQuery({ ...usersQuery, enabled: approving, refetchInterval: EVERY_FEW_MINUTES });
@@ -40,21 +41,32 @@ export function AdminTodo() {
 
   if (total === 0) return null;
   const items = [
-    { count: waiting, label: plural(waiting, 'waiting for approval', 'waiting for approval') },
+    {
+      count: waiting,
+      tab: 'users' as const,
+      label: plural(waiting, 'waiting for approval', 'waiting for approval'),
+    },
     {
       count: unlinked,
+      tab: 'detachments' as const,
       label: plural(unlinked, 'detachment name to link', 'detachment names to link'),
     },
     {
       count: outside,
+      tab: 'detachments' as const,
       label: plural(outside, 'detachment outside its faction', 'detachments outside their faction'),
     },
   ].filter((item) => item.count > 0);
 
   return (
-    <Popover position="bottom-end" withArrow shadow="md">
+    <Popover position="bottom-end" withArrow shadow="md" opened={open} onChange={setOpen}>
       <Popover.Target>
-        <UnstyledButton aria-label={plural(total, 'thing to do', 'things to do')}>
+        <UnstyledButton
+          aria-label={plural(total, 'thing to do', 'things to do')}
+          onClick={() => {
+            setOpen((o) => !o);
+          }}
+        >
           <Badge
             color="yellow"
             variant="filled"
@@ -70,7 +82,15 @@ export function AdminTodo() {
       <Popover.Dropdown>
         <Stack gap={6}>
           {items.map((item) => (
-            <Anchor key={item.label} component={Link} to="/settings" size="sm">
+            <Anchor
+              key={item.label}
+              size="sm"
+              // Off to the page: the list closes.
+              onClick={() => {
+                setOpen(false);
+              }}
+              renderRoot={(props) => <Link to="/settings" search={{ tab: item.tab }} {...props} />}
+            >
               {item.label}
             </Anchor>
           ))}

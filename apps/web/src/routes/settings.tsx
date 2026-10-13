@@ -1,44 +1,24 @@
-import { Grid, Stack, Title } from '@mantine/core';
 import { createFileRoute } from '@tanstack/react-router';
 import { AdminOnly } from '../features/auth/AdminOnly';
-import { FetchQueueCard } from '../features/fetch-queue/FetchQueueCard';
-import { AutoFetchCard } from '../features/settings/AutoFetchCard';
-import { BsdataCard } from '../features/settings/BsdataCard';
-import { RulesCard } from '../features/settings/RulesCard';
-import { UpdatesSection } from '../features/updates/UpdatesSection';
-import { BcpStatusCard } from '../features/settings/BcpStatusCard';
-import { DetachmentNamesCard } from '../features/settings/DetachmentNamesCard';
-import { UsersCard } from '../features/settings/UsersCard';
+import { SettingsPage } from '../features/settings/SettingsPage';
+import { SettingsSearchSchema } from '../features/settings/settings-search';
 
 export const Route = createFileRoute('/settings')({
-  component: () => (
-    <AdminOnly>
-      <SettingsPage />
-    </AdminOnly>
-  ),
+  validateSearch: SettingsSearchSchema,
+  component: SettingsRoute,
 });
 
-/** Two columns on wide screens: the app's state on the left, detachment names on the right. */
-function SettingsPage() {
+function SettingsRoute() {
+  const { tab } = Route.useSearch();
+  const navigate = Route.useNavigate();
   return (
-    <Stack gap="lg">
-      <Title order={1}>Settings</Title>
-      <Grid gap="lg">
-        <Grid.Col span={{ base: 12, lg: 5 }}>
-          <Stack gap="lg">
-            <BcpStatusCard />
-            <FetchQueueCard />
-            <AutoFetchCard />
-            <BsdataCard />
-            <UpdatesSection />
-            <RulesCard />
-            <UsersCard />
-          </Stack>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, lg: 7 }}>
-          <DetachmentNamesCard />
-        </Grid.Col>
-      </Grid>
-    </Stack>
+    <AdminOnly>
+      <SettingsPage
+        tab={tab}
+        onTabChange={(next) => {
+          void navigate({ search: { tab: next }, replace: true, resetScroll: false });
+        }}
+      />
+    </AdminOnly>
   );
 }
