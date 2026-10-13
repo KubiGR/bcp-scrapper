@@ -368,6 +368,8 @@ export const detachmentKeeps = pgTable(
     faction: text('faction').notNull(),
     nameKey: text('name_key').notNull(),
     name: text('name').notNull(),
+    /** Set aside instead of kept: off the to-do list, but still not counted (detachment unknown). */
+    ignored: boolean('ignored').notNull().default(false),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.faction, t.nameKey] })],

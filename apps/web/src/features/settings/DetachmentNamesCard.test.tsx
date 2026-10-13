@@ -64,6 +64,35 @@ describe('DetachmentNamesCard with BSData', () => {
     ]);
   });
 
+  it('ignores a pair outside the faction, and shows what is kept and what is ignored', async () => {
+    const withPairs = orksOnly({
+      wrong: [{ faction: 'Orks', name: 'Wreckas', lists: 2, bsdataFactions: [] }],
+      kept: [
+        { faction: 'Orks', name: 'Dread Mob', ignored: false },
+        { faction: 'Orks', name: 'Bully Boyz', ignored: true },
+      ],
+    });
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/detachments': withPairs,
+      'POST /api/detachments/keeps': withPairs,
+    });
+    renderWithProviders(<DetachmentNamesCard />);
+    const section = within(await screen.findByRole('region', { name: 'Not in this faction' }));
+    expect(section.getByText('kept for Orks')).toBeInTheDocument();
+    expect(section.getByText('ignored for Orks')).toBeInTheDocument();
+    fireEvent.click(section.getByRole('button', { name: 'Ignore Wreckas for Orks' }));
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true);
+    });
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(JSON.parse(post?.[1]?.body as string)).toEqual({
+      faction: 'Orks',
+      name: 'Wreckas',
+      ignored: true,
+    });
+  });
+
   it('follows the faction and focus it is given: all factions, scrolled to those outside', async () => {
     const scrolled = vi.fn();
     Element.prototype.scrollIntoView = scrolled;
@@ -94,7 +123,10 @@ describe('DetachmentNamesCard with BSData', () => {
         { faction: 'Orks', name: 'Wreckas', lists: 2, bsdataFactions: [] },
         { faction: 'Orks', name: 'Blood Legion', lists: 1, bsdataFactions: ['Chaos Daemons'] },
       ],
-      kept: [{ faction: 'Orks', name: 'Dread Mob' }],
+      kept: [
+        { faction: 'Orks', name: 'Dread Mob', ignored: false },
+        { faction: 'Orks', name: 'Bully Boyz', ignored: true },
+      ],
     });
     const fetchMock = stubFetchRoutes({
       'GET /api/auth/me': authOff,

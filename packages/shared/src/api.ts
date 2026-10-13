@@ -434,8 +434,8 @@ export const DetachmentNamesResponseSchema = z.object({
       bsdataFactions: z.array(z.string()),
     }),
   ),
-  /** Pairs kept anyway. */
-  kept: z.array(z.object({ faction: z.string(), name: z.string() })),
+  /** Pairs kept anyway, or `ignored`: set aside, off the to-do list but still not counted. */
+  kept: z.array(z.object({ faction: z.string(), name: z.string(), ignored: z.boolean() })),
 });
 export type DetachmentNamesResponse = z.infer<typeof DetachmentNamesResponseSchema>;
 
@@ -594,4 +594,6 @@ export type BsdataStatus = z.infer<typeof BsdataStatusSchema>;
 export const DetachmentKeepRequestSchema = z.object({
   faction: z.string().trim().min(1).max(100),
   name: z.string().trim().min(1).max(200),
+  /** Set the pair aside instead of keeping it: off the to-do list, still not counted. */
+  ignored: z.boolean().default(false),
 });

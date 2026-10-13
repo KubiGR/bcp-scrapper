@@ -1,0 +1,1 @@
+ALTER TABLE "detachment_keeps" ADD COLUMN "ignored" boolean DEFAULT false NOT NULL;

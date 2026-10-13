@@ -71,9 +71,36 @@ describe('detachments outside an army’s BSData list', () => {
     await keepDetachment(db, 'World Eaters', 'Blood Legion');
     const kept = await detachmentNames(db);
     expect(kept.wrong).toEqual([]);
-    expect(kept.kept).toEqual([{ faction: 'World Eaters', name: 'Blood Legion' }]);
+    expect(kept.kept).toEqual([{ faction: 'World Eaters', name: 'Blood Legion', ignored: false }]);
     await unkeepDetachment(db, 'World Eaters', 'Blood Legion');
     expect((await detachmentNames(db)).wrong).toHaveLength(1);
+  });
+
+  it('ignores a pair: off the list, still not counted (unlike one kept), undoable', async () => {
+    await storeList(db, 'PL-EVE', gwList('World Eaters', 'Blood Legion'));
+    await keepDetachment(db, 'World Eaters', 'Blood Legion', true);
+    const ignored = await detachmentNames(db);
+    expect(ignored.wrong).toEqual([]);
+    expect(ignored.kept).toEqual([
+      { faction: 'World Eaters', name: 'Blood Legion', ignored: true },
+    ]);
+    // Meta still treats it as outside the army: detachment unknown.
+    expect((await wrongPairCheck(db))('World Eaters', 'Blood Legion')).toBe(true);
+    await unkeepDetachment(db, 'World Eaters', 'Blood Legion');
+    expect((await detachmentNames(db)).wrong).toHaveLength(1);
+  });
+
+  it('lists the most used first, whatever the faction', async () => {
+    await db.update(players).set({ faction: 'World Eaters' }).where(eq(players.id, 'PL-DAN'));
+    await db.update(players).set({ faction: 'Chaos Daemons' }).where(eq(players.id, 'PL-ADA'));
+    await storeList(db, 'PL-EVE', gwList('World Eaters', 'Blood Legion'));
+    await storeList(db, 'PL-DAN', gwList('World Eaters', 'Blood Legion'));
+    await storeList(db, 'PL-ADA', gwList('Chaos Daemons', 'Berzerker Warband'));
+    // World Eaters' 2 lists before Chaos Daemons' 1, though C comes before W.
+    expect((await detachmentNames(db)).wrong.map((w) => [w.faction, w.lists])).toEqual([
+      ['World Eaters', 2],
+      ['Chaos Daemons', 1],
+    ]);
   });
 
   it('leaves names nobody knows to Not linked yet, not here', async () => {
