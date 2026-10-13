@@ -83,6 +83,32 @@ function factionOptions(data: DetachmentNamesResponse, keep: string | null) {
     .map(([faction, count]) => ({ value: faction, label: `${faction} (${String(count)})` }));
 }
 
+type Outside = DetachmentNamesResponse['wrong'][number];
+
+/**
+ * The detachments outside their faction, one row per detachment (Librarius Conclave for Space
+ * Marines, Dark Angels and Deathwatch is one decision), most lists first.
+ */
+function groupByName(pairs: Outside[]) {
+  const groups = new Map<
+    string,
+    { name: string; lists: number; bsdataFactions: string[]; pairs: Outside[] }
+  >();
+  for (const pair of pairs) {
+    const key = pair.name.toLowerCase();
+    const group = groups.get(key) ?? {
+      name: pair.name,
+      lists: 0,
+      bsdataFactions: pair.bsdataFactions,
+      pairs: [],
+    };
+    group.lists += pair.lists;
+    group.pairs.push(pair);
+    groups.set(key, group);
+  }
+  return [...groups.values()].sort((a, b) => b.lists - a.lists || a.name.localeCompare(b.name));
+}
+
 interface RowProps {
   targets: Target[];
   /** The picked faction, or ALL (then the row also says which factions play the name). */
@@ -516,46 +542,72 @@ export function DetachmentNamesCard({
                 counts them as detachment unknown unless you keep them anyway; Ignore only takes one
                 off the to-do list.
               </Text>
-              {wrong.map((pair) => (
-                <Group key={`${pair.faction}:${pair.name}`} gap="xs">
-                  <Text size="sm">{`${pair.name} · ${plural(pair.lists, 'list')}`}</Text>
-                  {faction === ALL && (
-                    <Text size="sm" c="dimmed">
-                      {pair.faction}
+              {groupByName(wrong).map((group) => {
+                const one = group.pairs.length === 1 ? group.pairs[0] : undefined;
+                const target = one ? `for ${one.faction}` : 'for all its factions';
+                const saving = (ignored: boolean) =>
+                  keeping.some(
+                    (k) =>
+                      group.pairs.some((pair) => samePair(pair)(k)) &&
+                      (k.ignored === true) === ignored,
+                  );
+                // One decision for the detachment: every faction it's outside of, one after
+                // another (each answer is the whole picture, so the last one has them all).
+                const decide = (ignored: boolean) => {
+                  if (picked === null) setPicked(faction);
+                  void (async () => {
+                    for (const pair of group.pairs) {
+                      await keep
+                        .mutateAsync({ faction: pair.faction, name: pair.name, ignored })
+                        .catch(() => undefined);
+                    }
+                  })();
+                };
+                return (
+                  <Group key={group.name} gap="xs">
+                    <Text size="sm">{`${group.name} · ${plural(group.lists, 'list')}`}</Text>
+                    {(faction === ALL || !one) && (
+                      <Text size="sm" c="dimmed">
+                        {one
+                          ? one.faction
+                          : group.pairs
+                              .map((pair) => `${pair.faction} ${String(pair.lists)}`)
+                              .join(', ')}
+                      </Text>
+                    )}
+                    <Text size="xs" c="dimmed">
+                      {group.bsdataFactions.length === 0
+                        ? 'BSData doesn’t list it'
+                        : `BSData has it for ${group.bsdataFactions.join(', ')}`}
                     </Text>
-                  )}
-                  <Text size="xs" c="dimmed">
-                    {pair.bsdataFactions.length === 0
-                      ? 'BSData doesn’t list it'
-                      : `BSData has it for ${pair.bsdataFactions.join(', ')}`}
-                  </Text>
-                  <Button
-                    size="compact-xs"
-                    variant="subtle"
-                    disabled={readOnly}
-                    aria-label={`Keep ${pair.name} for ${pair.faction}`}
-                    loading={keeping.some((k) => samePair(pair)(k) && k.ignored !== true)}
-                    onClick={() => {
-                      work(keep, { faction: pair.faction, name: pair.name });
-                    }}
-                  >
-                    Keep anyway
-                  </Button>
-                  <Button
-                    size="compact-xs"
-                    variant="subtle"
-                    color="gray"
-                    disabled={readOnly}
-                    aria-label={`Ignore ${pair.name} for ${pair.faction}`}
-                    loading={keeping.some((k) => samePair(pair)(k) && k.ignored === true)}
-                    onClick={() => {
-                      work(keep, { faction: pair.faction, name: pair.name, ignored: true });
-                    }}
-                  >
-                    Ignore
-                  </Button>
-                </Group>
-              ))}
+                    <Button
+                      size="compact-xs"
+                      variant="subtle"
+                      disabled={readOnly}
+                      aria-label={`Keep ${group.name} ${target}`}
+                      loading={saving(false)}
+                      onClick={() => {
+                        decide(false);
+                      }}
+                    >
+                      Keep anyway
+                    </Button>
+                    <Button
+                      size="compact-xs"
+                      variant="subtle"
+                      color="gray"
+                      disabled={readOnly}
+                      aria-label={`Ignore ${group.name} ${target}`}
+                      loading={saving(true)}
+                      onClick={() => {
+                        decide(true);
+                      }}
+                    >
+                      Ignore
+                    </Button>
+                  </Group>
+                );
+              })}
               {kept.map((pair) => (
                 <Group key={`kept:${pair.faction}:${pair.name}`} gap="xs">
                   <Text size="sm">{pair.name}</Text>
