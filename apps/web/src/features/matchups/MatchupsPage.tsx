@@ -57,6 +57,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
     dispositions: search.dispositions?.split(',').filter(Boolean) ?? [],
     detachments: search.detachments?.split(DETACHMENT_SEPARATOR).filter(Boolean) ?? [],
     side: search.side ?? DEFAULT_MATRIX_SETTINGS.side,
+    factions: search.factions?.split('|').filter(Boolean) ?? [],
   };
   // Points may have become unavailable (e.g. after ticking in an event with a different scale):
   // fall back to win rate rather than showing a disabled metric as selected.
@@ -179,11 +180,13 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
                         ? next.detachments.join(DETACHMENT_SEPARATOR)
                         : undefined,
                     side: next.side,
+                    factions: next.factions.length > 0 ? next.factions.join('|') : undefined,
                   });
                 }}
                 scoring={matchups.data.scoring}
                 dispositions={[]}
                 detachments={matchups.data.detachments}
+                factions={matchups.data.matrix.factions}
               />
               <Box style={{ opacity: dimmed ? 0.6 : 1 }} aria-busy={dimmed}>
                 {(() => {

@@ -59,6 +59,22 @@ describe('MatrixControls', () => {
     expect(screen.getByRole('option', { name: 'Something New' })).toBeInTheDocument();
   });
 
+  it('filters the rows to picked factions, from those in the matrix', async () => {
+    const onChange = vi.fn();
+    renderWithProviders(
+      <MatrixControls
+        settings={DEFAULT_MATRIX_SETTINGS}
+        onChange={onChange}
+        scoring={{ consistent: true, scale: 20 }}
+        dispositions={[]}
+        factions={['Orks', 'Necrons']}
+      />,
+    );
+    fireEvent.click(screen.getByRole('combobox', { name: 'Factions' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Necrons' }));
+    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_MATRIX_SETTINGS, factions: ['Necrons'] });
+  });
+
   it('shows the row/both side control only once a disposition is chosen', () => {
     renderWithProviders(
       <MatrixControls
