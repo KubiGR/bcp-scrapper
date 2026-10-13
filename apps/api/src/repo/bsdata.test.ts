@@ -1,6 +1,8 @@
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { BsdataClient } from '../bsdata/client';
 import type { Db } from '../db/client';
+import { appSettings } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { bsdataByFaction, bsdataDue, bsdataStatus, syncBsdata } from './bsdata';
 
@@ -94,6 +96,22 @@ describe('syncBsdata', () => {
     const changed = fakeClient({ ...files, 'Orks.json': { sha: 'c', body: orks } });
     await syncBsdata(db, changed.client, NOW);
     expect(changed.fetched.sort()).toEqual(['Necrons.json', 'Orks.json']);
+  });
+
+  it('reads everything again, and is due at once, after the reader itself changed', async () => {
+    const files = { 'Orks.json': { sha: 'b', body: orks } };
+    await syncBsdata(db, fakeClient(files).client, NOW);
+    expect(await bsdataDue(db, NOW)).toBe(false);
+    // As an older app version left it: same files, but read by an older reader.
+    await db
+      .update(appSettings)
+      .set({ value: 0 })
+      .where(eq(appSettings.key, 'bsdataReaderVersion'));
+    expect(await bsdataDue(db, NOW)).toBe(true);
+    const again = fakeClient(files);
+    await syncBsdata(db, again.client, NOW);
+    expect(again.fetched).toEqual(['Orks.json']);
+    expect(await bsdataDue(db, NOW)).toBe(false);
   });
 
   it('keeps old data when a file fails', async () => {

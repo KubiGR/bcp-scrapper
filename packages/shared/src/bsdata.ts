@@ -29,6 +29,13 @@ interface Modifier {
   conditionGroups?: { conditions?: Condition[] }[];
 }
 
+/**
+ * Bumped whenever reading BSData changes what comes out (2: chapters BCP lists as factions of
+ * their own keep their detachments out of Space Marines): the stored detachments are then read
+ * again, though BSData's files haven't changed.
+ */
+export const BSDATA_READER_VERSION = 2;
+
 export interface BsdataParse {
   /** App faction → its detachments (A→Z). */
   factions: Map<string, string[]>;
@@ -36,7 +43,6 @@ export interface BsdataParse {
   unknownCatalogues: string[];
 }
 
-const SPACE_MARINES_FAMILY = 'Imperium - Adeptus Astartes';
 const isDetachmentNode = (name: string | undefined) =>
   name === 'Detachment' || name === 'Detachments';
 const family = (name: string) => name.split(' - ').slice(0, -1).join(' - ');
@@ -137,7 +143,6 @@ export function parseBsdataCatalogues(files: unknown[]): BsdataParse {
     names.forEach((n) => set.add(n));
     factions.set(faction, set);
   };
-  const spaceMarines = canonicalArmy('Space Marines');
   for (const catalogue of catalogues) {
     if (catalogue.library === true || catalogue.name === undefined) continue;
     const names = detachmentsOf(catalogue);
@@ -147,10 +152,10 @@ export function parseBsdataCatalogues(files: unknown[]): BsdataParse {
       unknownCatalogues.push(catalogue.name);
       continue;
     }
+    // Chapters BCP counts as Space Marines (Ultramarines, Salamanders…) land there through
+    // canonicalArmy; those it lists as factions of their own (Black Templars, Space Wolves…) keep
+    // their own detachments (Marshal's Household is Black Templars', not Space Marines').
     add(faction, names);
-    if (family(catalogue.name) === SPACE_MARINES_FAMILY && spaceMarines !== null) {
-      add(spaceMarines, names);
-    }
   }
   return {
     factions: new Map(
