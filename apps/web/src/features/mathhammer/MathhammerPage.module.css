@@ -1,0 +1,7 @@
+/* Beside the inputs on wide screens, the result stays in view while they scroll. */
+@media (min-width: 75em) {
+  .result {
+    position: sticky;
+    top: 76px;
+  }
+}

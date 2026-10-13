@@ -5,6 +5,7 @@ import { DefenderPanel } from './DefenderPanel';
 import { calculateForm } from './best';
 import { defaultForm } from './form-state';
 import { ResultPanel, type Outcome } from './ResultPanel';
+import classes from './MathhammerPage.module.css';
 import { SituationPanel } from './SituationPanel';
 
 /** Exact chances for one unit's attacks into one target (11th edition). */
@@ -22,8 +23,9 @@ export function MathhammerPage() {
           Exact chances, worked out from the dice by 11th-edition rules.
         </Text>
       </Stack>
+      {/* Wide screens: attacker | defender | result, the result kept in view while scrolling. */}
       <Grid gap="lg">
-        <Grid.Col span={{ base: 12, lg: 7 }}>
+        <Grid.Col span={{ base: 12, lg: 5 }}>
           <Stack gap="lg">
             <AttackerPanel
               form={form}
@@ -38,16 +40,18 @@ export function MathhammerPage() {
             />
           </Stack>
         </Grid.Col>
-        <Grid.Col span={{ base: 12, lg: 5 }}>
-          <Stack gap="lg">
+        <Grid.Col span={{ base: 12, lg: 4 }}>
+          <DefenderPanel
+            defender={form.defender}
+            onChange={(defender) => {
+              setForm({ ...form, defender });
+            }}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 3 }}>
+          <div className={classes.result}>
             <ResultPanel outcome={outcome} form={settled} />
-            <DefenderPanel
-              defender={form.defender}
-              onChange={(defender) => {
-                setForm({ ...form, defender });
-              }}
-            />
-          </Stack>
+          </div>
         </Grid.Col>
       </Grid>
     </Stack>
