@@ -1,0 +1,24 @@
+/*
+ * The to-do pill: yellow with dark text (white on yellow can't be read), its numbers as plain
+ * inline text so nothing can squeeze them out.
+ */
+.todo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--mantine-color-dark-9);
+  background: var(--mantine-color-yellow-5);
+  cursor: pointer;
+}
+
+.part {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
