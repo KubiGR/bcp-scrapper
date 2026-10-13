@@ -5,7 +5,7 @@ import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { FinderSearchSchema } from '../features/finder/finder-search';
 import { useQuery } from '@tanstack/react-query';
 import { AccountMenu } from '../features/auth/AccountMenu';
-import { ApprovalsBadge } from '../features/auth/ApprovalsBadge';
+import { AdminTodo } from '../features/auth/AdminTodo';
 import { canUsePairings, isAdminView, meQuery } from '../features/auth/auth-queries';
 import { QueueIndicator } from '../features/fetch-queue/QueueIndicator';
 import classes from './AppLayout.module.css';
@@ -91,7 +91,7 @@ export function AppLayout() {
                   </Link>
                 ))}
               </Group>
-              <ApprovalsBadge />
+              <AdminTodo />
               <AccountMenu />
             </Group>
           </Group>
