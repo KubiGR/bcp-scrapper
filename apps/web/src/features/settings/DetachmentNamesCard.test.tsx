@@ -93,6 +93,43 @@ describe('DetachmentNamesCard with BSData', () => {
     });
   });
 
+  it('groups one detachment across factions: one row, kept or ignored for all of them', async () => {
+    const pairs = names({
+      wrong: [
+        {
+          faction: 'Space Marines (Astartes)',
+          name: 'Librarius Conclave',
+          lists: 381,
+          bsdataFactions: [],
+        },
+        { faction: 'Dark Angels', name: 'Librarius Conclave', lists: 59, bsdataFactions: [] },
+        { faction: 'Orks', name: 'More Dakka!', lists: 51, bsdataFactions: [] },
+      ],
+    });
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/detachments': pairs,
+      'POST /api/detachments/keeps': pairs,
+    });
+    renderWithProviders(<DetachmentNamesCard faction="all" onFactionChange={vi.fn()} />);
+    const section = within(await screen.findByRole('region', { name: 'Not in this faction' }));
+    expect(section.getByText('Librarius Conclave · 440 lists')).toBeInTheDocument();
+    expect(section.getByText('Space Marines (Astartes) 381, Dark Angels 59')).toBeInTheDocument();
+    fireEvent.click(
+      section.getByRole('button', { name: 'Keep Librarius Conclave for all its factions' }),
+    );
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(2);
+    });
+    const bodies = fetchMock.mock.calls
+      .filter(([, init]) => init?.method === 'POST')
+      .map(([, init]) => JSON.parse(init?.body as string) as { faction: string });
+    expect(bodies.map((b) => b.faction).sort()).toEqual([
+      'Dark Angels',
+      'Space Marines (Astartes)',
+    ]);
+  });
+
   it('follows the faction and focus it is given: all factions, scrolled to those outside', async () => {
     const scrolled = vi.fn();
     Element.prototype.scrollIntoView = scrolled;
