@@ -348,6 +348,12 @@ describe('MathhammerPage steps', () => {
     expect(screen.queryByRole('region', { name: 'Result summary' })).toBeNull();
   });
 
+  it('heads the page with its title alone', () => {
+    renderWithProviders(<MathhammerPage />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Mathhammer' })).toBeInTheDocument();
+    expect(screen.queryByText(/Exact chances/)).toBeNull();
+  });
+
   it('shows no stray code comments as text', () => {
     renderWithProviders(<MathhammerPage />);
     expect(screen.queryByText(/^\s*\/\//)).toBeNull();

@@ -1,4 +1,4 @@
-import { Button, Group, Stack, Tabs, Text, Title } from '@mantine/core';
+import { Button, Group, Stack, Tabs, Title } from '@mantine/core';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { AttackerPanel } from './AttackerPanel';
 import { DefenderPanel } from './DefenderPanel';
@@ -60,12 +60,7 @@ export function MathhammerPage() {
 
   return (
     <Stack gap="lg">
-      <Stack gap={4}>
-        <Title order={1}>Mathhammer</Title>
-        <Text size="sm" c="dimmed">
-          Exact chances, worked out from the dice by 11th-edition rules.
-        </Text>
-      </Stack>
+      <Title order={1}>Mathhammer</Title>
       {/* One step at a time: attacker, then defender, then the result. */}
       <Tabs
         value={step}
