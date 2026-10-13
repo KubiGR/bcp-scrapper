@@ -8,6 +8,8 @@ export interface MatrixSettings {
   /** Any listed detachment matches; empty = no filter. */
   detachments: string[];
   side: 'row' | 'both';
+  /** The factions shown as rows (still against every opponent); empty = all. Display only. */
+  factions: string[];
 }
 
 export const DEFAULT_MATRIX_SETTINGS: MatrixSettings = {
@@ -16,6 +18,7 @@ export const DEFAULT_MATRIX_SETTINGS: MatrixSettings = {
   dispositions: [],
   detachments: [],
   side: 'row',
+  factions: [],
 };
 
 /** Whether a server-side filter (disposition or detachment) is chosen. */

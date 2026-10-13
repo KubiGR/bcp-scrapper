@@ -87,6 +87,8 @@ export interface CrossSearch {
   /** `|`-separated detachments (any matches; names may contain commas). */
   detachments?: string;
   side?: 'row' | 'both';
+  /** `|`-separated factions shown as rows (display only, never sent to the API). */
+  factions?: string;
 }
 
 /** Links from before the multi-select used a single `disposition`; read it as `dispositions`. */

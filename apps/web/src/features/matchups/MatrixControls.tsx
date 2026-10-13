@@ -27,6 +27,8 @@ interface MatrixControlsProps {
   dispositions: string[];
   /** Detachments played in the loaded games (from the API). */
   detachments?: string[];
+  /** The matrix's factions, to show only some as rows. */
+  factions?: string[];
 }
 
 export function MatrixControls({
@@ -35,7 +37,11 @@ export function MatrixControls({
   scoring,
   dispositions,
   detachments = [],
+  factions = [],
 }: MatrixControlsProps) {
+  const factionOptions = [...new Set([...factions, ...settings.factions])].sort((a, b) =>
+    a.localeCompare(b),
+  );
   const detachmentOptions = [...new Set([...detachments, ...settings.detachments])].sort((a, b) =>
     a.localeCompare(b),
   );
@@ -69,6 +75,18 @@ export function MatrixControls({
           w={110}
           onChange={(value) => {
             if (typeof value === 'number') onChange({ ...settings, minGames: value });
+          }}
+        />
+        <MultiSelect
+          label="Factions"
+          placeholder={settings.factions.length === 0 ? 'All factions' : undefined}
+          clearable
+          searchable
+          w={{ base: '100%', xs: 260 }}
+          data={factionOptions}
+          value={settings.factions}
+          onChange={(value) => {
+            onChange({ ...settings, factions: value });
           }}
         />
         <MultiSelect

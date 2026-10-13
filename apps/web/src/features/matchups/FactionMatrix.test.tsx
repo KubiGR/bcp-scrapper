@@ -89,6 +89,23 @@ describe('FactionMatrix', () => {
     expect(screen.getByRole('button', { name: /Orks vs Necrons/ })).toBeInTheDocument();
   });
 
+  it('shows only the picked factions as rows, still against every opponent', () => {
+    renderWithProviders(
+      <FactionMatrix
+        matrix={matrix()}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 1, factions: ['Necrons'] }}
+        onCell={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByRole('rowheader').map((th) => th.textContent)).toEqual(['Necrons']);
+    expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
+      '',
+      'Orks',
+      'Necrons',
+    ]);
+  });
+
   it('hides a cell under minGames as plain, unclickable text', () => {
     renderWithProviders(
       <FactionMatrix

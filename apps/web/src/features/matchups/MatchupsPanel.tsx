@@ -57,6 +57,7 @@ export function MatchupsPanel({ event }: { event: EventDetail }) {
         scoring={matrixScoring}
         dispositions={dispositions}
         detachments={matchups.data.detachments}
+        factions={matrix.factions}
       />
       <Box style={{ opacity: dimmed ? 0.6 : 1 }} aria-busy={dimmed}>
         {matrix.games === 0 ? (

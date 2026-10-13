@@ -18,6 +18,8 @@ const MatchupsSearchSchema = z.object({
   /** Pre-multi-select links; read into `dispositions`. */
   disposition: optionalText,
   side: z.enum(['row', 'both']).optional().catch(undefined),
+  /** `|`-separated factions shown as rows. */
+  factions: optionalText,
 });
 
 export const Route = createFileRoute('/analysis/matchups')({

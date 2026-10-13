@@ -205,7 +205,10 @@ export function FactionMatrix({
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {matrix.factions.map((row) => (
+            {(settings.factions.length > 0
+              ? matrix.factions.filter((faction) => settings.factions.includes(faction))
+              : matrix.factions
+            ).map((row) => (
               <Fragment key={row}>
                 <Table.Tr>
                   <Table.Th scope="row" className={classes.stickyRowHeader} title={row}>
