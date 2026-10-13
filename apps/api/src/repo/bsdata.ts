@@ -1,10 +1,17 @@
-import { BCP_FACTIONS, parseBsdataCatalogues, type BsdataStatus } from '@bcp/shared';
+import {
+  BCP_FACTIONS,
+  BSDATA_READER_VERSION,
+  parseBsdataCatalogues,
+  type BsdataStatus,
+} from '@bcp/shared';
 import { asc, eq, isNotNull, sql } from 'drizzle-orm';
 import type { BsdataClient } from '../bsdata/client';
 import type { Db } from '../db/client';
 import { appSettings, bsdataDetachments, bsdataFiles } from '../db/schema';
 
 const CHECKED_AT = 'bsdataCheckedAt';
+/** The BSDATA_READER_VERSION that read the stored detachments. */
+const READER_VERSION = 'bsdataReaderVersion';
 /** Why the last read of BSData's commit history (for game updates) failed; absent when it worked. */
 export const HISTORY_ERROR = 'bsdataHistoryError';
 const DAY_MS = 86_400_000;
@@ -56,8 +63,18 @@ export async function bsdataStatus(db: Db): Promise<BsdataStatus> {
 }
 
 /** True when BSData hasn't been checked in the last 24 hours. */
+async function readerVersion(db: Db): Promise<unknown> {
+  const [row] = await db
+    .select({ value: appSettings.value })
+    .from(appSettings)
+    .where(eq(appSettings.key, READER_VERSION));
+  return row?.value ?? null;
+}
+
+/** A day since the last check, or the stored detachments were read by an older reader. */
 export async function bsdataDue(db: Db, now: Date): Promise<boolean> {
-  const at = await checkedAt(db);
+  const [at, version] = await Promise.all([checkedAt(db), readerVersion(db)]);
+  if (at !== null && version !== BSDATA_READER_VERSION) return true;
   return at === null || now.getTime() - Date.parse(at) >= DAY_MS;
 }
 
@@ -84,9 +101,15 @@ export async function syncBsdata(db: Db, client: BsdataClient, now: Date): Promi
   const stored = new Map(
     (await db.select().from(bsdataFiles)).map((row) => [row.path, row.sha] as const),
   );
+  // A newer reader reads every file again, changed or not.
+  const reread = (await readerVersion(db)) !== BSDATA_READER_VERSION;
   const changedPaths = new Set(
-    tree.files.filter((file) => stored.get(file.path) !== file.sha).map((file) => file.path),
+    tree.files
+      .filter((file) => reread || stored.get(file.path) !== file.sha)
+      .map((file) => file.path),
   );
+  // Every file read (whatever was found), or nothing to read: this reader is done with them.
+  let complete = true;
   if (changedPaths.size > 0) {
     const bodies: unknown[] = [];
     const failed = new Map<string, string>();
@@ -97,6 +120,7 @@ export async function syncBsdata(db: Db, client: BsdataClient, now: Date): Promi
         failed.set(file.path, messageOf(error));
       }
     }
+    complete = failed.size === 0;
     const parse = parseBsdataCatalogues(bodies);
     const found = [...parse.factions.values()].some((names) => names.length > 0);
     const hadData = (await db.$count(bsdataDetachments)) > 0;
@@ -122,6 +146,15 @@ export async function syncBsdata(db: Db, client: BsdataClient, now: Date): Promi
           .onConflictDoUpdate({ target: bsdataFiles.path, set: { sha, checkedAt: now, error } });
       }
     });
+  }
+  if (complete) {
+    await db
+      .insert(appSettings)
+      .values({ key: READER_VERSION, value: BSDATA_READER_VERSION })
+      .onConflictDoUpdate({
+        target: appSettings.key,
+        set: { value: BSDATA_READER_VERSION, updatedAt: now },
+      });
   }
   await db
     .insert(appSettings)

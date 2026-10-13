@@ -88,6 +88,7 @@ describe('parseBsdataCatalogues', () => {
     const sm = catalogue('sm', 'Imperium - Adeptus Astartes - Space Marines', [
       entry('Gladius Task Force'),
       entry('Rage-Cursed Onslaught', [hiddenUnless('ba')]),
+      entry('Blade of Ultramar', [hiddenUnless('um')]),
     ]);
     const chapter = (id: string, name: string) => ({
       catalogue: {
@@ -103,10 +104,11 @@ describe('parseBsdataCatalogues', () => {
       chapter('um', 'Imperium - Adeptus Astartes - Ultramarines'),
     ]);
     expect(factions.get('Blood Angels')).toEqual(['Gladius Task Force', 'Rage-Cursed Onslaught']);
-    // Space Marines takes every Adeptus Astartes detachment (BCP counts some chapters there).
+    // Space Marines takes the chapters BCP counts there (Ultramarines), not those it lists as
+    // factions of their own (Blood Angels: Rage-Cursed Onslaught is theirs alone).
     expect(factions.get('Space Marines (Astartes)')).toEqual([
+      'Blade of Ultramar',
       'Gladius Task Force',
-      'Rage-Cursed Onslaught',
     ]);
   });
 
