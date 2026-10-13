@@ -66,7 +66,7 @@ export function MathhammerPage() {
           Exact chances, worked out from the dice by 11th-edition rules.
         </Text>
       </Stack>
-      // One step at a time: attacker, then defender, then the result.
+      {/* One step at a time: attacker, then defender, then the result. */}
       <Tabs
         value={step}
         keepMounted={false}

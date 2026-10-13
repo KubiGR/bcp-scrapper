@@ -348,6 +348,11 @@ describe('MathhammerPage steps', () => {
     expect(screen.queryByRole('region', { name: 'Result summary' })).toBeNull();
   });
 
+  it('shows no stray code comments as text', () => {
+    renderWithProviders(<MathhammerPage />);
+    expect(screen.queryByText(/^\s*\/\//)).toBeNull();
+  });
+
   it('has no other layout to switch to', () => {
     renderWithProviders(<MathhammerPage />);
     expect(screen.queryByRole('radio', { name: 'Side by side' })).toBeNull();
