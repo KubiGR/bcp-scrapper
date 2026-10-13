@@ -87,6 +87,8 @@ export function AdminTodo() {
     {
       count: outside,
       tab: 'detachments' as const,
+      // Every faction's, scrolled to: they're listed per faction otherwise.
+      search: { faction: 'all', focus: 'outside' as const },
       label: plural(outside, 'detachment outside its faction', 'detachments outside their faction'),
     },
   ].filter((item) => item.count > 0);
@@ -131,7 +133,15 @@ export function AdminTodo() {
               onClick={() => {
                 setOpen(false);
               }}
-              renderRoot={(props) => <Link to="/settings" search={{ tab: item.tab }} {...props} />}
+              renderRoot={(props) => (
+                <Link
+                  to="/settings"
+                  search={{ tab: item.tab, ...item.search }}
+                  // The page scrolls to the work itself.
+                  resetScroll={false}
+                  {...props}
+                />
+              )}
             >
               {item.label}
             </Anchor>

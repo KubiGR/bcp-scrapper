@@ -21,9 +21,16 @@ const LABELS: Record<SettingsTab, string> = {
 export function SettingsPage({
   tab,
   onTabChange,
+  faction,
+  focus,
+  onFactionChange,
 }: {
   tab: SettingsTab;
   onTabChange: (tab: SettingsTab) => void;
+  /** The detachments tab's faction and focus (the address keeps them). */
+  faction?: string;
+  focus?: 'outside';
+  onFactionChange?: (faction: string) => void;
 }) {
   const me = useQuery(meQuery);
   return (
@@ -70,7 +77,7 @@ export function SettingsPage({
           )}
         </Tabs.Panel>
         <Tabs.Panel value="detachments" pt="md">
-          <DetachmentNamesCard />
+          <DetachmentNamesCard faction={faction} focus={focus} onFactionChange={onFactionChange} />
         </Tabs.Panel>
       </Tabs>
     </Stack>

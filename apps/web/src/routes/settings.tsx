@@ -9,7 +9,7 @@ export const Route = createFileRoute('/settings')({
 });
 
 function SettingsRoute() {
-  const { tab } = Route.useSearch();
+  const { tab, faction, focus } = Route.useSearch();
   const navigate = Route.useNavigate();
   return (
     <AdminOnly>
@@ -17,6 +17,16 @@ function SettingsRoute() {
         tab={tab}
         onTabChange={(next) => {
           void navigate({ search: { tab: next }, replace: true, resetScroll: false });
+        }}
+        faction={faction}
+        focus={focus}
+        onFactionChange={(next) => {
+          // A faction picked by hand: no more jumping to a section.
+          void navigate({
+            search: { tab, faction: next },
+            replace: true,
+            resetScroll: false,
+          });
         }}
       />
     </AdminOnly>

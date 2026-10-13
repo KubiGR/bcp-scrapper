@@ -1,6 +1,6 @@
 import type { DetachmentNamesResponse } from '@bcp/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
 import { aUser, authOff, loggedIn } from '../auth/auth-test-utils';
 import { DetachmentNamesCard } from './DetachmentNamesCard';
@@ -62,6 +62,30 @@ describe('DetachmentNamesCard with BSData', () => {
       'Kult of Speed',
       'War Horde',
     ]);
+  });
+
+  it('follows the faction and focus it is given: all factions, scrolled to those outside', async () => {
+    const scrolled = vi.fn();
+    Element.prototype.scrollIntoView = scrolled;
+    const pairs = names({
+      wrong: [
+        { faction: 'Orks', name: 'Wreckas', lists: 2, bsdataFactions: [] },
+        { faction: 'Chaos Daemons', name: 'Kult of Speed', lists: 1, bsdataFactions: ['Orks'] },
+      ],
+    });
+    stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': pairs });
+    const onFactionChange = vi.fn();
+    renderWithProviders(
+      <DetachmentNamesCard faction="all" focus="outside" onFactionChange={onFactionChange} />,
+    );
+    const section = within(await screen.findByRole('region', { name: 'Not in this faction' }));
+    expect(section.getByText('Wreckas · 2 lists')).toBeInTheDocument();
+    expect(section.getByText('Kult of Speed · 1 list')).toBeInTheDocument();
+    expect(scrolled).toHaveBeenCalled();
+    // Picking a faction goes back to whoever keeps it (the address).
+    fireEvent.click(screen.getByRole('combobox', { name: 'Faction' }));
+    fireEvent.click(await screen.findByRole('option', { name: /^Orks/ }));
+    expect(onFactionChange).toHaveBeenCalledWith('Orks');
   });
 
   it('lists detachments outside the faction’s BSData list, to keep anyway or undo', async () => {
