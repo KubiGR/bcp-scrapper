@@ -1,5 +1,5 @@
 import type { DetachmentNamesResponse } from '@bcp/shared';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { AdminTodo } from './AdminTodo';
@@ -47,7 +47,12 @@ describe('AdminTodo', () => {
       'GET /api/detachments': detachments(3, 2),
     });
     renderWithRouter(<AdminTodo />);
-    const badge = await screen.findByRole('button', { name: '6 things to do' });
+    const badge = await screen.findByRole('button', {
+      name: 'To do: 1 for users, 5 for detachments',
+    });
+    // Two numbers: users, then detachments.
+    expect(within(badge).getByText('1')).toHaveAttribute('data-part', 'users');
+    expect(within(badge).getByText('5')).toHaveAttribute('data-part', 'detachments');
     await waitFor(() => {
       expect(document.title).toBe('(6) Logis');
     });
@@ -70,14 +75,17 @@ describe('AdminTodo', () => {
     });
     renderWithRouter(<AdminTodo />);
     await new Promise((resolve) => setTimeout(resolve, 30));
-    expect(screen.queryByRole('button', { name: /to do/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /To do/ })).toBeNull();
     expect(document.title).toBe('Logis');
   });
 
   it('counts detachments without logins (no approvals then), and nothing for a member', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': detachments(1, 0) });
     const view = renderWithRouter(<AdminTodo />);
-    expect(await screen.findByRole('button', { name: '1 thing to do' })).toBeInTheDocument();
+    const badge = await screen.findByRole('button', { name: 'To do: 1 for detachments' });
+    expect(
+      within(badge).queryByText((_, el) => el?.getAttribute('data-part') === 'users'),
+    ).toBeNull();
     view.unmount();
     stubFetchRoutes({
       'GET /api/auth/me': loggedIn(aUser({ role: 'member' })),
@@ -85,6 +93,6 @@ describe('AdminTodo', () => {
     });
     renderWithRouter(<AdminTodo />);
     await new Promise((resolve) => setTimeout(resolve, 30));
-    expect(screen.queryByRole('button', { name: /to do/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /To do/ })).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { Anchor, Badge, Popover, Stack, UnstyledButton } from '@mantine/core';
+import { Anchor, Badge, Group, Popover, Stack, UnstyledButton } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
@@ -9,6 +9,37 @@ const SITE_TITLE = 'Logis';
 const EVERY_FEW_MINUTES = 3 * 60_000;
 
 const plural = (n: number, one: string, many: string) => `${String(n)} ${n === 1 ? one : many}`;
+
+const ICON = {
+  width: 11,
+  height: 11,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 2.5,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+  'aria-hidden': true,
+} as const;
+
+/** People to approve. */
+function PersonIcon() {
+  return (
+    <svg {...ICON}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
+    </svg>
+  );
+}
+
+/** Detachment names to sort. */
+function ListIcon() {
+  return (
+    <svg {...ICON}>
+      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+    </svg>
+  );
+}
 
 /**
  * An admin's work left, in the header and the tab's title ("(6) Logis"): people waiting for
@@ -32,7 +63,8 @@ export function AdminTodo() {
     : 0;
   const unlinked = names.data?.unsure.length ?? 0;
   const outside = names.data?.wrong.length ?? 0;
-  const total = admin ? waiting + unlinked + outside : 0;
+  const detachments = unlinked + outside;
+  const total = admin ? waiting + detachments : 0;
 
   // The tab shows the count too, so it's seen from another tab.
   useEffect(() => {
@@ -62,7 +94,12 @@ export function AdminTodo() {
     <Popover position="bottom-end" withArrow shadow="md" opened={open} onChange={setOpen}>
       <Popover.Target>
         <UnstyledButton
-          aria-label={plural(total, 'thing to do', 'things to do')}
+          aria-label={`To do: ${[
+            waiting > 0 ? `${String(waiting)} for users` : null,
+            detachments > 0 ? `${String(detachments)} for detachments` : null,
+          ]
+            .filter(Boolean)
+            .join(', ')}`}
           onClick={() => {
             setOpen((o) => !o);
           }}
@@ -75,7 +112,20 @@ export function AdminTodo() {
             c="dark.9"
             style={{ cursor: 'pointer' }}
           >
-            {total} to do
+            <Group gap={8} wrap="nowrap">
+              {waiting > 0 && (
+                <Group gap={3} wrap="nowrap">
+                  <PersonIcon />
+                  <span data-part="users">{waiting}</span>
+                </Group>
+              )}
+              {detachments > 0 && (
+                <Group gap={3} wrap="nowrap">
+                  <ListIcon />
+                  <span data-part="detachments">{detachments}</span>
+                </Group>
+              )}
+            </Group>
           </Badge>
         </UnstyledButton>
       </Popover.Target>
