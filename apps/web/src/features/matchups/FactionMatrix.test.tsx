@@ -235,6 +235,24 @@ describe('FactionMatrix', () => {
     expect(rowHeader.className).toMatch(/stickyRowHeader/);
   });
 
+  it('stacks each slanted column heading over the next, and the corner over them all', () => {
+    renderWithProviders(
+      <FactionMatrix
+        matrix={matrix()}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 1 }}
+        onCell={vi.fn()}
+      />,
+    );
+    const headings = screen.getAllByRole('columnheader').slice(1);
+    const layers = headings.map((el) => Number(el.style.zIndex));
+    expect(layers.length).toBeGreaterThan(1);
+    expect(layers).toEqual([...layers].sort((a, b) => b - a));
+    expect(new Set(layers).size).toBe(layers.length);
+    const corner = Number(screen.getByTestId('matrix-corner').style.zIndex);
+    expect(corner).toBeGreaterThan(Math.max(...layers));
+  });
+
   it('marks the top-left corner cell as sticky on both axes', () => {
     renderWithProviders(
       <FactionMatrix
