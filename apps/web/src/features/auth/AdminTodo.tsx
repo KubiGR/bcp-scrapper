@@ -55,7 +55,14 @@ export function AdminTodo() {
     <Popover position="bottom-end" withArrow shadow="md">
       <Popover.Target>
         <UnstyledButton aria-label={plural(total, 'thing to do', 'things to do')}>
-          <Badge color="yellow" variant="filled" size="sm" style={{ cursor: 'pointer' }}>
+          <Badge
+            color="yellow"
+            variant="filled"
+            size="sm"
+            // Dark text: white on yellow can't be read.
+            c="dark.9"
+            style={{ cursor: 'pointer' }}
+          >
             {total} to do
           </Badge>
         </UnstyledButton>
