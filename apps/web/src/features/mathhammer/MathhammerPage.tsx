@@ -43,7 +43,7 @@ export function MathhammerPage() {
           Exact chances, worked out from the dice by 11th-edition rules.
         </Text>
       </Stack>
-      {/* Attacker | defender side by side on wide screens, the result under them, full width. */}
+      {/* Attacker | defender side by side on wide screens, the result under the defender. */}
       <Grid gap="lg">
         <Grid.Col span={{ base: 12, lg: 7 }}>
           <Stack gap="lg">
@@ -61,17 +61,17 @@ export function MathhammerPage() {
           </Stack>
         </Grid.Col>
         <Grid.Col span={{ base: 12, lg: 5 }}>
-          <DefenderPanel
-            defender={form.defender}
-            onChange={(defender) => {
-              setForm({ ...form, defender });
-            }}
-          />
-        </Grid.Col>
-        <Grid.Col span={12}>
-          <div ref={resultRef} className={classes.result} role="region" aria-label="Full result">
-            <ResultPanel outcome={outcome} form={settled} />
-          </div>
+          <Stack gap="lg">
+            <DefenderPanel
+              defender={form.defender}
+              onChange={(defender) => {
+                setForm({ ...form, defender });
+              }}
+            />
+            <div ref={resultRef} className={classes.result} role="region" aria-label="Full result">
+              <ResultPanel outcome={outcome} form={settled} />
+            </div>
+          </Stack>
         </Grid.Col>
       </Grid>
       {/* While the full result is out of view, its headline numbers stay at the bottom. */}
