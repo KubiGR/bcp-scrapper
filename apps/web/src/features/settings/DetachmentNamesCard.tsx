@@ -321,7 +321,8 @@ export function DetachmentNamesCard({
   });
   const keep = useMutation({
     mutationKey: ['detachment-keep'],
-    mutationFn: ({ faction, name }: Pair) => keepDetachment(faction, name),
+    mutationFn: ({ faction, name, ignored }: Pair & { ignored?: boolean }) =>
+      keepDetachment(faction, name, ignored),
     onSuccess: saved,
   });
   const unkeep = useMutation({
@@ -331,7 +332,7 @@ export function DetachmentNamesCard({
   });
   const linking = usePending<LinkRequest>(['detachment-link']);
   const undoing = usePending<string>(['detachment-unlink']);
-  const keeping = usePending<Pair>(['detachment-keep']);
+  const keeping = usePending<Pair & { ignored?: boolean }>(['detachment-keep']);
   const unkeeping = usePending<Pair>(['detachment-unkeep']);
   const error = link.error ?? unlink.error ?? keep.error ?? unkeep.error;
   // Opened from the to-do list: straight to the detachments outside their faction, once (a
@@ -511,8 +512,9 @@ export function DetachmentNamesCard({
                 Not in this faction
               </Text>
               <Text size="xs" c="dimmed">
-                Detachments lists use that BSData doesn’t list for their army. Meta counts them as
-                detachment unknown, unless you keep them anyway.
+                Detachments lists use that BSData doesn’t list for their army, most used first. Meta
+                counts them as detachment unknown unless you keep them anyway; Ignore only takes one
+                off the to-do list.
               </Text>
               {wrong.map((pair) => (
                 <Group key={`${pair.faction}:${pair.name}`} gap="xs">
@@ -532,12 +534,25 @@ export function DetachmentNamesCard({
                     variant="subtle"
                     disabled={readOnly}
                     aria-label={`Keep ${pair.name} for ${pair.faction}`}
-                    loading={keeping.some(samePair(pair))}
+                    loading={keeping.some((k) => samePair(pair)(k) && k.ignored !== true)}
                     onClick={() => {
                       work(keep, { faction: pair.faction, name: pair.name });
                     }}
                   >
                     Keep anyway
+                  </Button>
+                  <Button
+                    size="compact-xs"
+                    variant="subtle"
+                    color="gray"
+                    disabled={readOnly}
+                    aria-label={`Ignore ${pair.name} for ${pair.faction}`}
+                    loading={keeping.some((k) => samePair(pair)(k) && k.ignored === true)}
+                    onClick={() => {
+                      work(keep, { faction: pair.faction, name: pair.name, ignored: true });
+                    }}
+                  >
+                    Ignore
                   </Button>
                 </Group>
               ))}
@@ -545,7 +560,7 @@ export function DetachmentNamesCard({
                 <Group key={`kept:${pair.faction}:${pair.name}`} gap="xs">
                   <Text size="sm">{pair.name}</Text>
                   <Text size="sm" c="dimmed">
-                    {`kept for ${pair.faction}`}
+                    {`${pair.ignored ? 'ignored' : 'kept'} for ${pair.faction}`}
                   </Text>
                   <Button
                     size="compact-xs"

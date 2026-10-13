@@ -91,7 +91,10 @@ async function bsdataRules(db: Db) {
   const names = new Map(
     [...bsdata].map(([faction, list]) => [faction, new Set(list.map(looseDetachmentKey))]),
   );
-  const kept = new Set(keeps.map((keep) => `${keep.faction}\u0000${keep.nameKey}`));
+  // Ignored pairs are only off the to-do list: still outside the army.
+  const kept = new Set(
+    keeps.filter((keep) => !keep.ignored).map((keep) => `${keep.faction}\u0000${keep.nameKey}`),
+  );
   /** Whether a list's detachment is outside its army's BSData list (and not kept anyway). */
   const wrong = (army: string | null, name: string) => {
     if (army === null) return false;
@@ -155,13 +158,24 @@ export async function armyRules(db: Db): Promise<ArmyRules> {
   };
 }
 
-/** Keeps a detachment for a faction although BSData doesn't list it there. */
-export async function keepDetachment(db: Db, faction: string, name: string): Promise<void> {
+/**
+ * Keeps a detachment for a faction although BSData doesn't list it there; `ignored`: only sets
+ * the pair aside (off the to-do list), still counted as detachment unknown.
+ */
+export async function keepDetachment(
+  db: Db,
+  faction: string,
+  name: string,
+  ignored = false,
+): Promise<void> {
   const clean = cleanDetachmentName(name);
   await db
     .insert(detachmentKeeps)
-    .values({ faction, nameKey: clean.toLowerCase(), name: clean })
-    .onConflictDoNothing();
+    .values({ faction, nameKey: clean.toLowerCase(), name: clean, ignored })
+    .onConflictDoUpdate({
+      target: [detachmentKeeps.faction, detachmentKeeps.nameKey],
+      set: { ignored },
+    });
 }
 
 export async function unkeepDetachment(db: Db, faction: string, name: string): Promise<void> {
@@ -269,6 +283,11 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
   const isForeign = (entry: { name: string; marked: boolean }) =>
     entry.marked || looksForeign(entry.name);
 
+  const setAside = new Set(
+    rules.keeps
+      .filter((keep) => keep.ignored)
+      .map((keep) => `${keep.faction}\u0000${keep.nameKey}`),
+  );
   // Detachments outside their army's BSData list (names that aren't English are listed apart).
   const wrongLists = new Map<string, { faction: string; name: string; players: Set<string> }>();
   for (const row of storedRows) {
@@ -278,6 +297,8 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
     if (isForeign({ name: row.name, marked: marked.has(row.name.toLowerCase()) })) continue;
     if (ignoredKeys.has(row.name.toLowerCase())) continue;
     const key = `${row.faction}\u0000${row.name.toLowerCase()}`;
+    // A pair set aside (ignored) is off this list, though still not counted.
+    if (setAside.has(key)) continue;
     const entry = wrongLists.get(key) ?? {
       faction: row.faction,
       name: row.name,
@@ -318,11 +339,16 @@ export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> 
         lists: entry.players.size,
         bsdataFactions: bsdataFactionsOf(entry.name),
       }))
+      // The most used first: they matter most to Meta.
       .sort(
         (a, b) =>
-          a.faction.localeCompare(b.faction) || b.lists - a.lists || a.name.localeCompare(b.name),
+          b.lists - a.lists || a.faction.localeCompare(b.faction) || a.name.localeCompare(b.name),
       ),
-    kept: rules.keeps.map((keep) => ({ faction: keep.faction, name: keep.name })),
+    kept: rules.keeps.map((keep) => ({
+      faction: keep.faction,
+      name: keep.name,
+      ignored: keep.ignored,
+    })),
     // A linked name no longer appears in stored lists: it belongs to its target's factions.
     links: links
       .filter((link) => !link.foreign && !link.ignored)

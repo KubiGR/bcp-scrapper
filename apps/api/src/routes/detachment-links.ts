@@ -41,11 +41,11 @@ export function detachmentLinkRoutes(deps: { db: Db; authRequired: boolean }) {
       // A detachment kept for a faction although BSData doesn't list it there, and the undo.
       .post('/detachments/keeps', requireJson, async (c) => {
         adminOnly(c.get('user'));
-        const { faction, name } = parseInput(
+        const { faction, name, ignored } = parseInput(
           DetachmentKeepRequestSchema,
           await c.req.json<unknown>().catch(() => null),
         );
-        await keepDetachment(db, faction, name);
+        await keepDetachment(db, faction, name, ignored);
         return c.json(await detachmentNames(db));
       })
       .delete('/detachments/keeps/:faction/:name', async (c) => {

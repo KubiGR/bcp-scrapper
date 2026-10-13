@@ -27,8 +27,16 @@ export const unlinkDetachment = (name: string) =>
   apiDelete(`/api/detachments/links/${encodeURIComponent(name)}`, DetachmentNamesResponseSchema);
 
 /** Keeps `name` for `faction` although BSData doesn't list it there. */
-export const keepDetachment = (faction: string, name: string) =>
-  apiPost('/api/detachments/keeps', { faction, name }, DetachmentNamesResponseSchema);
+/**
+ * Keeps `name` for `faction` although BSData doesn't list it there; `ignored`: only sets the pair
+ * aside (off the to-do list, still not counted).
+ */
+export const keepDetachment = (faction: string, name: string, ignored = false) =>
+  apiPost(
+    '/api/detachments/keeps',
+    { faction, name, ...(ignored ? { ignored } : {}) },
+    DetachmentNamesResponseSchema,
+  );
 
 export const unkeepDetachment = (faction: string, name: string) =>
   apiDelete(
