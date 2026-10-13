@@ -294,3 +294,61 @@ describe('picking units', () => {
     expect((await screen.findAllByText(/refresh it in Settings/)).length).toBeGreaterThan(0);
   });
 });
+
+describe('MathhammerPage in steps', () => {
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  const steps = () => {
+    fireEvent.click(screen.getByRole('radio', { name: 'Steps' }));
+  };
+
+  it('starts on the attacker, one step at a time', () => {
+    renderWithProviders(<MathhammerPage />);
+    steps();
+    expect(screen.getByRole('tab', { name: /Attacker/, selected: true })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Weapon 1' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Models 1' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Full result' })).toBeNull();
+  });
+
+  it('walks attacker, defender, result with Next and back again', () => {
+    renderWithProviders(<MathhammerPage />);
+    steps();
+    fireEvent.click(screen.getByRole('button', { name: /Next: Defender/ }));
+    expect(screen.getByRole('group', { name: 'Models 1' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Weapon 1' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Next: Result/ }));
+    expect(screen.getByRole('region', { name: 'Full result' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Back: Defender/ }));
+    expect(screen.getByRole('group', { name: 'Models 1' })).toBeInTheDocument();
+  });
+
+  it('jumps to a step from its tab', () => {
+    renderWithProviders(<MathhammerPage />);
+    steps();
+    fireEvent.click(screen.getByRole('tab', { name: /Result/ }));
+    expect(screen.getByRole('region', { name: 'Full result' })).toBeInTheDocument();
+  });
+
+  it('keeps the result summary on the other steps, opening the result from it', () => {
+    renderWithProviders(<MathhammerPage />);
+    steps();
+    expect(screen.getByRole('region', { name: 'Result summary' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Full result' }));
+    expect(screen.getByRole('region', { name: 'Full result' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Result summary' })).toBeNull();
+  });
+
+  it('remembers the chosen layout', () => {
+    const first = renderWithProviders(<MathhammerPage />);
+    steps();
+    first.unmount();
+    renderWithProviders(<MathhammerPage />);
+    expect(screen.getByRole('tab', { name: /Attacker/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: 'Side by side' }));
+    expect(screen.queryByRole('tab', { name: /Attacker/ })).toBeNull();
+    expect(screen.getByRole('group', { name: 'Models 1' })).toBeInTheDocument();
+  });
+});

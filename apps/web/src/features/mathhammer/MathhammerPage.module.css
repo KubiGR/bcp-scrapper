@@ -3,3 +3,8 @@
   scroll-margin-top: 76px;
   padding-bottom: 56px;
 }
+
+/* Clear of the result summary pinned at the bottom. */
+.stepNav {
+  padding-bottom: 56px;
+}
