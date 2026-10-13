@@ -1,7 +1,7 @@
 import type { DetachmentNamesResponse } from '@bcp/shared';
 import { Alert, Badge, Button, Group, Skeleton, Stack, Table, Text } from '@mantine/core';
 import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { SearchSelect } from '../../components/SearchSelect';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
@@ -9,6 +9,7 @@ import { plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { meQuery } from '../auth/auth-queries';
 import classes from './DetachmentNamesCard.module.css';
+import { ALL_FACTIONS } from './settings-search';
 import {
   detachmentNamesQuery,
   keepDetachment,
@@ -283,7 +284,19 @@ function NamesTable({
  * detachment it means, mark it as its own, or as not English (Meta then counts it as detachment
  * unknown); links apply to every stored list at once.
  */
-export function DetachmentNamesCard() {
+/**
+ * `faction`/`onFactionChange`: the faction kept outside (the address; "all" for every faction),
+ * else kept here. `focus` "outside": scroll to the detachments outside their faction.
+ */
+export function DetachmentNamesCard({
+  faction: factionProp,
+  focus,
+  onFactionChange,
+}: {
+  faction?: string;
+  focus?: 'outside';
+  onFactionChange?: (faction: string) => void;
+} = {}) {
   const names = useQuery(detachmentNamesQuery);
   const me = useQuery(meQuery);
   const queryClient = useQueryClient();
@@ -321,7 +334,27 @@ export function DetachmentNamesCard() {
   const keeping = usePending<Pair>(['detachment-keep']);
   const unkeeping = usePending<Pair>(['detachment-unkeep']);
   const error = link.error ?? unlink.error ?? keep.error ?? unkeep.error;
-  const [picked, setPicked] = useState<string | null>(null);
+  // Opened from the to-do list: straight to the detachments outside their faction, once (a
+  // stable callback, so saving there doesn't jump back).
+  const scrollToOutside = useCallback(
+    (el: HTMLElement | null) => {
+      if (focus === 'outside') el?.scrollIntoView({ block: 'start' });
+    },
+    [focus],
+  );
+  const [ownPicked, setOwnPicked] = useState<string | null>(null);
+  const picked =
+    onFactionChange === undefined
+      ? ownPicked
+      : factionProp === undefined
+        ? null
+        : factionProp === ALL_FACTIONS
+          ? ALL
+          : factionProp;
+  const setPicked = (value: string) => {
+    if (onFactionChange === undefined) setOwnPicked(value);
+    else onFactionChange(value === ALL ? ALL_FACTIONS : value);
+  };
   const factions = names.data ? factionOptions(names.data, picked) : [];
   // The picked faction, or (until one is picked or worked on) the one with the most unsure names.
   const faction =
@@ -466,7 +499,14 @@ export function DetachmentNamesCard() {
             </Stack>
           )}
           {(wrong.length > 0 || kept.length > 0) && (
-            <Stack component="section" aria-label="Not in this faction" gap={4}>
+            <Stack
+              component="section"
+              aria-label="Not in this faction"
+              gap={4}
+              // Landed on from the to-do list: clear of the fixed header.
+              style={{ scrollMarginTop: 76 }}
+              ref={scrollToOutside}
+            >
               <Text size="sm" fw={600}>
                 Not in this faction
               </Text>
