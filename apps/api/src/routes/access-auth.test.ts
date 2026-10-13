@@ -37,8 +37,9 @@ async function token(
     .sign(claims.key ?? privateKey);
 }
 
-function makeApp() {
+function makeApp(now?: () => Date) {
   return createApp({
+    now,
     db,
     runner: new SyncRunner({
       db,
@@ -231,6 +232,39 @@ describe('Cloudflare Access login', () => {
     expect((await send(app, 'GET', '/api/events', { jwt: ana2 })).status).toBe(200);
     // A member can't manage users.
     expect((await send(app, 'GET', '/api/users', { jwt: ana2 })).status).toBe(403);
+  });
+
+  it('tells the admin when each person was last seen, those waiting too', async () => {
+    let clock = new Date('2026-10-14T10:00:00Z');
+    const app = makeApp(() => clock);
+    const admin = await token();
+    await send(app, 'GET', '/api/events', { jwt: await token({ email: 'ana@example.com' }) });
+    clock = new Date('2026-10-14T12:00:00Z');
+    const list = (await (await send(app, 'GET', '/api/users', { jwt: admin })).json()) as {
+      users: { username: string; lastSeenAt: string | null }[];
+    };
+    const seen = Object.fromEntries(list.users.map((u) => [u.username, u.lastSeenAt]));
+    expect(seen).toEqual({
+      [ADMIN]: '2026-10-14T12:00:00.000Z',
+      'ana@example.com': '2026-10-14T10:00:00.000Z',
+    });
+  });
+
+  it('records a visit at most every few minutes, not on every request', async () => {
+    let clock = new Date('2026-10-14T10:00:00Z');
+    const app = makeApp(() => clock);
+    const admin = await token();
+    const seenAt = async () =>
+      (
+        await db.select().from(users).where(eq(users.username, ADMIN))
+      )[0]?.lastSeenAt?.toISOString();
+    await send(app, 'GET', '/api/events', { jwt: admin });
+    clock = new Date('2026-10-14T10:02:00Z');
+    await send(app, 'GET', '/api/events', { jwt: admin });
+    expect(await seenAt()).toBe('2026-10-14T10:00:00.000Z');
+    clock = new Date('2026-10-14T10:06:00Z');
+    await send(app, 'GET', '/api/events', { jwt: admin });
+    expect(await seenAt()).toBe('2026-10-14T10:06:00.000Z');
   });
 
   it('lets an admin open the pairings planner to a member, who then sees it in /me', async () => {

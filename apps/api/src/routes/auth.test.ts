@@ -391,6 +391,17 @@ describe('user admin', () => {
     ]);
   });
 
+  it('tells when each user was last seen: never, for one who hasn’t logged in', async () => {
+    const app = makeApp();
+    const cookie = await login(app, 'Admin', ADMIN_PASSWORD);
+    const response = await send(app, 'GET', '/api/users', { cookie });
+    const seen = (await response.json()) as UsersResponse;
+    expect(seen.users.map((u) => [u.username, u.lastSeenAt])).toEqual([
+      ['Admin', '2026-09-01T10:00:00.000Z'],
+      ['ana', null],
+    ]);
+  });
+
   it('refuses a username that differs only in case', async () => {
     const app = makeApp();
     const cookie = await login(app, 'Admin', ADMIN_PASSWORD);

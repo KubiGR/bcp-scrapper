@@ -1,4 +1,4 @@
-import type { User, UserRole } from '@bcp/shared';
+import type { ListedUser, User, UserRole } from '@bcp/shared';
 import {
   ActionIcon,
   Badge,
@@ -28,8 +28,22 @@ import {
   updateUser,
   usersQuery,
 } from '../auth/auth-queries';
+import { lastSeen } from './last-seen';
 
 const PANEL_TITLE = 'Users';
+
+/** "Seen 3 h ago", the exact time on hover. */
+function Seen({ user }: { user: ListedUser }) {
+  return (
+    <Text
+      size="xs"
+      c="dimmed"
+      title={user.lastSeenAt === null ? undefined : new Date(user.lastSeenAt).toLocaleString()}
+    >
+      {user.lastSeenAt === null ? 'Never seen' : `Seen ${lastSeen(user.lastSeenAt)}`}
+    </Text>
+  );
+}
 
 interface OneTimePassword {
   username: string;
@@ -123,8 +137,8 @@ export function UsersCard() {
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Username</Table.Th>
-                  <Table.Th>Role</Table.Th>
-                  <Table.Th>Status</Table.Th>
+                  <Table.Th visibleFrom="sm">Role</Table.Th>
+                  <Table.Th visibleFrom="sm">Status</Table.Th>
                   <Table.Th aria-label="Actions" />
                 </Table.Tr>
               </Table.Thead>
@@ -135,15 +149,24 @@ export function UsersCard() {
                     <Table.Tr key={user.id}>
                       <Table.Td>
                         <Group gap={6} wrap="nowrap">
-                          <Text size="sm">{user.username}</Text>
+                          <Text size="sm" style={{ overflowWrap: 'anywhere' }}>
+                            {user.username}
+                          </Text>
                           {user.id === self.id && (
                             <Text size="xs" c="dimmed">
                               you
                             </Text>
                           )}
                         </Group>
+                        {/* On a phone, role and status sit here instead of their own columns. */}
+                        <Text size="xs" c="dimmed" hiddenFrom="sm">
+                          {`${user.role === 'admin' ? 'Admin' : 'Member'}${
+                            user.role !== 'admin' && user.canPair ? ' · Pairings' : ''
+                          } · ${statusOf(user, access)}`}
+                        </Text>
+                        <Seen user={user} />
                       </Table.Td>
-                      <Table.Td>
+                      <Table.Td visibleFrom="sm">
                         <Group gap={6} wrap="nowrap">
                           {user.role === 'admin' ? (
                             <Badge variant="outline" color="neon" size="sm">
@@ -160,7 +183,7 @@ export function UsersCard() {
                           )}
                         </Group>
                       </Table.Td>
-                      <Table.Td>
+                      <Table.Td visibleFrom="sm">
                         <Text size="sm" c={user.disabled ? 'red' : 'dimmed'}>
                           {statusOf(user, access)}
                         </Text>
@@ -332,7 +355,7 @@ function WaitingList({
   onIgnore,
   onRemove,
 }: {
-  users: User[];
+  users: ListedUser[];
   pending: boolean;
   onApprove: (user: User) => void;
   onIgnore: (user: User, ignored: boolean) => void;
@@ -341,9 +364,14 @@ function WaitingList({
   const [showIgnored, setShowIgnored] = useState(false);
   const waiting = users.filter((u) => !u.ignored);
   const ignored = users.filter((u) => u.ignored);
-  const row = (user: User) => (
-    <Group key={user.id} justify="space-between" wrap="nowrap">
-      <Text size="sm">{user.username}</Text>
+  const row = (user: ListedUser) => (
+    <Group key={user.id} justify="space-between" gap="xs">
+      <Stack gap={0}>
+        <Text size="sm" style={{ overflowWrap: 'anywhere' }}>
+          {user.username}
+        </Text>
+        <Seen user={user} />
+      </Stack>
       <Group gap="xs" wrap="nowrap">
         <Button
           size="xs"

@@ -1,5 +1,5 @@
-import type { User, UserRole } from '@bcp/shared';
-import { and, asc, eq, ne, sql } from 'drizzle-orm';
+import type { ListedUser, User, UserRole } from '@bcp/shared';
+import { and, asc, eq, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { users } from '../db/schema';
 
@@ -14,8 +14,29 @@ const userColumns = {
   ignored: users.ignored,
 };
 
-export async function listUsers(db: Db): Promise<User[]> {
-  return db.select(userColumns).from(users).orderBy(asc(users.id));
+export async function listUsers(db: Db): Promise<ListedUser[]> {
+  const rows = await db
+    .select({ ...userColumns, lastSeenAt: users.lastSeenAt })
+    .from(users)
+    .orderBy(asc(users.id));
+  return rows.map((row) => ({ ...row, lastSeenAt: row.lastSeenAt?.toISOString() ?? null }));
+}
+
+/** How stale "last seen" may get: a visit isn't written on every request. */
+const SEEN_EVERY_MS = 5 * 60_000;
+
+/** Notes a visit, unless one was noted in the last few minutes. */
+export async function touchLastSeen(db: Db, id: number, now: Date): Promise<void> {
+  await db
+    .update(users)
+    // A visit isn't a change to the account: updated_at stays.
+    .set({ lastSeenAt: now, updatedAt: sql`${users.updatedAt}` })
+    .where(
+      and(
+        eq(users.id, id),
+        or(isNull(users.lastSeenAt), lt(users.lastSeenAt, new Date(now.getTime() - SEEN_EVERY_MS))),
+      ),
+    );
 }
 
 export async function findUserById(db: Db, id: number): Promise<User | null> {

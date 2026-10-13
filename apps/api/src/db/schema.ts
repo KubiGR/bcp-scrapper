@@ -299,6 +299,8 @@ export const users = pgTable(
     canPair: boolean('can_pair').notNull().default(false),
     /** Waiting for approval, but set aside by an admin: still locked out, not counted as waiting. */
     ignored: boolean('ignored').notNull().default(false),
+    /** Their last visit, kept to within a few minutes; null until they first come. */
+    lastSeenAt: timestamptz('last_seen_at'),
     ...auditColumns,
   },
   (t) => [uniqueIndex('users_username_lower_unique').on(sql`lower(${t.username})`)],

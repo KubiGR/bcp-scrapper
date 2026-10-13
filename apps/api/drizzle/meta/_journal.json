@@ -141,6 +141,13 @@
       "when": 1791892269849,
       "tag": "0019_detachment-keep-ignored",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791929595511,
+      "tag": "0020_user-last-seen",
+      "breakpoints": true
     }
   ]
 }
