@@ -133,16 +133,35 @@ describe('TopListsPage', () => {
     expect(names()).toEqual(['Three Oh', 'Four One', 'Five Oh']);
   });
 
-  it('shows each event’s size next to its date', async () => {
+  it('shows each event’s size next to its date, standing out more the bigger it is', async () => {
     stubFetchRoutes({ 'GET /api/players/search': response() });
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
     const row = (await screen.findByText('Ada Archer')).closest('tr');
     if (row === null) throw new Error('no row');
-    expect(
-      within(row).getByText(
-        (_, el) => el?.tagName === 'P' && el.textContent.endsWith('· 96 players · 12 teams'),
-      ),
-    ).toBeInTheDocument();
+    expect(within(row).getByText('96 players')).toHaveAttribute('data-tier', 'medium');
+    expect(within(row).getByText(/12 teams/)).toBeInTheDocument();
+  });
+
+  it('marks events played in the last week as new', async () => {
+    const recent = new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString();
+    const base = response();
+    const old = base.players[0];
+    if (old === undefined) throw new Error('no player');
+    stubFetchRoutes({
+      'GET /api/players/search': {
+        ...base,
+        players: [
+          old,
+          { ...old, bcpId: 'p-new', name: 'Nia New', eventId: 'e-new', eventStartDate: recent },
+        ],
+      },
+    });
+    renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
+    const newRow = (await screen.findByText('Nia New')).closest('tr');
+    const oldRow = screen.getByText('Ada Archer').closest('tr');
+    if (newRow === null || oldRow === null) throw new Error('no row');
+    expect(within(newRow).getByText('New')).toBeInTheDocument();
+    expect(within(oldRow).queryByText('New')).toBeNull();
   });
 
   it('shows where each player placed: their team’s place in a team event, else their own', async () => {
