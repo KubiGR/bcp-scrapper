@@ -7,8 +7,28 @@ describe('RankBadge', () => {
   it('shows a top player’s rank, linking to their page', async () => {
     stubFetchRoutes({ 'GET /api/rankings/top': { ranks: { 'US-ADA': 12 } } });
     renderWithRouter(<RankBadge userId="US-ADA" />);
-    const badge = await screen.findByRole('link', { name: 'Ranked #12' });
+    const badge = await screen.findByRole('link', { name: 'Ranked #12, top 50' });
     expect(badge).toHaveAttribute('href', '/players/US-ADA');
+  });
+
+  it('crowns the top 10, and stars the rest of the top 50 and top 100', async () => {
+    stubFetchRoutes({
+      'GET /api/rankings/top': { ranks: { 'US-ADA': 8, 'US-BEN': 30, 'US-CAL': 77 } },
+    });
+    renderWithRouter(
+      <>
+        <RankBadge userId="US-ADA" />
+        <RankBadge userId="US-BEN" />
+        <RankBadge userId="US-CAL" />
+      </>,
+    );
+    const tier = async (name: string) =>
+      (await screen.findByRole('link', { name }))
+        .querySelector('[data-tier]')
+        ?.getAttribute('data-tier');
+    expect(await tier('Ranked #8, top 10')).toBe('crown');
+    expect(await tier('Ranked #30, top 50')).toBe('silver');
+    expect(await tier('Ranked #77, top 100')).toBe('bronze');
   });
 
   it('shows nothing for other players, or without an account', async () => {

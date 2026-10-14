@@ -38,7 +38,7 @@ describe('PlayersPanel', () => {
     renderWithRouter(
       <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
     );
-    const badge = await screen.findByRole('link', { name: 'Ranked #3' });
+    const badge = await screen.findByRole('link', { name: 'Ranked #3, top 10' });
     expect(badge).toHaveAttribute('href', '/players/US-ZED');
   });
 
