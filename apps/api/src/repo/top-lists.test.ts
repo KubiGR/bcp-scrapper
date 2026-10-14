@@ -1,11 +1,12 @@
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { armyLists, events, players } from '../db/schema';
+import { armyLists, bsdataDetachments, events, players } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { syncEvent } from '../sync/jobs';
 import { ALL_EVENTS, sampleSource } from '../test/helpers';
 import { gwList, storeList } from '../test/lists';
+import { linkDetachment } from './detachment-links';
 import { searchTopLists } from './top-lists';
 
 let db: Db;
@@ -227,6 +228,31 @@ describe('searchTopLists', () => {
     );
     expect(noDetachments.players.length).toBeGreaterThan(0);
     expect(noDetachments.players.every((p) => p.detachments.length === 0)).toBe(true);
+  });
+
+  it('offers only BSData’s detachments for the army, and names linked as their own', async () => {
+    await record('PL-ADA', 3, 0, 0);
+    await db.update(players).set({ faction: 'Orks' }).where(eq(players.id, 'PL-ADA'));
+    await db.insert(bsdataDetachments).values([
+      { faction: 'Orks', name: 'War Horde' },
+      { faction: 'Chaos Daemons', name: 'Khorne Daemonkin' },
+    ]);
+    const offered = async (detachment: string) => {
+      await storeList(db, 'PL-ADA', gwList('Orks', detachment));
+      return (await searchTopLists(db, query({}), ALL_EVENTS, TODAY)).detachmentOptions;
+    };
+    expect(await offered('War Horde')).toEqual(['War Horde']);
+    // A translation nobody linked, and another army's detachment: not offered.
+    expect(await offered('Ingenios de bronce')).toEqual([]);
+    expect(await offered('Khorne Daemonkin')).toEqual([]);
+    await linkDetachment(db, 'Da Big Hunt', null);
+    expect(await offered('Da Big Hunt')).toEqual(['Da Big Hunt']);
+  });
+
+  it('never offers a name that isn’t English', async () => {
+    await record('PL-ADA', 3, 0, 0);
+    await storeList(db, 'PL-ADA', gwList('Orks', 'Possessed Slaughterband和恐虐屠夫'));
+    expect((await searchTopLists(db, query({}), ALL_EVENTS, TODAY)).detachmentOptions).toEqual([]);
   });
 
   it('counts a detachment that isn’t English as unknown, as Meta does, and still shows it', async () => {

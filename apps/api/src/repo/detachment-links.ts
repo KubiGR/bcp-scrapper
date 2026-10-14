@@ -131,6 +131,12 @@ export interface ArmyRules {
   /** The detachments that count: none (detachment unknown) when any isn't English or is outside
    * the army's BSData list (and wasn't kept). */
   detachments: (army: string | null, names: string[]) => string[];
+  /**
+   * Whether a filter offers the name: English, and in the army's BSData list (any army's, when
+   * the army isn't known), linked as its own detachment or kept. Every English name while BSData
+   * hasn't been read.
+   */
+  offered: (army: string | null, name: string) => boolean;
 }
 
 export async function armyRules(db: Db): Promise<ArmyRules> {
@@ -160,6 +166,12 @@ export async function armyRules(db: Db): Promise<ArmyRules> {
       countedFaction(bcpFaction, parsedArmy, soleOwner(bcpFaction, names)),
     detachments: (army, names) =>
       names.some((name) => foreign(name) || wrong(army, name)) ? [] : names,
+    offered: (army, name) => {
+      if (foreign(name)) return false;
+      if (bsdata.size === 0) return true;
+      if (army !== null && bsdata.has(army)) return !wrong(army, name);
+      return [...bsdata.keys()].some((faction) => !wrong(faction, name));
+    },
   };
 }
 

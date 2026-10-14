@@ -209,11 +209,14 @@ export async function searchTopLists(
     players: result,
     truncated: matching.length > TOP_LISTS_LIMIT,
     factionOptions: sorted(qualifying.flatMap((p) => (p.faction === null ? [] : [p.faction]))),
-    // The chosen factions' detachments only (all factions' when none is chosen).
+    // The chosen factions' detachments only (all factions' when none is chosen), and only real
+    // ones: no translations, misspellings or another army's.
     detachmentOptions: sorted(
       qualifying
         .filter((player) => anyOf(query.factions, player.faction))
-        .flatMap((player) => player.detachments),
+        .flatMap((player) =>
+          player.detachments.filter((name) => rules.offered(player.faction, name)),
+        ),
     ),
     eventsInRange: inRange.length,
     eventsLoaded: loaded.length,
