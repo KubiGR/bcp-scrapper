@@ -1,6 +1,7 @@
 import { DETACHMENT_SEPARATOR, KNOWN_DISPOSITIONS } from '@bcp/shared';
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Group,
@@ -23,7 +24,7 @@ import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
 import rowClasses from '../../components/ClickableRow.module.css';
 import { PlayerLine } from '../../components/PlayerLine';
-import { formatEventSize, formatIsoDay, plural } from '../../lib/format';
+import { formatIsoDay, plural } from '../../lib/format';
 import { SortableTh, useTableSort } from '../../lib/table-sort';
 import { useDraftRange } from '../../lib/use-draft-range';
 import { ListDrawer } from '../event/ListDrawer';
@@ -31,6 +32,7 @@ import { formatRecord, lossLabel } from '../event/players-filter';
 import { FOUND_PLAYER_SORT, placingLine } from './player-sort';
 import classes from './TopListsPage.module.css';
 import { topListsQuery, topListsWindow, type TopListsSearch } from './top-lists-queries';
+import { SizeBadge } from '../finder/SizeBadge';
 import { RankBadge } from '../rankings/RankBadge';
 import { UpdatePicker } from '../updates/UpdatePicker';
 
@@ -45,6 +47,14 @@ const uniqueSorted = (values: string[]) => [...new Set(values)].sort((a, b) => a
 interface TopListsPageProps {
   search: TopListsSearch;
   onSearchChange: (next: TopListsSearch) => void;
+}
+
+const WEEK_MS = 7 * 24 * 60 * 60_000;
+
+/** Whether an event started in the last week: new on the scene. */
+function playedLately(startDate: string, now = Date.now()): boolean {
+  const ago = now - new Date(startDate).getTime();
+  return ago >= 0 && ago < WEEK_MS;
 }
 
 /** Players of big events who went X-n or better, across events, with their lists. */
@@ -222,12 +232,16 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                             >
                               {player.eventName}
                             </AnchorLink>
+                            {playedLately(player.eventStartDate) && (
+                              <Badge size="xs" variant="light" color="lime" ml={6}>
+                                New
+                              </Badge>
+                            )}
                             <Text size="xs" c="dimmed" className="numeric">
                               {formatIsoDay(player.eventStartDate.slice(0, 10))} ·{' '}
-                              {formatEventSize({
-                                playerCount: player.eventPlayerCount,
-                                teamCount: player.eventTeamCount,
-                              })}
+                              <SizeBadge playerCount={player.eventPlayerCount} />
+                              {player.eventTeamCount !== null &&
+                                ` · ${plural(player.eventTeamCount, 'team')}`}
                             </Text>
                           </Table.Td>
                           <Table.Td ta="right" className="numeric">
