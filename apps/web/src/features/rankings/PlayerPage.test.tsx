@@ -84,6 +84,15 @@ describe('PlayerPage', () => {
     expect(within(other).queryByRole('link', { name: 'List' })).not.toBeInTheDocument();
   });
 
+  it('marks an event that started in the last week with a leaf', async () => {
+    const recent = new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString().slice(0, 10);
+    stubFetchRoutes({
+      'GET /api/rankings/US-ADA': ranking({ history: [entry({ eventStart: recent })] }),
+    });
+    renderWithRouter(<PlayerPage userId="US-ADA" />);
+    expect(await screen.findByRole('img', { name: 'New this week' })).toBeInTheDocument();
+  });
+
   it('says when a player isn’t ranked', async () => {
     stubFetchRoutes({
       'GET /api/rankings/US-ADA': ranking({ rank: null, points: 0, dropsOn: null }),

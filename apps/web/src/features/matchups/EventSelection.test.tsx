@@ -17,6 +17,19 @@ const anEvent = (overrides: Partial<MatchupEvent> = {}): MatchupEvent => ({
 });
 
 describe('EventSelection', () => {
+  it('marks an event that started in the last week with a leaf', async () => {
+    stubFetchRoutes({});
+    renderWithRouter(
+      <EventSelection
+        events={[anEvent({ startDate: new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString() })]}
+        exclude={[]}
+        include={[]}
+        onChange={vi.fn()}
+      />,
+    );
+    expect(await screen.findByRole('img', { name: 'New this week' })).toBeInTheDocument();
+  });
+
   it('lists events with date, size, pairings state and a checkbox reflecting included', async () => {
     stubFetchRoutes({});
     renderWithRouter(
@@ -25,6 +38,7 @@ describe('EventSelection', () => {
 
     expect(await screen.findByRole('link', { name: 'Sample Team Open' })).toBeInTheDocument();
     expect(screen.getByText('96 players · 12 teams')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Medium event' })).toBeInTheDocument();
     expect(screen.getByText('Synced')).toBeInTheDocument();
     const checkbox = screen.getByRole('checkbox', { name: 'Include Sample Team Open' });
     expect(checkbox).toBeChecked();

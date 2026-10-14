@@ -187,6 +187,7 @@ describe('MetaPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: '20 Orks players' }));
     expect(await screen.findByText('Ada Archer')).toBeInTheDocument();
     expect(screen.getByText('Alpha Squad · #2')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Medium event' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'W-L-D' })).toHaveAttribute(
       'aria-sort',
       'none',

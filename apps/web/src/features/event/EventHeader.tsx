@@ -1,6 +1,7 @@
 import type { EventDetail } from '@bcp/shared';
 import { Anchor, Button, Group, Stack, Text, Title } from '@mantine/core';
 import { EventStatusBadges } from '../../components/EventStatusBadges';
+import { EventHeat, NewLeaf, playedLately } from '../../components/EventSymbols';
 import {
   formatDateTime,
   formatEventDates,
@@ -20,7 +21,10 @@ export function EventHeader({ event, syncing, onRefresh }: EventHeaderProps) {
   return (
     <Stack gap="xs">
       <Group justify="space-between" align="flex-start" wrap="wrap">
-        <Title order={1}>{event.name}</Title>
+        <Title order={1}>
+          {event.name}
+          {playedLately(event.startDate) && <NewLeaf />}
+        </Title>
         <Group gap="sm">
           <Anchor
             href={`https://www.bestcoastpairings.com/event/${encodeURIComponent(event.bcpId)}`}
@@ -46,6 +50,7 @@ export function EventHeader({ event, syncing, onRefresh }: EventHeaderProps) {
         )}
         <Text size="sm" c="dimmed" className="numeric">
           {[formatEventSize(event), formatRoundCount(event.roundCount)].filter(Boolean).join(' · ')}
+          <EventHeat playerCount={event.playerCount} />
         </Text>
         <UpdateLabel startDate={event.startDate} prefix="Update: " size="sm" c="dimmed" />
         <EventStatusBadges event={event} />

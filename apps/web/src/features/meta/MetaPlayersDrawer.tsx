@@ -6,6 +6,7 @@ import { AnchorLink } from '../../components/AnchorLink';
 import rowClasses from '../../components/ClickableRow.module.css';
 import { ErrorState } from '../../components/ErrorState';
 import { PlayerLine } from '../../components/PlayerLine';
+import { EventHeat, NewLeaf, playedLately } from '../../components/EventSymbols';
 import { formatEventSize, formatIsoDay } from '../../lib/format';
 import { SortableTh, useTableSort } from '../../lib/table-sort';
 import { FOUND_PLAYER_SORT, placingLine } from '../top-lists/player-sort';
@@ -130,12 +131,14 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
                     >
                       {player.eventName}
                     </AnchorLink>
+                    {playedLately(player.eventStartDate) && <NewLeaf />}
                     <Text size="xs" c="dimmed" className="numeric">
                       {formatIsoDay(player.eventStartDate.slice(0, 10))} ·{' '}
                       {formatEventSize({
                         playerCount: player.eventPlayerCount,
                         teamCount: player.eventTeamCount,
                       })}
+                      <EventHeat playerCount={player.eventPlayerCount} />
                     </Text>
                   </Table.Td>
                   <Table.Td ta="right" className="numeric">

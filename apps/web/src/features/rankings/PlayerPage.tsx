@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '../../api/client';
 import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
+import { NewLeaf, playedLately } from '../../components/EventSymbols';
 import { Panel } from '../../components/Panel';
 import { formatIsoDay, ordinal } from '../../lib/format';
 import { playerRankingQuery } from './rankings-queries';
@@ -32,6 +33,7 @@ function HistoryRow({ entry }: { entry: PlayerHistoryEntry }) {
         >
           {entry.eventName}
         </AnchorLink>
+        {playedLately(entry.eventStart) && <NewLeaf />}
         {entry.teamName !== null && (
           <Text size="xs" c="dimmed">
             {entry.teamName}

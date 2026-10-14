@@ -57,6 +57,24 @@ describe('EventsTable', () => {
     expect(screen.getByText('Before first update')).toBeInTheDocument();
   });
 
+  it('marks an event that started in the last week with a leaf', () => {
+    renderWithProviders(
+      <EventsTable
+        {...props}
+        onOpen={vi.fn()}
+        response={{
+          items: [
+            anEvent({ startDate: new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString() }),
+          ],
+          total: 1,
+          page: 1,
+          pageSize: 25,
+        }}
+      />,
+    );
+    expect(screen.getByRole('img', { name: 'New this week' })).toBeInTheDocument();
+  });
+
   it('lists events with size and badges, and opens one on click', () => {
     const onOpen = vi.fn();
     renderWithProviders(
@@ -71,8 +89,9 @@ describe('EventsTable', () => {
         }}
       />,
     );
-    // The size as a badge (a major event), the teams under it.
-    expect(screen.getAllByText('432 players')[0]).toHaveAttribute('data-tier', 'major');
+    // The size with flames for a major event, the teams under it.
+    expect(screen.getAllByText(/432 players/).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('img', { name: 'Major event' }).length).toBeGreaterThan(0);
     expect(screen.getByText('108 teams')).toBeInTheDocument();
     expect(screen.getByText('Teams')).toBeInTheDocument();
     // Phrasing content only inside a button: no <p>.

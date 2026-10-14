@@ -1,13 +1,13 @@
 import type { EventListItem, EventListResponse } from '@bcp/shared';
-import { Box, Table, Text, UnstyledButton, type MantineTheme } from '@mantine/core';
+import { Table, Text, UnstyledButton, type MantineTheme } from '@mantine/core';
 import { Fragment } from 'react';
 import { DataTable } from 'mantine-datatable';
 import { EventStatusBadges } from '../../components/EventStatusBadges';
 import { Panel } from '../../components/Panel';
-import { formatEventDates } from '../../lib/format';
+import { formatEventDates, plural } from '../../lib/format';
 import classes from './EventsTable.module.css';
 import { FINDER_PAGE_SIZES, type FinderPageSize, type FinderSearch } from './finder-search';
-import { SizeBadge } from './SizeBadge';
+import { EventHeat, NameWithLeaf } from '../../components/EventSymbols';
 import { weekOf } from './week';
 import { UpdateLabel } from '../updates/UpdateLabel';
 
@@ -152,12 +152,13 @@ export function EventsTable({
                   }}
                 >
                   <Text component="span" size="sm" fw={500}>
-                    {event.name}
+                    <NameWithLeaf name={event.name} startDate={event.startDate} />
                   </Text>
                 </UnstyledButton>
-                <Box hiddenFrom="sm" mt={4}>
-                  <SizeBadge playerCount={event.playerCount} />
-                </Box>
+                <Text size="xs" c="dimmed" hiddenFrom="sm" mt={4} className="numeric">
+                  {plural(event.playerCount, 'player')}
+                  <EventHeat playerCount={event.playerCount} />
+                </Text>
                 <Text size="xs" c="dimmed" hiddenFrom="sm">
                   {`${formatEventDates(event.startDate, event.endDate)} · ${placeOf(event)}`}
                 </Text>
@@ -178,7 +179,10 @@ export function EventsTable({
             visibleMediaQuery: wide,
             render: (event) => (
               <>
-                <SizeBadge playerCount={event.playerCount} />
+                <Text size="sm" className="numeric" style={{ whiteSpace: 'nowrap' }}>
+                  <EventHeat playerCount={event.playerCount} before />
+                  {plural(event.playerCount, 'player')}
+                </Text>
                 {event.teamCount !== null && (
                   <Text size="xs" c="dimmed" className="numeric">
                     {`${event.teamCount} ${event.teamCount === 1 ? 'team' : 'teams'}`}
