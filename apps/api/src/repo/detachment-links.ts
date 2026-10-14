@@ -132,9 +132,8 @@ export interface ArmyRules {
    * the army's BSData list (and wasn't kept). */
   detachments: (army: string | null, names: string[]) => string[];
   /**
-   * Whether a filter offers the name: English, and in the army's BSData list (any army's, when
-   * the army isn't known), linked as its own detachment or kept. Every English name while BSData
-   * hasn't been read.
+   * Whether a filter offers the name: only BSData's detachments, the army's (any army's, when the
+   * army isn't known). Linked names are already stored as BSData's.
    */
   offered: (army: string | null, name: string) => boolean;
 }
@@ -167,10 +166,9 @@ export async function armyRules(db: Db): Promise<ArmyRules> {
     detachments: (army, names) =>
       names.some((name) => foreign(name) || wrong(army, name)) ? [] : names,
     offered: (army, name) => {
-      if (foreign(name)) return false;
-      if (bsdata.size === 0) return true;
-      if (army !== null && bsdata.has(army)) return !wrong(army, name);
-      return [...bsdata.keys()].some((faction) => !wrong(faction, name));
+      const factions = owners.get(looseDetachmentKey(name));
+      if (factions === undefined) return false;
+      return army === null || !bsdata.has(army) || factions.has(army);
     },
   };
 }

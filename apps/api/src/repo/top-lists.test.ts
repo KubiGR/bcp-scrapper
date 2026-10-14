@@ -99,6 +99,7 @@ describe('searchTopLists', () => {
 
   it('offers every qualifying faction, and the detachments of the chosen factions', async () => {
     await record('PL-ADA', 3, 0, 0);
+    await db.insert(bsdataDetachments).values([{ faction: 'Orks', name: 'War Horde' }]);
     await db.update(players).set({ faction: 'Orks' }).where(eq(players.id, 'PL-ADA'));
     await storeList(db, 'PL-ADA', gwList('Orks', 'War Horde'));
     const necrons = await searchTopLists(
@@ -230,7 +231,7 @@ describe('searchTopLists', () => {
     expect(noDetachments.players.every((p) => p.detachments.length === 0)).toBe(true);
   });
 
-  it('offers only BSData’s detachments for the army, and names linked as their own', async () => {
+  it('offers only BSData’s detachments for the army', async () => {
     await record('PL-ADA', 3, 0, 0);
     await db.update(players).set({ faction: 'Orks' }).where(eq(players.id, 'PL-ADA'));
     await db.insert(bsdataDetachments).values([
@@ -245,13 +246,14 @@ describe('searchTopLists', () => {
     // A translation nobody linked, and another army's detachment: not offered.
     expect(await offered('Ingenios de bronce')).toEqual([]);
     expect(await offered('Khorne Daemonkin')).toEqual([]);
+    // Linked as its own detachment still isn't BSData's.
     await linkDetachment(db, 'Da Big Hunt', null);
-    expect(await offered('Da Big Hunt')).toEqual(['Da Big Hunt']);
+    expect(await offered('Da Big Hunt')).toEqual([]);
   });
 
-  it('never offers a name that isn’t English', async () => {
+  it('offers nothing while BSData hasn’t been read', async () => {
     await record('PL-ADA', 3, 0, 0);
-    await storeList(db, 'PL-ADA', gwList('Orks', 'Possessed Slaughterband和恐虐屠夫'));
+    await storeList(db, 'PL-ADA', gwList('Orks', 'War Horde'));
     expect((await searchTopLists(db, query({}), ALL_EVENTS, TODAY)).detachmentOptions).toEqual([]);
   });
 
