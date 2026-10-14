@@ -138,8 +138,8 @@ describe('TopListsPage', () => {
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
     const row = (await screen.findByText('Ada Archer')).closest('tr');
     if (row === null) throw new Error('no row');
-    expect(within(row).getByText('96 players')).toHaveAttribute('data-tier', 'medium');
-    expect(within(row).getByText(/12 teams/)).toBeInTheDocument();
+    expect(within(row).getByText(/96 players · 12 teams/)).toBeInTheDocument();
+    expect(within(row).getByRole('img', { name: 'Medium event' })).toBeInTheDocument();
   });
 
   it('marks events played in the last week as new', async () => {
@@ -160,8 +160,8 @@ describe('TopListsPage', () => {
     const newRow = (await screen.findByText('Nia New')).closest('tr');
     const oldRow = screen.getByText('Ada Archer').closest('tr');
     if (newRow === null || oldRow === null) throw new Error('no row');
-    expect(within(newRow).getByText('New')).toBeInTheDocument();
-    expect(within(oldRow).queryByText('New')).toBeNull();
+    expect(within(newRow).getByRole('img', { name: 'New this week' })).toBeInTheDocument();
+    expect(within(oldRow).queryByRole('img', { name: 'New this week' })).toBeNull();
   });
 
   it('shows where each player placed: their team’s place in a team event, else their own', async () => {

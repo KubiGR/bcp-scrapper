@@ -1,7 +1,6 @@
 import { DETACHMENT_SEPARATOR, KNOWN_DISPOSITIONS } from '@bcp/shared';
 import {
   Alert,
-  Badge,
   Box,
   Button,
   Group,
@@ -30,9 +29,9 @@ import { useDraftRange } from '../../lib/use-draft-range';
 import { ListDrawer } from '../event/ListDrawer';
 import { formatRecord, lossLabel } from '../event/players-filter';
 import { FOUND_PLAYER_SORT, placingLine } from './player-sort';
+import { EventHeat, NewLeaf } from './EventSymbols';
 import classes from './TopListsPage.module.css';
 import { topListsQuery, topListsWindow, type TopListsSearch } from './top-lists-queries';
-import { SizeBadge } from '../finder/SizeBadge';
 import { RankBadge } from '../rankings/RankBadge';
 import { UpdatePicker } from '../updates/UpdatePicker';
 
@@ -232,16 +231,13 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                             >
                               {player.eventName}
                             </AnchorLink>
-                            {playedLately(player.eventStartDate) && (
-                              <Badge size="xs" variant="light" color="lime" ml={6}>
-                                New
-                              </Badge>
-                            )}
+                            {playedLately(player.eventStartDate) && <NewLeaf />}
                             <Text size="xs" c="dimmed" className="numeric">
                               {formatIsoDay(player.eventStartDate.slice(0, 10))} ·{' '}
-                              <SizeBadge playerCount={player.eventPlayerCount} />
+                              {plural(player.eventPlayerCount, 'player')}
                               {player.eventTeamCount !== null &&
                                 ` · ${plural(player.eventTeamCount, 'team')}`}
+                              <EventHeat playerCount={player.eventPlayerCount} />
                             </Text>
                           </Table.Td>
                           <Table.Td ta="right" className="numeric">
