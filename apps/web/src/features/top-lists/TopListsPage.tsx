@@ -17,6 +17,7 @@ import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
+import { EventHeat, NewLeaf, playedLately } from '../../components/EventSymbols';
 import { DispositionText } from '../../components/DispositionText';
 import { ErrorState } from '../../components/ErrorState';
 import { FilterToggle } from '../../components/FilterToggle';
@@ -29,7 +30,6 @@ import { useDraftRange } from '../../lib/use-draft-range';
 import { ListDrawer } from '../event/ListDrawer';
 import { formatRecord, lossLabel } from '../event/players-filter';
 import { FOUND_PLAYER_SORT, placingLine } from './player-sort';
-import { EventHeat, NewLeaf } from './EventSymbols';
 import classes from './TopListsPage.module.css';
 import { topListsQuery, topListsWindow, type TopListsSearch } from './top-lists-queries';
 import { RankBadge } from '../rankings/RankBadge';
@@ -46,14 +46,6 @@ const uniqueSorted = (values: string[]) => [...new Set(values)].sort((a, b) => a
 interface TopListsPageProps {
   search: TopListsSearch;
   onSearchChange: (next: TopListsSearch) => void;
-}
-
-const WEEK_MS = 7 * 24 * 60 * 60_000;
-
-/** Whether an event started in the last week: new on the scene. */
-function playedLately(startDate: string, now = Date.now()): boolean {
-  const ago = now - new Date(startDate).getTime();
-  return ago >= 0 && ago < WEEK_MS;
 }
 
 /** Players of big events who went X-n or better, across events, with their lists. */

@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnchorLink } from '../../components/AnchorLink';
 import { Panel } from '../../components/Panel';
 import { formatDuration, formatEventSize, formatIsoDay, plural } from '../../lib/format';
+import { EventHeat, NewLeaf, playedLately } from '../../components/EventSymbols';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { fetchQueueQuery } from '../fetch-queue/fetch-queue-queries';
 import { queueManyPairingsChunked } from './matchups-queries';
@@ -167,11 +168,15 @@ export function EventSelection({ events, exclude, include, onChange }: EventSele
                       >
                         {event.name}
                       </AnchorLink>
+                      {playedLately(event.startDate) && <NewLeaf />}
                     </Table.Td>
                     <Table.Td className="numeric">
                       {formatIsoDay(event.startDate.slice(0, 10))}
                     </Table.Td>
-                    <Table.Td className="numeric">{formatEventSize(event)}</Table.Td>
+                    <Table.Td className="numeric">
+                      {formatEventSize(event)}
+                      <EventHeat playerCount={event.playerCount} />
+                    </Table.Td>
                     <Table.Td>
                       <Text
                         size="sm"

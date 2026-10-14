@@ -28,6 +28,21 @@ describe('EventHeader', () => {
     expect(link.getAttribute('rel')).toContain('noreferrer');
   });
 
+  it('shows flames for a big event, and a leaf for one that started this week', () => {
+    renderWithProviders(
+      <EventHeader
+        event={anEventDetail({
+          playerCount: 432,
+          startDate: new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString(),
+        })}
+        syncing={false}
+        onRefresh={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('img', { name: 'Major event' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'New this week' })).toBeInTheDocument();
+  });
+
   it('shows the round count after the size line', () => {
     renderWithProviders(
       <EventHeader
