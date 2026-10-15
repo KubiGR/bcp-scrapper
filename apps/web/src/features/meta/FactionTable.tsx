@@ -94,7 +94,7 @@ function ToneText({ tone, children }: { tone: 'good' | 'bad' | 'even'; children:
 }
 
 /** Over-representation among X-1 players: "1.40×", blue from 1.15, orange to 0.85. */
-function OverrepText({ overrep }: { overrep: number | null }) {
+export function OverrepText({ overrep }: { overrep: number | null }) {
   if (overrep === null) {
     return (
       <Text size="sm" c="dimmed" component="span" title="Nobody went X-1 or better">
