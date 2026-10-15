@@ -7,6 +7,7 @@ import { sampleSource } from '../test/helpers';
 import { gwList, storeList } from '../test/lists';
 import { upsertEventDetail } from './events';
 import {
+  detachmentLists,
   detachmentNames,
   foreignDetachmentCheck,
   keepDetachment,
@@ -40,6 +41,35 @@ beforeEach(async () => {
 
 const detachmentsOf = async (playerId: string) =>
   (await db.select().from(armyLists).where(eq(armyLists.playerId, playerId)))[0]?.detachments;
+
+describe('detachmentLists', () => {
+  it('finds the lists using a name, whatever its case, with their player and event', async () => {
+    const found = await detachmentLists(db, 'cabalgata del caos');
+    expect(found.total).toBe(2);
+    expect(found.lists.map((list) => list.playerId).sort()).toEqual(['PL-ADA', 'PL-BEN']);
+    expect(found.lists[0]).toMatchObject({
+      faction: 'Chaos Daemons',
+      eventId: EVENT,
+      detachments: ['Cabalgata del Caos'],
+    });
+    expect(found.lists[0]?.playerName).toBeTruthy();
+    expect(found.lists[0]?.eventName).toBeTruthy();
+  });
+
+  it('keeps to one faction when asked', async () => {
+    expect((await detachmentLists(db, 'Cabalgata del Caos', 'Chaos Daemons')).total).toBe(2);
+    expect(await detachmentLists(db, 'Cabalgata del Caos', 'Orks')).toEqual({
+      lists: [],
+      total: 0,
+    });
+  });
+
+  it('returns at most a handful, saying how many there are', async () => {
+    const found = await detachmentLists(db, 'Cabalgata del Caos', null, 1);
+    expect(found.lists).toHaveLength(1);
+    expect(found.total).toBe(2);
+  });
+});
 
 describe('detachments outside an army’s BSData list', () => {
   beforeEach(async () => {

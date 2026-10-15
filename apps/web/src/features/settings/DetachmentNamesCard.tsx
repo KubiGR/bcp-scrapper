@@ -8,6 +8,7 @@ import { Panel } from '../../components/Panel';
 import { plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { meQuery } from '../auth/auth-queries';
+import { DetachmentListsButton } from './DetachmentLists';
 import classes from './DetachmentNamesCard.module.css';
 import { ALL_FACTIONS } from './settings-search';
 import {
@@ -150,7 +151,13 @@ function NameRow({
     <Table.Tr>
       <Table.Td>{entry.name}</Table.Td>
       <Table.Td ta="right" className="numeric">
-        {entry.lists}
+        <Group gap={4} justify="flex-end" wrap="nowrap">
+          <span>{entry.lists}</span>
+          <DetachmentListsButton
+            name={entry.name}
+            faction={faction === ALL ? undefined : faction}
+          />
+        </Group>
       </Table.Td>
       {faction === ALL && (
         <Table.Td>
@@ -508,6 +515,7 @@ export function DetachmentNamesCard({
                       · {entry.lists} {entry.lists === 1 ? 'list' : 'lists'}
                     </Text>
                   </Text>
+                  <DetachmentListsButton name={entry.name} />
                   <Button
                     size="xs"
                     variant="subtle"
@@ -580,6 +588,7 @@ export function DetachmentNamesCard({
                         ? 'BSData doesn’t list it'
                         : `BSData has it for ${group.bsdataFactions.join(', ')}`}
                     </Text>
+                    <DetachmentListsButton name={group.name} faction={one?.faction} />
                     <Button
                       size="compact-xs"
                       variant="subtle"
@@ -614,6 +623,7 @@ export function DetachmentNamesCard({
                   <Text size="sm" c="dimmed">
                     {`${pair.ignored ? 'ignored' : 'kept'} for ${pair.faction}`}
                   </Text>
+                  <DetachmentListsButton name={pair.name} faction={pair.faction} />
                   <Button
                     size="compact-xs"
                     variant="subtle"

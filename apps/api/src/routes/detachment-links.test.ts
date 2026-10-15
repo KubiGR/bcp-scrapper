@@ -1,4 +1,4 @@
-import type { DetachmentNamesResponse } from '@bcp/shared';
+import type { DetachmentListsResponse, DetachmentNamesResponse } from '@bcp/shared';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createSession } from '../auth/sessions';
@@ -69,6 +69,18 @@ describe('/api/detachments', () => {
     expect(((await undo.json()) as DetachmentNamesResponse).unsure.map((u) => u.name)).toEqual([
       'Hellrider Cavalcade',
     ]);
+  });
+
+  it('shows the lists that use a name, and needs one', async () => {
+    const app = createApp(deps());
+    const response = await app.request(
+      `/api/detachments/lists?name=${encodeURIComponent('Hellrider Cavalcade')}`,
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as DetachmentListsResponse;
+    expect(body.total).toBe(1);
+    expect(body.lists[0]?.playerId).toBe('PL-ADA');
+    expect((await app.request('/api/detachments/lists')).status).toBe(400);
   });
 
   it('marks a name as not English', async () => {

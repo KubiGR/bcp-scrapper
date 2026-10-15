@@ -1,4 +1,4 @@
-import { DetachmentNamesResponseSchema } from '@bcp/shared';
+import { DetachmentListsResponseSchema, DetachmentNamesResponseSchema } from '@bcp/shared';
 import { queryOptions } from '@tanstack/react-query';
 import { apiDelete, apiGet, apiPost } from '../../api/client';
 
@@ -6,6 +6,17 @@ export const detachmentNamesQuery = queryOptions({
   queryKey: ['detachment-names'],
   queryFn: () => apiGet('/api/detachments', DetachmentNamesResponseSchema),
 });
+
+/** A few lists that use a detachment name (one faction's, when given), newest first. */
+export const detachmentListsQuery = (name: string, faction?: string) =>
+  queryOptions({
+    queryKey: ['detachment-lists', name, faction ?? null],
+    queryFn: () => {
+      const params = new URLSearchParams({ name });
+      if (faction !== undefined) params.set('faction', faction);
+      return apiGet(`/api/detachments/lists?${params.toString()}`, DetachmentListsResponseSchema);
+    },
+  });
 
 /**
  * Links `name` to `target` (null: its own detachment; with `foreign`, not English; with `ignored`,

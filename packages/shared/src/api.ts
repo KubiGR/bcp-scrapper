@@ -439,6 +439,29 @@ export const DetachmentNamesResponseSchema = z.object({
 });
 export type DetachmentNamesResponse = z.infer<typeof DetachmentNamesResponseSchema>;
 
+/** GET /api/detachments/lists: a few lists that use a detachment name, newest event first. */
+export const DetachmentListsResponseSchema = z.object({
+  lists: z.array(
+    z.object({
+      playerId: z.string(),
+      playerName: z.string(),
+      faction: z.string().nullable(),
+      eventId: z.string(),
+      eventName: z.string(),
+      eventStartDate: z.iso.datetime(),
+      detachments: z.array(z.string()),
+    }),
+  ),
+  /** All the lists that use it (more than shown, sometimes). */
+  total: z.number().int().nonnegative(),
+});
+export type DetachmentListsResponse = z.infer<typeof DetachmentListsResponseSchema>;
+
+export const DetachmentListsQuerySchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  faction: z.string().trim().min(1).max(100).optional(),
+});
+
 export const DetachmentLinkRequestSchema = z
   .object({
     name: z.string().trim().min(1).max(200),
