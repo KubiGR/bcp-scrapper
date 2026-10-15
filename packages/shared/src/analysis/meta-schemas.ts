@@ -22,6 +22,11 @@ const figures = {
   /** Players who went X-1 or better. */
   x1: count,
   x1Share: ratio,
+  /**
+   * Over-representation: its share of the X-1-or-better players over its share of all players
+   * (1 = as expected, 1.4 = 40% more); null when nobody went X-1 or better.
+   */
+  overrep: z.number().nonnegative().nullable(),
 };
 
 export const ArchetypeRowSchema = z.object({

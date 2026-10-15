@@ -93,6 +93,23 @@ function ToneText({ tone, children }: { tone: 'good' | 'bad' | 'even'; children:
   );
 }
 
+/** Over-representation among X-1 players: "1.40×", blue from 1.15, orange to 0.85. */
+function OverrepText({ overrep }: { overrep: number | null }) {
+  if (overrep === null) {
+    return (
+      <Text size="sm" c="dimmed" component="span" title="Nobody went X-1 or better">
+        –
+      </Text>
+    );
+  }
+  const tone = overrep >= 1.15 ? 'good' : overrep <= 0.85 ? 'bad' : 'even';
+  return <ToneText tone={tone}>{`${overrep.toFixed(2)}×`}</ToneText>;
+}
+
+/** The header's hint for the Overrep column. */
+export const OVERREP_TITLE =
+  'Over-representation: its share of the X-1-or-better players over its share of all players. 1.00× is as many as its numbers suggest; 1.40× is 40% more.';
+
 export function Figures({
   row,
   weeks,
@@ -110,6 +127,7 @@ export function Figures({
     | 'trend'
     | 'x1'
     | 'x1Share'
+    | 'overrep'
   >;
   /** The weeks `row.trend` follows. */
   weeks: string[];
@@ -147,6 +165,9 @@ export function Figures({
       <Table.Td ta="right" className="numeric" visibleFrom="sm">
         {`${row.x1} · ${percent(row.x1Share)}`}
       </Table.Td>
+      <Table.Td ta="right" visibleFrom="sm">
+        <OverrepText overrep={row.overrep} />
+      </Table.Td>
     </>
   );
 }
@@ -171,7 +192,10 @@ export function FactionTable({
   const tableMinWidth = useMatches({ base: 0, sm: 560 });
   const sign = dir === 'asc' ? 1 : -1;
   const dimmed = (row: MetaRow) => row.faction === null || row.players < minPlayers;
-  type Measured = Pick<MetaRow, 'players' | 'winRate' | 'reliableWinRate' | 'change' | 'x1Share'>;
+  type Measured = Pick<
+    MetaRow,
+    'players' | 'winRate' | 'reliableWinRate' | 'change' | 'x1Share' | 'overrep'
+  >;
   const metric = (row: Measured) =>
     sort === 'winRate'
       ? row.winRate
@@ -181,7 +205,9 @@ export function FactionTable({
           ? (changeOf(row) ?? 0)
           : sort === 'x1'
             ? row.x1Share
-            : row.players;
+            : sort === 'overrep'
+              ? (row.overrep ?? 0)
+              : row.players;
   // Sorting by change, rows without one (too few games) go last either way.
   const newLast = (a: Measured, b: Measured) =>
     sort === 'change' ? Number(changeOf(a) === null) - Number(changeOf(b) === null) : 0;
@@ -261,6 +287,16 @@ export function FactionTable({
             </SortableTh>
             <SortableTh column="x1" sort={state} onSort={onSort} ta="right" visibleFrom="sm">
               X-1 or better
+            </SortableTh>
+            <SortableTh
+              column="overrep"
+              sort={state}
+              onSort={onSort}
+              ta="right"
+              visibleFrom="sm"
+              title={OVERREP_TITLE}
+            >
+              Overrep
             </SortableTh>
           </Table.Tr>
         </Table.Thead>

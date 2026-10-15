@@ -48,6 +48,20 @@ describe('computeMeta', () => {
     expect(meta.factions.find((f) => f.faction === 'Necrons')).toMatchObject({ x1: 0, winRate: 0 });
   });
 
+  it('gives over-representation: a faction’s share of X-1 players over its share of all', () => {
+    // 3 of the 4 counted players went X-1 or better; both Orks did, no Necrons did.
+    const [orks, necrons, unknown] = meta.factions;
+    expect(orks?.overrep).toBeCloseTo(1 / 0.75);
+    expect(necrons?.overrep).toBe(0);
+    expect(unknown?.overrep).toBeCloseTo(1 / 0.75);
+    expect(orks?.archetypes[0]?.overrep).toBeCloseTo(1 / 0.75);
+  });
+
+  it('has no over-representation when nobody went X-1 or better', () => {
+    const none = computeMeta([row({ wins: 1, losses: 4, draws: 0 })]);
+    expect(none.factions[0]?.overrep).toBeNull();
+  });
+
   it('gives a reliable win rate: the low end of a 95% range, so few games count for less', () => {
     const lucky = computeMeta(
       Array.from({ length: 12 }, () => row({ faction: 'Orks', wins: 3, losses: 1, draws: 1 })),

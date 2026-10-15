@@ -13,7 +13,7 @@ const MetaSearchSchema = z.object({
   view: z.enum(['archetypes', 'armies']).optional().catch(undefined),
   factions: z.string().trim().min(1).optional().catch(undefined),
   sort: z
-    .enum(['faction', 'players', 'winRate', 'reliable', 'change', 'x1'])
+    .enum(['faction', 'players', 'winRate', 'reliable', 'change', 'x1', 'overrep'])
     .optional()
     .catch(undefined),
   dir: z.enum(['asc', 'desc']).optional().catch(undefined),
