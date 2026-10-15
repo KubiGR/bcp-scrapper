@@ -6,11 +6,12 @@ import {
   looseDetachmentKey,
   matchDetachment,
   SPACE_MARINES,
+  type DetachmentListsResponse,
   type DetachmentNamesResponse,
 } from '@bcp/shared';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
-import { armyLists, detachmentKeeps, detachmentLinks, players } from '../db/schema';
+import { armyLists, detachmentKeeps, detachmentLinks, events, players } from '../db/schema';
 import { bsdataByFaction } from './bsdata';
 import { learnedTranslations, tidyDetachments } from './lists';
 
@@ -197,6 +198,45 @@ export async function unkeepDetachment(db: Db, faction: string, name: string): P
   await db
     .delete(detachmentKeeps)
     .where(and(eq(detachmentKeeps.faction, faction), eq(detachmentKeeps.nameKey, keyOf(name))));
+}
+
+/**
+ * Lists that use a detachment name (any case), of one army when `faction` is given: the newest
+ * events' first, at most `limit` of them, with how many there are in all.
+ */
+export async function detachmentLists(
+  db: Db,
+  name: string,
+  faction: string | null = null,
+  limit = 20,
+): Promise<DetachmentListsResponse> {
+  const uses = sql`exists (select 1 from unnest(${armyLists.detachments}) as d(name)
+    where lower(d.name) = lower(${name}))`;
+  const where = faction === null ? uses : and(uses, sql`${armyOf} = ${faction}`);
+  const rows = await db
+    .select({
+      playerId: players.id,
+      playerName: players.name,
+      faction: armyOf,
+      eventId: events.id,
+      eventName: events.name,
+      eventStartDate: events.startDate,
+      detachments: armyLists.detachments,
+      total: sql<number>`count(*) over ()::int`,
+    })
+    .from(armyLists)
+    .innerJoin(players, eq(players.id, armyLists.playerId))
+    .innerJoin(events, eq(events.id, players.eventId))
+    .where(where)
+    .orderBy(desc(events.startDate), players.name)
+    .limit(limit);
+  return {
+    lists: rows.map(({ total: _total, eventStartDate, ...row }) => ({
+      ...row,
+      eventStartDate: eventStartDate.toISOString(),
+    })),
+    total: rows[0]?.total ?? 0,
+  };
 }
 
 export async function detachmentNames(db: Db): Promise<DetachmentNamesResponse> {

@@ -242,6 +242,16 @@ describe('DetachmentNamesCard', () => {
     expect(screen.queryByText('Horda de Guerra')).not.toBeInTheDocument();
   });
 
+  it('offers to see the lists behind each name', async () => {
+    stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': names() });
+    renderWithProviders(<DetachmentNamesCard />);
+    await screen.findByText('Cabalgata del Caos');
+    const row = within(rowOf('Cabalgata del Caos'));
+    expect(
+      row.getByRole('button', { name: 'See lists using Cabalgata del Caos' }),
+    ).toBeInTheDocument();
+  });
+
   it('sorts the names on a column header', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': names() });
     renderWithProviders(<DetachmentNamesCard />);

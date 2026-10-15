@@ -1,9 +1,14 @@
-import { DetachmentKeepRequestSchema, DetachmentLinkRequestSchema } from '@bcp/shared';
+import {
+  DetachmentKeepRequestSchema,
+  DetachmentLinkRequestSchema,
+  DetachmentListsQuerySchema,
+} from '@bcp/shared';
 import { Hono } from 'hono';
 import type { AuthEnv } from '../auth/middleware';
 import type { Db } from '../db/client';
 import { ForbiddenError } from '../errors';
 import {
+  detachmentLists,
   detachmentNames,
   keepDetachment,
   linkDetachment,
@@ -24,6 +29,11 @@ export function detachmentLinkRoutes(deps: { db: Db; authRequired: boolean }) {
   return (
     new Hono<AuthEnv>()
       .get('/detachments', async (c) => c.json(await detachmentNames(db)))
+      // A few of the lists behind a name, to see what players meant by it.
+      .get('/detachments/lists', async (c) => {
+        const { name, faction } = parseInput(DetachmentListsQuerySchema, c.req.query());
+        return c.json(await detachmentLists(db, name, faction ?? null));
+      })
       .post('/detachments/links', requireJson, async (c) => {
         adminOnly(c.get('user'));
         const { name, target, foreign, ignored } = parseInput(
