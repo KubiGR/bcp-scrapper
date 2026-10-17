@@ -206,7 +206,10 @@ describe('MetaPage', () => {
     expect(searchUrl).toContain('maxLosses=20');
 
     fireEvent.click(screen.getByRole('button', { name: 'Show Orks detachments' }));
-    expect(screen.getByRole('button', { name: 'List' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'List' })).toHaveAttribute(
+      'href',
+      '/events/EVT1?tab=players&list=PL-ADA',
+    );
   });
 
   it('shows the API error with a retry', async () => {

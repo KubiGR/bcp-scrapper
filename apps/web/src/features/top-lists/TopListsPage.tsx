@@ -25,6 +25,8 @@ import { Panel } from '../../components/Panel';
 import rowClasses from '../../components/ClickableRow.module.css';
 import { PlayerLine } from '../../components/PlayerLine';
 import { formatIsoDay, plural } from '../../lib/format';
+import { listPath, openHere } from '../../lib/open-link';
+
 import { SortableTh, useTableSort } from '../../lib/table-sort';
 import { useDraftRange } from '../../lib/use-draft-range';
 import { ListDrawer } from '../event/ListDrawer';
@@ -242,11 +244,13 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                           </Table.Td>
                           <Table.Td ta="right">
                             <Button
+                              component="a"
+                              href={listPath(player.eventId, player.bcpId)}
                               size="xs"
                               variant="light"
-                              onClick={() => {
+                              onClick={openHere(() => {
                                 setOpenKey({ eventId: player.eventId, bcpId: player.bcpId });
-                              }}
+                              })}
                             >
                               List
                             </Button>

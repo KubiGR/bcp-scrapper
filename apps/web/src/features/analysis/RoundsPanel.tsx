@@ -130,6 +130,7 @@ export function RoundsPanel({ event }: { event: EventDetail }) {
                   <GamesTable
                     games={matchup.games}
                     onShowList={setOpenPlayerId}
+                    eventId={event.bcpId}
                     knownPlayerIds={knownPlayerIds}
                   />
                 </Accordion.Panel>
@@ -143,6 +144,7 @@ export function RoundsPanel({ event }: { event: EventDetail }) {
           <GamesTable
             games={current.games}
             onShowList={setOpenPlayerId}
+            eventId={event.bcpId}
             knownPlayerIds={knownPlayerIds}
           />
         </Panel>

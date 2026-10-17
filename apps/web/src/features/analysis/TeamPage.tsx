@@ -116,6 +116,7 @@ function TeamMatches({
                   <GamesTable
                     games={view.games}
                     onShowList={setOpenPlayerId}
+                    eventId={eventId}
                     knownPlayerIds={knownPlayerIds}
                   />
                 </Accordion.Panel>
