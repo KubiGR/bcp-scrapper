@@ -28,6 +28,7 @@ import { EventQueueLine } from './EventQueueLine';
 import { playersQuery } from './event-queries';
 import { ExportMenu } from './ExportMenu';
 import { FetchListsMenu } from './FetchListsMenu';
+import { listPath, openHere } from '../../lib/open-link';
 import { ListDrawer } from './ListDrawer';
 import { ListStatusBadge } from './ListStatusBadge';
 import classes from './PlayersPanel.module.css';
@@ -52,6 +53,8 @@ function emptyText(loadingFromBcp: boolean, playerCount: number): string {
 }
 
 interface PlayerColumnsOptions {
+  /** The event, for each list's own address. */
+  eventId: string;
   showTeam: boolean;
   onOpen: (bcpId: string) => void;
 }
@@ -77,7 +80,11 @@ function PhoneLine({ player, showTeam }: { player: EventPlayer; showTeam: boolea
   );
 }
 
-function playerColumns({ showTeam, onOpen }: PlayerColumnsOptions): DataTableColumn<EventPlayer>[] {
+function playerColumns({
+  eventId,
+  showTeam,
+  onOpen,
+}: PlayerColumnsOptions): DataTableColumn<EventPlayer>[] {
   return [
     {
       accessor: 'placing',
@@ -95,11 +102,12 @@ function playerColumns({ showTeam, onOpen }: PlayerColumnsOptions): DataTableCol
         <>
           <Group gap="xs" wrap="nowrap">
             <UnstyledButton
+              component="a"
+              href={listPath(eventId, p.bcpId)}
               className={classes.playerName}
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={openHere(() => {
                 onOpen(p.bcpId);
-              }}
+              })}
             >
               {p.name}
             </UnstyledButton>
@@ -210,6 +218,8 @@ export function PlayersPanel({
   const queueTeam = useQueueLists(event);
   const all = players.data?.items ?? [];
   const openPlayer = all.find((p) => p.bcpId === openPlayerId) ?? null;
+  // The list the address opened the page on (a link opened in a new tab).
+  const [listFromAddress] = useState(openPlayerIdProp ?? null);
   const filtered = filterPlayers(all, { query, factions, dispositions, detachments, maxLosses });
   // Sorted before grouping, so a team event sorts the players within each team.
   const { sorted, sort, toggle } = useTableSort<EventPlayer, PlayerSortKey>(
@@ -336,7 +346,11 @@ export function PlayersPanel({
             fetching={players.isFetching || loadingFromBcp}
             minHeight={220}
             noRecordsText={emptyText(loadingFromBcp, all.length)}
-            columns={playerColumns({ showTeam: false, onOpen: setOpenPlayerId })}
+            columns={playerColumns({
+              eventId: event.bcpId,
+              showTeam: false,
+              onOpen: setOpenPlayerId,
+            })}
           />
         </Panel>
       ) : grouped ? (
@@ -419,6 +433,7 @@ export function PlayersPanel({
                       setOpenPlayerId(record.bcpId);
                     }}
                     columns={playerColumns({
+                      eventId: event.bcpId,
                       showTeam: false,
                       onOpen: setOpenPlayerId,
                     })}
@@ -441,7 +456,11 @@ export function PlayersPanel({
             onRowClick={({ record }) => {
               setOpenPlayerId(record.bcpId);
             }}
-            columns={playerColumns({ showTeam: event.isTeamEvent, onOpen: setOpenPlayerId })}
+            columns={playerColumns({
+              eventId: event.bcpId,
+              showTeam: event.isTeamEvent,
+              onOpen: setOpenPlayerId,
+            })}
           />
         </Panel>
       )}
@@ -449,6 +468,7 @@ export function PlayersPanel({
       <ListDrawer
         eventId={event.bcpId}
         player={openPlayer}
+        instant={openPlayerId !== null && openPlayerId === listFromAddress}
         onClose={() => {
           setOpenPlayerId(null);
         }}

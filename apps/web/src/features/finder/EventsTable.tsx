@@ -5,6 +5,8 @@ import { DataTable } from 'mantine-datatable';
 import { EventStatusBadges } from '../../components/EventStatusBadges';
 import { Panel } from '../../components/Panel';
 import { formatEventDates, plural } from '../../lib/format';
+import { eventPath, openHere } from '../../lib/open-link';
+
 import classes from './EventsTable.module.css';
 import { FINDER_PAGE_SIZES, type FinderPageSize, type FinderSearch } from './finder-search';
 import { EventHeat, NameWithLeaf } from '../../components/EventSymbols';
@@ -145,11 +147,12 @@ export function EventsTable({
             render: (event) => (
               <>
                 <UnstyledButton
+                  component="a"
+                  href={eventPath(event.bcpId)}
                   className={classes.eventName}
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onClick={openHere(() => {
                     onOpen(event.bcpId);
-                  }}
+                  })}
                 >
                   <Text component="span" size="sm" fw={500}>
                     <NameWithLeaf name={event.name} startDate={event.startDate} />

@@ -73,7 +73,7 @@ describe('TopListsPage', () => {
     expect(within(row).getByLabelText('Guessed from the list')).toBeInTheDocument();
     expect(screen.getByText(/2 big events in this range aren’t loaded yet/)).toBeInTheDocument();
 
-    fireEvent.click(within(row).getByRole('button', { name: 'List' }));
+    fireEvent.click(within(row).getByRole('link', { name: 'List' }));
     expect(await screen.findByText('Orks list text')).toBeInTheDocument();
   });
 
@@ -188,6 +188,17 @@ describe('TopListsPage', () => {
     expect((await cell('Sol Solo'))?.textContent).toBe('Sol Solo#3');
   });
 
+  it('makes each List a link, to open several in new tabs', async () => {
+    stubFetchRoutes({ 'GET /api/players/search': response() });
+    renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
+    const row = (await screen.findByText('Ada Archer')).closest('tr');
+    if (row === null) throw new Error('no row');
+    expect(within(row).getByRole('link', { name: 'List' })).toHaveAttribute(
+      'href',
+      '/events/EVT1?tab=players&list=PL-ADA',
+    );
+  });
+
   it('opens a list from anywhere on its row', async () => {
     stubFetchRoutes({
       'GET /api/players/search': response(),
@@ -232,7 +243,7 @@ describe('TopListsPage', () => {
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
     const row = (await screen.findByText('Ada Archer')).closest('tr');
     if (row === null) throw new Error('no row');
-    fireEvent.click(within(row).getByRole('button', { name: 'List' }));
+    fireEvent.click(within(row).getByRole('link', { name: 'List' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Fetch this list' }));
     expect(await screen.findByText(/Queued/)).toBeInTheDocument();
   });

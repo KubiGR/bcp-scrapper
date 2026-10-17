@@ -42,7 +42,7 @@ describe('PlayersPanel', () => {
     expect(badge).toHaveAttribute('href', '/players/US-ZED');
   });
 
-  it('opens a player list from the keyboard via a focusable player-name button', async () => {
+  it('opens a player list from the player’s name, a link to the list for a new tab', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': { items: [aPlayer()] },
       'GET /api/players/PL-ADA/list': {
@@ -57,9 +57,10 @@ describe('PlayersPanel', () => {
     });
     renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
 
-    const nameButton = await screen.findByRole('button', { name: 'Ada Archer' });
-    nameButton.focus();
-    fireEvent.click(nameButton);
+    const nameLink = await screen.findByRole('link', { name: 'Ada Archer' });
+    expect(nameLink).toHaveAttribute('href', '/events/EVT1?tab=players&list=PL-ADA');
+    nameLink.focus();
+    fireEvent.click(nameLink);
 
     expect(await screen.findByText(/Gladius Task Force/)).toBeInTheDocument();
   });
@@ -76,10 +77,10 @@ describe('PlayersPanel', () => {
     renderWithRouter(
       <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
     );
-    await screen.findByRole('button', { name: 'Zed Zulu' });
+    await screen.findByRole('link', { name: 'Zed Zulu' });
     const names = () =>
       screen
-        .getAllByRole('button')
+        .getAllByRole('link')
         .map((b) => b.textContent)
         .filter((text) => text === 'Zed Zulu' || text === 'Ada Archer');
     expect(names()).toEqual(['Zed Zulu', 'Ada Archer']);
@@ -105,10 +106,10 @@ describe('PlayersPanel', () => {
     renderWithRouter(
       <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
     );
-    await screen.findByRole('button', { name: 'Three Oh' });
+    await screen.findByRole('link', { name: 'Three Oh' });
     const names = () =>
       screen
-        .getAllByRole('button')
+        .getAllByRole('link')
         .map((b) => b.textContent)
         .filter((text) =>
           ['Three Oh', 'Four One', 'Five Oh', 'Four Draw', 'No Games'].includes(text),
@@ -145,7 +146,7 @@ describe('PlayersPanel', () => {
       />,
     );
     expect(await screen.findByText('Shared list text')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Ben Brass' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Ben Brass' }));
     expect(onOpenPlayer).toHaveBeenCalledWith('PL-BEN');
   });
 
@@ -156,7 +157,7 @@ describe('PlayersPanel', () => {
       },
     });
     renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
-    await screen.findByRole('button', { name: 'Ada Archer' });
+    await screen.findByRole('link', { name: 'Ada Archer' });
     expect(
       screen.getByText(
         (_, element) =>

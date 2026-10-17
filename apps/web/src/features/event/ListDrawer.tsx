@@ -23,6 +23,8 @@ interface ListDrawerProps {
   eventId: string;
   player: EventPlayer | null;
   onClose: () => void;
+  /** Open without sliding in: for a list opened by the page's address. */
+  instant?: boolean;
 }
 
 /** Where a list can be opened from a shared link: its event's players, with the list open. */
@@ -67,13 +69,15 @@ function ShareListButton({ eventId, player }: { eventId: string; player: EventPl
   );
 }
 
-export function ListDrawer({ eventId, player, onClose }: ListDrawerProps) {
+export function ListDrawer({ eventId, player, onClose, instant = false }: ListDrawerProps) {
   return (
     <Drawer
       opened={player !== null}
       onClose={onClose}
       position="right"
       size="lg"
+      // Opened as the page loads, the slide-in never finishes (the drawer stays empty): no slide.
+      transitionProps={instant ? { duration: 0 } : undefined}
       title={player?.name}
     >
       {player && (

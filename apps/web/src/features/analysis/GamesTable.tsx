@@ -1,17 +1,30 @@
 import type { GameView } from '@bcp/shared';
 import { Button, Group, Table, Text } from '@mantine/core';
 import { PlayerLine } from '../../components/PlayerLine';
+import { listPath, openHere } from '../../lib/open-link';
 import { formatPoints } from './format';
 
 interface GamesTableProps {
   games: GameView[];
   /** Called with a player's BCP id when their "List" button is clicked. Omit to hide the buttons. */
   onShowList?: (playerId: string) => void;
+  /** The event, so each "List" is also a link to the list (to open in a new tab). */
+  eventId?: string;
   /** Player ids known to the event (from `playersQuery`); a "List" button is hidden for any other. */
   knownPlayerIds?: ReadonlySet<string>;
 }
 
-export function GamesTable({ games, onShowList, knownPlayerIds }: GamesTableProps) {
+export function GamesTable({ games, onShowList, eventId, knownPlayerIds }: GamesTableProps) {
+  // A link when the event is known: a plain click opens the drawer, ⌘-click a new tab.
+  const listProps = (playerId: string) =>
+    eventId === undefined
+      ? { onClick: () => onShowList?.(playerId) }
+      : {
+          component: 'a' as const,
+          href: listPath(eventId, playerId),
+          onClick: openHere(() => onShowList?.(playerId)),
+        };
+
   if (games.length === 0) {
     return (
       <Text size="sm" c="dimmed">
@@ -58,7 +71,7 @@ export function GamesTable({ games, onShowList, knownPlayerIds }: GamesTableProp
                       variant="light"
                       style={{ flexShrink: 0 }}
                       aria-label={`Show ${game.playerA.name}'s list`}
-                      onClick={() => onShowList?.(game.playerA.id)}
+                      {...listProps(game.playerA.id)}
                     >
                       List
                     </Button>
@@ -98,7 +111,7 @@ export function GamesTable({ games, onShowList, knownPlayerIds }: GamesTableProp
                             variant="light"
                             style={{ flexShrink: 0 }}
                             aria-label={`Show ${playerB.name}'s list`}
-                            onClick={() => onShowList?.(playerB.id)}
+                            {...listProps(playerB.id)}
                           >
                             List
                           </Button>

@@ -7,6 +7,7 @@ import rowClasses from '../../components/ClickableRow.module.css';
 import { ErrorState } from '../../components/ErrorState';
 import { PlayerLine } from '../../components/PlayerLine';
 import { EventHeat, NewLeaf, playedLately } from '../../components/EventSymbols';
+import { listPath, openHere } from '../../lib/open-link';
 import { formatEventSize, formatIsoDay } from '../../lib/format';
 import { SortableTh, useTableSort } from '../../lib/table-sort';
 import { FOUND_PLAYER_SORT, placingLine } from '../top-lists/player-sort';
@@ -146,11 +147,13 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
                   </Table.Td>
                   <Table.Td ta="right">
                     <Button
+                      component="a"
+                      href={listPath(player.eventId, player.bcpId)}
                       size="xs"
                       variant="light"
-                      onClick={() => {
+                      onClick={openHere(() => {
                         setOpenKey({ eventId: player.eventId, bcpId: player.bcpId });
-                      }}
+                      })}
                     >
                       List
                     </Button>

@@ -138,8 +138,9 @@ describe('RoundsPanel', () => {
       name: /Red Legion\s*30\s*–\s*10\s*Blue Wardens/,
     });
     fireEvent.click(matchup);
-    const listButton = await screen.findByRole('button', { name: "Show Rhea Stone's list" });
-    expect(screen.queryByRole('button', { name: "Show Bea Moss's list" })).not.toBeInTheDocument();
+    const listButton = await screen.findByRole('link', { name: "Show Rhea Stone's list" });
+    expect(listButton).toHaveAttribute('href', '/events/EVT1?tab=players&list=R1');
+    expect(screen.queryByRole('link', { name: "Show Bea Moss's list" })).not.toBeInTheDocument();
     fireEvent.click(listButton);
     expect(await screen.findByRole('dialog', { name: 'Rhea Stone' })).toBeInTheDocument();
     expect(await screen.findByText(/list text/)).toBeInTheDocument();

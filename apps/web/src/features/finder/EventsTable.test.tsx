@@ -94,8 +94,10 @@ describe('EventsTable', () => {
     expect(screen.getAllByRole('img', { name: 'Major event' }).length).toBeGreaterThan(0);
     expect(screen.getByText('108 teams')).toBeInTheDocument();
     expect(screen.getByText('Teams')).toBeInTheDocument();
-    // Phrasing content only inside a button: no <p>.
-    expect(screen.getByRole('button', { name: 'Sample Team Open' }).querySelector('p')).toBeNull();
+    // A real link (⌘-click opens a new tab), with phrasing content only: no <p>.
+    const link = screen.getByRole('link', { name: 'Sample Team Open' });
+    expect(link).toHaveAttribute('href', '/events/EVT1?tab=players');
+    expect(link.querySelector('p')).toBeNull();
     fireEvent.click(screen.getByText('Sample Team Open'));
     expect(onOpen).toHaveBeenCalledWith('EVT1');
   });
