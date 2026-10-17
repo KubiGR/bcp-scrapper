@@ -132,7 +132,11 @@ export function reliableWinRate(points: number, games: number): number {
   return Math.max(0, (centre - margin) / (1 + z2 / games));
 }
 
-const figures = (tally: Tally, total: number) => ({
+/**
+ * Figures for a group; `x1Rate` is the share of all counted players who went X-1 or better, for
+ * over-representation: the group's X-1 rate against it (1 = as many as its numbers suggest).
+ */
+const figures = (tally: Tally, total: number, x1Rate: number) => ({
   players: tally.players,
   share: total === 0 ? 0 : tally.players / total,
   games: tally.games,
@@ -140,6 +144,7 @@ const figures = (tally: Tally, total: number) => ({
   reliableWinRate: reliableWinRate(tally.points, tally.games),
   x1: tally.x1,
   x1Share: tally.players === 0 ? 0 : tally.x1 / tally.players,
+  overrep: x1Rate === 0 || tally.players === 0 ? null : tally.x1 / tally.players / x1Rate,
 });
 
 /**
@@ -157,6 +162,7 @@ export function computeMeta(
 } {
   const counted = rows.filter((row) => gamesOf(row) > 0);
   const total = counted.length;
+  const x1Rate = total === 0 ? 0 : counted.filter((row) => row.losses <= 1).length / total;
   const groups = groupRows<Tally>(counted, emptyTally, addToTally);
   const grouped = (players: MetaPlayerRow[]) =>
     groupRows<Tally>(
@@ -190,13 +196,13 @@ export function computeMeta(
       const then = prior.get(faction);
       return {
         faction,
-        ...figures(group.tally, total),
+        ...figures(group.tally, total, x1Rate),
         trend: trend(group.tally),
         change: change(now?.tally, then?.tally),
         archetypes: [...group.archetypes.entries()]
           .map(([key, a]): ArchetypeRow => ({
             detachments: a.detachments,
-            ...figures(a.tally, total),
+            ...figures(a.tally, total, x1Rate),
             trend: trend(a.tally),
             change: change(now?.archetypes.get(key)?.tally, then?.archetypes.get(key)?.tally),
             dispositions: dispositionList(a.tally.dispositions),

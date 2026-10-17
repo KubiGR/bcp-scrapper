@@ -36,6 +36,21 @@ describe('FactionTable', () => {
     expect(names.at(-1)).toContain('Unknown faction');
   });
 
+  it('shows over-representation among X-1 players, blue over, orange under, and sorts on it', () => {
+    const onSortChange = vi.fn();
+    renderWithProviders(
+      <FactionTable
+        {...props}
+        rows={[{ ...orks, overrep: 1.4 }, { ...necrons, overrep: 0.62 }, tiny, unknown]}
+        onSortChange={onSortChange}
+      />,
+    );
+    expect(within(rowOf('Orks')).getByText('1.40×')).toHaveAttribute('data-tone', 'good');
+    expect(within(rowOf('Necrons')).getByText('0.62×')).toHaveAttribute('data-tone', 'bad');
+    fireEvent.click(screen.getByRole('button', { name: /Overrep/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'overrep', dir: 'desc' });
+  });
+
   it('dims factions below the minimum and sorts them after the rest', () => {
     renderWithProviders(<FactionTable {...props} sort="winRate" />);
     expect(rowOf('Grey Knights')).toHaveAttribute('data-dimmed', 'true');
@@ -167,6 +182,7 @@ describe('FactionTable', () => {
           change: null,
           x1: 1,
           x1Share: 0.1,
+          overrep: 1,
         },
         {
           detachments: ['B'],
@@ -180,6 +196,7 @@ describe('FactionTable', () => {
           change: null,
           x1: 5,
           x1Share: 0.5,
+          overrep: 1,
         },
         {
           detachments: ['C'],
@@ -193,6 +210,7 @@ describe('FactionTable', () => {
           change: null,
           x1: 2,
           x1Share: 1,
+          overrep: 1,
         },
         {
           detachments: null,
@@ -206,6 +224,7 @@ describe('FactionTable', () => {
           change: null,
           x1: 3,
           x1Share: 0.1,
+          overrep: 1,
         },
       ],
     };

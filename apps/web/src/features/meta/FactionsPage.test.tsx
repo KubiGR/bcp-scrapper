@@ -37,6 +37,24 @@ describe('FactionsPage', () => {
     expect(screen.getByText('100 players · 3 events')).toBeInTheDocument();
   });
 
+  it('shows over-representation among X-1 players, and sorts on it', async () => {
+    stubFetchRoutes({
+      'GET /api/meta': metaResponse({
+        factions: [
+          { ...orks, overrep: 1.4 },
+          { ...necrons, overrep: 0.62 },
+          { ...tiny, overrep: 1.1 },
+        ],
+      }),
+    });
+    renderWithRouter(<FactionsPage search={{}} onSearchChange={vi.fn()} />);
+    const rows = await rowsOf();
+    const ork = cells(rows.find((row) => nameOf(row) === 'Orks'));
+    expect(ork.getByText('1.40×')).toHaveAttribute('data-tone', 'good');
+    fireEvent.click(screen.getByRole('button', { name: /Overrep/ }));
+    expect((await rowsOf()).map(nameOf)).toEqual(['Orks', 'Grey Knights', 'Necrons']);
+  });
+
   it('sorts by another column on click', async () => {
     stubFetchRoutes({ 'GET /api/meta': metaResponse() });
     renderWithRouter(<FactionsPage search={{}} onSearchChange={vi.fn()} />);

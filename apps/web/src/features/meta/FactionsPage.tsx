@@ -8,7 +8,7 @@ import { Panel } from '../../components/Panel';
 import { plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { useDraftRange } from '../../lib/use-draft-range';
-import { ReliableText, WinRateText } from './FactionTable';
+import { OVERREP_TITLE, OverrepText, ReliableText, WinRateText } from './FactionTable';
 import classes from './FactionsPage.module.css';
 import { EVENT_TYPES } from './MetaPage';
 import { metaQuery, metaWindow, sharePercent, type MetaSearch } from './meta-queries';
@@ -22,13 +22,14 @@ interface FactionsPageProps {
   onSearchChange: (next: FactionsSearch) => void;
 }
 
-type Column = 'faction' | 'players' | 'winRate' | 'reliable';
+type Column = 'faction' | 'players' | 'winRate' | 'reliable' | 'overrep';
 
 const VALUES: Record<Column, SortValue<MetaRow & { faction: string }>> = {
   faction: (row) => row.faction,
   players: (row) => row.players,
   winRate: (row) => row.winRate,
   reliable: (row) => row.reliableWinRate,
+  overrep: (row) => row.overrep ?? 0,
 };
 
 type KnownRow = MetaRow & { faction: string };
@@ -57,6 +58,15 @@ function FactionsTable({ rows, search }: { rows: KnownRow[]; search: FactionsSea
             </SortableTh>
             <SortableTh column="reliable" sort={sort} onSort={toggle} ta="right">
               Reliable
+            </SortableTh>
+            <SortableTh
+              column="overrep"
+              sort={sort}
+              onSort={toggle}
+              ta="right"
+              title={OVERREP_TITLE}
+            >
+              Overrep
             </SortableTh>
           </Table.Tr>
         </Table.Thead>
@@ -90,6 +100,9 @@ function FactionsTable({ rows, search }: { rows: KnownRow[]; search: FactionsSea
               </Table.Td>
               <Table.Td ta="right">
                 <ReliableText row={row} />
+              </Table.Td>
+              <Table.Td ta="right">
+                <OverrepText overrep={row.overrep} />
               </Table.Td>
             </Table.Tr>
           ))}

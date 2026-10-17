@@ -3,7 +3,14 @@ import { MultiSelect, Stack, Table, Text, useMatches } from '@mantine/core';
 import { plural } from '../../lib/format';
 import { SortableTh, type SortDir } from '../../lib/table-sort';
 import { DispositionBreakdown } from './DispositionBreakdown';
-import { changeOf, factionKey, factionName, Figures, type PlayersFilter } from './FactionTable';
+import {
+  changeOf,
+  factionKey,
+  factionName,
+  Figures,
+  OVERREP_TITLE,
+  type PlayersFilter,
+} from './FactionTable';
 import { DEFAULT_CHANGE_LABEL, type MetaSort } from './meta-queries';
 
 /** One archetype with its faction: a row of the flat table. */
@@ -78,7 +85,9 @@ export function ArchetypeTable({
           ? (changeOf(a) ?? 0)
           : sort === 'x1'
             ? a.x1Share
-            : a.players;
+            : sort === 'overrep'
+              ? (a.overrep ?? 0)
+              : a.players;
   const sorted = [...archetypes].sort(
     (a, b) =>
       Number(dimmed(a)) - Number(dimmed(b)) ||
@@ -153,6 +162,16 @@ export function ArchetypeTable({
               </SortableTh>
               <SortableTh column="x1" sort={state} onSort={onSort} ta="right" visibleFrom="sm">
                 X-1 or better
+              </SortableTh>
+              <SortableTh
+                column="overrep"
+                sort={state}
+                onSort={onSort}
+                ta="right"
+                visibleFrom="sm"
+                title={OVERREP_TITLE}
+              >
+                Overrep
               </SortableTh>
             </Table.Tr>
           </Table.Thead>
