@@ -83,7 +83,7 @@ function PlayerDetails({ player }: { player: PairingRosterPlayer }) {
   return (
     <Stack gap={2}>
       <Text size="xs" fw={600}>
-        <FactionIcon faction={player.faction} size={14} />
+        <FactionIcon faction={player.faction} size={20} />
         {player.faction ?? player.name}
       </Text>
       {player.name !== player.faction && <Text size="xs">{player.name}</Text>}

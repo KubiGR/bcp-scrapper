@@ -15,7 +15,7 @@ type MetaFilters = Pick<MetaSearch, 'from' | 'to' | 'type'>;
 function FactionLink({ row, filters }: { row: KnownRow; filters: MetaFilters }) {
   return (
     <AnchorLink to="/analysis/meta" search={{ ...filters, factions: row.faction }}>
-      <FactionIcon faction={row.faction} size={20} />
+      <FactionIcon faction={row.faction} size={28} />
       {row.faction}
     </AnchorLink>
   );

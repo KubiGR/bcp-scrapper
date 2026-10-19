@@ -159,7 +159,7 @@ function SummaryCells({ summary, scale }: { summary: RowSummary; scale: number |
 function RowName({ faction, line }: { faction: string; line: string | null }) {
   return (
     <>
-      <FactionIcon faction={faction} size={28} />
+      <FactionIcon faction={faction} size={32} />
       <span className={classes.rowText}>
         <span className={classes.truncate}>{faction}</span>
         {line !== null && <span className={`${classes.overall} numeric`}>{line}</span>}
@@ -344,7 +344,7 @@ export function FactionMatrix({
                   aria-label={faction}
                 >
                   {hasFactionIcon(faction) ? (
-                    <FactionIcon faction={faction} size={24} />
+                    <FactionIcon faction={faction} size={28} />
                   ) : (
                     <span className={classes.headerShort}>{shortArmy(faction)}</span>
                   )}

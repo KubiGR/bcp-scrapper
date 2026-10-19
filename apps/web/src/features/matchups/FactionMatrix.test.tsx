@@ -217,7 +217,7 @@ describe('FactionMatrix icons', () => {
     );
     const img = screen.getByRole('rowheader', { name: /^Orks/ }).querySelector('img');
     expect(img).toHaveAttribute('src', '/factions/orks.png');
-    expect(img).toHaveAttribute('width', '28');
+    expect(img).toHaveAttribute('width', '32');
   });
 });
 

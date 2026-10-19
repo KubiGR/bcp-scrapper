@@ -62,7 +62,7 @@ export const hasFactionIcon = (faction: string) => iconOf(faction) !== null;
  * A faction's icon, before its name; nothing for a faction without one. Hidden from screen
  * readers: the name beside it says the same.
  */
-export function FactionIcon({ faction, size = 16 }: { faction: string | null; size?: number }) {
+export function FactionIcon({ faction, size = 22 }: { faction: string | null; size?: number }) {
   if (faction === null) return null;
   const slug = iconOf(faction);
   if (slug === null) return null;
@@ -74,7 +74,8 @@ export function FactionIcon({ faction, size = 16 }: { faction: string | null; si
       width={size}
       height={size}
       loading="lazy"
-      style={{ display: 'inline-block', verticalAlign: '-0.2em', marginRight: 4, flexShrink: 0 }}
+      // Centred on its line: bigger than the text it sits in.
+      style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: 6, flexShrink: 0 }}
     />
   );
 }
