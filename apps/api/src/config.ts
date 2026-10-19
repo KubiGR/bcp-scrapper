@@ -63,6 +63,18 @@ const EnvSchema = z.object({
   ACCESS_AUD: z.string().min(1).optional(),
   /** Emails of the admins when signing in through Access, comma-separated. */
   ADMIN_EMAILS: z.string().optional(),
+  /** Email to the admins (new people waiting, the daily to-do): off without SMTP_USER/PASSWORD. */
+  SMTP_HOST: z.string().min(1).default('smtp.gmail.com'),
+  SMTP_PORT: z.coerce.number().int().positive().default(465),
+  /** The sending account, e.g. a Gmail address (with an app password). */
+  SMTP_USER: z.string().min(1).optional(),
+  SMTP_PASSWORD: z.string().min(1).optional(),
+  /** Comma-separated recipients; ADMIN_EMAILS when unset. */
+  NOTIFY_EMAILS: z.string().optional(),
+  /** The site's address for links in emails; https://PUBLIC_HOSTNAME when unset. */
+  SITE_URL: z.url().optional(),
+  /** The hour (UTC, 0–23) the daily to-do email goes, when there's anything to do. */
+  DIGEST_HOUR: z.coerce.number().int().min(0).max(23).default(6),
   /** The first admin, created on start while there are no users yet. */
   ADMIN_USERNAME: z.string().min(1).optional(),
   ADMIN_PASSWORD: z.string().min(1).optional(),
@@ -111,4 +123,37 @@ export function allowedHostsOf(config: Config): Set<string> {
     if (hostname !== null) hosts.add(hostname);
   }
   return hosts;
+}
+
+const emailsIn = (list: string | undefined) =>
+  (list ?? '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+/** How to send the admins email, and to whom; null when it's off (no SMTP login or no one). */
+export function mailSettingsOf(config: Config): {
+  smtp: { host: string; port: number; user: string; password: string };
+  to: string[];
+} | null {
+  const to = emailsIn(config.NOTIFY_EMAILS ?? config.ADMIN_EMAILS);
+  if (config.SMTP_USER === undefined || config.SMTP_PASSWORD === undefined || to.length === 0) {
+    return null;
+  }
+  return {
+    smtp: {
+      host: config.SMTP_HOST,
+      port: config.SMTP_PORT,
+      user: config.SMTP_USER,
+      password: config.SMTP_PASSWORD,
+    },
+    to,
+  };
+}
+
+/** The site's address, for links in emails. */
+export function siteUrlOf(config: Config): string {
+  if (config.SITE_URL !== undefined) return config.SITE_URL.replace(/\/+$/, '');
+  if (config.PUBLIC_HOSTNAME !== undefined) return `https://${config.PUBLIC_HOSTNAME}`;
+  return `http://localhost:${String(config.PORT)}`;
 }

@@ -129,6 +129,27 @@ token for who the visitor is. Add these to the stack's variables and redeploy:
   out rather than letting anyone in: fix the variable and redeploy.
 - `SESSION_SECRET`, `ADMIN_USERNAME` and `ADMIN_PASSWORD` are not needed.
 
+### Email to the admins
+
+The app can email the admins when someone new signs in and waits for approval, and once a day with
+what's left to do (people waiting, detachment names to link, detachments outside their faction),
+only when there's anything. It's off until a sending account is set. With Gmail:
+
+1. Turn on 2-Step Verification for the Google account that will send (Google Account → Security).
+2. Create an **app password** (Google Account → Security → App passwords), named e.g. "Logis".
+3. Add these to the stack's variables and redeploy:
+
+| Variable        | Value                                                                            |
+| --------------- | -------------------------------------------------------------------------------- |
+| `SMTP_USER`     | The Gmail address that sends, e.g. `you@gmail.com`                               |
+| `SMTP_PASSWORD` | The 16-letter app password (not your Google password)                            |
+| `NOTIFY_EMAILS` | Optional: comma-separated recipients; `ADMIN_EMAILS` when empty                  |
+| `DIGEST_HOUR`   | Optional: the hour (UTC, 0–23) the daily email goes; 6 by default (09:00 Athens) |
+
+Links in the emails point at `https://PUBLIC_HOSTNAME`. Another SMTP server works too: set
+`SMTP_HOST` and `SMTP_PORT` as well (465 for TLS, 587 for STARTTLS). The app's log says
+"Email to admins is off" when it isn't set up, and "Sent an email" for each one sent.
+
 ## Troubleshooting
 
 - **403 "Unexpected Host header":** `PUBLIC_HOSTNAME` doesn't match the address in the browser.

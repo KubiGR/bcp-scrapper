@@ -41,6 +41,12 @@ services:
       ACCESS_TEAM_DOMAIN: ${ACCESS_TEAM_DOMAIN:-}
       ACCESS_AUD: ${ACCESS_AUD:-}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      # Email to the admins (someone new waiting, the daily to-do): off until SMTP_USER and
+      # SMTP_PASSWORD are set (see docs/deploy/portainer.md).
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      NOTIFY_EMAILS: ${NOTIFY_EMAILS:-}
+      DIGEST_HOUR: ${DIGEST_HOUR:-6}
       PUBLIC_HOSTNAME: ${PUBLIC_HOSTNAME:?set PUBLIC_HOSTNAME}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-}

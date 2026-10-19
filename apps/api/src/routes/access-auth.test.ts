@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { eq } from 'drizzle-orm';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../app';
 import type { Db } from '../db/client';
 import { users } from '../db/schema';
@@ -37,7 +37,7 @@ async function token(
     .sign(claims.key ?? privateKey);
 }
 
-function makeApp(now?: () => Date) {
+function makeApp(now?: () => Date, onNewUser?: (email: string) => void) {
   return createApp({
     now,
     db,
@@ -61,7 +61,7 @@ function makeApp(now?: () => Date) {
     auth: {
       required: true,
       secret: '',
-      access: { teamDomain: TEAM, aud: AUD, adminEmails: [ADMIN], keys: jwks },
+      access: { teamDomain: TEAM, aud: AUD, adminEmails: [ADMIN], keys: jwks, onNewUser },
     },
   });
 }
@@ -232,6 +232,17 @@ describe('Cloudflare Access login', () => {
     expect((await send(app, 'GET', '/api/events', { jwt: ana2 })).status).toBe(200);
     // A member can't manage users.
     expect((await send(app, 'GET', '/api/users', { jwt: ana2 })).status).toBe(403);
+  });
+
+  it('tells the admins once when someone new signs in to wait for approval', async () => {
+    const onNewUser = vi.fn();
+    const app = makeApp(undefined, onNewUser);
+    const ana = await token({ email: 'ana@example.com' });
+    await send(app, 'GET', '/api/events', { jwt: ana });
+    await send(app, 'GET', '/api/events', { jwt: ana });
+    // An admin isn't someone waiting.
+    await send(app, 'GET', '/api/events', { jwt: await token() });
+    expect(onNewUser.mock.calls).toEqual([['ana@example.com']]);
   });
 
   it('tells the admin when each person was last seen, those waiting too', async () => {

@@ -3,7 +3,7 @@ import { createApp } from './app';
 import { accessOptionsOf } from './auth/access';
 import { ensureAdmin } from './auth/bootstrap';
 import { createSource } from './bcp/create-source';
-import { allowedHostsOf, loadConfig } from './config';
+import { allowedHostsOf, loadConfig, mailSettingsOf, siteUrlOf } from './config';
 import { createDb } from './db/client';
 import { AutoFetchPlanner } from './fetch-queue/auto-fetch';
 import { FetchQueueWorker } from './fetch-queue/worker';
@@ -19,6 +19,9 @@ import { backfillPlayerUserIds } from './repo/player-accounts';
 import { failInterruptedSyncRuns } from './repo/sync-runs';
 import { serveWebApp } from './static';
 import { SyncRunner } from './sync/runner';
+import { adminWork, newUserMail } from './notify/admin-mail';
+import { sendDigestIfDue } from './notify/digest';
+import { smtpMailer } from './notify/mailer';
 
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL, config.NODE_ENV === 'development');
@@ -113,7 +116,43 @@ const syncRulesIfDue = async () => {
 void syncRulesIfDue();
 const rulesTimer = setInterval(() => void syncRulesIfDue(), 60 * 60 * 1000);
 
-const access = accessOptionsOf(config);
+// Email to the admins: someone new waiting for approval, and the day's to-do.
+const mail = mailSettingsOf(config);
+const mailer = mail === null ? null : smtpMailer(mail.smtp, logger.child({ module: 'email' }));
+const siteUrl = siteUrlOf(config);
+if (mail === null) logger.info('Email to admins is off (set SMTP_USER and SMTP_PASSWORD to send)');
+const accessSettings = accessOptionsOf(config);
+const access =
+  accessSettings === undefined || mail === null || mailer === null
+    ? accessSettings
+    : {
+        ...accessSettings,
+        onNewUser: (email: string) => {
+          mailer.send({ to: mail.to, ...newUserMail(email, siteUrl) }).catch((error: unknown) => {
+            logger.warn({ err: error, email }, 'Could not email the admins about a new user');
+          });
+        },
+      };
+const sendDigest = async () => {
+  if (mail === null || mailer === null) return;
+  try {
+    await sendDigestIfDue({
+      db: database.db,
+      mailer,
+      to: mail.to,
+      siteUrl,
+      hour: config.DIGEST_HOUR,
+      now: new Date(),
+      work: () => adminWork(database.db, accessSettings !== undefined),
+      logger,
+    });
+  } catch (error) {
+    logger.warn({ err: error }, 'Could not check the daily email');
+  }
+};
+void sendDigest();
+const digestTimer = setInterval(() => void sendDigest(), 15 * 60 * 1000);
+
 const app = createApp({
   db: database.db,
   runner,
@@ -144,6 +183,7 @@ async function shutdown(signal: string): Promise<void> {
   server.close();
   clearInterval(bsdataTimer);
   clearInterval(rulesTimer);
+  clearInterval(digestTimer);
   await autoFetch?.stop();
   // Let a list fetch in flight finish writing before the database closes.
   await fetchQueue.stop();

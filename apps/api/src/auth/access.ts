@@ -11,6 +11,8 @@ export interface AccessOptions {
   adminEmails: string[];
   /** The team's public signing keys. */
   keys: JWTVerifyGetKey;
+  /** Called with the email of someone new who now waits for approval (to tell the admins). */
+  onNewUser?: (email: string) => void;
 }
 
 /** The header Cloudflare adds to every request it lets through. */

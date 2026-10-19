@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowedHostsOf, loadConfig } from './config';
+import { allowedHostsOf, loadConfig, mailSettingsOf, siteUrlOf } from './config';
 
 describe('loadConfig', () => {
   it('applies defaults when the environment is empty', () => {
@@ -10,6 +10,47 @@ describe('loadConfig', () => {
     expect(config.BCP_REQUESTS_PER_SECOND).toBe(2);
     expect(config.BCP_REFRESH_TOKEN).toBeUndefined();
     expect(config.FETCH_QUEUE_INTERVAL_MS).toBe(5000);
+  });
+
+  it('sends email through Gmail by default, once SMTP_USER and SMTP_PASSWORD are set', () => {
+    const config = loadConfig({});
+    expect(config.SMTP_HOST).toBe('smtp.gmail.com');
+    expect(config.SMTP_PORT).toBe(465);
+    expect(config.SMTP_USER).toBeUndefined();
+    expect(config.DIGEST_HOUR).toBe(6);
+    expect(() => loadConfig({ DIGEST_HOUR: '24' })).toThrow(/DIGEST_HOUR/);
+    expect(mailSettingsOf(loadConfig({ SMTP_USER: 'me@gmail.com' }))).toBeNull();
+    expect(
+      mailSettingsOf(
+        loadConfig({
+          SMTP_USER: 'me@gmail.com',
+          SMTP_PASSWORD: 'app pass',
+          ADMIN_EMAILS: 'a@x.com, B@x.com',
+        }),
+      ),
+    ).toEqual({
+      smtp: { host: 'smtp.gmail.com', port: 465, user: 'me@gmail.com', password: 'app pass' },
+      to: ['a@x.com', 'b@x.com'],
+    });
+    expect(
+      mailSettingsOf(
+        loadConfig({
+          SMTP_USER: 'me@gmail.com',
+          SMTP_PASSWORD: 'p',
+          NOTIFY_EMAILS: 'me@gmail.com',
+        }),
+      )?.to,
+    ).toEqual(['me@gmail.com']);
+  });
+
+  it('links emails to the public site', () => {
+    expect(siteUrlOf(loadConfig({ PUBLIC_HOSTNAME: 'logis.example.com' }))).toBe(
+      'https://logis.example.com',
+    );
+    expect(siteUrlOf(loadConfig({ SITE_URL: 'https://x.example.com/' }))).toBe(
+      'https://x.example.com',
+    );
+    expect(siteUrlOf(loadConfig({}))).toBe('http://localhost:3401');
   });
 
   it('treats empty strings as unset, so a blank .env line does not fail validation', () => {
