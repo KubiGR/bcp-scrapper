@@ -165,7 +165,6 @@ const toneClass: Record<CellTone, string> = {
   bad: classes.bad ?? '',
   even: classes.even ?? '',
   mirror: classes.mirror ?? '',
-  hidden: classes.hidden ?? '',
 };
 
 const key = (row: string, col: string) => `${row}\u0000${col}`;
@@ -235,19 +234,25 @@ export function FactionMatrix({
     // A detachment row against its own faction is a real result, not a mirror.
     const view = cellView(cell, settings, scale, side.detachment === undefined && side.row === col);
     const who = `${pickLabel(side)} vs ${col}`;
-    const counts = view.value === String(view.games) && view.tone === 'hidden';
+    const tooFew = ', too few: left out of Spread and Average';
     const label =
       view.tone === 'mirror'
-        ? `${who}: ${view.text} games`
-        : view.tone === 'hidden'
-          ? `${who}: ${view.value}${counts ? ' games' : ` over ${String(view.games)} games`}, too few: left out of Spread and Average`
+        ? `${who}: ${view.text} games${view.thin ? tooFew : ''}`
+        : view.thin
+          ? `${who}: ${view.value} over ${String(view.games)} games${tooFew}`
           : `${who}: ${view.value} ${metricLabel} over ${String(view.games)} games`;
     const style =
       view.tone === 'good' || view.tone === 'bad'
         ? ({ '--strength': view.strength } as CSSProperties)
         : undefined;
     return (
-      <Table.Td key={col} className={`${classes.cell} ${toneClass[view.tone]}`} style={style} p={0}>
+      <Table.Td
+        key={col}
+        className={`${classes.cell} ${toneClass[view.tone]} ${view.thin ? classes.thin : ''}`}
+        data-thin={view.thin}
+        style={style}
+        p={0}
+      >
         <UnstyledButton
           aria-label={label}
           data-tip={label}
@@ -261,7 +266,7 @@ export function FactionMatrix({
           }}
         >
           <span className="numeric">{view.text}</span>
-          {view.tone !== 'mirror' && !counts && (
+          {view.tone !== 'mirror' && (
             <span className={`${classes.count} numeric`}>{view.games}</span>
           )}
         </UnstyledButton>

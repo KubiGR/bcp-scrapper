@@ -43,7 +43,7 @@ export function matrixParams(settings: MatrixSettings): Record<string, string> {
   return params;
 }
 
-export type CellTone = 'good' | 'bad' | 'even' | 'mirror' | 'hidden';
+export type CellTone = 'good' | 'bad' | 'even' | 'mirror';
 
 export interface CellView {
   /** The compact display text: just the value (e.g. "62%"), no game count. */
@@ -54,9 +54,11 @@ export interface CellView {
   /** The game count this cell is judged against: `cell.games` halved on the mirror diagonal, since
    * each mirror game adds two sides. */
   games: number;
-  /** How far the metric sits from "even", in [0, 1], for a graded background. 0 for hidden/mirror
+  /** How far the metric sits from "even", in [0, 1], for a graded background. 0 for mirror
    * cells and for a value at or near the midpoint. */
   strength: number;
+  /** Under `minGames`: hatched over its colour, and out of the row's Spread and Average. */
+  thin?: true;
 }
 
 /** Tone plus graded strength around a midpoint: `strength` is 0 at the midpoint and 1 once the
@@ -72,7 +74,7 @@ function toneAndStrength(
 }
 
 /**
- * What a matrix cell shows: greyed (`hidden`) under `minGames`, with its value still there; just
+ * What a matrix cell shows: `thin` under `minGames` (hatched, colour and value kept); just
  * the count on the mirror diagonal,
  * otherwise the chosen metric (win rate, or game points when a `scale` is available) as compact
  * text, with a `strength` in [0, 1] for a graded background so colour intensity tracks how far the
@@ -88,11 +90,8 @@ export function cellView(
 ): CellView {
   const { games } = cell;
   if (games < settings.minGames) {
-    // Too few games to read much into: the value stays, greyed and hatched, uncoloured.
-    const shown = isMirror
-      ? String(games)
-      : cellView(cell, { ...settings, minGames: 0 }, scale).value;
-    return { text: shown, value: shown, tone: 'hidden', games, strength: 0 };
+    // Too few games to read much into: shown as usual, colour and all, but marked to hatch.
+    return { ...cellView(cell, { ...settings, minGames: 0 }, scale, isMirror), thin: true };
   }
   if (isMirror) {
     return { text: String(games), value: String(games), tone: 'mirror', games, strength: 0 };

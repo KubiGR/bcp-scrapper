@@ -214,7 +214,7 @@ describe('FactionMatrix', () => {
         onCell={vi.fn()}
       />,
     );
-    // Greyed and hatched, the value still there.
+    // Hatched over its colour, the value still there.
     expect(screen.getAllByText('50%').length).toBeGreaterThan(0);
   });
 

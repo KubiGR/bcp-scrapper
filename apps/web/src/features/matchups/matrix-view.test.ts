@@ -60,13 +60,20 @@ describe('matrixParams', () => {
 });
 
 describe('cellView', () => {
-  it('greys a cell under minGames, still showing its value', () => {
+  it('marks a cell under minGames as thin, keeping its value and colour', () => {
     const view = cellView(
-      cell({ games: 2, wins: 1, draws: 0, losses: 1, winRate: 0.5 }),
+      cell({ games: 2, wins: 2, draws: 0, losses: 0, winRate: 1 }),
       settings({ minGames: 3 }),
       null,
     );
-    expect(view).toEqual({ text: '50%', value: '50%', tone: 'hidden', games: 2, strength: 0 });
+    expect(view).toEqual({
+      text: '100%',
+      value: '100%',
+      tone: 'good',
+      games: 2,
+      strength: 1,
+      thin: true,
+    });
   });
 
   it('shows only the count of games played on the mirror diagonal', () => {
@@ -78,13 +85,20 @@ describe('cellView', () => {
     expect(view).toEqual({ text: '3', value: '3', tone: 'mirror', games: 3, strength: 0 });
   });
 
-  it('greys a mirror cell under minGames, still showing its games', () => {
+  it('marks a mirror cell under minGames as thin, still showing its games', () => {
     const view = cellView(
       cell({ row: 'Orks', col: 'Orks', games: 2, winRate: null }),
       settings({ minGames: 3 }),
       null,
     );
-    expect(view).toEqual({ text: '2', value: '2', tone: 'hidden', games: 2, strength: 0 });
+    expect(view).toEqual({
+      text: '2',
+      value: '2',
+      tone: 'mirror',
+      games: 2,
+      strength: 0,
+      thin: true,
+    });
   });
 
   it('renders a win rate above the good threshold as good, with no game count in the text', () => {
@@ -192,9 +206,7 @@ describe('cellView strength (graded colour by win rate/points)', () => {
     expect(view.tone).toBe('even');
   });
 
-  it('is 0 strength for hidden and mirror cells', () => {
-    const hidden = cellView(cell({ games: 2 }), settings({ minGames: 3 }), null);
-    expect(hidden.strength).toBe(0);
+  it('is 0 strength for mirror cells', () => {
     const mirror = cellView(cell({ row: 'Orks', col: 'Orks', games: 6 }), settings(), null);
     expect(mirror.strength).toBe(0);
   });
