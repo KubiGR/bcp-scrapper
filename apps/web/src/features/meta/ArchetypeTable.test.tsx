@@ -100,6 +100,13 @@ describe('ArchetypeTable', () => {
     expect(within(rowOf('Teleport Strike Force')).getByText('2.0%')).toBeInTheDocument();
   });
 
+  it('puts the faction’s icon, big, left of each archetype', () => {
+    renderWithProviders(<ArchetypeTable {...props} />);
+    const img = rowOf('Kult of Speed + Wreckas').querySelector('img');
+    expect(img).toHaveAttribute('src', '/factions/orks.png');
+    expect(img).toHaveAttribute('width', '36');
+  });
+
   it('shows which dispositions an archetype’s players picked', () => {
     renderWithProviders(<ArchetypeTable {...props} />);
     const row = rowOf('Kult of Speed + Wreckas');
