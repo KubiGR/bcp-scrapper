@@ -10,7 +10,7 @@ export const GUESSED_ARMY_TOOLTIP = 'From the list — BCP has no army for this 
 export function FactionText({ faction, guessed }: { faction: string | null; guessed: boolean }) {
   return (
     <>
-      <FactionIcon faction={faction} size={14} />
+      <FactionIcon faction={faction} size={20} />
       {faction ?? 'Unknown faction'}
       {guessed && (
         <Tooltip

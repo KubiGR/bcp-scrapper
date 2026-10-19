@@ -190,7 +190,7 @@ export function ArchetypeTable({
                   <Table.Td>
                     <Text size="sm">{archetype.detachments.join(' + ')}</Text>
                     <Text size="xs" c="dimmed">
-                      <FactionIcon faction={archetype.faction} size={14} />
+                      <FactionIcon faction={archetype.faction} size={20} />
                       {factionName(archetype.faction)}
                     </Text>
                     <DispositionBreakdown archetype={archetype} />

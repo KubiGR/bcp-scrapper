@@ -43,7 +43,7 @@ function HistoryRow({ entry }: { entry: PlayerHistoryEntry }) {
       </Table.Td>
       <Table.Td>
         <Text size="sm" c={dim}>
-          <FactionIcon faction={entry.faction} size={14} />
+          <FactionIcon faction={entry.faction} size={20} />
           {army || '–'}
         </Text>
       </Table.Td>
