@@ -94,7 +94,13 @@ function isUniqueViolation(error: unknown): boolean {
  * The user for an Access email (their username), created on first sight with `role`. They have
  * no password: the stored hash never matches one.
  */
-export async function findOrCreateAccessUser(db: Db, email: string, role: UserRole): Promise<User> {
+export async function findOrCreateAccessUser(
+  db: Db,
+  email: string,
+  role: UserRole,
+  /** Called once with a user just created (not one another request created first). */
+  onCreated?: (user: User) => void,
+): Promise<User> {
   const found = await findLoginUser(db, email);
   if (found !== null) return { ...found, role: found.role };
   // Someone new waits for an admin to approve them (enable the account); admins don't.
@@ -105,7 +111,10 @@ export async function findOrCreateAccessUser(db: Db, email: string, role: UserRo
     mustChangePassword: false,
     disabled: role !== 'admin',
   });
-  if (created !== null) return created;
+  if (created !== null) {
+    onCreated?.(created);
+    return created;
+  }
   // Another request created them first.
   const raced = await findLoginUser(db, email);
   if (raced === null) throw new Error('Access user could not be created');

@@ -82,7 +82,10 @@ export function authMiddleware(deps: {
         );
       }
       const role = options.access.adminEmails.includes(email) ? 'admin' : 'member';
-      const user = await findOrCreateAccessUser(db, email, role);
+      const user = await findOrCreateAccessUser(db, email, role, (created) => {
+        // Someone new to approve (admins are let in straight away).
+        if (created.disabled) options.access?.onNewUser?.(created.username);
+      });
       // Those still waiting too: the admin sees whether they're still trying.
       await touchLastSeen(db, user.id, now());
       if (user.disabled) {
