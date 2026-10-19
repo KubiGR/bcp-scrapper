@@ -17,8 +17,7 @@ import type { MatrixPick } from './matrix-pick';
 import { EVENT_MATRIX_SETTINGS, hasSideFilter, type MatrixSettings } from './matrix-view';
 
 /** The event's Matchups tab: controls, a one-line summary, the heatmap, and a drill-down drawer
- * on each cell. Falls back to win rate if the chosen metric is points but scoring turns out
- * inconsistent (e.g. after adding events with a different scale). */
+ * on each cell. */
 export function MatchupsPanel({ event }: { event: EventDetail }) {
   const [settings, setSettings] = useState<MatrixSettings>(EVENT_MATRIX_SETTINGS);
   const [cell, setCell] = useState<MatrixPick | null>(null);
@@ -38,13 +37,6 @@ export function MatchupsPanel({ event }: { event: EventDetail }) {
 
   const { matrix, scoring: matrixScoring } = matchups.data;
   const dispositions = dispositionsOf(players.data?.items ?? []);
-  // Points may have become unavailable (e.g. after adding an event with a different scale):
-  // fall back to win rate rather than showing a disabled metric as selected.
-  const pointsUnavailable = !matrixScoring.consistent || matrixScoring.scale === null;
-  const effectiveSettings: MatrixSettings =
-    settings.metric === 'points' && pointsUnavailable
-      ? { ...settings, metric: 'winRate' }
-      : settings;
   // A server-side filter/tick change refetches; keep showing the previous matrix (dimmed) instead
   // of blanking the view, so controls stay usable while the new data loads.
   const dimmed = matchups.isPlaceholderData || matchups.isFetching;
@@ -52,9 +44,8 @@ export function MatchupsPanel({ event }: { event: EventDetail }) {
   return (
     <Stack gap="md">
       <MatrixControls
-        settings={effectiveSettings}
+        settings={settings}
         onChange={setSettings}
-        scoring={matrixScoring}
         dispositions={dispositions}
         detachments={matchups.data.detachments}
         factions={matrix.factions}
@@ -90,7 +81,7 @@ export function MatchupsPanel({ event }: { event: EventDetail }) {
             <FactionMatrix
               matrix={matrix}
               scoring={matrixScoring}
-              settings={effectiveSettings}
+              settings={settings}
               onCell={setCell}
               detachments={eventDetachmentRowsQuery(event.bcpId, settings)}
             />

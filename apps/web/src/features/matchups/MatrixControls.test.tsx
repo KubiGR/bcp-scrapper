@@ -5,29 +5,19 @@ import { MatrixControls } from './MatrixControls';
 import { DEFAULT_MATRIX_SETTINGS } from './matrix-view';
 
 describe('MatrixControls', () => {
-  it('offers Win rate and Game points, and Min games', () => {
+  it('offers Min games, and no switch to game points: always win rate', () => {
     renderWithProviders(
-      <MatrixControls
-        settings={DEFAULT_MATRIX_SETTINGS}
-        onChange={vi.fn()}
-        scoring={{ consistent: true, scale: 20 }}
-        dispositions={[]}
-      />,
+      <MatrixControls settings={DEFAULT_MATRIX_SETTINGS} onChange={vi.fn()} dispositions={[]} />,
     );
-    expect(screen.getByRole('radio', { name: 'Win rate' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Game points' })).toBeEnabled();
+    expect(screen.queryByRole('radio', { name: 'Game points' })).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Metric' })).toBeNull();
     expect(screen.getByLabelText('Min games')).toHaveValue('25');
   });
 
   it('orders the factions best first, or A→Z', () => {
     const onChange = vi.fn();
     renderWithProviders(
-      <MatrixControls
-        settings={DEFAULT_MATRIX_SETTINGS}
-        onChange={onChange}
-        scoring={{ consistent: true, scale: 20 }}
-        dispositions={[]}
-      />,
+      <MatrixControls settings={DEFAULT_MATRIX_SETTINGS} onChange={onChange} dispositions={[]} />,
     );
     const order = within(screen.getByRole('radiogroup', { name: 'Order' }));
     expect(order.getByRole('radio', { name: 'Best first' })).toBeChecked();
@@ -35,38 +25,11 @@ describe('MatrixControls', () => {
     expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_MATRIX_SETTINGS, order: 'name' });
   });
 
-  it('disables Game points with a reason when scales differ', () => {
-    renderWithProviders(
-      <MatrixControls
-        settings={DEFAULT_MATRIX_SETTINGS}
-        onChange={vi.fn()}
-        scoring={{ consistent: false, scale: null }}
-        dispositions={[]}
-      />,
-    );
-    expect(screen.getByRole('radio', { name: 'Game points' })).toBeDisabled();
-    expect(screen.getByText('Events use different scoring')).toBeInTheDocument();
-  });
-
-  it('disables Game points with a different reason when there is no scale at all', () => {
-    renderWithProviders(
-      <MatrixControls
-        settings={DEFAULT_MATRIX_SETTINGS}
-        onChange={vi.fn()}
-        scoring={{ consistent: true, scale: null }}
-        dispositions={[]}
-      />,
-    );
-    expect(screen.getByRole('radio', { name: 'Game points' })).toBeDisabled();
-    expect(screen.getByText('No game points recorded')).toBeInTheDocument();
-  });
-
   it('offers the five known dispositions plus any others from the data', async () => {
     renderWithProviders(
       <MatrixControls
         settings={DEFAULT_MATRIX_SETTINGS}
         onChange={vi.fn()}
-        scoring={{ consistent: true, scale: 20 }}
         dispositions={['Something New']}
       />,
     );
@@ -81,7 +44,6 @@ describe('MatrixControls', () => {
       <MatrixControls
         settings={DEFAULT_MATRIX_SETTINGS}
         onChange={onChange}
-        scoring={{ consistent: true, scale: 20 }}
         dispositions={[]}
         factions={['Orks', 'Necrons']}
       />,
@@ -93,12 +55,7 @@ describe('MatrixControls', () => {
 
   it('shows the row/both side control only once a disposition is chosen', () => {
     renderWithProviders(
-      <MatrixControls
-        settings={DEFAULT_MATRIX_SETTINGS}
-        onChange={vi.fn()}
-        scoring={{ consistent: true, scale: 20 }}
-        dispositions={[]}
-      />,
+      <MatrixControls settings={DEFAULT_MATRIX_SETTINGS} onChange={vi.fn()} dispositions={[]} />,
     );
     expect(screen.queryByRole('radio', { name: 'Row side' })).toBeNull();
 
@@ -106,7 +63,6 @@ describe('MatrixControls', () => {
       <MatrixControls
         settings={{ ...DEFAULT_MATRIX_SETTINGS, dispositions: ['Take and Hold'] }}
         onChange={vi.fn()}
-        scoring={{ consistent: true, scale: 20 }}
         dispositions={[]}
       />,
     );
@@ -117,12 +73,7 @@ describe('MatrixControls', () => {
   it('calls onChange with the new min games', () => {
     const onChange = vi.fn();
     renderWithProviders(
-      <MatrixControls
-        settings={DEFAULT_MATRIX_SETTINGS}
-        onChange={onChange}
-        scoring={{ consistent: true, scale: 20 }}
-        dispositions={[]}
-      />,
+      <MatrixControls settings={DEFAULT_MATRIX_SETTINGS} onChange={onChange} dispositions={[]} />,
     );
     fireEvent.change(screen.getByLabelText('Min games'), { target: { value: '5' } });
     expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_MATRIX_SETTINGS, minGames: 5 });
@@ -134,7 +85,6 @@ describe('MatrixControls', () => {
       <MatrixControls
         settings={DEFAULT_MATRIX_SETTINGS}
         onChange={onChange}
-        scoring={{ consistent: true, scale: 20 }}
         dispositions={[]}
         detachments={['War Horde', 'Wreckas']}
       />,
@@ -148,7 +98,6 @@ describe('MatrixControls', () => {
       <MatrixControls
         settings={{ ...DEFAULT_MATRIX_SETTINGS, detachments: ['Wreckas'] }}
         onChange={onChange}
-        scoring={{ consistent: true, scale: 20 }}
         dispositions={[]}
         detachments={['War Horde', 'Wreckas']}
       />,

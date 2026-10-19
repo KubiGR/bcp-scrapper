@@ -53,22 +53,14 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
 
   const settings: MatrixSettings = {
     order: search.order ?? DEFAULT_MATRIX_SETTINGS.order,
-    metric: search.metric ?? DEFAULT_MATRIX_SETTINGS.metric,
+    // Win rate only: game points are no longer offered.
+    metric: 'winRate',
     minGames: search.minGames ?? DEFAULT_MATRIX_SETTINGS.minGames,
     dispositions: search.dispositions?.split(',').filter(Boolean) ?? [],
     detachments: search.detachments?.split(DETACHMENT_SEPARATOR).filter(Boolean) ?? [],
     side: search.side ?? DEFAULT_MATRIX_SETTINGS.side,
     factions: search.factions?.split('|').filter(Boolean) ?? [],
   };
-  // Points may have become unavailable (e.g. after ticking in an event with a different scale):
-  // fall back to win rate rather than showing a disabled metric as selected.
-  const pointsUnavailable = matchups.data
-    ? !matchups.data.scoring.consistent || matchups.data.scoring.scale === null
-    : false;
-  const effectiveSettings: MatrixSettings =
-    settings.metric === 'points' && pointsUnavailable
-      ? { ...settings, metric: 'winRate' }
-      : settings;
   // A server-side filter/tick change refetches; keep showing the previous matrix (dimmed) instead
   // of blanking the view, so the event list and controls stay usable while the new data loads.
   const dimmed = matchups.isPlaceholderData || matchups.isFetching;
@@ -168,11 +160,10 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
           {matchups.data.events.length > 0 && (
             <>
               <MatrixControls
-                settings={effectiveSettings}
+                settings={settings}
                 onChange={(next) => {
                   onSearchChange({
                     ...search,
-                    metric: next.metric,
                     // Best first is the default: only A→Z goes in the address.
                     order: next.order === 'name' ? 'name' : undefined,
                     minGames: next.minGames,
@@ -186,7 +177,6 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
                     factions: next.factions.length > 0 ? next.factions.join('|') : undefined,
                   });
                 }}
-                scoring={matchups.data.scoring}
                 dispositions={[]}
                 detachments={matchups.data.detachments}
                 factions={matchups.data.matrix.factions}
@@ -235,7 +225,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
                       <FactionMatrix
                         matrix={matchups.data.matrix}
                         scoring={matchups.data.scoring}
-                        settings={effectiveSettings}
+                        settings={settings}
                         onCell={setCell}
                         detachments={crossDetachmentRowsQuery(search)}
                       />

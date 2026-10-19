@@ -11,7 +11,6 @@ const MatchupsSearchSchema = z.object({
   to: optionalDay,
   exclude: optionalText,
   include: optionalText,
-  metric: z.enum(['winRate', 'points']).optional().catch(undefined),
   order: z.enum(['overall', 'name']).optional().catch(undefined),
   minGames: z.coerce.number().int().positive().optional().catch(undefined),
   dispositions: optionalText,
