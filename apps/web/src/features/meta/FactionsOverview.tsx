@@ -7,6 +7,7 @@ import { ChangeText } from './FactionTable';
 import { movementOf, podiumOf, tierOf, tierPercent } from './faction-tiers';
 import classes from './FactionsPage.module.css';
 import { DEFAULT_MIN_PLAYERS, sharePercent, type MetaSearch } from './meta-queries';
+import { FactionIcon } from '../../components/FactionIcon';
 
 type KnownRow = MetaRow & { faction: string };
 type MetaFilters = Pick<MetaSearch, 'from' | 'to' | 'type'>;
@@ -14,6 +15,7 @@ type MetaFilters = Pick<MetaSearch, 'from' | 'to' | 'type'>;
 function FactionLink({ row, filters }: { row: KnownRow; filters: MetaFilters }) {
   return (
     <AnchorLink to="/analysis/meta" search={{ ...filters, factions: row.faction }}>
+      <FactionIcon faction={row.faction} size={20} />
       {row.faction}
     </AnchorLink>
   );

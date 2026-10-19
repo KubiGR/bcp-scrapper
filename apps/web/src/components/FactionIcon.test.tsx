@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders } from '../test/render';
-import { FactionIcon, factionIconSlug } from './FactionIcon';
+import { FactionIcon, factionIconSlug, renderFactionOption } from './FactionIcon';
 
 describe('FactionIcon', () => {
   it('names each faction’s icon file after it', () => {
@@ -18,10 +18,33 @@ describe('FactionIcon', () => {
     expect(img).toHaveAttribute('aria-hidden', 'true');
   });
 
+  it('knows a faction by its other names', () => {
+    const src = (faction: string) =>
+      renderWithProviders(<FactionIcon faction={faction} />)
+        .container.querySelector('img')
+        ?.getAttribute('src');
+    expect(src('Genestealer Cult')).toBe('/factions/genestealer-cults.png');
+    expect(src('Space Marines')).toBe('/factions/space-marines-astartes.png');
+    expect(src('Adeptus Astartes')).toBe('/factions/space-marines-astartes.png');
+    expect(src('Asuryani')).toBe('/factions/aeldari.png');
+    expect(src('Heretic Astartes')).toBe('/factions/chaos-space-marines.png');
+    expect(src('Legiones Daemonica')).toBe('/factions/chaos-daemons.png');
+  });
+
   it('shows nothing for a faction without an icon, or none at all', () => {
     const agents = renderWithProviders(<FactionIcon faction="Imperial Agents" />);
     expect(agents.container.querySelector('img')).toBeNull();
     const unknown = renderWithProviders(<FactionIcon faction={null} />);
     expect(unknown.container.querySelector('img')).toBeNull();
+  });
+});
+
+describe('renderFactionOption', () => {
+  it('shows a faction’s icon by its option in a dropdown', () => {
+    const { container } = renderWithProviders(
+      <>{renderFactionOption({ option: { value: 'Orks', label: 'Orks (12)' } })}</>,
+    );
+    expect(container.querySelector('img')).toHaveAttribute('src', '/factions/orks.png');
+    expect(container).toHaveTextContent('Orks (12)');
   });
 });

@@ -9,7 +9,8 @@ import {
   type ReactNode,
   type SyntheticEvent,
 } from 'react';
-import { FactionIcon } from '../../components/FactionIcon';
+import { FactionIcon, hasFactionIcon } from '../../components/FactionIcon';
+import { shortArmy } from '../pairings/army-name';
 import { CellTip, type CellTipHandle } from './CellTip';
 import classes from './FactionMatrix.module.css';
 import type { DetachmentRowsQuery } from './matchups-queries';
@@ -154,6 +155,19 @@ function SummaryCells({ summary, scale }: { summary: RowSummary; scale: number |
   );
 }
 
+/** A row's faction: its icon, big, left of its name and its overall win rate and rank. */
+function RowName({ faction, line }: { faction: string; line: string | null }) {
+  return (
+    <>
+      <FactionIcon faction={faction} size={28} />
+      <span className={classes.rowText}>
+        <span className={classes.truncate}>{faction}</span>
+        {line !== null && <span className={`${classes.overall} numeric`}>{line}</span>}
+      </span>
+    </>
+  );
+}
+
 /** The colours in words too, so they never carry meaning alone. */
 const LEGEND = [
   { label: 'Row does worse (orange)', swatch: classes.swatchBad ?? '' },
@@ -168,6 +182,9 @@ const toneClass: Record<CellTone, string> = {
   mirror: classes.mirror ?? '',
 };
 
+/** Factions the matrix leaves out. */
+const LEFT_OUT = new Set(['Imperial Agents']);
+
 const key = (row: string, col: string) => `${row}\u0000${col}`;
 
 /** A faction-vs-faction heatmap: rows and columns are factions, cells show a compact value coloured
@@ -175,12 +192,20 @@ const key = (row: string, col: string) => `${row}\u0000${col}`;
  * The header row, first column, and corner cell stay sticky in a scrolling `div` (not a Mantine
  * ScrollArea viewport, which can break `position: sticky`). */
 export function FactionMatrix({
-  matrix,
+  matrix: everyone,
   scoring,
   settings,
   onCell,
   detachments,
 }: FactionMatrixProps) {
+  // Imperial Agents are allies more than an army of their own: left out, games and all.
+  const shown = (faction: string) => !LEFT_OUT.has(faction);
+  const matrix = {
+    ...everyone,
+    factions: everyone.factions.filter(shown),
+    columns: everyone.columns.filter(shown),
+    cells: everyone.cells.filter((cell) => shown(cell.row) && shown(cell.col)),
+  };
   const scale = scoring.consistent ? scoring.scale : null;
   const cells = new Map<string, MatrixCell>();
   for (const cell of matrix.cells) cells.set(key(cell.row, cell.col), cell);
@@ -309,24 +334,20 @@ export function FactionMatrix({
         >
           <Table.Thead>
             <Table.Tr>
-              <Table.Th
-                className={classes.corner}
-                data-testid="matrix-corner"
-                // Over every column heading, whose names lean into their neighbours'.
-                style={{ zIndex: matrix.columns.length + 3 }}
-              />
-              {columns.map((faction, i) => (
+              <Table.Th className={classes.corner} data-testid="matrix-corner" />
+              {/* The faction's icon alone (its short name without one), named on hover. */}
+              {columns.map((faction) => (
                 <Table.Th
                   key={faction}
                   className={classes.stickyHeader}
                   title={faction}
-                  // Each heading over the next one, so a slanted name isn't hidden under it.
-                  style={{ zIndex: columns.length - i + 2 }}
+                  aria-label={faction}
                 >
-                  <span className={classes.headerLabel}>
-                    <FactionIcon faction={faction} size={14} />
-                    {faction}
-                  </span>
+                  {hasFactionIcon(faction) ? (
+                    <FactionIcon faction={faction} size={24} />
+                  ) : (
+                    <span className={classes.headerShort}>{shortArmy(faction)}</span>
+                  )}
                 </Table.Th>
               ))}
               <Table.Th
@@ -354,7 +375,7 @@ export function FactionMatrix({
                   <Table.Th scope="row" className={classes.stickyRowHeader} title={row}>
                     {detachments ? (
                       <UnstyledButton
-                        className={classes.rowToggle}
+                        className={`${classes.rowName} ${classes.rowToggle}`}
                         aria-expanded={open.includes(row)}
                         onClick={() => {
                           toggle(row);
@@ -363,17 +384,12 @@ export function FactionMatrix({
                         <span aria-hidden className={classes.arrow}>
                           {open.includes(row) ? '▾' : '▸'}
                         </span>
-                        <FactionIcon faction={row} />
-                        <span className={classes.truncate}>{row}</span>
+                        <RowName faction={row} line={overallLine(row)} />
                       </UnstyledButton>
                     ) : (
-                      <span className={classes.truncate}>
-                        <FactionIcon faction={row} />
-                        {row}
-                      </span>
-                    )}
-                    {overallLine(row) !== null && (
-                      <span className={`${classes.overall} numeric`}>{overallLine(row)}</span>
+                      <div className={classes.rowName}>
+                        <RowName faction={row} line={overallLine(row)} />
+                      </div>
                     )}
                   </Table.Th>
                   {columns.map((col) => renderCell(cells.get(key(row, col)), col, { row }))}

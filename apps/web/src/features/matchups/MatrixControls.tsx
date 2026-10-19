@@ -1,6 +1,7 @@
 import { Group, MultiSelect, NumberInput, SegmentedControl, Stack } from '@mantine/core';
 import { DispositionText } from '../../components/DispositionText';
 import { hasSideFilter, type MatrixSettings } from './matrix-view';
+import { renderFactionOption } from '../../components/FactionIcon';
 
 /** BCP's five known dispositions (subFactions), shown even when the loaded event has no games in
  * them yet. Anything else the data brings is appended. */
@@ -63,6 +64,7 @@ export function MatrixControls({
         />
         <MultiSelect
           label="Factions"
+          renderOption={renderFactionOption}
           placeholder={settings.factions.length === 0 ? 'All factions' : undefined}
           clearable
           searchable

@@ -36,14 +36,36 @@ const ICONS = new Set([
   'world-eaters',
 ]);
 
+/** Other names a faction goes by (BCP's, BSData's, Hutber's), by slug: the icon they share. */
+const ALIASES: Record<string, string> = {
+  'genestealer-cult': 'genestealer-cults',
+  'space-marines': 'space-marines-astartes',
+  'adeptus-astartes': 'space-marines-astartes',
+  asuryani: 'aeldari',
+  craftworlds: 'aeldari',
+  'heretic-astartes': 'chaos-space-marines',
+  'legiones-daemonica': 'chaos-daemons',
+  tau: 't-au-empire',
+};
+
+/** The icon's file name for a faction, or null when there's none. */
+function iconOf(faction: string): string | null {
+  const slug = factionIconSlug(faction);
+  const icon = ALIASES[slug] ?? slug;
+  return ICONS.has(icon) ? icon : null;
+}
+
+/** Whether there's an icon for the faction. */
+export const hasFactionIcon = (faction: string) => iconOf(faction) !== null;
+
 /**
  * A faction's icon, before its name; nothing for a faction without one. Hidden from screen
  * readers: the name beside it says the same.
  */
 export function FactionIcon({ faction, size = 16 }: { faction: string | null; size?: number }) {
   if (faction === null) return null;
-  const slug = factionIconSlug(faction);
-  if (!ICONS.has(slug)) return null;
+  const slug = iconOf(faction);
+  if (slug === null) return null;
   return (
     <img
       src={`/factions/${slug}.png`}
@@ -54,5 +76,15 @@ export function FactionIcon({ faction, size = 16 }: { faction: string | null; si
       loading="lazy"
       style={{ display: 'inline-block', verticalAlign: '-0.2em', marginRight: 4, flexShrink: 0 }}
     />
+  );
+}
+
+/** A faction dropdown's option: its icon, then its label. */
+export function renderFactionOption({ option }: { option: { value: string; label: string } }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+      <FactionIcon faction={option.value} />
+      {option.label}
+    </span>
   );
 }

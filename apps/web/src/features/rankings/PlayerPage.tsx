@@ -8,6 +8,7 @@ import { NewLeaf, playedLately } from '../../components/EventSymbols';
 import { Panel } from '../../components/Panel';
 import { formatIsoDay, ordinal } from '../../lib/format';
 import { playerRankingQuery } from './rankings-queries';
+import { FactionIcon } from '../../components/FactionIcon';
 
 /** "3rd of 64"; team events "2nd of 20 teams"; "–" without a placing. */
 const placingText = (entry: PlayerHistoryEntry) =>
@@ -42,6 +43,7 @@ function HistoryRow({ entry }: { entry: PlayerHistoryEntry }) {
       </Table.Td>
       <Table.Td>
         <Text size="sm" c={dim}>
+          <FactionIcon faction={entry.faction} size={14} />
           {army || '–'}
         </Text>
       </Table.Td>

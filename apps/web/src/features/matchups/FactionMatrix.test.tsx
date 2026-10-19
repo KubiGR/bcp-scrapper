@@ -54,6 +54,10 @@ const matrix = (): FactionMatrixData => ({
   ],
 });
 
+/** Each column heading as screen readers name it (its icon has no text of its own). */
+const headingNames = () =>
+  screen.getAllByRole('columnheader').map((th) => th.getAttribute('aria-label') ?? th.textContent);
+
 const lopsided = (): FactionMatrixData => ({
   factions: ['Necrons', 'Orks'],
   columns: ['Aeldari', 'Necrons', 'Orks'],
@@ -120,7 +124,7 @@ describe('FactionMatrix row summary', () => {
     };
     expect(screen.getByRole('columnheader', { name: 'Average' })).toBeInTheDocument();
     // Spread before Average, as a bar of good, even and bad match-ups.
-    const headings = screen.getAllByRole('columnheader').map((th) => th.textContent);
+    const headings = headingNames();
     expect(headings.slice(-2)).toEqual(['Spread', 'Average']);
     expect(screen.getByRole('columnheader', { name: 'Spread' })).toBeInTheDocument();
     const orks = rowOf('Orks');
@@ -147,7 +151,7 @@ describe('FactionMatrix row summary', () => {
 });
 
 describe('FactionMatrix icons', () => {
-  it('puts each faction’s icon by its name, in the rows and the column headings', () => {
+  it('heads each column with the faction’s icon alone, named on hover and for screen readers', () => {
     renderWithProviders(
       <FactionMatrix
         matrix={lopsided()}
@@ -156,17 +160,72 @@ describe('FactionMatrix icons', () => {
         onCell={vi.fn()}
       />,
     );
-    const icon = (el: HTMLElement) => el.querySelector('img')?.getAttribute('src');
-    expect(icon(screen.getByRole('rowheader', { name: /^Orks/ }))).toBe('/factions/orks.png');
-    expect(icon(screen.getByRole('columnheader', { name: 'Necrons' }))).toBe(
-      '/factions/necrons.png',
+    const necrons = screen.getByRole('columnheader', { name: 'Necrons' });
+    expect(necrons.querySelector('img')?.getAttribute('src')).toBe('/factions/necrons.png');
+    expect(necrons).toHaveAttribute('title', 'Necrons');
+    expect(necrons.textContent).toBe('');
+  });
+
+  it('heads a faction without an icon with its name, short if it has one', () => {
+    renderWithProviders(
+      <FactionMatrix
+        matrix={{ ...lopsided(), columns: ['Necrons', 'Orks', 'Squats'] }}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 3 }}
+        onCell={vi.fn()}
+      />,
     );
+    expect(screen.getByRole('columnheader', { name: 'Squats' }).textContent).toBe('Squats');
+  });
+
+  it('leaves Imperial Agents out, as a row and as a column', () => {
+    const agents = {
+      row: 'Imperial Agents',
+      col: 'Orks',
+      games: 30,
+      wins: 10,
+      draws: 0,
+      losses: 20,
+      winRate: 1 / 3,
+      avgPoints: null,
+    };
+    renderWithProviders(
+      <FactionMatrix
+        matrix={{
+          ...lopsided(),
+          factions: ['Imperial Agents', 'Necrons', 'Orks'],
+          columns: ['Aeldari', 'Imperial Agents', 'Necrons', 'Orks'],
+          cells: [...lopsided().cells, agents, { ...agents, row: 'Orks', col: 'Imperial Agents' }],
+        }}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 3 }}
+        onCell={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole('rowheader', { name: /Imperial Agents/ })).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Imperial Agents' })).toBeNull();
+  });
+
+  it('puts a bigger icon left of each row’s name', () => {
+    renderWithProviders(
+      <FactionMatrix
+        matrix={lopsided()}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 3 }}
+        onCell={vi.fn()}
+      />,
+    );
+    const img = screen.getByRole('rowheader', { name: /^Orks/ }).querySelector('img');
+    expect(img).toHaveAttribute('src', '/factions/orks.png');
+    expect(img).toHaveAttribute('width', '28');
   });
 });
 
 describe('FactionMatrix order', () => {
   const names = (role: 'rowheader' | 'columnheader') =>
-    screen.getAllByRole(role).map((th) => th.textContent);
+    role === 'columnheader'
+      ? headingNames()
+      : screen.getAllByRole(role).map((th) => th.textContent);
 
   it('puts the best overall win rate first, rows and columns, opponents without a row last', () => {
     renderWithProviders(
@@ -222,13 +281,7 @@ describe('FactionMatrix', () => {
         onCell={vi.fn()}
       />,
     );
-    expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
-      '',
-      'Necrons',
-      'Orks',
-      'Spread',
-      'Average',
-    ]);
+    expect(headingNames()).toEqual(['', 'Necrons', 'Orks', 'Spread', 'Average']);
     // The name, then its overall win rate and rank.
     expect(screen.getAllByRole('rowheader').map((th) => th.textContent)).toEqual(['Orks50% · #1']);
     expect(screen.getByRole('button', { name: /Orks vs Necrons/ })).toBeInTheDocument();
@@ -246,13 +299,7 @@ describe('FactionMatrix', () => {
     expect(screen.getAllByRole('rowheader').map((th) => th.textContent)).toEqual([
       expect.stringMatching(/^Necrons/),
     ]);
-    expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
-      '',
-      'Necrons',
-      'Orks',
-      'Spread',
-      'Average',
-    ]);
+    expect(headingNames()).toEqual(['', 'Necrons', 'Orks', 'Spread', 'Average']);
   });
 
   it('hatches a cell under minGames, its value still there', () => {
@@ -398,25 +445,6 @@ describe('FactionMatrix', () => {
     expect(rowHeader.className).toMatch(/stickyRowHeader/);
   });
 
-  it('stacks each slanted column heading over the next, and the corner over them all', () => {
-    renderWithProviders(
-      <FactionMatrix
-        matrix={matrix()}
-        scoring={{ consistent: true, scale: 20 }}
-        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 1 }}
-        onCell={vi.fn()}
-      />,
-    );
-    // The factions' headings: not the corner, nor Average and Spread after them.
-    const headings = screen.getAllByRole('columnheader').slice(1, -2);
-    const layers = headings.map((el) => Number(el.style.zIndex));
-    expect(layers.length).toBeGreaterThan(1);
-    expect(layers).toEqual([...layers].sort((a, b) => b - a));
-    expect(new Set(layers).size).toBe(layers.length);
-    const corner = Number(screen.getByTestId('matrix-corner').style.zIndex);
-    expect(corner).toBeGreaterThan(Math.max(...layers));
-  });
-
   it('marks the top-left corner cell as sticky on both axes', () => {
     renderWithProviders(
       <FactionMatrix
@@ -523,7 +551,7 @@ describe('FactionMatrix', () => {
 
     it('opens a faction’s detachments under its row when its name is clicked, and closes them', async () => {
       renderMatrix();
-      const orksButton = screen.getByRole('button', { name: 'Orks' });
+      const orksButton = screen.getByRole('button', { name: /^Orks \d+%/ });
       expect(orksButton).toHaveAttribute('aria-expanded', 'false');
       expect(asked).toEqual([]);
       fireEvent.click(orksButton);
@@ -541,7 +569,7 @@ describe('FactionMatrix', () => {
 
     it('shows each detachment’s result against every opponent, with a win rate against its own faction', async () => {
       renderMatrix();
-      fireEvent.click(screen.getByRole('button', { name: 'Orks' }));
+      fireEvent.click(screen.getByRole('button', { name: /^Orks \d+%/ }));
       const row = (await screen.findByRole('rowheader', { name: 'War Horde' })).closest('tr');
       if (row === null) throw new Error('no War Horde row');
       expect(
@@ -559,7 +587,7 @@ describe('FactionMatrix', () => {
     it('opens a detachment cell’s games for that detachment', async () => {
       const onCell = vi.fn();
       renderMatrix(onCell);
-      fireEvent.click(screen.getByRole('button', { name: 'Orks' }));
+      fireEvent.click(screen.getByRole('button', { name: /^Orks \d+%/ }));
       fireEvent.click(await screen.findByRole('button', { name: /Orks · War Horde vs Necrons/ }));
       expect(onCell).toHaveBeenCalledWith({ row: 'Orks', col: 'Necrons', detachment: 'War Horde' });
     });

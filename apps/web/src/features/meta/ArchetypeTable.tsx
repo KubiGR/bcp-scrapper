@@ -12,6 +12,8 @@ import {
   type PlayersFilter,
 } from './FactionTable';
 import { DEFAULT_CHANGE_LABEL, type MetaSort } from './meta-queries';
+import { FactionIcon } from '../../components/FactionIcon';
+import { renderFactionOption } from '../../components/FactionIcon';
 
 /** One archetype with its faction: a row of the flat table. */
 interface Archetype extends ArchetypeRow {
@@ -111,6 +113,7 @@ export function ArchetypeTable({
     <Stack gap="sm">
       <MultiSelect
         aria-label="Factions"
+        renderOption={renderFactionOption}
         placeholder={factions.length === 0 ? 'All factions' : undefined}
         data={rows.map((row) => ({
           value: factionKey(row.faction),
@@ -187,6 +190,7 @@ export function ArchetypeTable({
                   <Table.Td>
                     <Text size="sm">{archetype.detachments.join(' + ')}</Text>
                     <Text size="xs" c="dimmed">
+                      <FactionIcon faction={archetype.faction} size={14} />
                       {factionName(archetype.faction)}
                     </Text>
                     <DispositionBreakdown archetype={archetype} />
