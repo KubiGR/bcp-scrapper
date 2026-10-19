@@ -253,3 +253,27 @@
 .summaryFirst {
   border-left: 2px solid var(--mantine-color-dark-4);
 }
+
+.summary[data-tone='good'] {
+  color: var(--mantine-color-blue-4);
+  font-weight: 600;
+}
+
+.summary[data-tone='bad'] {
+  color: var(--mantine-color-orange-5);
+  font-weight: 600;
+}
+
+.spread {
+  min-width: 150px;
+  white-space: nowrap;
+  color: var(--mantine-color-dimmed);
+}
+
+.goodCount {
+  color: var(--mantine-color-blue-4);
+}
+
+.badCount {
+  color: var(--mantine-color-orange-5);
+}

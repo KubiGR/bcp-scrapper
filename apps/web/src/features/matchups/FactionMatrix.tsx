@@ -15,6 +15,7 @@ import type { DetachmentRowsQuery } from './matchups-queries';
 import { pickLabel, type MatrixPick } from './matrix-pick';
 import {
   cellView,
+  matchupTone,
   rowSummary,
   type CellTone,
   type MatrixSettings,
@@ -81,24 +82,47 @@ function DetachmentRows({
   });
 }
 
-/** A row's average match-up and spread, after its cells (blank without enough games). */
-function SummaryCells({ summary, points }: { summary: RowSummary; points: boolean }) {
-  const show = (value: number | null, asSpread: boolean) => {
-    if (value === null) return '–';
-    if (points) return value.toFixed(1);
-    // A spread is percentage points; an average, a percentage.
-    return asSpread ? String(Math.round(value * 100)) : `${String(Math.round(value * 100))}%`;
-  };
+/**
+ * A row's average match-up (coloured like a cell) and its spread: how many of its match-ups are
+ * good, even and bad, with its best minus its worst on hover. Blank without enough games.
+ */
+function SummaryCells({ summary, scale }: { summary: RowSummary; scale: number | null }) {
+  const points = scale !== null;
+  const average =
+    summary.average === null
+      ? '–'
+      : points
+        ? summary.average.toFixed(1)
+        : `${String(Math.round(summary.average * 100))}%`;
+  const range =
+    summary.spread === null
+      ? undefined
+      : `Best minus worst: ${points ? summary.spread.toFixed(1) : `${String(Math.round(summary.spread * 100))} pts`}`;
   return (
     <>
       <Table.Td
         className={`${classes.summary} ${classes.summaryFirst} numeric`}
         aria-label="Average match-up"
+        data-tone={summary.average === null ? undefined : matchupTone(summary.average, scale)}
       >
-        {show(summary.average, false)}
+        {average}
       </Table.Td>
-      <Table.Td className={`${classes.summary} numeric`} aria-label="Spread">
-        {show(summary.spread, true)}
+      <Table.Td
+        className={`${classes.summary} ${classes.spread}`}
+        aria-label="Spread"
+        title={range}
+      >
+        {summary.counted === 0 ? (
+          '–'
+        ) : (
+          <>
+            <span className={classes.goodCount}>{summary.good} good</span>
+            {' · '}
+            <span>{summary.even} even</span>
+            {' · '}
+            <span className={classes.badCount}>{summary.bad} bad</span>
+          </>
+        )}
       </Table.Td>
     </>
   );
@@ -150,7 +174,10 @@ export function FactionMatrix({
   };
   const points = settings.metric === 'points' && scale !== null;
   const summarize = (rowCells: MatrixCell[], mirror: string | null) => (
-    <SummaryCells summary={rowSummary(rowCells, settings, scale, mirror)} points={points} />
+    <SummaryCells
+      summary={rowSummary(rowCells, settings, scale, mirror)}
+      scale={points ? scale : null}
+    />
   );
   // Each faction's overall win rate, and its rank by it among all the rows.
   const overall = new Map(
@@ -276,7 +303,7 @@ export function FactionMatrix({
               </Table.Th>
               <Table.Th
                 className={classes.summaryHeader}
-                title="Its best match-up minus its worst, among those with enough games"
+                title="How many of its match-ups with enough games are good (55%+), even and bad (45% or less); best minus worst on hover"
               >
                 Spread
               </Table.Th>
@@ -330,6 +357,9 @@ export function FactionMatrix({
           </Table.Tbody>
         </Table>
       </div>
+      <Text size="xs" c="dimmed">
+        {`Cells are hatched and greyed below ${String(settings.minGames)} ${settings.minGames === 1 ? 'game' : 'games'} — they’re left out of every Average and Spread.`}
+      </Text>
     </Stack>
   );
 }

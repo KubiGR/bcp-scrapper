@@ -117,6 +117,21 @@ export interface RowSummary {
   spread: number | null;
   /** How many cells have enough games to count. */
   counted: number;
+  /** Of those, how many are good, even and bad match-ups (see `matchupTone`). */
+  good: number;
+  even: number;
+  bad: number;
+}
+
+/**
+ * Whether a match-up is good, even or bad for the row, as the Meta page reads a win rate: good
+ * from 55%, bad at 45% or less; in game points, good from 10% over even, bad from 10% under.
+ */
+export function matchupTone(value: number, scale: number | null): 'good' | 'even' | 'bad' {
+  const [good, bad] = scale === null ? [0.55, 0.45] : [(scale / 2) * 1.1, (scale / 2) * 0.9];
+  if (value >= good - 1e-9) return 'good';
+  if (value <= bad + 1e-9) return 'bad';
+  return 'even';
 }
 
 /**
@@ -138,10 +153,14 @@ export function rowSummary(
     .filter((cell) => cell.games >= settings.minGames)
     .map((cell) => (usePoints ? cell.avgPoints : cell.winRate))
     .filter((value): value is number => value !== null);
+  const tones = values.map((value) => matchupTone(value, usePoints ? scale : null));
   return {
     overall: games === 0 ? null : points / games,
     average: values.length === 0 ? null : values.reduce((a, b) => a + b, 0) / values.length,
     spread: values.length === 0 ? null : Math.max(...values) - Math.min(...values),
     counted: values.length,
+    good: tones.filter((tone) => tone === 'good').length,
+    even: tones.filter((tone) => tone === 'even').length,
+    bad: tones.filter((tone) => tone === 'bad').length,
   };
 }

@@ -251,6 +251,27 @@ describe('rowSummary', () => {
     expect(summary.counted).toBe(2);
   });
 
+  it('counts good (55%+), even and bad (45% or less) match-ups among them', () => {
+    const counts = rowSummary(
+      [
+        ...row,
+        cell({ col: 'Aeldari', games: 10, wins: 5, draws: 0, losses: 5, winRate: 0.5 }),
+        cell({ col: 'Drukhari', games: 20, wins: 11, draws: 0, losses: 9, winRate: 0.55 }),
+      ],
+      settings({ minGames: 3 }),
+      null,
+      'Orks',
+    );
+    // Necrons 60% and Drukhari 55% good; Aeldari 50% even; Tyranids 40% bad.
+    expect(counts).toMatchObject({ good: 2, even: 1, bad: 1 });
+  });
+
+  it('counts game points against even: good from 10% over, bad from 10% under', () => {
+    const counts = rowSummary(row, settings({ minGames: 3, metric: 'points' }), 20, 'Orks');
+    // Necrons 12 of 20 (good), Tyranids 8 (bad).
+    expect(counts).toMatchObject({ good: 1, even: 0, bad: 1 });
+  });
+
   it('uses game points when they are the metric', () => {
     const summary = rowSummary(row, settings({ minGames: 3, metric: 'points' }), 20, 'Orks');
     expect(summary.average).toBeCloseTo(10);

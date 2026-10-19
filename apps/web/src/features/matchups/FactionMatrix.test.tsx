@@ -123,12 +123,19 @@ describe('FactionMatrix row summary', () => {
     const orks = rowOf('Orks');
     expect(orks.getByText('60% · #1')).toBeInTheDocument();
     expect(orks.getByLabelText('Average match-up')).toHaveTextContent('60%');
-    expect(orks.getByLabelText('Spread')).toHaveTextContent('20');
+    expect(orks.getByLabelText('Spread')).toHaveTextContent('1 good · 1 even · 0 bad');
     // Necrons: 5 of 12 overall; only the Orks match-up has enough games.
     const necrons = rowOf('Necrons');
     expect(necrons.getByText('42% · #2')).toBeInTheDocument();
     expect(necrons.getByLabelText('Average match-up')).toHaveTextContent('30%');
-    expect(necrons.getByLabelText('Spread')).toHaveTextContent('0');
+    expect(necrons.getByLabelText('Spread')).toHaveTextContent('0 good · 0 even · 1 bad');
+    // The average in the colours of a cell: Necrons' 30% is bad.
+    expect(necrons.getByLabelText('Average match-up')).toHaveAttribute('data-tone', 'bad');
+    expect(
+      screen.getByText(
+        'Cells are hatched and greyed below 3 games — they’re left out of every Average and Spread.',
+      ),
+    ).toBeInTheDocument();
   });
 });
 
