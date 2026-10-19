@@ -4,6 +4,7 @@ import {
   cellView,
   DEFAULT_MATRIX_SETTINGS,
   matrixParams,
+  rowSummary,
   type MatrixSettings,
 } from './matrix-view';
 
@@ -57,9 +58,13 @@ describe('matrixParams', () => {
 });
 
 describe('cellView', () => {
-  it('hides a cell under minGames, keeping the count for its title', () => {
-    const view = cellView(cell({ games: 2 }), settings({ minGames: 3 }), null);
-    expect(view).toEqual({ text: '·', value: '·', tone: 'hidden', games: 2, strength: 0 });
+  it('greys a cell under minGames, still showing its value', () => {
+    const view = cellView(
+      cell({ games: 2, wins: 1, draws: 0, losses: 1, winRate: 0.5 }),
+      settings({ minGames: 3 }),
+      null,
+    );
+    expect(view).toEqual({ text: '50%', value: '50%', tone: 'hidden', games: 2, strength: 0 });
   });
 
   it('shows only the count of games played on the mirror diagonal', () => {
@@ -71,13 +76,13 @@ describe('cellView', () => {
     expect(view).toEqual({ text: '3', value: '3', tone: 'mirror', games: 3, strength: 0 });
   });
 
-  it('hides a mirror cell under minGames', () => {
+  it('greys a mirror cell under minGames, still showing its games', () => {
     const view = cellView(
       cell({ row: 'Orks', col: 'Orks', games: 2, winRate: null }),
       settings({ minGames: 3 }),
       null,
     );
-    expect(view).toEqual({ text: '·', value: '·', tone: 'hidden', games: 2, strength: 0 });
+    expect(view).toEqual({ text: '2', value: '2', tone: 'hidden', games: 2, strength: 0 });
   });
 
   it('renders a win rate above the good threshold as good, with no game count in the text', () => {
@@ -219,5 +224,47 @@ describe('matrixParams', () => {
     expect(
       matrixParams({ ...DEFAULT_MATRIX_SETTINGS, detachments: ['War Horde', 'Wreckas'] }),
     ).toEqual({ detachments: 'War Horde|Wreckas', side: 'row' });
+  });
+});
+
+describe('rowSummary', () => {
+  const row = [
+    // 6 of 10: 60%.
+    cell({ col: 'Necrons', games: 10, wins: 6, draws: 0, losses: 4, winRate: 0.6, avgPoints: 12 }),
+    // 3 of 10, with 2 draws: 40%.
+    cell({ col: 'Tyranids', games: 10, wins: 3, draws: 2, losses: 5, winRate: 0.4, avgPoints: 8 }),
+    // Too few games: left out of the average and the spread, not the overall.
+    cell({ col: 'Aeldari', games: 2, wins: 2, draws: 0, losses: 0, winRate: 1, avgPoints: 18 }),
+    // The mirror counts for nothing.
+    cell({ col: 'Orks', games: 4, wins: 0, draws: 0, losses: 0, winRate: null, avgPoints: null }),
+  ];
+
+  it('gives the overall win rate from every game but the mirror', () => {
+    // (6 + 3 + 1 + 2) / 22.
+    expect(rowSummary(row, settings({ minGames: 3 }), null, 'Orks').overall).toBeCloseTo(12 / 22);
+  });
+
+  it('averages and spreads only the cells with enough games', () => {
+    const summary = rowSummary(row, settings({ minGames: 3 }), null, 'Orks');
+    expect(summary.average).toBeCloseTo(0.5);
+    expect(summary.spread).toBeCloseTo(0.2);
+    expect(summary.counted).toBe(2);
+  });
+
+  it('uses game points when they are the metric', () => {
+    const summary = rowSummary(row, settings({ minGames: 3, metric: 'points' }), 20, 'Orks');
+    expect(summary.average).toBeCloseTo(10);
+    expect(summary.spread).toBeCloseTo(4);
+  });
+
+  it('has no average or spread without a cell with enough games', () => {
+    const summary = rowSummary(row, settings({ minGames: 50 }), null, 'Orks');
+    expect(summary).toMatchObject({ average: null, spread: null, counted: 0 });
+  });
+
+  it('counts a detachment against its own faction, which is no mirror', () => {
+    const summary = rowSummary(row, settings({ minGames: 3 }), null, null);
+    // The "mirror" cell has a null win rate: counted in games, not in the rates.
+    expect(summary.overall).toBeCloseTo(12 / 26);
   });
 });

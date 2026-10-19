@@ -65,7 +65,8 @@ function toneAndStrength(
 }
 
 /**
- * What a matrix cell shows: hidden under `minGames`, just the count on the mirror diagonal,
+ * What a matrix cell shows: greyed (`hidden`) under `minGames`, with its value still there; just
+ * the count on the mirror diagonal,
  * otherwise the chosen metric (win rate, or game points when a `scale` is available) as compact
  * text, with a `strength` in [0, 1] for a graded background so colour intensity tracks how far the
  * value is from even. The game count travels separately (aria-label, tooltip, or a second line) so
@@ -80,7 +81,11 @@ export function cellView(
 ): CellView {
   const { games } = cell;
   if (games < settings.minGames) {
-    return { text: '·', value: '·', tone: 'hidden', games, strength: 0 };
+    // Too few games to read much into: the value stays, greyed and hatched, uncoloured.
+    const shown = isMirror
+      ? String(games)
+      : cellView(cell, { ...settings, minGames: 0 }, scale).value;
+    return { text: shown, value: shown, tone: 'hidden', games, strength: 0 };
   }
   if (isMirror) {
     return { text: String(games), value: String(games), tone: 'mirror', games, strength: 0 };
@@ -101,4 +106,42 @@ export function cellView(
   const { tone, strength } = toneAndStrength(rate, 0.5, 0.25);
   const value = `${Math.round(rate * 100)}%`;
   return { text: value, value, tone, games, strength };
+}
+
+export interface RowSummary {
+  /** Win rate over every game the row played but mirrors (small cells too); null with none. */
+  overall: number | null;
+  /** The shown metric (win rate, or game points) averaged over the cells with enough games. */
+  average: number | null;
+  /** Its best minus its worst among those cells. */
+  spread: number | null;
+  /** How many cells have enough games to count. */
+  counted: number;
+}
+
+/**
+ * A row's overall win rate, and its average and spread of match-ups. Cells under `minGames` (the
+ * hatched ones) count towards the overall result but not the average or spread. `mirror` is the
+ * row's own faction (null for a detachment row, whose own faction is a real match-up).
+ */
+export function rowSummary(
+  cells: MatrixCell[],
+  settings: Pick<MatrixSettings, 'metric' | 'minGames'>,
+  scale: number | null,
+  mirror: string | null,
+): RowSummary {
+  const played = cells.filter((cell) => cell.col !== mirror);
+  const games = played.reduce((sum, cell) => sum + cell.games, 0);
+  const points = played.reduce((sum, cell) => sum + cell.wins + cell.draws / 2, 0);
+  const usePoints = settings.metric === 'points' && scale !== null;
+  const values = played
+    .filter((cell) => cell.games >= settings.minGames)
+    .map((cell) => (usePoints ? cell.avgPoints : cell.winRate))
+    .filter((value): value is number => value !== null);
+  return {
+    overall: games === 0 ? null : points / games,
+    average: values.length === 0 ? null : values.reduce((a, b) => a + b, 0) / values.length,
+    spread: values.length === 0 ? null : Math.max(...values) - Math.min(...values),
+    counted: values.length,
+  };
 }

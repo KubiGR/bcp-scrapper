@@ -13,7 +13,13 @@ import { CellTip, type CellTipHandle } from './CellTip';
 import classes from './FactionMatrix.module.css';
 import type { DetachmentRowsQuery } from './matchups-queries';
 import { pickLabel, type MatrixPick } from './matrix-pick';
-import { cellView, type CellTone, type MatrixSettings } from './matrix-view';
+import {
+  cellView,
+  rowSummary,
+  type CellTone,
+  type MatrixSettings,
+  type RowSummary,
+} from './matrix-view';
 
 interface FactionMatrixProps {
   matrix: FactionMatrixData;
@@ -37,17 +43,19 @@ function DetachmentRows({
   query,
   columns,
   renderCell,
+  summarize,
 }: {
   faction: string;
   query: ReturnType<DetachmentRowsQuery>;
   columns: string[];
   renderCell: RenderCell;
+  summarize: (cells: MatrixCell[], mirror: string | null) => ReactNode;
 }) {
   const rows = useQuery(query);
   if (!rows.data) {
     return (
       <Table.Tr>
-        <Table.Td colSpan={columns.length + 1} className={classes.detachmentNote}>
+        <Table.Td colSpan={columns.length + 3} className={classes.detachmentNote}>
           <Text size="xs" c="dimmed">
             {rows.error ? `Couldn’t load ${faction}’s detachments.` : 'Loading detachments…'}
           </Text>
@@ -66,9 +74,34 @@ function DetachmentRows({
         {columns.map((col) =>
           renderCell(byCol.get(col), col, { row: faction, detachment: detachmentRow.detachment }),
         )}
+        {/* A detachment against its own faction is a real match-up: no mirror to leave out. */}
+        {summarize(detachmentRow.cells, null)}
       </Table.Tr>
     );
   });
+}
+
+/** A row's average match-up and spread, after its cells (blank without enough games). */
+function SummaryCells({ summary, points }: { summary: RowSummary; points: boolean }) {
+  const show = (value: number | null, asSpread: boolean) => {
+    if (value === null) return '–';
+    if (points) return value.toFixed(1);
+    // A spread is percentage points; an average, a percentage.
+    return asSpread ? String(Math.round(value * 100)) : `${String(Math.round(value * 100))}%`;
+  };
+  return (
+    <>
+      <Table.Td
+        className={`${classes.summary} ${classes.summaryFirst} numeric`}
+        aria-label="Average match-up"
+      >
+        {show(summary.average, false)}
+      </Table.Td>
+      <Table.Td className={`${classes.summary} numeric`} aria-label="Spread">
+        {show(summary.spread, true)}
+      </Table.Td>
+    </>
+  );
 }
 
 /** The colours in words too, so they never carry meaning alone. */
@@ -115,6 +148,28 @@ export function FactionMatrix({
   const hideTip = () => {
     tip.current?.hide();
   };
+  const points = settings.metric === 'points' && scale !== null;
+  const summarize = (rowCells: MatrixCell[], mirror: string | null) => (
+    <SummaryCells summary={rowSummary(rowCells, settings, scale, mirror)} points={points} />
+  );
+  // Each faction's overall win rate, and its rank by it among all the rows.
+  const overall = new Map(
+    matrix.factions.map((faction) => [
+      faction,
+      rowSummary(
+        matrix.cells.filter((cell) => cell.row === faction),
+        settings,
+        scale,
+        faction,
+      ).overall,
+    ]),
+  );
+  const ranked = [...overall].sort((a, b) => (b[1] ?? -1) - (a[1] ?? -1)).map(([f]) => f);
+  const overallLine = (faction: string) => {
+    const rate = overall.get(faction);
+    if (rate === null || rate === undefined) return null;
+    return `${String(Math.round(rate * 100))}% · #${String(ranked.indexOf(faction) + 1)}`;
+  };
   // Factions whose detachment rows are open.
   const [open, setOpen] = useState<string[]>([]);
   const toggle = (faction: string) => {
@@ -133,7 +188,7 @@ export function FactionMatrix({
         <Table.Td
           key={col}
           className={`${classes.cell} ${toneClass.hidden}`}
-          data-tip={`${who}: ${String(view.games)} games, under the minimum`}
+          data-tip={`${who}: ${view.value}${view.value === String(view.games) ? ' games' : ` over ${String(view.games)} games`}, too few: left out of Average and Spread`}
         >
           <Text size="sm" c="dimmed" className="numeric">
             {view.text}
@@ -213,6 +268,18 @@ export function FactionMatrix({
                   <span className={classes.headerLabel}>{faction}</span>
                 </Table.Th>
               ))}
+              <Table.Th
+                className={`${classes.summaryHeader} ${classes.summaryFirst}`}
+                title={`The row's ${metricLabel} averaged over its match-ups with enough games (hatched cells left out)`}
+              >
+                Average
+              </Table.Th>
+              <Table.Th
+                className={classes.summaryHeader}
+                title="Its best match-up minus its worst, among those with enough games"
+              >
+                Spread
+              </Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -239,8 +306,15 @@ export function FactionMatrix({
                     ) : (
                       <span className={classes.truncate}>{row}</span>
                     )}
+                    {overallLine(row) !== null && (
+                      <span className={`${classes.overall} numeric`}>{overallLine(row)}</span>
+                    )}
                   </Table.Th>
                   {matrix.columns.map((col) => renderCell(cells.get(key(row, col)), col, { row }))}
+                  {summarize(
+                    matrix.cells.filter((cell) => cell.row === row),
+                    row,
+                  )}
                 </Table.Tr>
                 {detachments && open.includes(row) && (
                   <DetachmentRows
@@ -248,6 +322,7 @@ export function FactionMatrix({
                     query={detachments(row)}
                     columns={matrix.columns}
                     renderCell={renderCell}
+                    summarize={summarize}
                   />
                 )}
               </Fragment>
