@@ -9,6 +9,7 @@ import {
   type ReactNode,
   type SyntheticEvent,
 } from 'react';
+import { FactionIcon } from '../../components/FactionIcon';
 import { CellTip, type CellTipHandle } from './CellTip';
 import classes from './FactionMatrix.module.css';
 import type { DetachmentRowsQuery } from './matchups-queries';
@@ -322,7 +323,10 @@ export function FactionMatrix({
                   // Each heading over the next one, so a slanted name isn't hidden under it.
                   style={{ zIndex: columns.length - i + 2 }}
                 >
-                  <span className={classes.headerLabel}>{faction}</span>
+                  <span className={classes.headerLabel}>
+                    <FactionIcon faction={faction} size={14} />
+                    {faction}
+                  </span>
                 </Table.Th>
               ))}
               <Table.Th
@@ -359,10 +363,14 @@ export function FactionMatrix({
                         <span aria-hidden className={classes.arrow}>
                           {open.includes(row) ? '▾' : '▸'}
                         </span>
+                        <FactionIcon faction={row} />
                         <span className={classes.truncate}>{row}</span>
                       </UnstyledButton>
                     ) : (
-                      <span className={classes.truncate}>{row}</span>
+                      <span className={classes.truncate}>
+                        <FactionIcon faction={row} />
+                        {row}
+                      </span>
                     )}
                     {overallLine(row) !== null && (
                       <span className={`${classes.overall} numeric`}>{overallLine(row)}</span>

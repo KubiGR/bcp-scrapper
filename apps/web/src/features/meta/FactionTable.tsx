@@ -2,6 +2,7 @@ import { MIN_CHANGE_GAMES, type MetaRow } from '@bcp/shared';
 import { ActionIcon, Table, Text, UnstyledButton, useMatches } from '@mantine/core';
 import { Fragment } from 'react';
 import { SortableTh, type SortDir } from '../../lib/table-sort';
+import { FactionIcon } from '../../components/FactionIcon';
 import { DispositionBreakdown } from './DispositionBreakdown';
 import { Sparkline } from './Sparkline';
 import {
@@ -322,6 +323,7 @@ export function FactionTable({
                     >
                       {open ? '▾' : '▸'}
                     </ActionIcon>
+                    <FactionIcon faction={row.faction} />
                     {name}
                   </Table.Td>
                   <Figures

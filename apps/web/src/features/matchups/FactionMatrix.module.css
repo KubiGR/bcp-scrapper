@@ -52,16 +52,17 @@
   position: sticky;
   left: 0;
   z-index: 1;
-  width: 116px;
-  min-width: 116px;
-  max-width: 116px;
+  /* Room for the icon and a name. */
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
   background: var(--mantine-color-dark-6);
   box-shadow: inset -1px 0 0 var(--mantine-color-dark-4);
 }
 
 .truncate {
   display: inline-block;
-  max-width: 108px;
+  max-width: 132px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -202,7 +203,7 @@
 }
 
 .rowToggle .truncate {
-  max-width: 92px;
+  max-width: 98px;
 }
 
 .arrow {
@@ -228,7 +229,7 @@
 }
 
 .detachmentNote {
-  padding-left: 130px;
+  padding-left: 154px;
 }
 
 /* The faction's overall win rate and rank, under its name. */

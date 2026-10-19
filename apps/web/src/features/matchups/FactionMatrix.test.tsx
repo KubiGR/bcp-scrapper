@@ -146,6 +146,24 @@ describe('FactionMatrix row summary', () => {
   });
 });
 
+describe('FactionMatrix icons', () => {
+  it('puts each faction’s icon by its name, in the rows and the column headings', () => {
+    renderWithProviders(
+      <FactionMatrix
+        matrix={lopsided()}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 3 }}
+        onCell={vi.fn()}
+      />,
+    );
+    const icon = (el: HTMLElement) => el.querySelector('img')?.getAttribute('src');
+    expect(icon(screen.getByRole('rowheader', { name: /^Orks/ }))).toBe('/factions/orks.png');
+    expect(icon(screen.getByRole('columnheader', { name: 'Necrons' }))).toBe(
+      '/factions/necrons.png',
+    );
+  });
+});
+
 describe('FactionMatrix order', () => {
   const names = (role: 'rowheader' | 'columnheader') =>
     screen.getAllByRole(role).map((th) => th.textContent);

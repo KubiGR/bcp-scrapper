@@ -43,6 +43,14 @@ describe('AppLayout', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
+  it('credits Games Workshop for the faction names and imagery, in a footer', async () => {
+    stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/fetch-queue': null });
+    renderWithRouter(<AppLayout />);
+    expect(await screen.findByRole('contentinfo')).toHaveTextContent(
+      'Unofficial fan-made tool. Not affiliated with, endorsed or sponsored by Games Workshop. Faction names and imagery © Games Workshop.',
+    );
+  });
+
   it('signs the site: "by Andreas Dranidis" next to the name', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/fetch-queue': null });
     renderWithRouter(<AppLayout />);

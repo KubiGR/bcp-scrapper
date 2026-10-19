@@ -13,6 +13,7 @@ import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { Fragment, useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
+import { FactionIcon } from '../../components/FactionIcon';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { plural } from '../../lib/format';
@@ -117,6 +118,7 @@ function FactionRow({
         </Table.Td>
       )}
       <Table.Td className={classes.name} data-tier={tier?.key ?? 'none'}>
+        <FactionIcon faction={row.faction} />
         <AnchorLink to="/analysis/meta" search={{ ...filters, factions: row.faction }}>
           {row.faction}
         </AnchorLink>
