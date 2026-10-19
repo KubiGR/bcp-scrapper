@@ -20,16 +20,18 @@ const cell = (overrides: Partial<MatrixCell> = {}): MatrixCell => ({
   ...overrides,
 });
 
+// Cells here have about a dozen games: judged at 3, so they show (the default hatches under 25).
 const settings = (overrides: Partial<MatrixSettings> = {}): MatrixSettings => ({
   ...DEFAULT_MATRIX_SETTINGS,
+  minGames: 3,
   ...overrides,
 });
 
 describe('DEFAULT_MATRIX_SETTINGS', () => {
-  it('defaults to win rate, min 3 games, no disposition, row side, every faction', () => {
+  it('defaults to win rate, min 25 games, no disposition, row side, every faction', () => {
     expect(DEFAULT_MATRIX_SETTINGS).toEqual({
       metric: 'winRate',
-      minGames: 3,
+      minGames: 25,
       dispositions: [],
       detachments: [],
       side: 'row',

@@ -14,12 +14,19 @@ export interface MatrixSettings {
 
 export const DEFAULT_MATRIX_SETTINGS: MatrixSettings = {
   metric: 'winRate',
-  minGames: 3,
+  // Under 25 games a match-up says little (as Hutber reads it): hatched, out of Spread and Average.
+  minGames: 25,
   dispositions: [],
   detachments: [],
   side: 'row',
   factions: [],
 };
+
+/**
+ * An event's own matchups: a single event rarely has 25 games of a pairing, so its cells count
+ * from 3.
+ */
+export const EVENT_MATRIX_SETTINGS: MatrixSettings = { ...DEFAULT_MATRIX_SETTINGS, minGames: 3 };
 
 /** Whether a server-side filter (disposition or detachment) is chosen. */
 export const hasSideFilter = (settings: Pick<MatrixSettings, 'dispositions' | 'detachments'>) =>

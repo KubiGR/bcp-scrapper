@@ -98,17 +98,12 @@ function SummaryCells({ summary, scale }: { summary: RowSummary; scale: number |
     summary.spread === null
       ? undefined
       : `Best minus worst: ${points ? summary.spread.toFixed(1) : `${String(Math.round(summary.spread * 100))} pts`}`;
+  const share = (count: number) =>
+    `${String(summary.counted === 0 ? 0 : Math.round((count / summary.counted) * 100))}%`;
   return (
     <>
       <Table.Td
-        className={`${classes.summary} ${classes.summaryFirst} numeric`}
-        aria-label="Average match-up"
-        data-tone={summary.average === null ? undefined : matchupTone(summary.average, scale)}
-      >
-        {average}
-      </Table.Td>
-      <Table.Td
-        className={`${classes.summary} ${classes.spread}`}
+        className={`${classes.summary} ${classes.summaryFirst} ${classes.spread}`}
         aria-label="Spread"
         title={range}
       >
@@ -116,13 +111,43 @@ function SummaryCells({ summary, scale }: { summary: RowSummary; scale: number |
           '–'
         ) : (
           <>
-            <span className={classes.goodCount}>{summary.good} good</span>
-            {' · '}
-            <span>{summary.even} even</span>
-            {' · '}
-            <span className={classes.badCount}>{summary.bad} bad</span>
+            <div
+              className={classes.spreadBar}
+              role="img"
+              aria-label={`${String(summary.good)} good, ${String(summary.even)} even, ${String(summary.bad)} bad`}
+            >
+              <span
+                data-part="good"
+                className={classes.barGood}
+                style={{ width: share(summary.good) }}
+              />
+              <span
+                data-part="even"
+                className={classes.barEven}
+                style={{ width: share(summary.even) }}
+              />
+              <span
+                data-part="bad"
+                className={classes.barBad}
+                style={{ width: share(summary.bad) }}
+              />
+            </div>
+            <div className={classes.spreadCounts}>
+              <span className={classes.goodCount}>{summary.good} good</span>
+              {' · '}
+              <span>{summary.even} even</span>
+              {' · '}
+              <span className={classes.badCount}>{summary.bad} bad</span>
+            </div>
           </>
         )}
+      </Table.Td>
+      <Table.Td
+        className={`${classes.summary} numeric`}
+        aria-label="Average match-up"
+        data-tone={summary.average === null ? undefined : matchupTone(summary.average, scale)}
+      >
+        {average}
       </Table.Td>
     </>
   );
@@ -210,23 +235,13 @@ export function FactionMatrix({
     // A detachment row against its own faction is a real result, not a mirror.
     const view = cellView(cell, settings, scale, side.detachment === undefined && side.row === col);
     const who = `${pickLabel(side)} vs ${col}`;
-    if (view.tone === 'hidden') {
-      return (
-        <Table.Td
-          key={col}
-          className={`${classes.cell} ${toneClass.hidden}`}
-          data-tip={`${who}: ${view.value}${view.value === String(view.games) ? ' games' : ` over ${String(view.games)} games`}, too few: left out of Average and Spread`}
-        >
-          <Text size="sm" c="dimmed" className="numeric">
-            {view.text}
-          </Text>
-        </Table.Td>
-      );
-    }
+    const counts = view.value === String(view.games) && view.tone === 'hidden';
     const label =
       view.tone === 'mirror'
         ? `${who}: ${view.text} games`
-        : `${who}: ${view.value} ${metricLabel} over ${String(view.games)} games`;
+        : view.tone === 'hidden'
+          ? `${who}: ${view.value}${counts ? ' games' : ` over ${String(view.games)} games`}, too few: left out of Spread and Average`
+          : `${who}: ${view.value} ${metricLabel} over ${String(view.games)} games`;
     const style =
       view.tone === 'good' || view.tone === 'bad'
         ? ({ '--strength': view.strength } as CSSProperties)
@@ -246,7 +261,7 @@ export function FactionMatrix({
           }}
         >
           <span className="numeric">{view.text}</span>
-          {view.tone !== 'mirror' && (
+          {view.tone !== 'mirror' && !counts && (
             <span className={`${classes.count} numeric`}>{view.games}</span>
           )}
         </UnstyledButton>
@@ -297,15 +312,15 @@ export function FactionMatrix({
               ))}
               <Table.Th
                 className={`${classes.summaryHeader} ${classes.summaryFirst}`}
-                title={`The row's ${metricLabel} averaged over its match-ups with enough games (hatched cells left out)`}
-              >
-                Average
-              </Table.Th>
-              <Table.Th
-                className={classes.summaryHeader}
                 title="How many of its match-ups with enough games are good (55%+), even and bad (45% or less); best minus worst on hover"
               >
                 Spread
+              </Table.Th>
+              <Table.Th
+                className={classes.summaryHeader}
+                title={`The row's ${metricLabel} averaged over its match-ups with enough games (hatched cells left out)`}
+              >
+                Average
               </Table.Th>
             </Table.Tr>
           </Table.Thead>
@@ -358,7 +373,7 @@ export function FactionMatrix({
         </Table>
       </div>
       <Text size="xs" c="dimmed">
-        {`Cells are hatched and greyed below ${String(settings.minGames)} ${settings.minGames === 1 ? 'game' : 'games'} — they’re left out of every Average and Spread.`}
+        {`Cells are hatched and greyed below ${String(settings.minGames)} ${settings.minGames === 1 ? 'game' : 'games'} — they’re left out of every Spread and Average.`}
       </Text>
     </Stack>
   );

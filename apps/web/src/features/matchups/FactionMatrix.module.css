@@ -266,8 +266,40 @@
 
 .spread {
   min-width: 150px;
+  padding: 4px 8px;
   white-space: nowrap;
   color: var(--mantine-color-dimmed);
+}
+
+/* Good, even and bad match-ups as shares of one bar. */
+.spreadBar {
+  display: flex;
+  gap: 1px;
+  height: 6px;
+  margin-bottom: 3px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.spreadBar > span {
+  display: block;
+  height: 100%;
+}
+
+.barGood {
+  background: var(--mantine-color-blue-6);
+}
+
+.barEven {
+  background: var(--mantine-color-dark-3);
+}
+
+.barBad {
+  background: var(--mantine-color-orange-7);
+}
+
+.spreadCounts {
+  font-size: 0.65rem;
 }
 
 .goodCount {

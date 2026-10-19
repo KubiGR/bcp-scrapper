@@ -16,7 +16,7 @@ describe('MatrixControls', () => {
     );
     expect(screen.getByRole('radio', { name: 'Win rate' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Game points' })).toBeEnabled();
-    expect(screen.getByLabelText('Min games')).toHaveValue('3');
+    expect(screen.getByLabelText('Min games')).toHaveValue('25');
   });
 
   it('disables Game points with a reason when scales differ', () => {

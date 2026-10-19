@@ -14,13 +14,13 @@ import {
   eventMatchupsQuery,
 } from './matchups-queries';
 import type { MatrixPick } from './matrix-pick';
-import { DEFAULT_MATRIX_SETTINGS, hasSideFilter, type MatrixSettings } from './matrix-view';
+import { EVENT_MATRIX_SETTINGS, hasSideFilter, type MatrixSettings } from './matrix-view';
 
 /** The event's Matchups tab: controls, a one-line summary, the heatmap, and a drill-down drawer
  * on each cell. Falls back to win rate if the chosen metric is points but scoring turns out
  * inconsistent (e.g. after adding events with a different scale). */
 export function MatchupsPanel({ event }: { event: EventDetail }) {
-  const [settings, setSettings] = useState<MatrixSettings>(DEFAULT_MATRIX_SETTINGS);
+  const [settings, setSettings] = useState<MatrixSettings>(EVENT_MATRIX_SETTINGS);
   const [cell, setCell] = useState<MatrixPick | null>(null);
   const live = event.pairings.queued > 0;
 
