@@ -7,6 +7,7 @@ const row = (overrides: Partial<MetaPlayerRow> = {}): MetaPlayerRow => ({
   eventFinished: true,
   teamId: null,
   teamPlacing: null,
+  placing: null,
   faction: 'Orks',
   detachments: [],
   disposition: null,
@@ -60,6 +61,20 @@ describe('computeMeta', () => {
   it('has no over-representation when nobody went X-1 or better', () => {
     const none = computeMeta([row({ wins: 1, losses: 4, draws: 0 })]);
     expect(none.factions[0]?.overrep).toBeNull();
+  });
+
+  it('counts event wins: 1st at a finished singles event; team events don’t count', () => {
+    const wins = computeMeta([
+      row({ faction: 'Orks', placing: 1 }),
+      row({ faction: 'Orks', placing: 1, eventFinished: false }),
+      row({ faction: 'Orks', placing: 2 }),
+      row({ faction: 'Necrons', isTeamEvent: true, teamId: 'T1', teamPlacing: 1, placing: 4 }),
+      row({ faction: 'Necrons', isTeamEvent: true, teamId: 'T2', teamPlacing: 2, placing: 1 }),
+    ]);
+    const [orks, necrons] = wins.factions;
+    expect(orks?.eventWins).toBe(1);
+    expect(orks?.archetypes[0]?.eventWins).toBe(1);
+    expect(necrons?.eventWins).toBe(0);
   });
 
   it('gives a reliable win rate: the low end of a 95% range, so few games count for less', () => {

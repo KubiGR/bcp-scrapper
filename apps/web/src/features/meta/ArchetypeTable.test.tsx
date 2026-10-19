@@ -17,6 +17,7 @@ const greyKnights: MetaRow = {
   x1: 2,
   x1Share: 1,
   overrep: 1,
+  eventWins: 0,
   archetypes: [
     {
       detachments: ['Teleport Strike Force'],
@@ -31,6 +32,7 @@ const greyKnights: MetaRow = {
       x1: 2,
       x1Share: 1,
       overrep: 1,
+      eventWins: 0,
     },
   ],
 };
@@ -54,6 +56,7 @@ const single = (
     x1: 0,
     x1Share: 0,
     overrep: 1,
+    eventWins: 0,
   };
   return {
     faction,

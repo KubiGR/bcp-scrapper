@@ -49,7 +49,7 @@ interface FactionTableProps {
 export const changeOf = (row: Pick<MetaRow, 'change'>) => row.change;
 
 /** "+4.2 pp" / "−3.0 pp"; a change that rounds to 0 is neutral. */
-function ChangeText({ change }: { change: number | null }) {
+export function ChangeText({ change }: { change: number | null }) {
   if (change === null) {
     return (
       <Text

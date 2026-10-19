@@ -51,7 +51,7 @@ export const EVENT_TYPES = [
  * What Meta's Change compares: the update in force on the range's last day (from its start to that
  * day) with the update before it; null without two updates.
  */
-function changeSpans(
+export function changeSpans(
   updates: EffectiveUpdate[],
   to: string,
 ): { spans: ChangeSpans; label: string } | null {

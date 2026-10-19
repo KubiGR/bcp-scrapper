@@ -1,15 +1,170 @@
-/* A faction's share against the biggest one, next to its percentage. */
-.track {
-  width: 120px;
-  height: 8px;
+/* Tier colours: blue for strong, orange for weak, like the win-rate tones (apart for colour-blind
+   readers too); the tier letter always says it as well. */
+[data-tier='S'] {
+  --tier: var(--mantine-color-blue-4);
+}
+[data-tier='A'] {
+  --tier: var(--mantine-color-blue-2);
+}
+[data-tier='B'] {
+  --tier: var(--mantine-color-gray-5);
+}
+[data-tier='C'] {
+  --tier: var(--mantine-color-orange-3);
+}
+[data-tier='D'] {
+  --tier: var(--mantine-color-orange-6);
+}
+[data-tier='none'] {
+  --tier: var(--mantine-color-dark-3);
+}
+
+.table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.heading th {
+  padding-top: var(--mantine-spacing-md);
+  background: var(--mantine-color-dark-8);
+  font-weight: inherit;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
-  border-radius: var(--mantine-radius-sm);
-  background: var(--mantine-color-dark-6);
+  border-radius: 4px;
+  background: var(--tier);
+  color: var(--mantine-color-dark-9);
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 700;
+}
+
+.row[data-dimmed='true'] {
+  opacity: 0.55;
+}
+
+/* The faction cell carries its tier's colour as a stripe down the left. */
+.name {
+  box-shadow: inset 3px 0 0 var(--tier);
+  padding-left: var(--mantine-spacing-md) !important;
+}
+
+.name a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.sub {
+  margin-top: 2px;
+}
+
+.rank {
+  color: var(--mantine-color-dimmed);
+}
+
+.trophy {
+  font-size: 0.85em;
+}
+
+.rate {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 88px;
+  max-width: 120px;
+}
+
+.rateText {
+  color: var(--tier);
+}
+
+/* 35%–65%, with a tick at even (50%); the fill runs from even to the win rate. */
+.rateTrack {
+  position: relative;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--mantine-color-dark-5);
   overflow: hidden;
 }
 
-.bar {
-  height: 100%;
-  border-radius: var(--mantine-radius-sm);
-  background: var(--mantine-color-neon-5);
+.rateTrack::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - 0.5px);
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--mantine-color-dark-2);
+}
+
+.rateFill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--tier);
+}
+
+.link a {
+  color: inherit;
+  font-weight: inherit;
+}
+
+/* Podium: a card per place, edged gold, silver and bronze. */
+.podium {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-md);
+  background: var(--mantine-color-dark-7);
+  border: 1px solid rgb(255 255 255 / 0.07);
+  border-left: 3px solid var(--place);
+}
+.podium[data-place='1'] {
+  --place: var(--mantine-color-yellow-5);
+}
+.podium[data-place='2'] {
+  --place: var(--mantine-color-gray-4);
+}
+.podium[data-place='3'] {
+  --place: var(--mantine-color-orange-8);
+}
+
+.place {
+  color: var(--place);
+  font-size: var(--mantine-font-size-xl);
+  font-weight: 700;
+}
+
+.podiumName {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.podiumFigures {
+  flex-shrink: 0;
+}
+
+.tierLetter {
+  color: var(--tier);
+  font-weight: 700;
+}
+
+.podiumRate {
+  color: var(--tier);
+  font-size: var(--mantine-font-size-xl);
+  line-height: 1.2;
+}
+
+.moveTitle {
+  font-family: var(--mantine-font-family-monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }

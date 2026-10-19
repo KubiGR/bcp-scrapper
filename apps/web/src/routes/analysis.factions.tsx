@@ -8,6 +8,7 @@ const FactionsSearchSchema = z.object({
   from: optionalDay,
   to: optionalDay,
   type: z.enum(['all', 'singles', 'teams']).optional().catch(undefined),
+  layout: z.literal('flat').optional().catch(undefined),
 });
 
 export const Route = createFileRoute('/analysis/factions')({

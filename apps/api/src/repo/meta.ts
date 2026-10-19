@@ -73,6 +73,7 @@ export async function loadMetaRows(
         eventId: players.eventId,
         teamId: players.teamId,
         teamPlacing: teams.placing,
+        placing: players.placing,
         faction: players.faction,
         parsedArmy: armyLists.parsedArmy,
         detachments: armyLists.detachments,
@@ -104,6 +105,7 @@ export async function loadMetaRows(
       eventStart: startOf.get(row.eventId) ?? from,
       teamId: row.teamId,
       teamPlacing: row.teamPlacing,
+      placing: row.placing,
       faction,
       disposition: row.disposition ?? knownDisposition(row.parsedDisposition),
       // A detachment that isn't English can't be told apart from others, and one outside its
