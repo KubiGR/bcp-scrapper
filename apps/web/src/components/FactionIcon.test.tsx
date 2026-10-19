@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders } from '../test/render';
-import { FactionIcon, factionIconSlug, renderFactionOption } from './FactionIcon';
+import { fireEvent, screen } from '@testing-library/react';
+import { vi } from 'vitest';
+import {
+  FactionIcon,
+  factionIconSlug,
+  renderFactionOption,
+  renderFactionPill,
+} from './FactionIcon';
 
 describe('FactionIcon', () => {
   it('names each faction’s icon file after it', () => {
@@ -46,5 +53,19 @@ describe('renderFactionOption', () => {
     );
     expect(container.querySelector('img')).toHaveAttribute('src', '/factions/orks.png');
     expect(container).toHaveTextContent('Orks (12)');
+  });
+});
+
+describe('renderFactionPill', () => {
+  it('shows a picked faction with its icon, still removable', () => {
+    const onRemove = vi.fn();
+    const { container } = renderWithProviders(
+      <>{renderFactionPill({ option: { value: 'Orks', label: 'Orks' }, onRemove })}</>,
+    );
+    expect(container.querySelector('img')).toHaveAttribute('src', '/factions/orks.png');
+    expect(container).toHaveTextContent('Orks');
+    // Mantine hides a pill's remove button from screen readers: Backspace removes it instead.
+    fireEvent.click(screen.getByRole('button', { hidden: true }));
+    expect(onRemove).toHaveBeenCalled();
   });
 });

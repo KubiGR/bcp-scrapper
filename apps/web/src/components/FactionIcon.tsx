@@ -1,3 +1,5 @@
+import { Pill, type ComboboxRenderPillInput } from '@mantine/core';
+
 /** A faction's icon file name: its name in lower case, anything but letters and digits a dash. */
 export const factionIconSlug = (faction: string) =>
   faction
@@ -87,5 +89,21 @@ export function renderFactionOption({ option }: { option: { value: string; label
       <FactionIcon faction={option.value} />
       {option.label}
     </span>
+  );
+}
+
+/** A picked faction in a multi-select: its icon and name, with the remove button kept. */
+export function renderFactionPill({
+  option,
+  onRemove,
+  disabled,
+}: Pick<ComboboxRenderPillInput, 'option' | 'onRemove' | 'disabled'>) {
+  return (
+    <Pill withRemoveButton={!disabled} onRemove={onRemove} disabled={disabled}>
+      <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+        <FactionIcon faction={String(option.value)} size={16} />
+        {option.label}
+      </span>
+    </Pill>
   );
 }
