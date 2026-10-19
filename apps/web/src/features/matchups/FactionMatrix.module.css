@@ -26,7 +26,7 @@
   z-index: 2;
   min-width: 44px;
   /* Tall enough for the longest faction name, slanted. */
-  height: 124px;
+  height: 140px;
   padding: 0;
   text-align: center;
   background: var(--mantine-color-dark-6);
@@ -176,7 +176,8 @@
 
 .tip {
   position: fixed;
-  z-index: 10;
+  /* Over the sticky headings, row names and corner. */
+  z-index: 300;
   padding: 4px 8px;
   transform: translate(-50%, calc(-100% - 6px));
   pointer-events: none;
@@ -186,6 +187,10 @@
   background: var(--mantine-color-dark-9);
   border: 1px solid var(--mantine-color-dark-4);
   border-radius: var(--mantine-radius-sm);
+}
+
+.tip[data-placement='below'] {
+  transform: translate(-50%, 6px);
 }
 
 .rowToggle {
