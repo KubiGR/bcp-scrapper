@@ -1,6 +1,8 @@
 import { DETACHMENT_SEPARATOR, type MatrixCell } from '@bcp/shared';
 
 export interface MatrixSettings {
+  /** Rows and columns: best overall win rate first, or A→Z. Display only. */
+  order: 'overall' | 'name';
   metric: 'winRate' | 'points';
   minGames: number;
   /** Any listed disposition matches; empty = no filter. */
@@ -13,6 +15,7 @@ export interface MatrixSettings {
 }
 
 export const DEFAULT_MATRIX_SETTINGS: MatrixSettings = {
+  order: 'overall',
   metric: 'winRate',
   // Under 25 games a match-up says little (as Hutber reads it): hatched, out of Spread and Average.
   minGames: 25,

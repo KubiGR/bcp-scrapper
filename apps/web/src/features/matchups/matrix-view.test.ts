@@ -28,8 +28,9 @@ const settings = (overrides: Partial<MatrixSettings> = {}): MatrixSettings => ({
 });
 
 describe('DEFAULT_MATRIX_SETTINGS', () => {
-  it('defaults to win rate, min 25 games, no disposition, row side, every faction', () => {
+  it('defaults to win rate, min 25 games, no disposition, row side, every faction, best first', () => {
     expect(DEFAULT_MATRIX_SETTINGS).toEqual({
+      order: 'overall',
       metric: 'winRate',
       minGames: 25,
       dispositions: [],

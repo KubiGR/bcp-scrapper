@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/render';
 import { MatrixControls } from './MatrixControls';
@@ -17,6 +17,22 @@ describe('MatrixControls', () => {
     expect(screen.getByRole('radio', { name: 'Win rate' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Game points' })).toBeEnabled();
     expect(screen.getByLabelText('Min games')).toHaveValue('25');
+  });
+
+  it('orders the factions best first, or A→Z', () => {
+    const onChange = vi.fn();
+    renderWithProviders(
+      <MatrixControls
+        settings={DEFAULT_MATRIX_SETTINGS}
+        onChange={onChange}
+        scoring={{ consistent: true, scale: 20 }}
+        dispositions={[]}
+      />,
+    );
+    const order = within(screen.getByRole('radiogroup', { name: 'Order' }));
+    expect(order.getByRole('radio', { name: 'Best first' })).toBeChecked();
+    fireEvent.click(order.getByRole('radio', { name: 'A→Z' }));
+    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_MATRIX_SETTINGS, order: 'name' });
   });
 
   it('disables Game points with a reason when scales differ', () => {

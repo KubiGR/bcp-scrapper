@@ -146,6 +146,37 @@ describe('FactionMatrix row summary', () => {
   });
 });
 
+describe('FactionMatrix order', () => {
+  const names = (role: 'rowheader' | 'columnheader') =>
+    screen.getAllByRole(role).map((th) => th.textContent);
+
+  it('puts the best overall win rate first, rows and columns, opponents without a row last', () => {
+    renderWithProviders(
+      <FactionMatrix
+        matrix={lopsided()}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 3 }}
+        onCell={vi.fn()}
+      />,
+    );
+    expect(names('rowheader')).toEqual(['Orks60% · #1', 'Necrons42% · #2']);
+    expect(names('columnheader')).toEqual(['', 'Orks', 'Necrons', 'Aeldari', 'Spread', 'Average']);
+  });
+
+  it('orders them A→Z when asked', () => {
+    renderWithProviders(
+      <FactionMatrix
+        matrix={lopsided()}
+        scoring={{ consistent: true, scale: 20 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 3, order: 'name' }}
+        onCell={vi.fn()}
+      />,
+    );
+    expect(names('rowheader')).toEqual(['Necrons42% · #2', 'Orks60% · #1']);
+    expect(names('columnheader')).toEqual(['', 'Aeldari', 'Necrons', 'Orks', 'Spread', 'Average']);
+  });
+});
+
 describe('FactionMatrix', () => {
   it('renders row and column headers and a cell text with its tone', () => {
     renderWithProviders(
@@ -169,7 +200,7 @@ describe('FactionMatrix', () => {
       <FactionMatrix
         matrix={{ ...matrix(), factions: ['Orks'], columns: ['Necrons', 'Orks'] }}
         scoring={{ consistent: true, scale: 20 }}
-        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 1 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, order: 'name', minGames: 1 }}
         onCell={vi.fn()}
       />,
     );
@@ -190,7 +221,7 @@ describe('FactionMatrix', () => {
       <FactionMatrix
         matrix={matrix()}
         scoring={{ consistent: true, scale: 20 }}
-        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 1, factions: ['Necrons'] }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, order: 'name', minGames: 1, factions: ['Necrons'] }}
         onCell={vi.fn()}
       />,
     );
@@ -199,8 +230,8 @@ describe('FactionMatrix', () => {
     ]);
     expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
       '',
-      'Orks',
       'Necrons',
+      'Orks',
       'Spread',
       'Average',
     ]);
@@ -310,13 +341,11 @@ describe('FactionMatrix', () => {
       <FactionMatrix
         matrix={matrix()}
         scoring={{ consistent: true, scale: 20 }}
-        settings={{ ...DEFAULT_MATRIX_SETTINGS, minGames: 5 }}
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, order: 'name', minGames: 5 }}
         onCell={vi.fn()}
       />,
     );
-    const [hidden] = screen.getAllByText('50');
-    if (hidden === undefined) throw new Error('no hidden cell');
-    fireEvent.mouseOver(hidden);
+    fireEvent.mouseOver(screen.getByRole('button', { name: /^Orks vs Necrons/ }));
     expect(screen.getByRole('tooltip')).toHaveTextContent(
       /Orks vs Necrons: 50% over 3 games, too few: left out of Spread and Average/,
     );

@@ -81,6 +81,8 @@ export interface CrossSearch {
   exclude?: string;
   include?: string;
   metric?: 'winRate' | 'points';
+  /** Rows and columns A→Z (`name`) rather than best first. */
+  order?: 'overall' | 'name';
   minGames?: number;
   /** Comma-separated dispositions (any matches). */
   dispositions?: string;

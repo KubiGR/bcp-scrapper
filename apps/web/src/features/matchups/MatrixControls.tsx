@@ -67,6 +67,17 @@ export function MatrixControls({
             ]}
           />
         </Tooltip>
+        <SegmentedControl
+          aria-label="Order"
+          value={settings.order}
+          onChange={(value) => {
+            onChange({ ...settings, order: value === 'name' ? 'name' : 'overall' });
+          }}
+          data={[
+            { label: 'Best first', value: 'overall' },
+            { label: 'A→Z', value: 'name' },
+          ]}
+        />
         <NumberInput
           label="Min games"
           value={settings.minGames}

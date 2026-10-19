@@ -52,6 +52,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
   });
 
   const settings: MatrixSettings = {
+    order: search.order ?? DEFAULT_MATRIX_SETTINGS.order,
     metric: search.metric ?? DEFAULT_MATRIX_SETTINGS.metric,
     minGames: search.minGames ?? DEFAULT_MATRIX_SETTINGS.minGames,
     dispositions: search.dispositions?.split(',').filter(Boolean) ?? [],
@@ -172,6 +173,8 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
                   onSearchChange({
                     ...search,
                     metric: next.metric,
+                    // Best first is the default: only A→Z goes in the address.
+                    order: next.order === 'name' ? 'name' : undefined,
                     minGames: next.minGames,
                     dispositions:
                       next.dispositions.length > 0 ? next.dispositions.join(',') : undefined,

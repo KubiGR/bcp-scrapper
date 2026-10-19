@@ -215,7 +215,20 @@ export function FactionMatrix({
       ).overall,
     ]),
   );
-  const ranked = [...overall].sort((a, b) => (b[1] ?? -1) - (a[1] ?? -1)).map(([f]) => f);
+  const ranked = [...overall]
+    .sort((a, b) => (b[1] ?? -1) - (a[1] ?? -1) || a[0].localeCompare(b[0]))
+    .map(([f]) => f);
+  // Best overall first (opponents without a row after, A→Z), or A→Z throughout.
+  const ordered = (factions: string[]) =>
+    [...factions].sort((a, b) => {
+      if (settings.order === 'name') return a.localeCompare(b);
+      const ra = ranked.indexOf(a);
+      const rb = ranked.indexOf(b);
+      if (ra === -1 || rb === -1)
+        return Number(ra === -1) - Number(rb === -1) || a.localeCompare(b);
+      return ra - rb;
+    });
+  const columns = ordered(matrix.columns);
   const overallLine = (faction: string) => {
     const rate = overall.get(faction);
     if (rate === null || rate === undefined) return null;
@@ -301,13 +314,13 @@ export function FactionMatrix({
                 // Over every column heading, whose names lean into their neighbours'.
                 style={{ zIndex: matrix.columns.length + 3 }}
               />
-              {matrix.columns.map((faction, i) => (
+              {columns.map((faction, i) => (
                 <Table.Th
                   key={faction}
                   className={classes.stickyHeader}
                   title={faction}
                   // Each heading over the next one, so a slanted name isn't hidden under it.
-                  style={{ zIndex: matrix.columns.length - i + 2 }}
+                  style={{ zIndex: columns.length - i + 2 }}
                 >
                   <span className={classes.headerLabel}>{faction}</span>
                 </Table.Th>
@@ -327,9 +340,10 @@ export function FactionMatrix({
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {(settings.factions.length > 0
-              ? matrix.factions.filter((faction) => settings.factions.includes(faction))
-              : matrix.factions
+            {ordered(
+              settings.factions.length > 0
+                ? matrix.factions.filter((faction) => settings.factions.includes(faction))
+                : matrix.factions,
             ).map((row) => (
               <Fragment key={row}>
                 <Table.Tr>
@@ -354,7 +368,7 @@ export function FactionMatrix({
                       <span className={`${classes.overall} numeric`}>{overallLine(row)}</span>
                     )}
                   </Table.Th>
-                  {matrix.columns.map((col) => renderCell(cells.get(key(row, col)), col, { row }))}
+                  {columns.map((col) => renderCell(cells.get(key(row, col)), col, { row }))}
                   {summarize(
                     matrix.cells.filter((cell) => cell.row === row),
                     row,
@@ -364,7 +378,7 @@ export function FactionMatrix({
                   <DetachmentRows
                     faction={row}
                     query={detachments(row)}
-                    columns={matrix.columns}
+                    columns={columns}
                     renderCell={renderCell}
                     summarize={summarize}
                   />
