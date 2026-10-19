@@ -54,17 +54,6 @@ describe('MatchupsPanel', () => {
     expect(await screen.findByText('No games with known factions yet.')).toBeInTheDocument();
   });
 
-  it('disables the Game points option with a reason when scales differ', async () => {
-    stubFetchRoutes({
-      'GET /api/events/EVT1/matchups': matrix({ scoring: { consistent: false, scale: null } }),
-      'GET /api/events/EVT1/players': { items: [] },
-    });
-    renderWithProviders(<MatchupsPanel event={anEventDetail()} />);
-
-    expect(await screen.findByRole('radio', { name: 'Game points' })).toBeDisabled();
-    expect(screen.getByText('Events use different scoring')).toBeInTheDocument();
-  });
-
   it('refetches with the chosen disposition and row side', async () => {
     const fetchMock = stubFetchRoutes({
       'GET /api/events/EVT1/matchups': matrix(),

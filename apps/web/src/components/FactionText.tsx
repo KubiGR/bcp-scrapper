@@ -1,4 +1,5 @@
 import { Text, Tooltip } from '@mantine/core';
+import { FactionIcon } from './FactionIcon';
 
 export const GUESSED_ARMY_TOOLTIP = 'From the list — BCP has no army for this player';
 
@@ -9,6 +10,7 @@ export const GUESSED_ARMY_TOOLTIP = 'From the list — BCP has no army for this 
 export function FactionText({ faction, guessed }: { faction: string | null; guessed: boolean }) {
   return (
     <>
+      <FactionIcon faction={faction} size={14} />
       {faction ?? 'Unknown faction'}
       {guessed && (
         <Tooltip

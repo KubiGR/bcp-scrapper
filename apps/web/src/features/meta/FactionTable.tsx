@@ -2,6 +2,7 @@ import { MIN_CHANGE_GAMES, type MetaRow } from '@bcp/shared';
 import { ActionIcon, Table, Text, UnstyledButton, useMatches } from '@mantine/core';
 import { Fragment } from 'react';
 import { SortableTh, type SortDir } from '../../lib/table-sort';
+import { FactionIcon } from '../../components/FactionIcon';
 import { DispositionBreakdown } from './DispositionBreakdown';
 import { Sparkline } from './Sparkline';
 import {
@@ -49,7 +50,7 @@ interface FactionTableProps {
 export const changeOf = (row: Pick<MetaRow, 'change'>) => row.change;
 
 /** "+4.2 pp" / "−3.0 pp"; a change that rounds to 0 is neutral. */
-function ChangeText({ change }: { change: number | null }) {
+export function ChangeText({ change }: { change: number | null }) {
   if (change === null) {
     return (
       <Text
@@ -322,6 +323,7 @@ export function FactionTable({
                     >
                       {open ? '▾' : '▸'}
                     </ActionIcon>
+                    <FactionIcon faction={row.faction} />
                     {name}
                   </Table.Td>
                   <Figures

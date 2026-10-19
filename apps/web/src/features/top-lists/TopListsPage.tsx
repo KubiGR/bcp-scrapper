@@ -36,6 +36,7 @@ import classes from './TopListsPage.module.css';
 import { topListsQuery, topListsWindow, type TopListsSearch } from './top-lists-queries';
 import { RankBadge } from '../rankings/RankBadge';
 import { UpdatePicker } from '../updates/UpdatePicker';
+import { renderFactionOption } from '../../components/FactionIcon';
 
 const LOSS_CHOICES = [0, 1, 2, 3, 4, 5];
 
@@ -87,6 +88,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
         <Group gap="md" align="flex-end" wrap="wrap">
           <MultiSelect
             label="Factions"
+            renderOption={renderFactionOption}
             placeholder={factions.length === 0 ? 'All factions' : undefined}
             data={uniqueSorted([...(results.data?.factionOptions ?? []), ...factions])}
             value={factions}

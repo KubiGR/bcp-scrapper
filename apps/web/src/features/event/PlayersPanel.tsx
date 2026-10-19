@@ -45,6 +45,7 @@ import {
 } from './players-filter';
 import { useQueueLists } from './use-queue-lists';
 import { RankBadge } from '../rankings/RankBadge';
+import { renderFactionOption } from '../../components/FactionIcon';
 
 function emptyText(loadingFromBcp: boolean, playerCount: number): string {
   if (loadingFromBcp) return 'Loading players from BCP…';
@@ -283,6 +284,7 @@ export function PlayersPanel({
             />
             <MultiSelect
               aria-label="Faction"
+              renderOption={renderFactionOption}
               placeholder={factions.length === 0 ? 'All factions' : undefined}
               data={factionsOf(all)}
               value={factions}

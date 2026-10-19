@@ -5,6 +5,7 @@ import { plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { factionKey, UNKNOWN_DETACHMENT } from './FactionTable';
 import { percent } from './meta-queries';
+import { FactionIcon } from '../../components/FactionIcon';
 
 /** Percentage points to one decimal; a difference that rounds to 0 is neutral. */
 function difference(value: number): { text: string; tone: 'good' | 'bad' | 'even' } {
@@ -116,6 +117,7 @@ export function TeamMeta({
                       >
                         {expanded ? '▾' : '▸'}
                       </ActionIcon>
+                      <FactionIcon faction={row.faction} />
                       {name}
                     </Table.Td>
                     <Slots row={row} />

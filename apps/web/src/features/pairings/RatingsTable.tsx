@@ -20,6 +20,7 @@ import { chipStyle } from './chip-style';
 import { fullArmy, shortArmy } from './army-name';
 import { DispositionBadge } from './DispositionBadge';
 import classes from './RatingsTable.module.css';
+import { FactionIcon } from '../../components/FactionIcon';
 
 /** A row's or column's rated games as the team sheet shows them: "11.5 ± 1.5" (mean ± spread). */
 function spread(games: (PairingRating | undefined)[]): string {
@@ -82,6 +83,7 @@ function PlayerDetails({ player }: { player: PairingRosterPlayer }) {
   return (
     <Stack gap={2}>
       <Text size="xs" fw={600}>
+        <FactionIcon faction={player.faction} size={14} />
         {player.faction ?? player.name}
       </Text>
       {player.name !== player.faction && <Text size="xs">{player.name}</Text>}

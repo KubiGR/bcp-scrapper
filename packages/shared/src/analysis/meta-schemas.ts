@@ -27,6 +27,8 @@ const figures = {
    * (1 = as expected, 1.4 = 40% more); null when nobody went X-1 or better.
    */
   overrep: z.number().nonnegative().nullable(),
+  /** Players who won a finished singles event (team events don't count). */
+  eventWins: count,
 };
 
 export const ArchetypeRowSchema = z.object({

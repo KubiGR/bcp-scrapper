@@ -116,17 +116,12 @@ describe('MatchupsPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('never selects the disabled Game points metric when scoring is inconsistent', async () => {
-    stubFetchRoutes({
-      'GET /api/matchups': response({ scoring: { consistent: false, scale: null } }),
-    });
-    renderWithRouter(<MatchupsPage search={{ metric: 'points' }} onSearchChange={vi.fn()} />);
-
-    const winRate = await screen.findByRole('radio', { name: 'Win rate' });
-    await waitFor(() => {
-      expect(winRate).toBeChecked();
-    });
-    expect(screen.getByRole('radio', { name: 'Game points' })).toBeDisabled();
+  it('shows win rates, with no switch to game points', async () => {
+    stubFetchRoutes({ 'GET /api/matchups': response() });
+    renderWithRouter(<MatchupsPage search={{}} onSearchChange={vi.fn()} />);
+    // Each cell a win rate (a %), never game points.
+    expect(await screen.findAllByRole('button', { name: / vs .*: \d+% / })).not.toHaveLength(0);
+    expect(screen.queryByRole('radio', { name: 'Game points' })).toBeNull();
   });
 
   it('shows a Clear filter empty state when a disposition filter matches no games', async () => {

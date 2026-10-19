@@ -183,6 +183,7 @@ describe('FactionTable', () => {
           x1: 1,
           x1Share: 0.1,
           overrep: 1,
+          eventWins: 0,
         },
         {
           detachments: ['B'],
@@ -197,6 +198,7 @@ describe('FactionTable', () => {
           x1: 5,
           x1Share: 0.5,
           overrep: 1,
+          eventWins: 0,
         },
         {
           detachments: ['C'],
@@ -211,6 +213,7 @@ describe('FactionTable', () => {
           x1: 2,
           x1Share: 1,
           overrep: 1,
+          eventWins: 0,
         },
         {
           detachments: null,
@@ -225,6 +228,7 @@ describe('FactionTable', () => {
           x1: 3,
           x1Share: 0.1,
           overrep: 1,
+          eventWins: 0,
         },
       ],
     };

@@ -8,6 +8,7 @@ import { Panel } from '../../components/Panel';
 import { ordinal, plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { rankingsPagesQuery } from './rankings-queries';
+import { renderFactionOption } from '../../components/FactionIcon';
 
 /** The Players page's URL search. */
 export interface PlayersSearch {
@@ -123,6 +124,7 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
         />
         <SearchSelect
           label="Faction"
+          renderOption={renderFactionOption}
           placeholder="Any"
           clearable
           data={data?.factionOptions ?? []}

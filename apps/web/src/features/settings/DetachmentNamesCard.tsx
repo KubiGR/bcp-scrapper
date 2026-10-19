@@ -18,6 +18,7 @@ import {
   unkeepDetachment,
   unlinkDetachment,
 } from './detachment-names-queries';
+import { renderFactionOption } from '../../components/FactionIcon';
 
 type Unsure = DetachmentNamesResponse['unsure'][number];
 type Foreign = DetachmentNamesResponse['foreign'][number];
@@ -451,6 +452,7 @@ export function DetachmentNamesCard({
           {factions.length > 0 && (
             <SearchSelect
               label="Faction"
+              renderOption={renderFactionOption}
               data={[{ value: ALL, label: 'All factions' }, ...factions]}
               value={faction}
               onChange={(value) => {

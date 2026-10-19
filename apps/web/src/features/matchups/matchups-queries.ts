@@ -73,14 +73,15 @@ export const eventDetachmentRowsQuery =
   };
 
 /** The cross-event page's URL search: a date range, event ticks, and the matrix's display
- * settings. `metric`/`minGames` are display-only (never sent to the API); `dispositions`/`side`
+ * settings. `minGames` is display-only (never sent to the API); `dispositions`/`side`
  * are server filters. */
 export interface CrossSearch {
   from?: string;
   to?: string;
   exclude?: string;
   include?: string;
-  metric?: 'winRate' | 'points';
+  /** Rows and columns A→Z (`name`) rather than best first. */
+  order?: 'overall' | 'name';
   minGames?: number;
   /** Comma-separated dispositions (any matches). */
   dispositions?: string;

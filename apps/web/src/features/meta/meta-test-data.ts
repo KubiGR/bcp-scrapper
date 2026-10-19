@@ -12,6 +12,7 @@ export const orks: MetaRow = {
   x1: 6,
   x1Share: 0.3,
   overrep: 1,
+  eventWins: 2,
   archetypes: [
     {
       detachments: ['Kult of Speed', 'Wreckas'],
@@ -29,6 +30,7 @@ export const orks: MetaRow = {
       x1: 4,
       x1Share: 1 / 3,
       overrep: 1,
+      eventWins: 0,
     },
     {
       detachments: null,
@@ -43,6 +45,7 @@ export const orks: MetaRow = {
       x1: 2,
       x1Share: 0.25,
       overrep: 1,
+      eventWins: 0,
     },
   ],
 };
@@ -58,6 +61,7 @@ export const necrons: MetaRow = {
   x1: 1,
   x1Share: 0.1,
   overrep: 1,
+  eventWins: 0,
   archetypes: [
     {
       detachments: ['Hypercrypt Legion'],
@@ -72,6 +76,7 @@ export const necrons: MetaRow = {
       x1: 1,
       x1Share: 0.1,
       overrep: 1,
+      eventWins: 0,
     },
   ],
 };
@@ -87,6 +92,7 @@ export const tiny: MetaRow = {
   x1: 2,
   x1Share: 1,
   overrep: 1,
+  eventWins: 0,
   archetypes: [],
 };
 export const unknown: MetaRow = { ...tiny, faction: null, winRate: 0.5 };

@@ -9,6 +9,8 @@ export interface MetaPlayerRow {
   eventFinished: boolean;
   teamId: string | null;
   teamPlacing: number | null;
+  /** Their own final placing (singles); null = none yet. */
+  placing: number | null;
   faction: string | null;
   /** From their current, read list; [] = unknown. */
   detachments: string[];
@@ -64,6 +66,8 @@ interface Tally {
   /** wins + ½ draws */
   points: number;
   x1: number;
+  /** Players who won a finished singles event. */
+  eventWins: number;
   /** Players per disposition (known ones only). */
   dispositions: Map<string, number>;
   /** Players per week (the Monday of their event's first day). */
@@ -85,9 +89,16 @@ const emptyTally = (): Tally => ({
   games: 0,
   points: 0,
   x1: 0,
+  eventWins: 0,
   dispositions: new Map<string, number>(),
   weeks: new Map<string, number>(),
 });
+
+/**
+ * Won a finished singles event. Team events don't count: every player of the winning team would,
+ * and a few team events would outweigh many singles ones.
+ */
+const wonEvent = (row: MetaPlayerRow) => row.eventFinished && !row.isTeamEvent && row.placing === 1;
 
 function addToTally(tally: Tally, row: MetaPlayerRow): void {
   tally.players += 1;
@@ -96,6 +107,7 @@ function addToTally(tally: Tally, row: MetaPlayerRow): void {
   tally.games += gamesOf(row);
   tally.points += row.wins + row.draws / 2;
   if (row.losses <= 1) tally.x1 += 1;
+  if (wonEvent(row)) tally.eventWins += 1;
 }
 
 /** Every week from the first to the last with a counted player, gaps included. */
@@ -145,6 +157,7 @@ const figures = (tally: Tally, total: number, x1Rate: number) => ({
   x1: tally.x1,
   x1Share: tally.players === 0 ? 0 : tally.x1 / tally.players,
   overrep: x1Rate === 0 || tally.players === 0 ? null : tally.x1 / tally.players / x1Rate,
+  eventWins: tally.eventWins,
 });
 
 /**

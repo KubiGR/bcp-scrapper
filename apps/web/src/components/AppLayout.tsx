@@ -1,4 +1,4 @@
-import { AppShell, Burger, Container, Group } from '@mantine/core';
+import { AppShell, Burger, Container, Group, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Notifications } from '@mantine/notifications';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
@@ -107,6 +107,10 @@ export function AppLayout() {
       <AppShell.Main>
         <Container size="xl" fluid={wide} px={{ base: 0, sm: 'md' }}>
           <Outlet />
+          <Text component="footer" size="xs" c="dimmed" ta="center" py="lg">
+            Unofficial fan-made tool. Not affiliated with, endorsed or sponsored by Games Workshop.
+            Faction names and imagery © Games Workshop.
+          </Text>
         </Container>
       </AppShell.Main>
     </AppShell>

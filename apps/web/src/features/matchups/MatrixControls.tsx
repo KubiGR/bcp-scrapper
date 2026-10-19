@@ -1,14 +1,7 @@
-import {
-  Group,
-  MultiSelect,
-  NumberInput,
-  SegmentedControl,
-  Stack,
-  Text,
-  Tooltip,
-} from '@mantine/core';
+import { Group, MultiSelect, NumberInput, SegmentedControl, Stack } from '@mantine/core';
 import { DispositionText } from '../../components/DispositionText';
 import { hasSideFilter, type MatrixSettings } from './matrix-view';
+import { renderFactionOption } from '../../components/FactionIcon';
 
 /** BCP's five known dispositions (subFactions), shown even when the loaded event has no games in
  * them yet. Anything else the data brings is appended. */
@@ -23,7 +16,6 @@ const KNOWN_DISPOSITIONS = [
 interface MatrixControlsProps {
   settings: MatrixSettings;
   onChange: (settings: MatrixSettings) => void;
-  scoring: { consistent: boolean; scale: number | null };
   dispositions: string[];
   /** Detachments played in the loaded games (from the API). */
   detachments?: string[];
@@ -34,7 +26,6 @@ interface MatrixControlsProps {
 export function MatrixControls({
   settings,
   onChange,
-  scoring,
   dispositions,
   detachments = [],
   factions = [],
@@ -46,27 +37,21 @@ export function MatrixControls({
     a.localeCompare(b),
   );
   const dispositionOptions = [...new Set([...KNOWN_DISPOSITIONS, ...dispositions])];
-  const pointsDisabled = !scoring.consistent || scoring.scale === null;
-  const pointsReason = !scoring.consistent
-    ? 'Events use different scoring'
-    : 'No game points recorded';
 
   return (
     <Stack gap="sm">
       <Group gap="md" wrap="wrap" align="flex-end">
-        <Tooltip label={pointsReason} disabled={!pointsDisabled}>
-          <SegmentedControl
-            aria-label="Metric"
-            value={settings.metric}
-            onChange={(value) => {
-              onChange({ ...settings, metric: value });
-            }}
-            data={[
-              { label: 'Win rate', value: 'winRate' },
-              { label: 'Game points', value: 'points', disabled: pointsDisabled },
-            ]}
-          />
-        </Tooltip>
+        <SegmentedControl
+          aria-label="Order"
+          value={settings.order}
+          onChange={(value) => {
+            onChange({ ...settings, order: value === 'name' ? 'name' : 'overall' });
+          }}
+          data={[
+            { label: 'Best first', value: 'overall' },
+            { label: 'A→Z', value: 'name' },
+          ]}
+        />
         <NumberInput
           label="Min games"
           value={settings.minGames}
@@ -79,6 +64,7 @@ export function MatrixControls({
         />
         <MultiSelect
           label="Factions"
+          renderOption={renderFactionOption}
           placeholder={settings.factions.length === 0 ? 'All factions' : undefined}
           clearable
           searchable
@@ -127,11 +113,6 @@ export function MatrixControls({
           />
         )}
       </Group>
-      {pointsDisabled && (
-        <Text size="xs" c="dimmed">
-          {pointsReason}
-        </Text>
-      )}
     </Stack>
   );
 }
