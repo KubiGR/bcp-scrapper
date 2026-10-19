@@ -266,9 +266,6 @@ export function FactionMatrix({
           }}
         >
           <span className="numeric">{view.text}</span>
-          {view.tone !== 'mirror' && (
-            <span className={`${classes.count} numeric`}>{view.games}</span>
-          )}
         </UnstyledButton>
       </Table.Td>
     );

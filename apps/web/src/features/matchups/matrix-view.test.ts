@@ -67,7 +67,7 @@ describe('cellView', () => {
       null,
     );
     expect(view).toEqual({
-      text: '100%',
+      text: '100',
       value: '100%',
       tone: 'good',
       games: 2,
@@ -101,9 +101,9 @@ describe('cellView', () => {
     });
   });
 
-  it('renders a win rate above the good threshold as good, with no game count in the text', () => {
+  it('shows a win rate as the bare number, the % kept for labels', () => {
     const view = cellView(cell({ games: 13, winRate: 0.62 }), settings(), null);
-    expect(view.text).toBe('62%');
+    expect(view.text).toBe('62');
     expect(view.value).toBe('62%');
     expect(view.tone).toBe('good');
     expect(view.games).toBe(13);
@@ -121,7 +121,7 @@ describe('cellView', () => {
 
   it('renders a win rate below the bad threshold as bad', () => {
     const view = cellView(cell({ games: 13, winRate: 0.3 }), settings(), null);
-    expect(view.text).toBe('30%');
+    expect(view.text).toBe('30');
     expect(view.value).toBe('30%');
     expect(view.tone).toBe('bad');
     expect(view.games).toBe(13);
@@ -129,7 +129,7 @@ describe('cellView', () => {
 
   it('renders a win rate in the middle as even', () => {
     const view = cellView(cell({ games: 13, winRate: 0.5 }), settings(), null);
-    expect(view.text).toBe('50%');
+    expect(view.text).toBe('50');
     expect(view.value).toBe('50%');
     expect(view.tone).toBe('even');
     expect(view.games).toBe(13);
@@ -218,7 +218,7 @@ describe('cellView strength (graded colour by win rate/points)', () => {
       null,
       false,
     );
-    expect(view).toMatchObject({ text: '75%', games: 4, tone: 'good' });
+    expect(view).toMatchObject({ text: '75', value: '75%', games: 4, tone: 'good' });
   });
 });
 

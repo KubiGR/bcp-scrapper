@@ -110,8 +110,9 @@ export function cellView(
   const rate = cell.winRate ?? 0;
   // Full colour at 75% / 25%: most matchups sit within 35–65%, and should still read clearly.
   const { tone, strength } = toneAndStrength(rate, 0.5, 0.25);
-  const value = `${Math.round(rate * 100)}%`;
-  return { text: value, value, tone, games, strength };
+  const percent = String(Math.round(rate * 100));
+  // The cell shows the bare number; labels keep the %.
+  return { text: percent, value: `${percent}%`, tone, games, strength };
 }
 
 export interface RowSummary {

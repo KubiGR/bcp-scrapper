@@ -159,8 +159,9 @@ describe('FactionMatrix', () => {
     expect(screen.getByRole('columnheader', { name: 'Orks' })).toBeInTheDocument();
     expect(screen.getByRole('rowheader', { name: /^Necrons/ })).toBeInTheDocument();
     const button = screen.getByRole('button', { name: /Orks vs Necrons/ });
-    expect(button.textContent).toContain('50%');
-    expect(button.textContent).toContain('3');
+    // Just the number: the % and the game count are in its label.
+    expect(button.textContent).toBe('50');
+    expect(button).toHaveAccessibleName(/50% win rate over 3 games/);
   });
 
   it('shows every opponent as a column even when fewer factions are rows', () => {
@@ -205,7 +206,7 @@ describe('FactionMatrix', () => {
     ]);
   });
 
-  it('hides a cell under minGames as plain, unclickable text', () => {
+  it('hatches a cell under minGames, its value still there', () => {
     renderWithProviders(
       <FactionMatrix
         matrix={matrix()}
@@ -215,7 +216,7 @@ describe('FactionMatrix', () => {
       />,
     );
     // Hatched over its colour, the value still there.
-    expect(screen.getAllByText('50%').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('50').length).toBeGreaterThan(0);
   });
 
   it('shows only the count of games played on a mirror cell', () => {
@@ -313,7 +314,7 @@ describe('FactionMatrix', () => {
         onCell={vi.fn()}
       />,
     );
-    const [hidden] = screen.getAllByText('50%');
+    const [hidden] = screen.getAllByText('50');
     if (hidden === undefined) throw new Error('no hidden cell');
     fireEvent.mouseOver(hidden);
     expect(screen.getByRole('tooltip')).toHaveTextContent(
