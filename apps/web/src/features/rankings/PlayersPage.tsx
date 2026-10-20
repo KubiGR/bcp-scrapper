@@ -85,7 +85,13 @@ function PlayersTable({ rows }: { rows: RankedPlayerRow[] }) {
             <SortableTh column="elo" sort={sort} onSort={toggle} ta="right">
               Elo
             </SortableTh>
-            <SortableTh column="wh40kElo" sort={sort} onSort={toggle} ta="right">
+            <SortableTh
+              column="wh40kElo"
+              sort={sort}
+              onSort={toggle}
+              ta="right"
+              style={{ whiteSpace: 'nowrap' }}
+            >
               wh40k-elo
             </SortableTh>
             <SortableTh column="results" sort={sort} onSort={toggle} ta="right">
