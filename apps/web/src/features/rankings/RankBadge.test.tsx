@@ -11,15 +11,19 @@ describe('RankBadge', () => {
     expect(badge).toHaveAttribute('href', '/players/US-ADA');
   });
 
-  it('crowns the top 10, and stars the rest of the top 50 and top 100', async () => {
+  it('crowns the top 10, stars the rest of the top 50 and 100, and marks the top 999', async () => {
     stubFetchRoutes({
-      'GET /api/rankings/top': { ranks: { 'US-ADA': 8, 'US-BEN': 30, 'US-CAL': 77 } },
+      'GET /api/rankings/top': {
+        ranks: { 'US-ADA': 8, 'US-BEN': 30, 'US-CAL': 77, 'US-DEE': 101, 'US-EVE': 999 },
+      },
     });
     renderWithRouter(
       <>
         <RankBadge userId="US-ADA" />
         <RankBadge userId="US-BEN" />
         <RankBadge userId="US-CAL" />
+        <RankBadge userId="US-DEE" />
+        <RankBadge userId="US-EVE" />
       </>,
     );
     const tier = async (name: string) =>
@@ -29,6 +33,8 @@ describe('RankBadge', () => {
     expect(await tier('Ranked #8, top 10')).toBe('crown');
     expect(await tier('Ranked #30, top 50')).toBe('silver');
     expect(await tier('Ranked #77, top 100')).toBe('bronze');
+    expect(await tier('Ranked #101, top 999')).toBe('ranked');
+    expect(await tier('Ranked #999, top 999')).toBe('ranked');
   });
 
   it('shows nothing for other players, or without an account', async () => {

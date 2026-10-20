@@ -592,7 +592,7 @@ export const TopRanksSchema = z.object({
 });
 export type TopRanks = z.infer<typeof TopRanksSchema>;
 /** How many top players get a rank badge. */
-export const TOP_RANKS = 100;
+export const TOP_RANKS = 999;
 
 export const PlayerHistoryEntrySchema = z.object({
   /** The player's entry in that event (for its list). */

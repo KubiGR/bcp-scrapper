@@ -3,14 +3,19 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import classes from './RankBadge.module.css';
 import { topRanksQuery } from './rankings-queries';
+import { TOP_RANKS } from '@bcp/shared';
 
-type Tier = 'crown' | 'silver' | 'bronze';
+type Tier = 'crown' | 'silver' | 'bronze' | 'ranked';
 
-/** The top 10 wear a crown; the rest of the top 50 a silver star, of the top 100 a bronze one. */
+/**
+ * The top 10 wear a crown; the rest of the top 50 a silver star, of the top 100 a bronze one; the
+ * rest of the top 999 a plain rank.
+ */
 function tierOf(rank: number): { tier: Tier; top: number } {
   if (rank <= 10) return { tier: 'crown', top: 10 };
   if (rank <= 50) return { tier: 'silver', top: 50 };
-  return { tier: 'bronze', top: 100 };
+  if (rank <= 100) return { tier: 'bronze', top: 100 };
+  return { tier: 'ranked', top: TOP_RANKS };
 }
 
 const ICON = {
@@ -43,7 +48,7 @@ const stop = (e: MouseEvent) => {
 };
 
 /**
- * Beside a player's name: "♛ #8" for a top-100 player and "Elo 1888" for one wh40k-elo rates,
+ * Beside a player's name: "♛ #8" for a top-999 player and "Elo 1888" for one wh40k-elo rates,
  * each linking to their page; nothing for anyone else.
  */
 export function RankBadge({ userId }: { userId: string | null }) {
@@ -80,7 +85,7 @@ function TopRank({ userId, rank }: { userId: string; rank: number }) {
       onClick={stop}
     >
       <span className={classes.badge} data-tier={tier}>
-        {tier === 'crown' ? <Crown /> : <Star />}#{rank}
+        {tier === 'crown' ? <Crown /> : tier === 'ranked' ? null : <Star />}#{rank}
       </span>
     </Link>
   );
