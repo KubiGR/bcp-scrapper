@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { events, players, teams } from '../db/schema';
+import { events, players, teams, wh40kElo } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { syncEvent } from '../sync/jobs';
 import { ALL_EVENTS, sampleSource } from '../test/helpers';
@@ -48,6 +48,46 @@ describe('loadRankings', () => {
   });
 });
 
+describe('field strength', () => {
+  const rate = (userIds: string[], elo: number) =>
+    db.insert(wh40kElo).values(
+      userIds.map((userId) => ({
+        userId,
+        name: userId,
+        elo,
+        games: 50,
+        wins: 25,
+        losses: 25,
+        draws: 0,
+        importedAt: TODAY,
+      })),
+    );
+  const ALL = ['US-ADA', 'US-BEN', 'US-CARA', 'US-DAN', 'US-EVE', 'US-FINN', 'US-GIA', 'US-HAL'];
+
+  it('weighs each event by its rated players’ average wh40k-elo', async () => {
+    // Average 1650: ×1.5 (8 players, team 1st: 28.28 → 42.43).
+    await rate(ALL.slice(0, 4), 1600);
+    await rate(ALL.slice(4), 1700);
+    const ranked = await loadRankings(db, ALL_EVENTS, TODAY);
+    expect(ranked[0]?.points).toBeCloseTo(42.43, 1);
+    expect(ranked[0]?.best.fieldElo).toBe(1650);
+  });
+
+  it('leaves an event at ×1 when under half its players are rated', async () => {
+    await rate(ALL.slice(0, 3), 1700);
+    const ranked = await loadRankings(db, ALL_EVENTS, TODAY);
+    expect(ranked[0]?.points).toBeCloseTo(28.28, 1);
+    expect(ranked[0]?.best.fieldElo).toBeNull();
+  });
+
+  it('shows each event’s field strength in a player’s history', async () => {
+    await rate(ALL, 1500);
+    const ranked = await loadRankings(db, ALL_EVENTS, TODAY);
+    const ada = await playerRanking(db, ranked, 'US-ADA');
+    expect(ada?.history[0]?.fieldElo).toBe(1500);
+  });
+});
+
 describe('rankingsPage', () => {
   it('searches names as plain text, filters by faction and pages, keeping ranks', async () => {
     const ranked = await loadRankings(db, ALL_EVENTS, TODAY);
@@ -64,6 +104,54 @@ describe('rankingsPage', () => {
       const filtered = rankingsPage(ranked, { faction, offset: 0, limit: 100 });
       expect(filtered.players.every((p) => p.factions.includes(faction))).toBe(true);
     }
+  });
+
+  it('adds wh40k-elo’s rating, and sorts by it with unrated players last', async () => {
+    const ranked = await loadRankings(db, ALL_EVENTS, TODAY);
+    const elo = {
+      wh40k: new Map([
+        ['US-HAL', { elo: 1900.4, games: 80 }],
+        ['US-ADA', { elo: 1700, games: 40 }],
+      ]),
+    };
+    const byPoints = rankingsPage(ranked, { offset: 0, limit: 100 }, elo);
+    expect(byPoints.players.find((p) => p.userId === 'US-HAL')?.wh40kElo).toEqual({
+      elo: 1900,
+      games: 80,
+    });
+    expect(byPoints.players.find((p) => p.userId === 'US-BEN')?.wh40kElo).toBeNull();
+    const byElo = rankingsPage(ranked, { offset: 0, limit: 100, sort: 'wh40kElo' }, elo);
+    expect(byElo.players.slice(0, 2).map((p) => p.userId)).toEqual(['US-HAL', 'US-ADA']);
+    expect(byElo.players).toHaveLength(8);
+    // Ranks stay the points ranks.
+    expect(byElo.players[0]?.rank).toBe(ranked.find((p) => p.userId === 'US-HAL')?.rank);
+  });
+
+  it('scores Overall from 60% wh40k-elo and 40% points percentiles, points alone when unrated', async () => {
+    const ranked = await loadRankings(db, ALL_EVENTS, TODAY);
+    // Rated: the top two by points, Elo reversed; the rest unrated.
+    const [first, second] = ranked;
+    if (first === undefined || second === undefined) throw new Error('need two');
+    const elo = {
+      wh40k: new Map([
+        [first.userId, { elo: 1500, games: 10 }],
+        [second.userId, { elo: 1900, games: 10 }],
+      ]),
+    };
+    const page = rankingsPage(ranked, { offset: 0, limit: 100, sort: 'overall' }, elo);
+    const overall = (userId: string) => page.players.find((p) => p.userId === userId)?.overall;
+    const n = ranked.length;
+    const pointsPct = (rank: number) => (100 * (n - rank)) / (n - 1);
+    // Second by points, first by Elo: 0.6 × 100 + 0.4 × points percentile.
+    expect(overall(second.userId)).toBeCloseTo(60 + 0.4 * pointsPct(second.rank), 6);
+    expect(overall(first.userId)).toBeCloseTo(0 + 0.4 * 100, 6);
+    const last = ranked.at(-1);
+    expect(overall(last?.userId ?? '')).toBeCloseTo(0, 6);
+    expect(page.players[0]?.userId).toBe(second.userId);
+    // Ranked by Overall too: 1 for the best score.
+    expect(page.players.map((p) => p.overallRank).slice(0, 2)).toEqual([1, 2]);
+    // Without the sort, Overall is still given.
+    expect(rankingsPage(ranked, { offset: 0, limit: 1 }, elo).players[0]?.overall).toBeCloseTo(40);
   });
 
   it('gives the top ranks by account', async () => {
@@ -84,6 +172,11 @@ describe('playerRanking', () => {
     expect(ada?.history.every((h) => h.counts && h.score !== null)).toBe(true);
     expect(ada?.rank).toBe(ranked.findIndex((p) => p.userId === 'US-ADA') + 1);
     expect(ada?.dropsOn).toBe('2027-03-28');
+    expect(ada?.wh40kElo).toBeNull();
+    const rated = await playerRanking(db, ranked, 'US-ADA', {
+      wh40k: new Map([['US-ADA', { elo: 1700, games: 40 }]]),
+    });
+    expect(rated?.wh40kElo).toEqual({ elo: 1700, games: 40 });
   });
 
   it('answers a player without counted results with rank null', async () => {

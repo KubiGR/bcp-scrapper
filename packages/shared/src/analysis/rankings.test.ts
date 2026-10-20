@@ -4,6 +4,7 @@ import {
   eventScore,
   placingScore,
   sizeFactor,
+  strengthFactor,
   type RankingResult,
 } from './rankings';
 
@@ -44,6 +45,37 @@ describe('scoring', () => {
     expect(eventScore({ placing: 1, field: 100, players: 100 })).toBe(100);
     expect(eventScore({ placing: 1, field: 20, players: 20 })).toBeCloseTo(44.72, 1);
     expect(eventScore({ placing: 1, field: 400, players: 400 })).toBe(200);
+  });
+});
+
+describe('field strength', () => {
+  it('weighs a field by its average wh40k-elo: ×1 at 1550, +50% per 100 above, within 0.75–1.5', () => {
+    expect(strengthFactor(1550)).toBe(1);
+    expect(strengthFactor(1650)).toBe(1.5);
+    expect(strengthFactor(1600)).toBe(1.25);
+    expect(strengthFactor(1500)).toBe(0.75);
+    expect(strengthFactor(1747)).toBe(1.5);
+    expect(strengthFactor(1400)).toBe(0.75);
+    // Unknown (too few rated players): neutral.
+    expect(strengthFactor(null)).toBe(1);
+    expect(strengthFactor(undefined)).toBe(1);
+  });
+
+  it('multiplies an event’s score by its field’s strength', () => {
+    expect(eventScore({ placing: 1, field: 100, players: 100, fieldElo: 1600 })).toBe(125);
+    expect(eventScore({ placing: 1, field: 100, players: 100, fieldElo: null })).toBe(100);
+  });
+
+  it('ranks a win at a strong event above the same win at a weak one', () => {
+    const ranked = computeRankings(
+      [
+        result({ userId: 'A-WEAK', eventId: 'E1', fieldElo: 1480 }),
+        result({ userId: 'STRONG', eventId: 'E2', fieldElo: 1640 }),
+      ],
+      TODAY,
+    );
+    expect(ranked.map((p) => p.userId)).toEqual(['STRONG', 'A-WEAK']);
+    expect(ranked[0]?.best.fieldElo).toBe(1640);
   });
 });
 

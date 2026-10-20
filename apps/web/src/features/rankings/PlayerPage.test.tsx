@@ -1,5 +1,5 @@
 import type { PlayerHistoryEntry, PlayerRanking } from '@bcp/shared';
-import { screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { formatIsoDay } from '../../lib/format';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
@@ -19,6 +19,7 @@ const entry = (overrides: Partial<PlayerHistoryEntry> = {}): PlayerHistoryEntry 
   hasList: true,
   score: 98,
   counts: true,
+  fieldElo: 1617,
   ...overrides,
 });
 
@@ -29,6 +30,7 @@ const ranking = (overrides: Partial<PlayerRanking> = {}): PlayerRanking => ({
   ranked: 3456,
   points: 412.34,
   dropsOn: '2027-03-28',
+  wh40kElo: null,
   history: [
     entry(),
     entry({
@@ -43,10 +45,15 @@ const ranking = (overrides: Partial<PlayerRanking> = {}): PlayerRanking => ({
       hasList: false,
       score: null,
       counts: false,
+      fieldElo: null,
     }),
   ],
   ...overrides,
 });
+
+/** A line by its whole text, links inside included. */
+const line = (text: string) => (_: string, el: Element | null) =>
+  el?.tagName === 'P' && el.textContent === text;
 
 describe('PlayerPage', () => {
   it('shows the player’s rank, points and when a result drops out', async () => {
@@ -57,6 +64,24 @@ describe('PlayerPage', () => {
     expect(
       screen.getByText(`Oldest counted result drops out on ${formatIsoDay('2027-03-28')}`),
     ).toBeInTheDocument();
+  });
+
+  it('shows wh40k-elo’s rating with its games, linking the site', async () => {
+    stubFetchRoutes({
+      'GET /api/rankings/US-ADA': ranking({ wh40kElo: { elo: 1888, games: 1 } }),
+    });
+    renderWithRouter(<PlayerPage userId="US-ADA" />);
+    expect(await screen.findByText(line('wh40k-elo 1888 (1 game)'))).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'wh40k-elo' })).toHaveAttribute(
+      'href',
+      'https://wh40k-elo.duckdns.org/',
+    );
+  });
+
+  it('says when wh40k-elo doesn’t rate a player', async () => {
+    stubFetchRoutes({ 'GET /api/rankings/US-ADA': ranking() });
+    renderWithRouter(<PlayerPage userId="US-ADA" />);
+    expect(await screen.findByText(line('wh40k-elo –'))).toBeInTheDocument();
   });
 
   it('lists every event, marking the counted ones and linking lists', async () => {
@@ -74,6 +99,11 @@ describe('PlayerPage', () => {
     );
     expect(first.getByText('1st of 96')).toBeInTheDocument();
     expect(first.getByText('98.0')).toBeInTheDocument();
+    // The field's strength, and how much it weighs the score.
+    fireEvent.mouseEnter(first.getByText('1617'));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'Average wh40k-elo of the field · score ×1.33',
+    );
     expect(first.getByLabelText('Counts')).toBeInTheDocument();
     expect(first.getByRole('link', { name: 'List' })).toHaveAttribute(
       'href',
@@ -82,6 +112,9 @@ describe('PlayerPage', () => {
     expect(other).toHaveAttribute('data-counted', 'false');
     expect(within(other).getByText('2nd of 20 teams')).toBeInTheDocument();
     expect(within(other).queryByRole('link', { name: 'List' })).not.toBeInTheDocument();
+    expect(
+      within(other).getByLabelText('Field: too few rated players to tell · score ×1'),
+    ).toHaveTextContent('–');
   });
 
   it('marks an event that started in the last week with a leaf', async () => {

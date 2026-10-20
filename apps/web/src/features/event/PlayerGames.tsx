@@ -5,6 +5,8 @@ import { roundsQuery } from '../analysis/analysis-queries';
 import { formatPoints, outcomeLabel } from '../analysis/format';
 import classes from './PlayerGames.module.css';
 import { playerGames } from './player-games';
+import { PlayerName } from '../rankings/PlayerName';
+import { RankBadge } from '../rankings/RankBadge';
 
 /**
  * A player's games in the event, round by round: result, score, the opponent's army, and who went
@@ -49,7 +51,10 @@ export function PlayerGames({
               <Table.Td>
                 {game.opponent ? (
                   <>
-                    <Text size="sm">{game.opponent.name}</Text>
+                    <Text size="sm">
+                      <PlayerName name={game.opponent.name} userId={game.opponent.userId} />
+                      <RankBadge userId={game.opponent.userId ?? null} />
+                    </Text>
                     <Text size="xs" c="dimmed">
                       <PlayerLine
                         {...game.opponent}

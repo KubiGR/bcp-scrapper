@@ -12,13 +12,27 @@ import {
   type RankingResult,
   type RankingsQuery,
   type RankingsResponse,
+  type EloFigure,
   type TopRanks,
 } from '@bcp/shared';
 import { and, eq, gt, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { armyRules } from './detachment-links';
-import { armyLists, events, players, teams } from '../db/schema';
+import { armyLists, events, players, teams, wh40kElo } from '../db/schema';
 import { storedCurrentList } from './lists';
+import type { Wh40kEloRating } from './wh40k-elo';
+
+/** wh40k-elo's ratings by BCP account. */
+export interface EloSources {
+  wh40k: Map<string, Wh40kEloRating>;
+}
+const NO_ELO: EloSources = { wh40k: new Map() };
+
+const figure = (rating: { elo: number; games: number } | undefined): EloFigure | null =>
+  rating === undefined ? null : { elo: Math.round(rating.elo), games: rating.games };
+const eloOf = (sources: EloSources, userId: string) => ({
+  wh40kElo: figure(sources.wh40k.get(userId)),
+});
 
 const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
@@ -60,6 +74,35 @@ async function fields(db: Db, ids: string[]) {
   };
 }
 
+/** At least this share of an event's players must be rated for its field strength to count. */
+const RATED_SHARE = 0.5;
+
+/** Each event's field strength: its rated players' average wh40k-elo, when enough are rated. */
+async function fieldElos(db: Db, ids: string[]): Promise<Map<string, number>> {
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .select({
+      eventId: players.eventId,
+      average: sql<number | null>`avg(${wh40kElo.elo})::float`,
+      rated: sql<number>`count(${wh40kElo.elo})::int`,
+      all: sql<number>`count(*)::int`,
+    })
+    .from(players)
+    .leftJoin(wh40kElo, eq(wh40kElo.userId, players.bcpUserId))
+    .where(inArray(players.eventId, ids))
+    .groupBy(players.eventId);
+  return new Map(
+    rows.flatMap((row) =>
+      row.average !== null && row.rated >= row.all * RATED_SHARE
+        ? [[row.eventId, row.average] as const]
+        : [],
+    ),
+  );
+}
+
+const roundedElo = (elo: number | null | undefined) =>
+  elo === null || elo === undefined ? null : Math.round(elo);
+
 const resultColumns = {
   playerId: players.id,
   userId: players.bcpUserId,
@@ -85,7 +128,7 @@ export async function loadRankings(
   if (counted.length === 0) return [];
   const ids = counted.map((event) => event.id);
   const byId = new Map(counted.map((event) => [event.id, event]));
-  const [rows, field] = await Promise.all([
+  const [rows, field, strength] = await Promise.all([
     db
       .select(resultColumns)
       .from(players)
@@ -93,6 +136,7 @@ export async function loadRankings(
       .leftJoin(armyLists, storedCurrentList)
       .where(and(inArray(players.eventId, ids), isNotNull(players.bcpUserId))),
     fields(db, ids),
+    fieldElos(db, ids),
   ]);
   const results: RankingResult[] = rows.flatMap((row) => {
     const event = byId.get(row.eventId);
@@ -112,6 +156,7 @@ export async function loadRankings(
         placing,
         field: n,
         players: event.playerCount,
+        fieldElo: strength.get(event.id) ?? null,
         faction: rules.army(row.faction, row.parsedArmy, row.detachments ?? []).faction,
       },
     ];
@@ -131,11 +176,55 @@ const withoutScores = ({ scores: _scores, best, ...player }: RankedPlayer) => ({
     field: best.field,
     score: best.score,
     counts: best.counts,
+    fieldElo: roundedElo(best.fieldElo),
   },
 });
 
-/** A page of the ranking, filtered by name (plain, case-insensitive) and faction. */
-export function rankingsPage(ranked: RankedPlayer[], query: RankingsQuery): RankingsResponse {
+/** Overall's weight on the wh40k-elo percentile; the rest is the points percentile. */
+export const OVERALL_ELO_WEIGHT = 0.6;
+
+/** 100 for the first of `n`, 0 for the last, evenly between; 100 when alone. */
+const percentile = (index: number, n: number) => (n <= 1 ? 100 : (100 * (n - 1 - index)) / (n - 1));
+
+/**
+ * Each ranked player's Overall (0–100): 60% their wh40k-elo percentile among the rated ranked
+ * players, 40% their points percentile among all ranked; the points percentile alone when unrated.
+ */
+function overallScores(ranked: RankedPlayer[], sources: EloSources): Map<string, number> {
+  const rated = ranked
+    .flatMap((player) => {
+      const rating = sources.wh40k.get(player.userId);
+      return rating === undefined ? [] : [{ userId: player.userId, elo: rating.elo }];
+    })
+    .sort((a, b) => b.elo - a.elo);
+  // Tied ratings share the better place.
+  const eloPercentile = new Map<string, number>();
+  let place = 0;
+  rated.forEach((entry, index) => {
+    if (index > 0 && entry.elo !== rated[index - 1]?.elo) place = index;
+    eloPercentile.set(entry.userId, percentile(place, rated.length));
+  });
+  return new Map(
+    ranked.map((player, index) => {
+      const points = percentile(index, ranked.length);
+      const elo = eloPercentile.get(player.userId);
+      return [
+        player.userId,
+        elo === undefined ? points : OVERALL_ELO_WEIGHT * elo + (1 - OVERALL_ELO_WEIGHT) * points,
+      ];
+    }),
+  );
+}
+
+/**
+ * A page of the ranking, filtered by name (plain, case-insensitive) and faction, with wh40k-elo's
+ * ratings; sorted by points (rank) or by that rating, unrated players last.
+ */
+export function rankingsPage(
+  ranked: RankedPlayer[],
+  query: RankingsQuery,
+  sources: EloSources = NO_ELO,
+): RankingsResponse {
   const search = query.search?.toLowerCase() ?? '';
   const matching = ranked.filter(
     (player) =>
@@ -143,8 +232,32 @@ export function rankingsPage(ranked: RankedPlayer[], query: RankingsQuery): Rank
       (query.faction === undefined ||
         player.scores.some((score) => score.faction === query.faction)),
   );
+  const overall = overallScores(ranked, sources);
+  // Places by Overall among all ranked; ties go to the better points rank.
+  const overallRank = new Map(
+    ranked
+      .map((player) => ({
+        userId: player.userId,
+        score: overall.get(player.userId) ?? 0,
+        rank: player.rank,
+      }))
+      .sort((a, b) => b.score - a.score || a.rank - b.rank)
+      .map((entry, index) => [entry.userId, index + 1]),
+  );
+  const rows = matching.map((player) => ({
+    ...withoutScores(player),
+    ...eloOf(sources, player.userId),
+    overall: overall.get(player.userId) ?? 0,
+    overallRank: overallRank.get(player.userId) ?? ranked.length,
+  }));
+  const sort = query.sort ?? 'points';
+  if (sort !== 'points') {
+    const value = (row: (typeof rows)[number]) =>
+      sort === 'overall' ? -row.overallRank : (row.wh40kElo?.elo ?? -Infinity);
+    rows.sort((a, b) => value(b) - value(a) || a.rank - b.rank);
+  }
   return {
-    players: matching.slice(query.offset, query.offset + query.limit).map(withoutScores),
+    players: rows.slice(query.offset, query.offset + query.limit),
     total: matching.length,
     ranked: ranked.length,
     factionOptions: [
@@ -153,7 +266,7 @@ export function rankingsPage(ranked: RankedPlayer[], query: RankingsQuery): Rank
   };
 }
 
-export function topRanks(ranked: RankedPlayer[]): TopRanks {
+export function topRanks(ranked: RankedPlayer[]): Pick<TopRanks, 'ranks'> {
   return {
     ranks: Object.fromEntries(ranked.slice(0, TOP_RANKS).map((p) => [p.userId, p.rank])),
   };
@@ -164,6 +277,7 @@ export async function playerRanking(
   db: Db,
   ranked: RankedPlayer[],
   userId: string,
+  sources: EloSources = NO_ELO,
 ): Promise<PlayerRanking | null> {
   const rules = await armyRules(db);
   const rows = await db
@@ -180,7 +294,8 @@ export async function playerRanking(
     .where(eq(players.bcpUserId, userId))
     .orderBy(sql`${events.startDate} desc`);
   if (rows.length === 0) return null;
-  const field = await fields(db, [...new Set(rows.map((row) => row.eventId))]);
+  const eventIds = [...new Set(rows.map((row) => row.eventId))];
+  const [field, strength] = await Promise.all([fields(db, eventIds), fieldElos(db, eventIds)]);
   const own = ranked.find((player) => player.userId === userId);
   const scores = new Map(own?.scores.map((score) => [score.eventId, score]));
   const counting = own?.scores.filter((score) => score.counts) ?? [];
@@ -192,6 +307,7 @@ export async function playerRanking(
     ranked: ranked.length,
     points: own?.points ?? 0,
     dropsOn: oldest === undefined ? null : addDays(oldest, RANKING_DAYS),
+    ...eloOf(sources, userId),
     history: rows.map((row) => {
       const score = scores.get(row.eventId);
       const placing = row.isTeamEvent ? row.teamPlacing : row.playerPlacing;
@@ -210,6 +326,7 @@ export async function playerRanking(
         hasList: row.storedListId !== null,
         score: score?.score ?? null,
         counts: score?.counts ?? false,
+        fieldElo: roundedElo(strength.get(row.eventId)),
       };
     }),
   };

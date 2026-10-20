@@ -1,37 +1,38 @@
 import type { ListStatus } from '@bcp/shared';
 import { Badge, Text, Tooltip } from '@mantine/core';
 
+/** Badges keep their whole label (miw): a narrow table column would cut it to "Fetc…". */
 export function ListStatusBadge({ status, error }: { status: ListStatus; error?: string | null }) {
   switch (status) {
     case 'fetched':
       return (
-        <Badge size="sm" variant="light">
+        <Badge size="sm" miw="max-content" variant="light">
           Fetched
         </Badge>
       );
     case 'queued':
       return (
-        <Badge size="sm" variant="outline">
+        <Badge size="sm" miw="max-content" variant="outline">
           Queued
         </Badge>
       );
     case 'fetching':
       return (
-        <Badge size="sm" variant="outline">
+        <Badge size="sm" miw="max-content" variant="outline">
           Fetching
         </Badge>
       );
     case 'failed':
       return (
         <Tooltip label={error ?? 'Failed'} withArrow>
-          <Badge size="sm" variant="outline" color="red" tabIndex={0}>
+          <Badge size="sm" miw="max-content" variant="outline" color="red" tabIndex={0}>
             Failed
           </Badge>
         </Tooltip>
       );
     case 'available':
       return (
-        <Badge size="sm" variant="outline" color="gray">
+        <Badge size="sm" miw="max-content" variant="outline" color="gray">
           Not fetched
         </Badge>
       );

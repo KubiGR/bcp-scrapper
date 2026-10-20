@@ -22,6 +22,8 @@ import { SyncRunner } from './sync/runner';
 import { adminWork, newUserMail } from './notify/admin-mail';
 import { sendDigestIfDue } from './notify/digest';
 import { smtpMailer } from './notify/mailer';
+import { importWh40kElo, wh40kEloDue } from './repo/wh40k-elo';
+import { httpWh40kEloClient } from './wh40k-elo/client';
 
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL, config.NODE_ENV === 'development');
@@ -116,6 +118,31 @@ const syncRulesIfDue = async () => {
 void syncRulesIfDue();
 const rulesTimer = setInterval(() => void syncRulesIfDue(), 60 * 60 * 1000);
 
+// wh40k-elo's ratings: checked hourly, imported again once a day (a page every 2 seconds).
+const wh40kElo = config.WH40K_ELO_ENABLED ? httpWh40kEloClient() : undefined;
+let wh40kEloImporting = false;
+const importWh40kEloIfDue = async () => {
+  if (wh40kElo === undefined || wh40kEloImporting) return;
+  wh40kEloImporting = true;
+  try {
+    if (await wh40kEloDue(database.db, new Date())) {
+      const players = await importWh40kElo(
+        database.db,
+        wh40kElo,
+        new Date(),
+        () => new Promise((resolve) => setTimeout(resolve, 2000)),
+      );
+      logger.info({ players }, 'Imported wh40k-elo’s ratings');
+    }
+  } catch (error) {
+    logger.warn({ err: error }, 'Could not import wh40k-elo’s ratings; will try again');
+  } finally {
+    wh40kEloImporting = false;
+  }
+};
+void importWh40kEloIfDue();
+const wh40kEloTimer = setInterval(() => void importWh40kEloIfDue(), 60 * 60 * 1000);
+
 // Email to the admins: someone new waiting for approval, and the day's to-do.
 const mail = mailSettingsOf(config);
 const mailer = mail === null ? null : smtpMailer(mail.smtp, logger.child({ module: 'email' }));
@@ -184,6 +211,7 @@ async function shutdown(signal: string): Promise<void> {
   clearInterval(bsdataTimer);
   clearInterval(rulesTimer);
   clearInterval(digestTimer);
+  clearInterval(wh40kEloTimer);
   await autoFetch?.stop();
   // Let a list fetch in flight finish writing before the database closes.
   await fetchQueue.stop();

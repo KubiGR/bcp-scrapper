@@ -62,6 +62,7 @@ Your address is now e.g. `bcp.example.com`.
    | `ADMIN_PASSWORD`    | A password of 12+ characters, used once to create your admin account |
 
    Optional: `APP_PORT` (default 3080), `MIN_EVENT_ROUNDS`, `MIN_EVENT_PLAYERS`,
+   `WH40K_ELO_ENABLED` (default true: wh40k-elo's ratings imported daily),
    `FETCH_QUEUE_INTERVAL_MS`, `LOG_LEVEL`; `TUNNEL_TOKEN` and `COMPOSE_PROFILES=tunnel` only for
    the stack's own tunnel (step 2).
 

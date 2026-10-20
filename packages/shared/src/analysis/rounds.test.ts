@@ -38,6 +38,7 @@ const input: EventAnalysisInput = {
       faction: 'Adepta Sororitas',
       teamId: 'RED',
       disposition: 'Take and Hold',
+      userId: 'US-RHEA',
     },
     { id: 'B1', name: 'Bea Moss', faction: 'Necrons', teamId: 'BLUE', disposition: null },
     { id: 'J1', name: 'Jon Reed', faction: "T'au Empire", teamId: 'JADE', disposition: null },
@@ -85,7 +86,10 @@ describe('buildRounds', () => {
       teamId: null,
       disposition: null,
       detachments: [],
+      userId: null,
     });
+    // Each player carries their BCP account, for their badges.
+    expect(singles.rounds[0]?.games[0]?.playerA.userId).toBe('US-RHEA');
   });
 
   it('says when BCP served matchups but no games', () => {

@@ -1,5 +1,5 @@
-import type { PlayerHistoryEntry } from '@bcp/shared';
-import { Skeleton, Stack, Table, Text, Title } from '@mantine/core';
+import { strengthFactor, type EloFigure, type PlayerHistoryEntry } from '@bcp/shared';
+import { Anchor, Skeleton, Stack, Table, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '../../api/client';
 import { AnchorLink } from '../../components/AnchorLink';
@@ -9,6 +9,28 @@ import { Panel } from '../../components/Panel';
 import { formatIsoDay, ordinal } from '../../lib/format';
 import { playerRankingQuery } from './rankings-queries';
 import { FactionIcon } from '../../components/FactionIcon';
+import { HoverHint } from '../../components/HoverHint';
+
+/** wh40k-elo's site (it has no page per player). */
+const WH40K_ELO_SITE = 'https://wh40k-elo.duckdns.org/';
+
+/** "1612 (23 games)", or "–" when unrated. */
+const eloText = (figure: EloFigure | null) =>
+  figure === null
+    ? '–'
+    : `${String(figure.elo)} (${String(figure.games)} ${figure.games === 1 ? 'game' : 'games'})`;
+
+/** The field's average wh40k-elo, and how much it weighs the score, on hover. */
+function FieldStrength({ fieldElo }: { fieldElo: number | null }) {
+  const factor = `score ×${String(Number(strengthFactor(fieldElo).toFixed(2)))}`;
+  const what =
+    fieldElo === null ? 'Too few rated players to tell' : 'Average wh40k-elo of the field';
+  return (
+    <HoverHint hint={`${what} · ${factor}`} label={`Field: ${what.toLowerCase()} · ${factor}`}>
+      {fieldElo ?? '–'}
+    </HoverHint>
+  );
+}
 
 /** "3rd of 64"; team events "2nd of 20 teams"; "–" without a placing. */
 const placingText = (entry: PlayerHistoryEntry) =>
@@ -50,6 +72,11 @@ function HistoryRow({ entry }: { entry: PlayerHistoryEntry }) {
       <Table.Td>
         <Text size="sm" c={dim} className="numeric">
           {placingText(entry)}
+        </Text>
+      </Table.Td>
+      <Table.Td ta="right">
+        <Text size="sm" c={dim} className="numeric">
+          <FieldStrength fieldElo={entry.fieldElo} />
         </Text>
       </Table.Td>
       <Table.Td ta="right">
@@ -100,6 +127,12 @@ export function PlayerPage({ userId }: { userId: string }) {
             ? 'Not ranked: no counted results in the last 12 months.'
             : `#${String(data.rank)} of ${data.ranked.toLocaleString('en-GB')} · ${data.points.toFixed(1)} points`}
         </Text>
+        <Text size="sm" className="numeric">
+          <Anchor href={WH40K_ELO_SITE} target="_blank" rel="noreferrer" inherit>
+            wh40k-elo
+          </Anchor>{' '}
+          {eloText(data.wh40kElo)}
+        </Text>
         {data.dropsOn !== null && (
           <Text size="sm" c="dimmed">
             Oldest counted result drops out on {formatIsoDay(data.dropsOn)}
@@ -107,7 +140,7 @@ export function PlayerPage({ userId }: { userId: string }) {
         )}
       </Stack>
       <Panel title="History">
-        <Table.ScrollContainer minWidth={720}>
+        <Table.ScrollContainer minWidth={780}>
           <Table aria-label="History" striped>
             <Table.Thead>
               <Table.Tr>
@@ -115,6 +148,7 @@ export function PlayerPage({ userId }: { userId: string }) {
                 <Table.Th>Event</Table.Th>
                 <Table.Th>Army</Table.Th>
                 <Table.Th>Placing</Table.Th>
+                <Table.Th ta="right">Field</Table.Th>
                 <Table.Th ta="right">Score</Table.Th>
                 <Table.Th ta="center">Counts</Table.Th>
                 <Table.Th>List</Table.Th>

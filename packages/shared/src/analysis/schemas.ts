@@ -22,6 +22,8 @@ export const PlayerRefSchema = z.object({
   disposition: z.string().nullable(),
   /** From the player's fetched list; empty when not fetched or not readable. */
   detachments: z.array(z.string()),
+  /** Their BCP account, for their rank and Elo badges; null or absent when BCP hides it. */
+  userId: z.string().nullable().optional(),
 });
 export type PlayerRef = z.infer<typeof PlayerRefSchema>;
 

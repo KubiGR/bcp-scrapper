@@ -55,6 +55,7 @@ services:
       BCP_REFRESH_TOKEN: ${BCP_REFRESH_TOKEN:?set BCP_REFRESH_TOKEN}
       MIN_EVENT_ROUNDS: ${MIN_EVENT_ROUNDS:-4}
       MIN_EVENT_PLAYERS: ${MIN_EVENT_PLAYERS:-20}
+      WH40K_ELO_ENABLED: ${WH40K_ELO_ENABLED:-true}
       FETCH_QUEUE_INTERVAL_MS: ${FETCH_QUEUE_INTERVAL_MS:-5000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     # Published on the server's loopback only, for a cloudflared running directly on the server

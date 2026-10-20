@@ -17,6 +17,7 @@ export async function loadEventAnalysis(db: Db, eventId: string): Promise<EventA
       .select({
         id: players.id,
         name: players.name,
+        userId: players.bcpUserId,
         faction: players.faction,
         teamId: players.teamId,
         disposition: players.disposition,
@@ -62,6 +63,7 @@ export async function loadEventAnalysis(db: Db, eventId: string): Promise<EventA
     return {
       id: row.id,
       name: row.name,
+      userId: row.userId,
       ...army,
       teamId: row.teamId,
       disposition: row.disposition ?? knownDisposition(row.parsedDisposition),

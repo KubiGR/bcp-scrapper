@@ -3,6 +3,8 @@ import { Button, Group, Table, Text } from '@mantine/core';
 import { PlayerLine } from '../../components/PlayerLine';
 import { listPath, openHere } from '../../lib/open-link';
 import { formatPoints } from './format';
+import { PlayerName } from '../rankings/PlayerName';
+import { RankBadge } from '../rankings/RankBadge';
 
 interface GamesTableProps {
   games: GameView[];
@@ -57,7 +59,10 @@ export function GamesTable({ games, onShowList, eventId, knownPlayerIds }: Games
               <Table.Td>
                 <Group gap="xs" wrap="nowrap">
                   <div>
-                    <Text size="sm">{game.playerA.name}</Text>
+                    <Text size="sm">
+                      <PlayerName name={game.playerA.name} userId={game.playerA.userId} />
+                      <RankBadge userId={game.playerA.userId ?? null} />
+                    </Text>
                     <Text size="xs" c="dimmed">
                       <PlayerLine
                         {...game.playerA}
@@ -97,7 +102,10 @@ export function GamesTable({ games, onShowList, eventId, knownPlayerIds }: Games
                     return (
                       <Group gap="xs" wrap="nowrap">
                         <div>
-                          <Text size="sm">{playerB.name}</Text>
+                          <Text size="sm">
+                            <PlayerName name={playerB.name} userId={playerB.userId} />
+                            <RankBadge userId={playerB.userId ?? null} />
+                          </Text>
                           <Text size="xs" c="dimmed">
                             <PlayerLine
                               {...playerB}

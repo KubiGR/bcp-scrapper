@@ -409,3 +409,17 @@ export const rulesSnapshot = pgTable(
   },
   (t) => [check('rules_snapshot_single_row', sql`${t.id} = 1`)],
 );
+
+/** wh40k-elo.duckdns.org's player ratings, by BCP account: replaced whole by each daily import. */
+export const wh40kElo = pgTable('wh40k_elo', {
+  userId: text('user_id').primaryKey(),
+  name: text('name').notNull(),
+  elo: real('elo').notNull(),
+  peak: real('peak'),
+  games: integer('games').notNull(),
+  wins: integer('wins').notNull(),
+  losses: integer('losses').notNull(),
+  draws: integer('draws').notNull(),
+  lastActive: timestamptz('last_active'),
+  importedAt: timestamptz('imported_at').notNull(),
+});

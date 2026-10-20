@@ -81,6 +81,11 @@ describe('loadConfig', () => {
     expect(config.MIN_EVENT_PLAYERS).toBe(0);
   });
 
+  it('imports wh40k-elo’s ratings unless switched off', () => {
+    expect(loadConfig({}).WH40K_ELO_ENABLED).toBe(true);
+    expect(loadConfig({ WH40K_ELO_ENABLED: 'false' }).WH40K_ELO_ENABLED).toBe(false);
+  });
+
   it('allows loopback names plus the public hostname and extra hosts, lower-cased without ports', () => {
     const hosts = allowedHostsOf(
       loadConfig({

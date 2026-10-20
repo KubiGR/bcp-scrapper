@@ -21,8 +21,12 @@ const player = (overrides: Partial<RankedPlayerRow> = {}): RankedPlayerRow => ({
     field: 96,
     score: 98,
     counts: true,
+    fieldElo: null,
   },
   factions: ['Orks', 'Necrons'],
+  wh40kElo: null,
+  overall: 50,
+  overallRank: 1,
   ...overrides,
 });
 
@@ -64,6 +68,50 @@ describe('PlayersPage', () => {
     expect(row.getByText('1st of 96 · London GT')).toBeInTheDocument();
     expect(row.getByText('Orks, Necrons')).toBeInTheDocument();
     expect(within(ben).getByText('2nd of 20 teams · London GT')).toBeInTheDocument();
+  });
+
+  it('shows wh40k-elo’s rating beside the points, a dash when unrated', async () => {
+    stubFetchRoutes({
+      'GET /api/rankings': response([
+        player({ wh40kElo: { elo: 1888, games: 140 } }),
+        player({ rank: 2, userId: 'US-BEN', name: 'Ben Brass' }),
+      ]),
+    });
+    renderWithRouter(<PlayersPage search={{}} onSearchChange={vi.fn()} />);
+    const table = within(await screen.findByRole('table', { name: 'Players' }));
+    expect(table.getByRole('columnheader', { name: /wh40k-elo/ })).toBeInTheDocument();
+    const [ada, ben] = table.getAllByRole('row').slice(1);
+    if (ada === undefined || ben === undefined) throw new Error('missing rows');
+    fireEvent.mouseEnter(within(ada).getByText('1888'));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('140 games');
+    expect(within(ben).getAllByText('—')).toHaveLength(1);
+  });
+
+  it('shows Overall and orders by it through the API', async () => {
+    const fetchMock = stubFetchRoutes({
+      'GET /api/rankings': response([player({ overall: 96.54, overallRank: 7 })]),
+    });
+    const onSearchChange = vi.fn();
+    renderWithRouter(<PlayersPage search={{ order: 'overall' }} onSearchChange={onSearchChange} />);
+    const table = within(await screen.findByRole('table', { name: 'Players' }));
+    expect(table.getByRole('columnheader', { name: /Overall/ })).toBeInTheDocument();
+    fireEvent.mouseEnter(table.getByText('#7'));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Score 96.54 of 100');
+    expect(JSON.stringify(fetchMock.mock.calls)).toContain('sort=overall');
+    fireEvent.click(screen.getByRole('radio', { name: 'wh40k-elo' }));
+    expect(onSearchChange).toHaveBeenLastCalledWith({ order: 'wh40kElo' });
+  });
+
+  it('orders by wh40k-elo through the API, kept in the address', async () => {
+    const fetchMock = stubFetchRoutes({ 'GET /api/rankings': response([player()]) });
+    const onSearchChange = vi.fn();
+    renderWithRouter(
+      <PlayersPage search={{ order: 'wh40kElo' }} onSearchChange={onSearchChange} />,
+    );
+    await screen.findByRole('table', { name: 'Players' });
+    expect(JSON.stringify(fetchMock.mock.calls)).toContain('sort=wh40kElo');
+    fireEvent.click(screen.getByRole('radio', { name: 'Points' }));
+    expect(onSearchChange).toHaveBeenLastCalledWith({});
   });
 
   it('keeps the name search in the address', async () => {

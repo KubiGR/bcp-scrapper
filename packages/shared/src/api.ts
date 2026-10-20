@@ -182,6 +182,17 @@ export const EventPlayerSchema = z.object({
    * has no such list. NO_LIST is final: not counted as failed, not retried, not queued in bulk.
    */
   listErrorCode: z.string().nullable(),
+  /** How strong their opponents at this event were; absent before any of its games are stored. */
+  opponents: z
+    .object({
+      /** The opponents' average win rate at this event (a draw is half). */
+      winRate: z.number().nullable(),
+      /** The rated opponents' average wh40k-elo, rounded. */
+      elo: z.number().nullable(),
+      rated: z.number().int(),
+      games: z.number().int(),
+    })
+    .optional(),
 });
 export type EventPlayer = z.infer<typeof EventPlayerSchema>;
 
@@ -522,8 +533,17 @@ export const RankingsQuerySchema = z.object({
   faction: z.string().trim().min(1).max(100).optional(),
   offset: z.coerce.number().int().min(0).default(0),
   limit: z.coerce.number().int().min(1).max(500).default(100),
+  /**
+   * Points (the default), Overall (60% wh40k-elo, 40% points) or wh40k-elo's rating, best first;
+   * unrated players last by wh40k-elo.
+   */
+  sort: z.enum(['points', 'overall', 'wh40kElo']).optional(),
 });
 export type RankingsQuery = z.infer<typeof RankingsQuerySchema>;
+
+/** An Elo rating and the games it rests on. */
+export const EloFigureSchema = z.object({ elo: z.number(), games: z.number().int() });
+export type EloFigure = z.infer<typeof EloFigureSchema>;
 
 const RankedResultSchema = z.object({
   eventId: z.string(),
@@ -535,6 +555,8 @@ const RankedResultSchema = z.object({
   field: z.number().int(),
   score: z.number(),
   counts: z.boolean(),
+  /** The field's average wh40k-elo (rounded); null when too few players are rated. */
+  fieldElo: z.number().nullable(),
 });
 
 export const RankedPlayerSchema = z.object({
@@ -549,6 +571,15 @@ export const RankedPlayerSchema = z.object({
   best: RankedResultSchema,
   /** Most played first, at most 2. */
   factions: z.array(z.string()),
+  /** wh40k-elo's rating (all of BCP); null when it doesn't list them. */
+  wh40kElo: EloFigureSchema.nullable(),
+  /**
+   * 0–100: 60% their wh40k-elo percentile and 40% their points percentile among ranked players;
+   * their points percentile alone when unrated.
+   */
+  overall: z.number(),
+  /** Their place by Overall among all ranked players (1 = best). */
+  overallRank: z.number().int().positive(),
 });
 export type RankedPlayerRow = z.infer<typeof RankedPlayerSchema>;
 
@@ -563,11 +594,15 @@ export const RankingsResponseSchema = z.object({
 });
 export type RankingsResponse = z.infer<typeof RankingsResponseSchema>;
 
-/** Top-ranked players' ranks by account id, for rank badges. */
-export const TopRanksSchema = z.object({ ranks: z.record(z.string(), z.number().int()) });
+/** Top-ranked players' ranks, and every stored player's wh40k-elo, by account id, for badges. */
+export const TopRanksSchema = z.object({
+  ranks: z.record(z.string(), z.number().int()),
+  /** Rounded wh40k-elo of the players we store who have one. */
+  elo: z.record(z.string(), z.number().int()).default({}),
+});
 export type TopRanks = z.infer<typeof TopRanksSchema>;
 /** How many top players get a rank badge. */
-export const TOP_RANKS = 100;
+export const TOP_RANKS = 999;
 
 export const PlayerHistoryEntrySchema = z.object({
   /** The player's entry in that event (for its list). */
@@ -587,6 +622,8 @@ export const PlayerHistoryEntrySchema = z.object({
   /** Null when the event doesn't count (small, running, older than 12 months, no placing). */
   score: z.number().nullable(),
   counts: z.boolean(),
+  /** The field's average wh40k-elo (rounded); null when too few players are rated. */
+  fieldElo: z.number().nullable(),
 });
 export type PlayerHistoryEntry = z.infer<typeof PlayerHistoryEntrySchema>;
 
@@ -598,6 +635,7 @@ export const PlayerRankingSchema = z.object({
   points: z.number(),
   /** When the oldest counted result drops out of the 12 months (YYYY-MM-DD). */
   dropsOn: z.iso.date().nullable(),
+  wh40kElo: EloFigureSchema.nullable(),
   /** Newest first. */
   history: z.array(PlayerHistoryEntrySchema),
 });

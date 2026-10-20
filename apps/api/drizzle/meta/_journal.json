@@ -148,6 +148,13 @@
       "when": 1791929595511,
       "tag": "0020_user-last-seen",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792498995477,
+      "tag": "0021_wh40k-elo",
+      "breakpoints": true
     }
   ]
 }

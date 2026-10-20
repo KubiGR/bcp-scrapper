@@ -1,7 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { armyLists, players, teams } from '../db/schema';
+import { armyLists, games, players, teams, wh40kElo } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { sampleSource } from '../test/helpers';
 import { gwList, storeList } from '../test/lists';
@@ -90,6 +90,30 @@ describe('replaceEventTeams', () => {
 });
 
 describe('listEventPlayers', () => {
+  it('rates each player’s opponents at this event: their records here and their wh40k-elo', async () => {
+    await db.update(players).set({ wins: 2, losses: 0, draws: 0 }).where(eq(players.id, 'PL-BEN'));
+    await db.update(players).set({ wins: 0, losses: 2, draws: 0 }).where(eq(players.id, 'PL-CARA'));
+    await db.insert(games).values([
+      { id: 'G1', eventId: EVENT, round: 1, playerAId: 'PL-ADA', playerBId: 'PL-BEN', raw: {} },
+      { id: 'G2', eventId: EVENT, round: 2, playerAId: 'PL-CARA', playerBId: 'PL-ADA', raw: {} },
+    ]);
+    await db.insert(wh40kElo).values({
+      userId: 'US-BEN',
+      name: 'Ben',
+      elo: 1801.4,
+      games: 40,
+      wins: 30,
+      losses: 10,
+      draws: 0,
+      importedAt: new Date(),
+    });
+    const all = await listEventPlayers(db, EVENT);
+    const ada = all.find((p) => p.bcpId === 'PL-ADA');
+    expect(ada?.opponents).toEqual({ winRate: 0.5, elo: 1801, rated: 1, games: 2 });
+    // Without games at this event, nothing to tell.
+    expect(all.find((p) => p.bcpId === 'PL-HAL')?.opponents).toBeUndefined();
+  });
+
   it('lists each player’s team id and placing', async () => {
     const ada = (await listEventPlayers(db, EVENT)).find((p) => p.bcpId === 'PL-ADA');
     expect(ada).toMatchObject({ teamId: 'TM-ALPHA', teamName: 'Alpha Squad', teamPlacing: 2 });

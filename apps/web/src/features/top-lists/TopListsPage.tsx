@@ -34,6 +34,7 @@ import { formatRecord, lossLabel } from '../event/players-filter';
 import { FOUND_PLAYER_SORT, placingLine } from './player-sort';
 import classes from './TopListsPage.module.css';
 import { topListsQuery, topListsWindow, type TopListsSearch } from './top-lists-queries';
+import { PlayerName } from '../rankings/PlayerName';
 import { RankBadge } from '../rankings/RankBadge';
 import { UpdatePicker } from '../updates/UpdatePicker';
 import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
@@ -211,7 +212,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                         >
                           <Table.Td>
                             <Text size="sm">
-                              {player.name}
+                              <PlayerName name={player.name} userId={player.bcpUserId} />
                               <RankBadge userId={player.bcpUserId} />
                             </Text>
                             {placingLine(player) !== null && (

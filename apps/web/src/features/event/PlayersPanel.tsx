@@ -31,7 +31,6 @@ import { FetchListsMenu } from './FetchListsMenu';
 import { listPath, openHere } from '../../lib/open-link';
 import { ListDrawer } from './ListDrawer';
 import { ListStatusBadge } from './ListStatusBadge';
-import classes from './PlayersPanel.module.css';
 import {
   detachmentsOf,
   dispositionsOf,
@@ -44,7 +43,9 @@ import {
   missingListCountFor,
 } from './players-filter';
 import { useQueueLists } from './use-queue-lists';
+import { PlayerName } from '../rankings/PlayerName';
 import { RankBadge } from '../rankings/RankBadge';
+import { HoverHint } from '../../components/HoverHint';
 import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
 
 function emptyText(loadingFromBcp: boolean, playerCount: number): string {
@@ -81,6 +82,38 @@ function PhoneLine({ player, showTeam }: { player: EventPlayer; showTeam: boolea
   );
 }
 
+type Draw = 'tough-1' | 'tough-2' | 'tough-3' | 'easy' | 'even';
+/** Tough in three steps (at or above each of `steps`, ascending), easy at or below `easy`. */
+const drawOf = (value: number, easy: number, steps: [number, number, number]): Draw => {
+  const level = steps.filter((step) => value >= step).length;
+  if (level > 0) return `tough-${String(level)}` as Draw;
+  return value <= easy ? 'easy' : 'even';
+};
+/** Hotter for tougher: yellow, orange, red. */
+const DRAW_COLOR: Record<Draw, string | undefined> = {
+  'tough-1': 'yellow.4',
+  'tough-2': 'orange.5',
+  'tough-3': 'red.5',
+  easy: 'dimmed',
+  even: undefined,
+};
+
+/** An opponent-strength figure: yellow, orange or red as the draw gets tougher; easy dimmed. */
+function DrawText({ draw, children }: { draw: Draw; children: string }) {
+  return (
+    <Text
+      component="span"
+      size="sm"
+      className="numeric"
+      data-draw={draw}
+      fw={draw.startsWith('tough') ? 700 : undefined}
+      c={DRAW_COLOR[draw]}
+    >
+      {children}
+    </Text>
+  );
+}
+
 function playerColumns({
   eventId,
   showTeam,
@@ -102,16 +135,9 @@ function playerColumns({
       render: (p) => (
         <>
           <Group gap="xs" wrap="nowrap">
-            <UnstyledButton
-              component="a"
-              href={listPath(eventId, p.bcpId)}
-              className={classes.playerName}
-              onClick={openHere(() => {
-                onOpen(p.bcpId);
-              })}
-            >
-              {p.name}
-            </UnstyledButton>
+            <Text size="sm" component="span">
+              <PlayerName name={p.name} userId={p.bcpUserId} />
+            </Text>
             <RankBadge userId={p.bcpUserId} />
             {p.dropped && (
               <Badge size="xs" color="gray" variant="outline">
@@ -136,6 +162,7 @@ function playerColumns({
       sortable: true,
       visibleMediaQuery: wide,
       title: 'Faction',
+      noWrap: true,
       render: (p) =>
         p.faction === null ? '—' : <FactionText faction={p.faction} guessed={p.factionGuessed} />,
     },
@@ -162,10 +189,67 @@ function playerColumns({
       render: (p) => <span className="numeric">{formatRecord(p)}</span>,
     },
     {
+      accessor: 'oppWinRate',
+      sortable: true,
+      visibleMediaQuery: wide,
+      title: 'Opp. win %',
+      textAlign: 'right',
+      render: (p) => {
+        const rate = p.opponents?.winRate ?? null;
+        return rate === null ? (
+          '—'
+        ) : (
+          <HoverHint
+            hint={`How their ${String(p.opponents?.games ?? 0)} opponents did at this event (a draw is half)`}
+          >
+            <DrawText
+              draw={drawOf(Math.round(rate * 100), 40, [60, 65, 70])}
+            >{`${String(Math.round(rate * 100))}%`}</DrawText>
+          </HoverHint>
+        );
+      },
+    },
+    {
+      accessor: 'oppElo',
+      sortable: true,
+      visibleMediaQuery: wide,
+      title: 'Opp. Elo',
+      textAlign: 'right',
+      render: (p) => {
+        const strength = p.opponents;
+        return strength?.elo === null || strength?.elo === undefined ? (
+          '—'
+        ) : (
+          <HoverHint
+            hint={`Average wh40k-elo of the ${String(strength.rated)} of ${String(strength.games)} opponents rated`}
+          >
+            <DrawText draw={drawOf(strength.elo, 1500, [1650, 1700, 1750])}>
+              {String(strength.elo)}
+            </DrawText>
+          </HoverHint>
+        );
+      },
+    },
+    {
       accessor: 'listStatus',
       sortable: true,
       title: 'List',
-      render: (p) => <ListStatusBadge status={p.listStatus} error={p.listError} />,
+      noWrap: true,
+      // A fetched list keeps its own address, for a new tab; a plain click opens it here.
+      render: (p) =>
+        p.listStatus === 'fetched' ? (
+          <a
+            href={listPath(eventId, p.bcpId)}
+            aria-label="Fetched"
+            onClick={openHere(() => {
+              onOpen(p.bcpId);
+            })}
+          >
+            <ListStatusBadge status={p.listStatus} error={p.listError} />
+          </a>
+        ) : (
+          <ListStatusBadge status={p.listStatus} error={p.listError} />
+        ),
     },
   ];
 }
@@ -181,6 +265,8 @@ const PLAYER_SORT = {
   // No games is no record: blank, so last either way.
   wins: (p) =>
     p.wins + p.losses + p.draws === 0 ? null : p.wins * 1_000_000 + p.draws * 1_000 - p.losses,
+  oppWinRate: (p) => p.opponents?.winRate ?? null,
+  oppElo: (p) => p.opponents?.elo ?? null,
   listStatus: (p) => p.listStatus,
 } satisfies Record<string, SortValue<EventPlayer>>;
 type PlayerSortKey = keyof typeof PLAYER_SORT;

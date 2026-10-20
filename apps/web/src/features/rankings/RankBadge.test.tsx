@@ -11,15 +11,19 @@ describe('RankBadge', () => {
     expect(badge).toHaveAttribute('href', '/players/US-ADA');
   });
 
-  it('crowns the top 10, and stars the rest of the top 50 and top 100', async () => {
+  it('crowns the top 10, stars the rest of the top 50 and 100, and marks the top 999', async () => {
     stubFetchRoutes({
-      'GET /api/rankings/top': { ranks: { 'US-ADA': 8, 'US-BEN': 30, 'US-CAL': 77 } },
+      'GET /api/rankings/top': {
+        ranks: { 'US-ADA': 8, 'US-BEN': 30, 'US-CAL': 77, 'US-DEE': 101, 'US-EVE': 999 },
+      },
     });
     renderWithRouter(
       <>
         <RankBadge userId="US-ADA" />
         <RankBadge userId="US-BEN" />
         <RankBadge userId="US-CAL" />
+        <RankBadge userId="US-DEE" />
+        <RankBadge userId="US-EVE" />
       </>,
     );
     const tier = async (name: string) =>
@@ -29,6 +33,8 @@ describe('RankBadge', () => {
     expect(await tier('Ranked #8, top 10')).toBe('crown');
     expect(await tier('Ranked #30, top 50')).toBe('silver');
     expect(await tier('Ranked #77, top 100')).toBe('bronze');
+    expect(await tier('Ranked #101, top 999')).toBe('ranked');
+    expect(await tier('Ranked #999, top 999')).toBe('ranked');
   });
 
   it('shows nothing for other players, or without an account', async () => {
@@ -49,5 +55,27 @@ describe('RankBadge', () => {
     renderWithRouter(<RankBadge userId="US-ADA" />);
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('shows a player’s wh40k-elo beside, ranked or not, linking to their page', async () => {
+    stubFetchRoutes({
+      'GET /api/rankings/top': { ranks: { 'US-ADA': 12 }, elo: { 'US-ADA': 1888, 'US-BEN': 1642 } },
+    });
+    renderWithRouter(
+      <>
+        <RankBadge userId="US-ADA" />
+        <RankBadge userId="US-BEN" />
+        <RankBadge userId="US-CAL" />
+      </>,
+    );
+    expect(await screen.findByRole('link', { name: 'wh40k-elo 1888' })).toHaveTextContent(
+      'Elo 1888',
+    );
+    expect(screen.getByRole('link', { name: 'Ranked #12, top 50' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'wh40k-elo 1642' })).toHaveAttribute(
+      'href',
+      '/players/US-BEN',
+    );
+    expect(screen.getAllByRole('link')).toHaveLength(3);
   });
 });

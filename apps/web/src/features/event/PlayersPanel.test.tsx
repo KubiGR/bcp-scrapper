@@ -1,7 +1,7 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
-import { anEventDetail, aPlayer } from '../../test/sample-data';
+import { anEventDetail, aPlayer as samplePlayer } from '../../test/sample-data';
 import { PlayersPanel } from './PlayersPanel';
 
 // mantine-datatable decides per-column visibility with `useMediaQuery`, which calls
@@ -20,6 +20,10 @@ beforeEach(() => {
     dispatchEvent: () => false,
   }));
 });
+
+/** A sample player with a BCP account (as most have), so their name links to their page. */
+const aPlayer = (overrides: Parameters<typeof samplePlayer>[0] = {}) =>
+  samplePlayer({ bcpUserId: `US-${overrides.bcpId ?? 'PL-ADA'}`, ...overrides });
 
 /** A team group's collapse toggle (not its "Fetch … lists" button). */
 const teamToggle = (team: string) => ({
@@ -42,9 +46,9 @@ describe('PlayersPanel', () => {
     expect(badge).toHaveAttribute('href', '/players/US-ZED');
   });
 
-  it('opens a player list from the player’s name, a link to the list for a new tab', async () => {
+  it('links the name to the player’s page; the row and the list badge open the list', async () => {
     stubFetchRoutes({
-      'GET /api/events/EVT1/players': { items: [aPlayer()] },
+      'GET /api/events/EVT1/players': { items: [aPlayer({ bcpUserId: 'US-ADA' })] },
       'GET /api/players/PL-ADA/list': {
         playerId: 'PL-ADA',
         playerName: 'Ada Archer',
@@ -57,11 +61,14 @@ describe('PlayersPanel', () => {
     });
     renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
 
-    const nameLink = await screen.findByRole('link', { name: 'Ada Archer' });
-    expect(nameLink).toHaveAttribute('href', '/events/EVT1?tab=players&list=PL-ADA');
-    nameLink.focus();
-    fireEvent.click(nameLink);
-
+    expect(await screen.findByRole('link', { name: 'Ada Archer' })).toHaveAttribute(
+      'href',
+      '/players/US-ADA',
+    );
+    // The list keeps its own address, for a new tab.
+    const listLink = screen.getByRole('link', { name: 'Fetched' });
+    expect(listLink).toHaveAttribute('href', '/events/EVT1?tab=players&list=PL-ADA');
+    fireEvent.click(listLink);
     expect(await screen.findByText(/Gladius Task Force/)).toBeInTheDocument();
   });
 
@@ -121,6 +128,76 @@ describe('PlayersPanel', () => {
     expect(names().at(-1)).toBe('No Games');
   });
 
+  it('shows how strong each player’s opponents here were, sortable', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [
+          aPlayer({
+            bcpId: 'P1',
+            name: 'Soft Draw',
+            placing: 1,
+            opponents: { winRate: 0.3, elo: 1480, rated: 4, games: 5 },
+          }),
+          aPlayer({
+            bcpId: 'P2',
+            name: 'Hard Road',
+            placing: 2,
+            opponents: { winRate: 0.66, elo: 1712, rated: 5, games: 5 },
+          }),
+          aPlayer({ bcpId: 'P3', name: 'No Pairings', placing: 3 }),
+        ],
+      },
+    });
+    renderWithRouter(
+      <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
+    );
+    const hard = (await screen.findByRole('link', { name: 'Hard Road' })).closest('tr');
+    if (hard === null) throw new Error('no row');
+    // Tougher draws get hotter colours: 60/65/70% and 1650/1700/1750 Elo; easy ones are dimmed.
+    expect(within(hard).getByText('66%')).toHaveAttribute('data-draw', 'tough-2');
+    expect(within(hard).getByText('1712')).toHaveAttribute('data-draw', 'tough-2');
+    const soft = screen.getByRole('link', { name: 'Soft Draw' }).closest('tr');
+    if (soft === null) throw new Error('no row');
+    expect(within(soft).getByText('30%')).toHaveAttribute('data-draw', 'easy');
+    expect(within(soft).getByText('1480')).toHaveAttribute('data-draw', 'easy');
+    const none = screen.getByRole('link', { name: 'No Pairings' }).closest('tr');
+    if (none === null) throw new Error('no row');
+    expect(within(none).getAllByText('—').length).toBeGreaterThanOrEqual(2);
+    const names = () =>
+      screen
+        .getAllByRole('link')
+        .map((b) => b.textContent)
+        .filter((text) => ['Soft Draw', 'Hard Road', 'No Pairings'].includes(text));
+    fireEvent.click(screen.getByRole('button', { name: /^Opp\. Elo/ }));
+    expect(names()).toEqual(['Hard Road', 'Soft Draw', 'No Pairings']);
+    fireEvent.click(screen.getByRole('button', { name: /^Opp\. win/ }));
+    expect(names()).toEqual(['Hard Road', 'Soft Draw', 'No Pairings']);
+  });
+
+  it('grades tough draws in three steps', async () => {
+    const at = (bcpId: string, winRate: number, elo: number) =>
+      aPlayer({ bcpId, name: bcpId, opponents: { winRate, elo, rated: 5, games: 5 } });
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [at('P60', 0.6, 1650), at('P70', 0.7, 1750), at('P59', 0.59, 1649)],
+      },
+    });
+    renderWithRouter(
+      <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
+    );
+    const row = async (name: string) => {
+      const tr = (await screen.findByRole('link', { name })).closest('tr');
+      if (tr === null) throw new Error('no row');
+      return within(tr);
+    };
+    expect((await row('P60')).getByText('60%')).toHaveAttribute('data-draw', 'tough-1');
+    expect((await row('P60')).getByText('1650')).toHaveAttribute('data-draw', 'tough-1');
+    expect((await row('P70')).getByText('70%')).toHaveAttribute('data-draw', 'tough-3');
+    expect((await row('P70')).getByText('1750')).toHaveAttribute('data-draw', 'tough-3');
+    expect((await row('P59')).getByText('59%')).toHaveAttribute('data-draw', 'even');
+    expect((await row('P59')).getByText('1649')).toHaveAttribute('data-draw', 'even');
+  });
+
   it('opens the list the address names, and reports the player opened', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': {
@@ -146,7 +223,9 @@ describe('PlayersPanel', () => {
       />,
     );
     expect(await screen.findByText('Shared list text')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('link', { name: 'Ben Brass' }));
+    // Anywhere on the row but the name (that's the player's page) opens their list.
+    const ben = screen.getByRole('link', { name: 'Ben Brass' }).closest('tr');
+    fireEvent.click(ben?.querySelector('td') as Element);
     expect(onOpenPlayer).toHaveBeenCalledWith('PL-BEN');
   });
 

@@ -23,6 +23,11 @@ const EnvSchema = z.object({
   MIN_EVENT_ROUNDS: z.coerce.number().int().min(0).default(4),
   /** Events smaller than this are not stored or shown (RTTs and small events). */
   MIN_EVENT_PLAYERS: z.coerce.number().int().min(0).default(20),
+  /** Importing wh40k-elo's player ratings once a day; false switches it off. */
+  WH40K_ELO_ENABLED: z
+    .enum(['true', 'false', '1', '0'])
+    .default('true')
+    .transform((value) => value === 'true' || value === '1'),
   /** Automatic background fetching of big events (lists from the start, pairings once over); false switches it off. */
   AUTO_FETCH_ENABLED: z
     .enum(['true', 'false', '1', '0'])
