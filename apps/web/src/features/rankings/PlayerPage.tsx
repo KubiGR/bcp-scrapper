@@ -1,5 +1,5 @@
-import type { PlayerHistoryEntry } from '@bcp/shared';
-import { Skeleton, Stack, Table, Text, Title } from '@mantine/core';
+import type { EloFigure, PlayerHistoryEntry } from '@bcp/shared';
+import { Anchor, Skeleton, Stack, Table, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '../../api/client';
 import { AnchorLink } from '../../components/AnchorLink';
@@ -9,6 +9,15 @@ import { Panel } from '../../components/Panel';
 import { formatIsoDay, ordinal } from '../../lib/format';
 import { playerRankingQuery } from './rankings-queries';
 import { FactionIcon } from '../../components/FactionIcon';
+
+/** wh40k-elo's site (it has no page per player). */
+const WH40K_ELO_SITE = 'https://wh40k-elo.duckdns.org/';
+
+/** "1612 (23 games)", or "–" when unrated. */
+const eloText = (figure: EloFigure | null) =>
+  figure === null
+    ? '–'
+    : `${String(figure.elo)} (${String(figure.games)} ${figure.games === 1 ? 'game' : 'games'})`;
 
 /** "3rd of 64"; team events "2nd of 20 teams"; "–" without a placing. */
 const placingText = (entry: PlayerHistoryEntry) =>
@@ -99,6 +108,13 @@ export function PlayerPage({ userId }: { userId: string }) {
           {data.rank === null
             ? 'Not ranked: no counted results in the last 12 months.'
             : `#${String(data.rank)} of ${data.ranked.toLocaleString('en-GB')} · ${data.points.toFixed(1)} points`}
+        </Text>
+        <Text size="sm" className="numeric">
+          Elo {eloText(data.elo)} ·{' '}
+          <Anchor href={WH40K_ELO_SITE} target="_blank" rel="noreferrer" inherit>
+            wh40k-elo
+          </Anchor>{' '}
+          {eloText(data.wh40kElo)}
         </Text>
         {data.dropsOn !== null && (
           <Text size="sm" c="dimmed">

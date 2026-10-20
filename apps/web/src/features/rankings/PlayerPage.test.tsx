@@ -29,6 +29,8 @@ const ranking = (overrides: Partial<PlayerRanking> = {}): PlayerRanking => ({
   ranked: 3456,
   points: 412.34,
   dropsOn: '2027-03-28',
+  elo: null,
+  wh40kElo: null,
   history: [
     entry(),
     entry({
@@ -48,6 +50,10 @@ const ranking = (overrides: Partial<PlayerRanking> = {}): PlayerRanking => ({
   ...overrides,
 });
 
+/** A line by its whole text, links inside included. */
+const line = (text: string) => (_: string, el: Element | null) =>
+  el?.tagName === 'P' && el.textContent === text;
+
 describe('PlayerPage', () => {
   it('shows the player’s rank, points and when a result drops out', async () => {
     stubFetchRoutes({ 'GET /api/rankings/US-ADA': ranking() });
@@ -57,6 +63,29 @@ describe('PlayerPage', () => {
     expect(
       screen.getByText(`Oldest counted result drops out on ${formatIsoDay('2027-03-28')}`),
     ).toBeInTheDocument();
+  });
+
+  it('shows both Elo ratings with their games, linking wh40k-elo', async () => {
+    stubFetchRoutes({
+      'GET /api/rankings/US-ADA': ranking({
+        elo: { elo: 1612, games: 23 },
+        wh40kElo: { elo: 1888, games: 1 },
+      }),
+    });
+    renderWithRouter(<PlayerPage userId="US-ADA" />);
+    expect(
+      await screen.findByText(line('Elo 1612 (23 games) · wh40k-elo 1888 (1 game)')),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'wh40k-elo' })).toHaveAttribute(
+      'href',
+      'https://wh40k-elo.duckdns.org/',
+    );
+  });
+
+  it('says when a player has neither Elo', async () => {
+    stubFetchRoutes({ 'GET /api/rankings/US-ADA': ranking() });
+    renderWithRouter(<PlayerPage userId="US-ADA" />);
+    expect(await screen.findByText(line('Elo – · wh40k-elo –'))).toBeInTheDocument();
   });
 
   it('lists every event, marking the counted ones and linking lists', async () => {

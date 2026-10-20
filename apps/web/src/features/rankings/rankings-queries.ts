@@ -12,17 +12,29 @@ export const topRanksQuery = queryOptions({
 /** Rankings pages of this size, loaded one after another ("Show more"). */
 export const RANKINGS_PAGE = 100;
 
-export const rankingsPagesQuery = (filters: { search?: string; faction?: string }) => {
+export const rankingsPagesQuery = (filters: {
+  search?: string;
+  faction?: string;
+  /** By our Elo or wh40k-elo's instead of points. */
+  order?: 'elo' | 'wh40kElo';
+}) => {
   const params = (offset: number) => {
     const query = new URLSearchParams();
     if (filters.search) query.set('search', filters.search);
     if (filters.faction) query.set('faction', filters.faction);
+    if (filters.order) query.set('sort', filters.order);
     query.set('offset', String(offset));
     query.set('limit', String(RANKINGS_PAGE));
     return query.toString();
   };
   return infiniteQueryOptions({
-    queryKey: ['rankings', 'pages', filters.search ?? '', filters.faction ?? ''],
+    queryKey: [
+      'rankings',
+      'pages',
+      filters.search ?? '',
+      filters.faction ?? '',
+      filters.order ?? 'points',
+    ],
     queryFn: ({ pageParam }) =>
       apiGet(`/api/rankings?${params(pageParam)}`, RankingsResponseSchema),
     initialPageParam: 0,

@@ -1,5 +1,17 @@
-import type { RankedPlayerRow } from '@bcp/shared';
-import { Box, Button, Group, Skeleton, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import type { EloFigure, RankedPlayerRow } from '@bcp/shared';
+import {
+  Box,
+  Button,
+  Group,
+  Input,
+  SegmentedControl,
+  Skeleton,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+} from '@mantine/core';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { SearchSelect } from '../../components/SearchSelect';
 import { AnchorLink } from '../../components/AnchorLink';
@@ -14,6 +26,8 @@ import { FactionIcon, renderFactionOption } from '../../components/FactionIcon';
 export interface PlayersSearch {
   q?: string;
   faction?: string;
+  /** By our Elo or wh40k-elo's instead of points. */
+  order?: 'elo' | 'wh40kElo';
 }
 
 interface PlayersPageProps {
@@ -21,13 +35,30 @@ interface PlayersPageProps {
   onSearchChange: (next: PlayersSearch) => void;
 }
 
-type Column = 'rank' | 'name' | 'points' | 'results';
+type Column = 'rank' | 'name' | 'points' | 'elo' | 'wh40kElo' | 'results';
 const VALUES: Record<Column, SortValue<RankedPlayerRow>> = {
   rank: (row) => row.rank,
   name: (row) => row.name,
   points: (row) => row.points,
+  elo: (row) => row.elo?.elo ?? null,
+  wh40kElo: (row) => row.wh40kElo?.elo ?? null,
   results: (row) => row.results,
 };
+
+/** An Elo rating, its games on hover; a dash when unrated. */
+export function EloCell({ figure }: { figure: EloFigure | null }) {
+  if (figure === null)
+    return (
+      <Text span c="dimmed">
+        —
+      </Text>
+    );
+  return (
+    <span title={`${String(figure.games)} ${figure.games === 1 ? 'game' : 'games'}`}>
+      {figure.elo}
+    </span>
+  );
+}
 
 /** "1st of 96 · London GT"; team events "2nd of 20 teams · …". */
 export const bestResult = (best: RankedPlayerRow['best']) =>
@@ -38,7 +69,7 @@ function PlayersTable({ rows }: { rows: RankedPlayerRow[] }) {
     rank: 'asc',
   });
   return (
-    <Table.ScrollContainer minWidth={640}>
+    <Table.ScrollContainer minWidth={760}>
       <Table aria-label="Players" striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
@@ -50,6 +81,12 @@ function PlayersTable({ rows }: { rows: RankedPlayerRow[] }) {
             </SortableTh>
             <SortableTh column="points" sort={sort} onSort={toggle} ta="right">
               Points
+            </SortableTh>
+            <SortableTh column="elo" sort={sort} onSort={toggle} ta="right">
+              Elo
+            </SortableTh>
+            <SortableTh column="wh40kElo" sort={sort} onSort={toggle} ta="right">
+              wh40k-elo
             </SortableTh>
             <SortableTh column="results" sort={sort} onSort={toggle} ta="right">
               Events
@@ -71,6 +108,12 @@ function PlayersTable({ rows }: { rows: RankedPlayerRow[] }) {
               </Table.Td>
               <Table.Td ta="right" className="numeric">
                 {row.points.toFixed(1)}
+              </Table.Td>
+              <Table.Td ta="right" className="numeric">
+                <EloCell figure={row.elo} />
+              </Table.Td>
+              <Table.Td ta="right" className="numeric">
+                <EloCell figure={row.wh40kElo} />
               </Table.Td>
               <Table.Td ta="right" className="numeric">
                 {`${String(row.counted)} of ${String(row.results)}`}
@@ -95,7 +138,7 @@ function PlayersTable({ rows }: { rows: RankedPlayerRow[] }) {
 export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
   // Each "Show more" loads the next page; new filters start from the first again.
   const rankings = useInfiniteQuery(
-    rankingsPagesQuery({ search: search.q?.trim(), faction: search.faction }),
+    rankingsPagesQuery({ search: search.q?.trim(), faction: search.faction, order: search.order }),
   );
   const first = rankings.data?.pages[0];
   const data =
@@ -109,7 +152,8 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
       <Text size="sm" c="dimmed">
         Points: the 5 best results of the last 12 months at big events. 1st place at a 100-player
         event scores 100; bigger events score more (400 players: 200), smaller ones less (20
-        players: 45).
+        players: 45). Elo: ours comes from every game we store (events of 3+ rounds and 8+ players);
+        wh40k-elo&apos;s from all of BCP&apos;s games, imported daily.
       </Text>
       <Group gap="md" align="flex-end" wrap="wrap">
         <TextInput
@@ -135,6 +179,24 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
           }}
           w={{ base: '100%', xs: 240 }}
         />
+        <Input.Wrapper label="Order by">
+          <SegmentedControl
+            aria-label="Order by"
+            data={[
+              { value: 'points', label: 'Points' },
+              { value: 'elo', label: 'Our Elo' },
+              { value: 'wh40kElo', label: 'wh40k-elo' },
+            ]}
+            value={search.order ?? 'points'}
+            onChange={(value) => {
+              const order = value === 'elo' || value === 'wh40kElo' ? value : undefined;
+              const next: PlayersSearch = { ...search, order };
+              if (order === undefined) delete next.order;
+              onSearchChange(next);
+            }}
+            style={{ display: 'flex' }}
+          />
+        </Input.Wrapper>
       </Group>
 
       {rankings.isPending && <Skeleton height={240} />}
