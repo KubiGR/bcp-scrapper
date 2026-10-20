@@ -146,9 +146,9 @@ describe('PlayersPanel', () => {
     );
     const hard = (await screen.findByRole('link', { name: 'Hard Road' })).closest('tr');
     if (hard === null) throw new Error('no row');
-    // A tough draw stands out; an easy one is dimmed.
-    expect(within(hard).getByText('66%')).toHaveAttribute('data-draw', 'tough');
-    expect(within(hard).getByText('1712')).toHaveAttribute('data-draw', 'tough');
+    // Tougher draws get hotter colours: 60/65/70% and 1650/1700/1750 Elo; easy ones are dimmed.
+    expect(within(hard).getByText('66%')).toHaveAttribute('data-draw', 'tough-2');
+    expect(within(hard).getByText('1712')).toHaveAttribute('data-draw', 'tough-2');
     const soft = screen.getByRole('link', { name: 'Soft Draw' }).closest('tr');
     if (soft === null) throw new Error('no row');
     expect(within(soft).getByText('30%')).toHaveAttribute('data-draw', 'easy');
@@ -165,6 +165,30 @@ describe('PlayersPanel', () => {
     expect(names()).toEqual(['Hard Road', 'Soft Draw', 'No Pairings']);
     fireEvent.click(screen.getByRole('button', { name: /^Opp\. win/ }));
     expect(names()).toEqual(['Hard Road', 'Soft Draw', 'No Pairings']);
+  });
+
+  it('grades tough draws in three steps', async () => {
+    const at = (bcpId: string, winRate: number, elo: number) =>
+      aPlayer({ bcpId, name: bcpId, opponents: { winRate, elo, rated: 5, games: 5 } });
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [at('P60', 0.6, 1650), at('P70', 0.7, 1750), at('P59', 0.59, 1649)],
+      },
+    });
+    renderWithRouter(
+      <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
+    );
+    const row = async (name: string) => {
+      const tr = (await screen.findByRole('link', { name })).closest('tr');
+      if (tr === null) throw new Error('no row');
+      return within(tr);
+    };
+    expect((await row('P60')).getByText('60%')).toHaveAttribute('data-draw', 'tough-1');
+    expect((await row('P60')).getByText('1650')).toHaveAttribute('data-draw', 'tough-1');
+    expect((await row('P70')).getByText('70%')).toHaveAttribute('data-draw', 'tough-3');
+    expect((await row('P70')).getByText('1750')).toHaveAttribute('data-draw', 'tough-3');
+    expect((await row('P59')).getByText('59%')).toHaveAttribute('data-draw', 'even');
+    expect((await row('P59')).getByText('1649')).toHaveAttribute('data-draw', 'even');
   });
 
   it('opens the list the address names, and reports the player opened', async () => {

@@ -82,12 +82,23 @@ function PhoneLine({ player, showTeam }: { player: EventPlayer; showTeam: boolea
   );
 }
 
-type Draw = 'tough' | 'easy' | 'even';
-/** Tough at or above `high`, easy at or below `low`. */
-const drawOf = (value: number, low: number, high: number): Draw =>
-  value >= high ? 'tough' : value <= low ? 'easy' : 'even';
+type Draw = 'tough-1' | 'tough-2' | 'tough-3' | 'easy' | 'even';
+/** Tough in three steps (at or above each of `steps`, ascending), easy at or below `easy`. */
+const drawOf = (value: number, easy: number, steps: [number, number, number]): Draw => {
+  const level = steps.filter((step) => value >= step).length;
+  if (level > 0) return `tough-${String(level)}` as Draw;
+  return value <= easy ? 'easy' : 'even';
+};
+/** Hotter for tougher: yellow, orange, red. */
+const DRAW_COLOR: Record<Draw, string | undefined> = {
+  'tough-1': 'yellow.4',
+  'tough-2': 'orange.5',
+  'tough-3': 'red.5',
+  easy: 'dimmed',
+  even: undefined,
+};
 
-/** An opponent-strength figure: bold orange for a tough draw, dimmed for an easy one. */
+/** An opponent-strength figure: yellow, orange or red as the draw gets tougher; easy dimmed. */
 function DrawText({ draw, children }: { draw: Draw; children: string }) {
   return (
     <Text
@@ -95,8 +106,8 @@ function DrawText({ draw, children }: { draw: Draw; children: string }) {
       size="sm"
       className="numeric"
       data-draw={draw}
-      fw={draw === 'tough' ? 700 : undefined}
-      c={draw === 'tough' ? 'orange.4' : draw === 'easy' ? 'dimmed' : undefined}
+      fw={draw.startsWith('tough') ? 700 : undefined}
+      c={DRAW_COLOR[draw]}
     >
       {children}
     </Text>
@@ -199,7 +210,7 @@ function playerColumns({
             hint={`How their ${String(p.opponents?.games ?? 0)} opponents did at this event (a draw is half)`}
           >
             <DrawText
-              draw={drawOf(rate, 0.4, 0.6)}
+              draw={drawOf(Math.round(rate * 100), 40, [60, 65, 70])}
             >{`${String(Math.round(rate * 100))}%`}</DrawText>
           </HoverHint>
         );
@@ -219,7 +230,9 @@ function playerColumns({
           <HoverHint
             hint={`Average wh40k-elo of the ${String(strength.rated)} of ${String(strength.games)} opponents rated`}
           >
-            <DrawText draw={drawOf(strength.elo, 1500, 1650)}>{String(strength.elo)}</DrawText>
+            <DrawText draw={drawOf(strength.elo, 1500, [1650, 1700, 1750])}>
+              {String(strength.elo)}
+            </DrawText>
           </HoverHint>
         );
       },
