@@ -11,6 +11,10 @@ the event list in a drawer, event sizes on Top lists, and two sweeps of small fi
 
 ## Feature ideas
 
+- **Standings that weigh opponent strength** (requested 2026-10-20). An event's player table
+  follows BCP's placing, so a 5-0 who beat only weak players sits above a 4-1 who met the top
+  tables. Offer an order (or a column) that accounts for who they played: average opponent Elo
+  once our Elo exists, or a strength of schedule from opponents' records.
 - **Pairing process.** Defender/attacker/refusal picks, if a source for them is ever found (BCP
   records only who played whom, by table). Blocked.
 
