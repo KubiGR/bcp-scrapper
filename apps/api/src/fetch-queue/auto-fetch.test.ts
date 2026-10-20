@@ -229,6 +229,29 @@ describe('AutoFetchPlanner', () => {
     });
   });
 
+  it('loads a finished event again, once, when its last load was before it ended', async () => {
+    await syncEvent({ db, source }, 'EVTTEAM0001');
+    const team = async () => (await jobs()).filter((j) => j.eventId === 'EVTTEAM0001');
+    // Loaded during its last round; it ended at 18:00.
+    await db
+      .update(events)
+      .set({
+        endDate: new Date('2026-03-28T18:00:00Z'),
+        lastSyncedAt: new Date('2026-03-28T16:00:00Z'),
+      })
+      .where(eq(events.id, 'EVTTEAM0001'));
+    await planner().planOnce();
+    expect((await team()).filter((j) => j.kind === 'event')).toHaveLength(1);
+    // Loaded after it ended: final, so no load.
+    await db.delete(fetchQueue);
+    await db
+      .update(events)
+      .set({ lastSyncedAt: new Date('2026-03-28T19:00:00Z') })
+      .where(eq(events.id, 'EVTTEAM0001'));
+    await planner().planOnce();
+    expect((await team()).filter((j) => j.kind === 'event')).toHaveLength(0);
+  });
+
   it('plans newest events first', async () => {
     await syncEvent({ db, source }, 'EVTTEAM0001');
     await planner().planOnce();

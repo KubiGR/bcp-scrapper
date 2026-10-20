@@ -18,6 +18,7 @@ import {
 import { storedPairingRounds } from '../repo/pairings';
 import { findPlayersMissingLists, tidyDetachments } from '../repo/lists';
 import type { SyncRunner } from '../sync/runner';
+import { syncedBeforeEnd } from '../freshness';
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -184,6 +185,14 @@ export class AutoFetchPlanner {
       return 1;
     }
     let queued = 0;
+    // Last loaded while it still ran: load it once more for the final standings and records.
+    if (
+      syncedBeforeEnd(event) &&
+      !failed.event &&
+      (await enqueueEventLoad(db, event.id, { priority: AUTO_PRIORITY, origin: 'auto' }))
+    ) {
+      queued += 1;
+    }
     if (event.pairingsSyncedAt === null && !failed.pairings) {
       const now = this.#now();
       const stored = await storedPairingRounds(db, event.id);

@@ -1,4 +1,4 @@
-import { eventPhase, type DateRange } from '@bcp/shared';
+import { eventFinishedBy, eventPhase, type DateRange } from '@bcp/shared';
 
 /** The latest window counts as fresh this long after a covering catalogue sync (spec §7). */
 /** Under the hourly refresh, so each hourly tick finds the last run stale. */
@@ -21,15 +21,32 @@ export function isLatestFresh(window: DateRange, runs: FinishedRange[], now: Dat
 }
 
 /**
- * Whether the event page should (re)load the event from BCP: never synced, or its phase is
- * `running` and it was synced 10+ minutes ago. Upcoming and finished events stay cached until
- * the user presses Refresh.
+ * Whether an event's last load came before it ended (its end date, else the start's grace), so
+ * its standings and records are from mid-round — a 5-0 player still placed below 0-5 ones.
+ */
+export function syncedBeforeEnd(event: {
+  startDate: Date;
+  endDate: Date | null;
+  lastSyncedAt: Date | null;
+}): boolean {
+  if (event.lastSyncedAt === null) return false;
+  const end = event.endDate ?? eventFinishedBy(event);
+  return event.lastSyncedAt.getTime() < end.getTime();
+}
+
+/**
+ * Whether the event page should (re)load the event from BCP: never synced; its phase is
+ * `running` and it was synced 10+ minutes ago; or it's over but was last synced before it ended
+ * (once: the load makes it final). Upcoming and finished events otherwise stay cached until the
+ * user presses Refresh.
  */
 export function isEventStale(
   event: { startDate: Date; endDate: Date | null; ended: boolean; lastSyncedAt: Date | null },
   now: Date,
 ): boolean {
   if (event.lastSyncedAt === null) return true;
-  if (eventPhase(event, now) !== 'running') return false;
+  const phase = eventPhase(event, now);
+  if (phase === 'finished') return syncedBeforeEnd(event);
+  if (phase !== 'running') return false;
   return now.getTime() - event.lastSyncedAt.getTime() >= RUNNING_EVENT_MAX_AGE_MS;
 }
