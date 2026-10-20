@@ -117,7 +117,7 @@ export function TeamMeta({
                       >
                         {expanded ? '▾' : '▸'}
                       </ActionIcon>
-                      <FactionIcon faction={row.faction} />
+                      <FactionIcon faction={row.faction} size={28} />
                       {name}
                     </Table.Td>
                     <Slots row={row} />
