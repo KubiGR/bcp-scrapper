@@ -11,6 +11,9 @@ the event list in a drawer, event sizes on Top lists, and two sweeps of small fi
 
 ## Feature ideas
 
+- **Pairing process.** Defender/attacker/refusal picks, if a source for them is ever found (BCP
+  records only who played whom, by table). Blocked.
+
 Dropped (2026-09-28): faction pairs in teams and top-team line-ups on the Meta page — the data
 exists, but not wanted for now.
 
