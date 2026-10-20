@@ -1,3 +1,4 @@
+import type { EventSizeRule } from '@bcp/shared';
 import { z } from 'zod';
 
 const EnvSchema = z.object({
@@ -23,6 +24,15 @@ const EnvSchema = z.object({
   MIN_EVENT_ROUNDS: z.coerce.number().int().min(0).default(4),
   /** Events smaller than this are not stored or shown (RTTs and small events). */
   MIN_EVENT_PLAYERS: z.coerce.number().int().min(0).default(20),
+  /** Smaller events are kept too, for our Elo only (their games, no lists): from this many rounds… */
+  ELO_MIN_EVENT_ROUNDS: z.coerce.number().int().min(0).default(3),
+  /** …and this many players. */
+  ELO_MIN_EVENT_PLAYERS: z.coerce.number().int().min(0).default(8),
+  /** Importing wh40k-elo's player ratings once a day; false switches it off. */
+  WH40K_ELO_ENABLED: z
+    .enum(['true', 'false', '1', '0'])
+    .default('true')
+    .transform((value) => value === 'true' || value === '1'),
   /** Automatic background fetching of big events (lists from the start, pairings once over); false switches it off. */
   AUTO_FETCH_ENABLED: z
     .enum(['true', 'false', '1', '0'])
@@ -152,6 +162,24 @@ export function mailSettingsOf(config: Config): {
 }
 
 /** The site's address, for links in emails. */
+/**
+ * Which events are analysed (big ones) and which are kept, also for our Elo: the keep rule is
+ * never stricter than the big-event rule.
+ */
+export function eventRulesOf(config: Config): {
+  eventRule: EventSizeRule;
+  keepRule: EventSizeRule;
+} {
+  const eventRule = { minRounds: config.MIN_EVENT_ROUNDS, minPlayers: config.MIN_EVENT_PLAYERS };
+  return {
+    eventRule,
+    keepRule: {
+      minRounds: Math.min(config.ELO_MIN_EVENT_ROUNDS, eventRule.minRounds),
+      minPlayers: Math.min(config.ELO_MIN_EVENT_PLAYERS, eventRule.minPlayers),
+    },
+  };
+}
+
 export function siteUrlOf(config: Config): string {
   if (config.SITE_URL !== undefined) return config.SITE_URL.replace(/\/+$/, '');
   if (config.PUBLIC_HOSTNAME !== undefined) return `https://${config.PUBLIC_HOSTNAME}`;

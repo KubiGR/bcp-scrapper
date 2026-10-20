@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowedHostsOf, loadConfig, mailSettingsOf, siteUrlOf } from './config';
+import { allowedHostsOf, eventRulesOf, loadConfig, mailSettingsOf, siteUrlOf } from './config';
 
 describe('loadConfig', () => {
   it('applies defaults when the environment is empty', () => {
@@ -79,6 +79,19 @@ describe('loadConfig', () => {
     const config = loadConfig({ MIN_EVENT_ROUNDS: '0', MIN_EVENT_PLAYERS: '0' });
     expect(config.MIN_EVENT_ROUNDS).toBe(0);
     expect(config.MIN_EVENT_PLAYERS).toBe(0);
+  });
+
+  it('keeps events of 3+ rounds and 8+ players for Elo, never stricter than the big-event rule', () => {
+    expect(eventRulesOf(loadConfig({}))).toEqual({
+      eventRule: { minRounds: 4, minPlayers: 20 },
+      keepRule: { minRounds: 3, minPlayers: 8 },
+    });
+    const tiny = loadConfig({ MIN_EVENT_ROUNDS: '0', MIN_EVENT_PLAYERS: '0' });
+    expect(eventRulesOf(tiny).keepRule).toEqual({ minRounds: 0, minPlayers: 0 });
+    const loose = loadConfig({ ELO_MIN_EVENT_ROUNDS: '1', ELO_MIN_EVENT_PLAYERS: '2' });
+    expect(eventRulesOf(loose).keepRule).toEqual({ minRounds: 1, minPlayers: 2 });
+    expect(loadConfig({}).WH40K_ELO_ENABLED).toBe(true);
+    expect(loadConfig({ WH40K_ELO_ENABLED: 'false' }).WH40K_ELO_ENABLED).toBe(false);
   });
 
   it('allows loopback names plus the public hostname and extra hosts, lower-cased without ports', () => {

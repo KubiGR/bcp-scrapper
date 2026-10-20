@@ -3,7 +3,7 @@ import { createApp } from './app';
 import { accessOptionsOf } from './auth/access';
 import { ensureAdmin } from './auth/bootstrap';
 import { createSource } from './bcp/create-source';
-import { allowedHostsOf, loadConfig, mailSettingsOf, siteUrlOf } from './config';
+import { allowedHostsOf, eventRulesOf, loadConfig, mailSettingsOf, siteUrlOf } from './config';
 import { createDb } from './db/client';
 import { AutoFetchPlanner } from './fetch-queue/auto-fetch';
 import { FetchQueueWorker } from './fetch-queue/worker';
@@ -22,10 +22,13 @@ import { SyncRunner } from './sync/runner';
 import { adminWork, newUserMail } from './notify/admin-mail';
 import { sendDigestIfDue } from './notify/digest';
 import { smtpMailer } from './notify/mailer';
+import { importWh40kElo, wh40kEloDue } from './repo/wh40k-elo';
+import { httpWh40kEloClient } from './wh40k-elo/client';
 
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL, config.NODE_ENV === 'development');
-const eventRule = { minRounds: config.MIN_EVENT_ROUNDS, minPlayers: config.MIN_EVENT_PLAYERS };
+// Big events are analysed; smaller ones down to the keep rule are stored for our Elo only.
+const { eventRule, keepRule } = eventRulesOf(config);
 
 const database = createDb(config.DATABASE_URL);
 await database.migrate();
@@ -34,14 +37,14 @@ const reparsed = await reparseLists(database.db, logger);
 if (reparsed > 0) logger.info({ reparsed }, 'Re-read stored army lists');
 const accounts = await backfillPlayerUserIds(database.db);
 if (accounts > 0) logger.info({ accounts }, 'Stored players’ BCP account ids');
-const deleted = await deleteSmallEvents(database.db, eventRule);
+const deleted = await deleteSmallEvents(database.db, keepRule);
 if (deleted > 0) logger.info({ deleted }, 'Deleted small events (RTTs and events under N players)');
 const interrupted = await failInterruptedSyncRuns(database.db);
 if (interrupted > 0)
   logger.warn({ interrupted }, 'Marked sync runs cut off by a restart as failed');
 
 const { source, status } = createSource(config, { db: database.db, logger });
-const runner = new SyncRunner({ db: database.db, source, logger, eventRule });
+const runner = new SyncRunner({ db: database.db, source, logger, eventRule: keepRule });
 const fetchQueue = new FetchQueueWorker({
   db: database.db,
   source,
@@ -63,6 +66,7 @@ const autoFetch = config.AUTO_FETCH_ENABLED
       runner,
       logger: logger.child({ module: 'auto-fetch' }),
       eventRule,
+      keepRule,
       days: config.AUTO_FETCH_DAYS,
       intervalMs: config.AUTO_FETCH_INTERVAL_MS,
       catalogIntervalMs: config.AUTO_CATALOG_INTERVAL_MS,
@@ -115,6 +119,31 @@ const syncRulesIfDue = async () => {
 };
 void syncRulesIfDue();
 const rulesTimer = setInterval(() => void syncRulesIfDue(), 60 * 60 * 1000);
+
+// wh40k-elo's ratings: checked hourly, imported again once a day (a page every 2 seconds).
+const wh40kElo = config.WH40K_ELO_ENABLED ? httpWh40kEloClient() : undefined;
+let wh40kEloImporting = false;
+const importWh40kEloIfDue = async () => {
+  if (wh40kElo === undefined || wh40kEloImporting) return;
+  wh40kEloImporting = true;
+  try {
+    if (await wh40kEloDue(database.db, new Date())) {
+      const players = await importWh40kElo(
+        database.db,
+        wh40kElo,
+        new Date(),
+        () => new Promise((resolve) => setTimeout(resolve, 2000)),
+      );
+      logger.info({ players }, 'Imported wh40k-elo’s ratings');
+    }
+  } catch (error) {
+    logger.warn({ err: error }, 'Could not import wh40k-elo’s ratings; will try again');
+  } finally {
+    wh40kEloImporting = false;
+  }
+};
+void importWh40kEloIfDue();
+const wh40kEloTimer = setInterval(() => void importWh40kEloIfDue(), 60 * 60 * 1000);
 
 // Email to the admins: someone new waiting for approval, and the day's to-do.
 const mail = mailSettingsOf(config);
@@ -184,6 +213,7 @@ async function shutdown(signal: string): Promise<void> {
   clearInterval(bsdataTimer);
   clearInterval(rulesTimer);
   clearInterval(digestTimer);
+  clearInterval(wh40kEloTimer);
   await autoFetch?.stop();
   // Let a list fetch in flight finish writing before the database closes.
   await fetchQueue.stop();

@@ -12,6 +12,8 @@ import {
   type RankingResult,
   type RankingsQuery,
   type RankingsResponse,
+  type EloFigure,
+  type EloRating,
   type TopRanks,
 } from '@bcp/shared';
 import { and, eq, gt, inArray, isNotNull, sql } from 'drizzle-orm';
@@ -19,6 +21,21 @@ import type { Db } from '../db/client';
 import { armyRules } from './detachment-links';
 import { armyLists, events, players, teams } from '../db/schema';
 import { storedCurrentList } from './lists';
+import type { Wh40kEloRating } from './wh40k-elo';
+
+/** Both Elo ratings by BCP account: ours, from the stored games, and wh40k-elo's. */
+export interface EloSources {
+  ours: Map<string, EloRating>;
+  wh40k: Map<string, Wh40kEloRating>;
+}
+const NO_ELO: EloSources = { ours: new Map(), wh40k: new Map() };
+
+const figure = (rating: { elo: number; games: number } | undefined): EloFigure | null =>
+  rating === undefined ? null : { elo: Math.round(rating.elo), games: rating.games };
+const eloOf = (sources: EloSources, userId: string) => ({
+  elo: figure(sources.ours.get(userId)),
+  wh40kElo: figure(sources.wh40k.get(userId)),
+});
 
 const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
@@ -134,8 +151,15 @@ const withoutScores = ({ scores: _scores, best, ...player }: RankedPlayer) => ({
   },
 });
 
-/** A page of the ranking, filtered by name (plain, case-insensitive) and faction. */
-export function rankingsPage(ranked: RankedPlayer[], query: RankingsQuery): RankingsResponse {
+/**
+ * A page of the ranking, filtered by name (plain, case-insensitive) and faction, with both Elo
+ * ratings; sorted by points (rank) or by either Elo, unrated players last.
+ */
+export function rankingsPage(
+  ranked: RankedPlayer[],
+  query: RankingsQuery,
+  sources: EloSources = NO_ELO,
+): RankingsResponse {
   const search = query.search?.toLowerCase() ?? '';
   const matching = ranked.filter(
     (player) =>
@@ -143,8 +167,17 @@ export function rankingsPage(ranked: RankedPlayer[], query: RankingsQuery): Rank
       (query.faction === undefined ||
         player.scores.some((score) => score.faction === query.faction)),
   );
+  const rows = matching.map((player) => ({
+    ...withoutScores(player),
+    ...eloOf(sources, player.userId),
+  }));
+  const sort = query.sort ?? 'points';
+  if (sort !== 'points') {
+    const value = (row: (typeof rows)[number]) => row[sort]?.elo ?? -Infinity;
+    rows.sort((a, b) => value(b) - value(a) || a.rank - b.rank);
+  }
   return {
-    players: matching.slice(query.offset, query.offset + query.limit).map(withoutScores),
+    players: rows.slice(query.offset, query.offset + query.limit),
     total: matching.length,
     ranked: ranked.length,
     factionOptions: [
@@ -164,6 +197,7 @@ export async function playerRanking(
   db: Db,
   ranked: RankedPlayer[],
   userId: string,
+  sources: EloSources = NO_ELO,
 ): Promise<PlayerRanking | null> {
   const rules = await armyRules(db);
   const rows = await db
@@ -192,6 +226,7 @@ export async function playerRanking(
     ranked: ranked.length,
     points: own?.points ?? 0,
     dropsOn: oldest === undefined ? null : addDays(oldest, RANKING_DAYS),
+    ...eloOf(sources, userId),
     history: rows.map((row) => {
       const score = scores.get(row.eventId);
       const placing = row.isTeamEvent ? row.teamPlacing : row.playerPlacing;
