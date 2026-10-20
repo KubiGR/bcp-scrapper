@@ -215,7 +215,7 @@ export function rankingsPage(
   };
 }
 
-export function topRanks(ranked: RankedPlayer[]): TopRanks {
+export function topRanks(ranked: RankedPlayer[]): Pick<TopRanks, 'ranks'> {
   return {
     ranks: Object.fromEntries(ranked.slice(0, TOP_RANKS).map((p) => [p.userId, p.rank])),
   };

@@ -69,6 +69,7 @@ export function playerRefOf(players: Map<string, PlayerRow>, id: string): Player
         teamId: player.teamId,
         disposition: player.disposition,
         detachments: player.detachments,
+        userId: player.userId ?? null,
       }
     : {
         id,
@@ -78,6 +79,7 @@ export function playerRefOf(players: Map<string, PlayerRow>, id: string): Player
         teamId: null,
         disposition: null,
         detachments: [],
+        userId: null,
       };
 }
 

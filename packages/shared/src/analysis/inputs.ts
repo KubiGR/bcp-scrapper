@@ -18,6 +18,8 @@ export interface PlayerRow {
   disposition: string | null;
   /** From the player's fetched list; empty when not fetched or not readable. */
   detachments: string[];
+  /** Their BCP account, for their badges; null or absent when BCP hides it. */
+  userId?: string | null;
 }
 
 /** `teamBId` is null for a bye. */

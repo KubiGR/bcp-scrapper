@@ -21,10 +21,14 @@
 }
 
 .link:hover .badge,
-.link:focus-visible .badge,
+.link:focus-visible .badge {
+  filter: brightness(1.2);
+}
+
 .link:hover .elo,
 .link:focus-visible .elo {
-  filter: brightness(1.2);
+  color: var(--mantine-color-text);
+  text-decoration: underline;
 }
 
 .badge[data-tier='crown'] {
@@ -44,16 +48,10 @@
   border: 1px solid rgb(205 127 50 / 0.6);
 }
 
-/* wh40k-elo: quieter than a rank, the same shape. */
+/* wh40k-elo: plain small text, quieter than a rank badge. */
 .elo {
-  display: inline-flex;
-  padding: 1px 8px;
-  border-radius: 999px;
   font-family: var(--mantine-font-family-monospace);
-  font-size: var(--mantine-font-size-xs);
-  line-height: 1.5;
+  font-size: 11px;
   white-space: nowrap;
-  color: var(--mantine-color-neon-3);
-  background: rgb(255 255 255 / 0.05);
-  border: 1px solid rgb(255 255 255 / 0.15);
+  color: var(--mantine-color-dimmed);
 }
