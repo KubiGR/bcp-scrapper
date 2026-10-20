@@ -584,8 +584,12 @@ export const RankingsResponseSchema = z.object({
 });
 export type RankingsResponse = z.infer<typeof RankingsResponseSchema>;
 
-/** Top-ranked players' ranks by account id, for rank badges. */
-export const TopRanksSchema = z.object({ ranks: z.record(z.string(), z.number().int()) });
+/** Top-ranked players' ranks, and every stored player's wh40k-elo, by account id, for badges. */
+export const TopRanksSchema = z.object({
+  ranks: z.record(z.string(), z.number().int()),
+  /** Rounded wh40k-elo of the players we store who have one. */
+  elo: z.record(z.string(), z.number().int()).default({}),
+});
 export type TopRanks = z.infer<typeof TopRanksSchema>;
 /** How many top players get a rank badge. */
 export const TOP_RANKS = 100;

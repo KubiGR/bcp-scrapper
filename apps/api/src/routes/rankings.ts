@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import type { Db } from '../db/client';
 import { NotFoundError } from '../errors';
 import { loadRankings, playerRanking, rankingsPage, topRanks } from '../repo/rankings';
-import { wh40kEloLoader } from '../repo/wh40k-elo';
+import { storedPlayersElo, wh40kEloLoader } from '../repo/wh40k-elo';
 import { parseInput } from '../validation';
 
 /** Players ranked by tournament points (see the player rankings spec). */
@@ -17,7 +17,10 @@ export function rankingsRoutes(deps: { db: Db; eventRule: EventSizeRule; now: ()
         rankingsPage(await ranked(), parseInput(RankingsQuerySchema, c.req.query()), await elo()),
       ),
     )
-    .get('/rankings/top', async (c) => c.json(topRanks(await ranked())))
+    .get('/rankings/top', async (c) => {
+      const [top, elo] = await Promise.all([ranked(), storedPlayersElo(deps.db)]);
+      return c.json({ ...topRanks(top), elo });
+    })
     .get('/rankings/:userId', async (c) => {
       const player = await playerRanking(
         deps.db,

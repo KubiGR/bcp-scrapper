@@ -21,7 +21,9 @@
 }
 
 .link:hover .badge,
-.link:focus-visible .badge {
+.link:focus-visible .badge,
+.link:hover .elo,
+.link:focus-visible .elo {
   filter: brightness(1.2);
 }
 
@@ -40,4 +42,18 @@
   color: #e0a46e;
   background: rgb(205 127 50 / 0.15);
   border: 1px solid rgb(205 127 50 / 0.6);
+}
+
+/* wh40k-elo: quieter than a rank, the same shape. */
+.elo {
+  display: inline-flex;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--mantine-color-neon-3);
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.15);
 }

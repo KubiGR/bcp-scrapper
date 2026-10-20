@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import classes from './RankBadge.module.css';
@@ -36,12 +37,39 @@ function Star() {
   );
 }
 
-/** "♛ #8" next to a top-100 player's name, linking to their page; nothing for anyone else. */
+/** Links to the player's page without also opening a row that opens on click. */
+const stop = (e: MouseEvent) => {
+  e.stopPropagation();
+};
+
+/**
+ * Beside a player's name: "♛ #8" for a top-100 player and "Elo 1888" for one wh40k-elo rates,
+ * each linking to their page; nothing for anyone else.
+ */
 export function RankBadge({ userId }: { userId: string | null }) {
   const { data } = useQuery({ ...topRanksQuery, enabled: userId !== null });
   if (userId === null) return null;
   const rank = data?.ranks[userId];
-  if (rank === undefined) return null;
+  const elo = data?.elo[userId];
+  return (
+    <>
+      {rank !== undefined && <TopRank userId={userId} rank={rank} />}
+      {elo !== undefined && (
+        <Link
+          to="/players/$userId"
+          params={{ userId }}
+          aria-label={`wh40k-elo ${String(elo)}`}
+          className={classes.link}
+          onClick={stop}
+        >
+          <span className={classes.elo}>Elo {elo}</span>
+        </Link>
+      )}
+    </>
+  );
+}
+
+function TopRank({ userId, rank }: { userId: string; rank: number }) {
   const { tier, top } = tierOf(rank);
   return (
     <Link
@@ -49,10 +77,7 @@ export function RankBadge({ userId }: { userId: string | null }) {
       params={{ userId }}
       aria-label={`Ranked #${String(rank)}, top ${String(top)}`}
       className={classes.link}
-      // A row that opens on click (the event's players) shouldn't also open.
-      onClick={(e) => {
-        e.stopPropagation();
-      }}
+      onClick={stop}
     >
       <span className={classes.badge} data-tier={tier}>
         {tier === 'crown' ? <Crown /> : <Star />}#{rank}

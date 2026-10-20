@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
-import { appSettings, wh40kElo } from '../db/schema';
+import { appSettings, players, wh40kElo } from '../db/schema';
 import type { Wh40kEloClient, Wh40kEloPlayer } from '../wh40k-elo/client';
 
 /** When an import was last tried, worked or not (ISO). */
@@ -92,4 +92,13 @@ export function wh40kEloLoader(db: Db): () => Promise<Map<string, Wh40kEloRating
     }
     return cached.ratings;
   };
+}
+
+/** The rounded rating of every player we store who has one, by BCP account, for their badges. */
+export async function storedPlayersElo(db: Db): Promise<Record<string, number>> {
+  const rows = await db
+    .select({ userId: wh40kElo.userId, elo: sql<number>`round(${wh40kElo.elo})::int` })
+    .from(wh40kElo)
+    .where(sql`exists (select 1 from ${players} where ${players.bcpUserId} = ${wh40kElo.userId})`);
+  return Object.fromEntries(rows.map((row) => [row.userId, row.elo]));
 }

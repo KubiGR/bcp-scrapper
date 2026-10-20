@@ -2,6 +2,7 @@ import type { PlayerRanking, RankingsResponse, TopRanks } from '@bcp/shared';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import type { Db } from '../db/client';
+import { wh40kElo } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { syncEvent } from '../sync/jobs';
 import { SyncRunner } from '../sync/runner';
@@ -52,8 +53,26 @@ describe('GET /api/rankings', () => {
   it('gives the top ranks, and one player', async () => {
     const top = (await (await app.request('/api/rankings/top')).json()) as TopRanks;
     expect(Object.keys(top.ranks)).toHaveLength(8);
+    expect(top.elo).toEqual({});
     const ada = (await (await app.request('/api/rankings/US-ADA')).json()) as PlayerRanking;
     expect(ada.history).toHaveLength(1);
     expect((await app.request('/api/rankings/US-NOBODY')).status).toBe(404);
+  });
+
+  it('gives the wh40k-elo rating of every stored player who has one, for their badges', async () => {
+    const rated = (userId: string, elo: number) => ({
+      userId,
+      name: userId,
+      elo,
+      games: 10,
+      wins: 5,
+      losses: 5,
+      draws: 0,
+      importedAt: new Date(),
+    });
+    // US-NOT-HERE never played an event we store: left out.
+    await db.insert(wh40kElo).values([rated('US-ADA', 1712.6), rated('US-NOT-HERE', 2000)]);
+    const top = (await (await app.request('/api/rankings/top')).json()) as TopRanks;
+    expect(top.elo).toEqual({ 'US-ADA': 1713 });
   });
 });
