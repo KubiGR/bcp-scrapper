@@ -82,6 +82,27 @@ function PhoneLine({ player, showTeam }: { player: EventPlayer; showTeam: boolea
   );
 }
 
+type Draw = 'tough' | 'easy' | 'even';
+/** Tough at or above `high`, easy at or below `low`. */
+const drawOf = (value: number, low: number, high: number): Draw =>
+  value >= high ? 'tough' : value <= low ? 'easy' : 'even';
+
+/** An opponent-strength figure: bold orange for a tough draw, dimmed for an easy one. */
+function DrawText({ draw, children }: { draw: Draw; children: string }) {
+  return (
+    <Text
+      component="span"
+      size="sm"
+      className="numeric"
+      data-draw={draw}
+      fw={draw === 'tough' ? 700 : undefined}
+      c={draw === 'tough' ? 'orange.4' : draw === 'easy' ? 'dimmed' : undefined}
+    >
+      {children}
+    </Text>
+  );
+}
+
 function playerColumns({
   eventId,
   showTeam,
@@ -137,6 +158,7 @@ function playerColumns({
       sortable: true,
       visibleMediaQuery: wide,
       title: 'Faction',
+      noWrap: true,
       render: (p) =>
         p.faction === null ? '—' : <FactionText faction={p.faction} guessed={p.factionGuessed} />,
     },
@@ -176,7 +198,9 @@ function playerColumns({
           <HoverHint
             hint={`How their ${String(p.opponents?.games ?? 0)} opponents did at this event (a draw is half)`}
           >
-            <span className="numeric">{`${String(Math.round(rate * 100))}%`}</span>
+            <DrawText
+              draw={drawOf(rate, 0.4, 0.6)}
+            >{`${String(Math.round(rate * 100))}%`}</DrawText>
           </HoverHint>
         );
       },
@@ -195,7 +219,7 @@ function playerColumns({
           <HoverHint
             hint={`Average wh40k-elo of the ${String(strength.rated)} of ${String(strength.games)} opponents rated`}
           >
-            <span className="numeric">{strength.elo}</span>
+            <DrawText draw={drawOf(strength.elo, 1500, 1650)}>{String(strength.elo)}</DrawText>
           </HoverHint>
         );
       },
@@ -204,6 +228,7 @@ function playerColumns({
       accessor: 'listStatus',
       sortable: true,
       title: 'List',
+      noWrap: true,
       render: (p) => <ListStatusBadge status={p.listStatus} error={p.listError} />,
     },
   ];

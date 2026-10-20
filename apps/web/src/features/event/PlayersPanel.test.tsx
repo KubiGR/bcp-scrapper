@@ -146,8 +146,13 @@ describe('PlayersPanel', () => {
     );
     const hard = (await screen.findByRole('link', { name: 'Hard Road' })).closest('tr');
     if (hard === null) throw new Error('no row');
-    expect(within(hard).getByText('66%')).toBeInTheDocument();
-    expect(within(hard).getByText('1712')).toBeInTheDocument();
+    // A tough draw stands out; an easy one is dimmed.
+    expect(within(hard).getByText('66%')).toHaveAttribute('data-draw', 'tough');
+    expect(within(hard).getByText('1712')).toHaveAttribute('data-draw', 'tough');
+    const soft = screen.getByRole('link', { name: 'Soft Draw' }).closest('tr');
+    if (soft === null) throw new Error('no row');
+    expect(within(soft).getByText('30%')).toHaveAttribute('data-draw', 'easy');
+    expect(within(soft).getByText('1480')).toHaveAttribute('data-draw', 'easy');
     const none = screen.getByRole('link', { name: 'No Pairings' }).closest('tr');
     if (none === null) throw new Error('no row');
     expect(within(none).getAllByText('—').length).toBeGreaterThanOrEqual(2);
