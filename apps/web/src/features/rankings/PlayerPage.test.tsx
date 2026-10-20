@@ -19,6 +19,7 @@ const entry = (overrides: Partial<PlayerHistoryEntry> = {}): PlayerHistoryEntry 
   hasList: true,
   score: 98,
   counts: true,
+  fieldElo: 1617,
   ...overrides,
 });
 
@@ -44,6 +45,7 @@ const ranking = (overrides: Partial<PlayerRanking> = {}): PlayerRanking => ({
       hasList: false,
       score: null,
       counts: false,
+      fieldElo: null,
     }),
   ],
   ...overrides,
@@ -97,6 +99,8 @@ describe('PlayerPage', () => {
     );
     expect(first.getByText('1st of 96')).toBeInTheDocument();
     expect(first.getByText('98.0')).toBeInTheDocument();
+    // The field's strength, and how much it weighs the score.
+    expect(first.getByText('1617')).toHaveAttribute('title', 'Average wh40k-elo · score ×1.33');
     expect(first.getByLabelText('Counts')).toBeInTheDocument();
     expect(first.getByRole('link', { name: 'List' })).toHaveAttribute(
       'href',
@@ -105,6 +109,9 @@ describe('PlayerPage', () => {
     expect(other).toHaveAttribute('data-counted', 'false');
     expect(within(other).getByText('2nd of 20 teams')).toBeInTheDocument();
     expect(within(other).queryByRole('link', { name: 'List' })).not.toBeInTheDocument();
+    expect(within(other).getByTitle('Too few rated players to tell · score ×1')).toHaveTextContent(
+      '–',
+    );
   });
 
   it('marks an event that started in the last week with a leaf', async () => {

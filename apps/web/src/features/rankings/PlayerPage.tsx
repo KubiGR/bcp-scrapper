@@ -1,4 +1,4 @@
-import type { EloFigure, PlayerHistoryEntry } from '@bcp/shared';
+import { strengthFactor, type EloFigure, type PlayerHistoryEntry } from '@bcp/shared';
 import { Anchor, Skeleton, Stack, Table, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '../../api/client';
@@ -62,6 +62,18 @@ function HistoryRow({ entry }: { entry: PlayerHistoryEntry }) {
         </Text>
       </Table.Td>
       <Table.Td ta="right">
+        <Text
+          size="sm"
+          c={dim}
+          className="numeric"
+          title={`${
+            entry.fieldElo === null ? 'Too few rated players to tell' : 'Average wh40k-elo'
+          } · score ×${String(Number(strengthFactor(entry.fieldElo).toFixed(2)))}`}
+        >
+          {entry.fieldElo ?? '–'}
+        </Text>
+      </Table.Td>
+      <Table.Td ta="right">
         <Text size="sm" c={dim} className="numeric">
           {entry.score === null ? '–' : entry.score.toFixed(1)}
         </Text>
@@ -122,7 +134,7 @@ export function PlayerPage({ userId }: { userId: string }) {
         )}
       </Stack>
       <Panel title="History">
-        <Table.ScrollContainer minWidth={720}>
+        <Table.ScrollContainer minWidth={780}>
           <Table aria-label="History" striped>
             <Table.Thead>
               <Table.Tr>
@@ -130,6 +142,7 @@ export function PlayerPage({ userId }: { userId: string }) {
                 <Table.Th>Event</Table.Th>
                 <Table.Th>Army</Table.Th>
                 <Table.Th>Placing</Table.Th>
+                <Table.Th ta="right">Field</Table.Th>
                 <Table.Th ta="right">Score</Table.Th>
                 <Table.Th ta="center">Counts</Table.Th>
                 <Table.Th>List</Table.Th>

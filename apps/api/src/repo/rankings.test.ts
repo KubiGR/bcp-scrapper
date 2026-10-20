@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { events, players, teams } from '../db/schema';
+import { events, players, teams, wh40kElo } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { syncEvent } from '../sync/jobs';
 import { ALL_EVENTS, sampleSource } from '../test/helpers';
@@ -45,6 +45,46 @@ describe('loadRankings', () => {
     expect(await loadRankings(db, { minRounds: 3, minPlayers: 8 }, TODAY)).toEqual([]);
     await db.update(events).set({ ended: false, endDate: new Date('2026-10-01') });
     expect(await loadRankings(db, ALL_EVENTS, new Date('2026-03-28T12:00:00Z'))).toEqual([]);
+  });
+});
+
+describe('field strength', () => {
+  const rate = (userIds: string[], elo: number) =>
+    db.insert(wh40kElo).values(
+      userIds.map((userId) => ({
+        userId,
+        name: userId,
+        elo,
+        games: 50,
+        wins: 25,
+        losses: 25,
+        draws: 0,
+        importedAt: TODAY,
+      })),
+    );
+  const ALL = ['US-ADA', 'US-BEN', 'US-CARA', 'US-DAN', 'US-EVE', 'US-FINN', 'US-GIA', 'US-HAL'];
+
+  it('weighs each event by its rated players’ average wh40k-elo', async () => {
+    // Average 1650: ×1.5 (8 players, team 1st: 28.28 → 42.43).
+    await rate(ALL.slice(0, 4), 1600);
+    await rate(ALL.slice(4), 1700);
+    const ranked = await loadRankings(db, ALL_EVENTS, TODAY);
+    expect(ranked[0]?.points).toBeCloseTo(42.43, 1);
+    expect(ranked[0]?.best.fieldElo).toBe(1650);
+  });
+
+  it('leaves an event at ×1 when under half its players are rated', async () => {
+    await rate(ALL.slice(0, 3), 1700);
+    const ranked = await loadRankings(db, ALL_EVENTS, TODAY);
+    expect(ranked[0]?.points).toBeCloseTo(28.28, 1);
+    expect(ranked[0]?.best.fieldElo).toBeNull();
+  });
+
+  it('shows each event’s field strength in a player’s history', async () => {
+    await rate(ALL, 1500);
+    const ranked = await loadRankings(db, ALL_EVENTS, TODAY);
+    const ada = await playerRanking(db, ranked, 'US-ADA');
+    expect(ada?.history[0]?.fieldElo).toBe(1500);
   });
 });
 

@@ -21,6 +21,7 @@ const player = (overrides: Partial<RankedPlayerRow> = {}): RankedPlayerRow => ({
     field: 96,
     score: 98,
     counts: true,
+    fieldElo: null,
   },
   factions: ['Orks', 'Necrons'],
   wh40kElo: null,

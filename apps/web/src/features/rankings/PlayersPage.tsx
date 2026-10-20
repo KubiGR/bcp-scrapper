@@ -151,7 +151,9 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
       <Text size="sm" c="dimmed">
         Points: the 5 best results of the last 12 months at big events. 1st place at a 100-player
         event scores 100; bigger events score more (400 players: 200), smaller ones less (20
-        players: 45). wh40k-elo: an Elo rating from all of BCP&apos;s games, imported daily.
+        players: 45). Stronger fields count more: an event whose players average 1550 wh40k-elo
+        scores ×1, and every 100 above adds 50% (up to ×1.5, down to ×0.75). wh40k-elo is an Elo
+        rating from all of BCP&apos;s games, imported daily.
       </Text>
       <Group gap="md" align="flex-end" wrap="wrap">
         <TextInput

@@ -17,6 +17,11 @@ export interface RankingResult {
   /** The event's players (all team members at a team event). */
   players: number;
   faction: string | null;
+  /**
+   * The field's strength: its rated players' average wh40k-elo; null (or absent) when too few of
+   * its players are rated to tell.
+   */
+  fieldElo?: number | null;
 }
 
 export interface ScoredResult extends RankingResult {
@@ -59,8 +64,27 @@ export function sizeFactor(players: number): number {
   return Math.sqrt(players / 100);
 }
 
-export function eventScore(result: Pick<RankingResult, 'placing' | 'field' | 'players'>): number {
-  return 100 * placingScore(result.placing, result.field) * sizeFactor(result.players);
+/** A field of average strength, by wh40k-elo: its events score ×1. */
+export const FIELD_ELO_BASE = 1550;
+
+/**
+ * Stronger fields count more: ×1 at an average wh40k-elo of 1550, +50% for every 100 above (−50%
+ * below), kept within 0.75–1.5; ×1 when the field's strength isn't known.
+ */
+export function strengthFactor(fieldElo: number | null | undefined): number {
+  if (fieldElo === null || fieldElo === undefined) return 1;
+  return Math.min(1.5, Math.max(0.75, 1 + (fieldElo - FIELD_ELO_BASE) / 200));
+}
+
+export function eventScore(
+  result: Pick<RankingResult, 'placing' | 'field' | 'players' | 'fieldElo'>,
+): number {
+  return (
+    100 *
+    placingScore(result.placing, result.field) *
+    sizeFactor(result.players) *
+    strengthFactor(result.fieldElo)
+  );
 }
 
 /** Results must start after this day (YYYY-MM-DD) to count. */

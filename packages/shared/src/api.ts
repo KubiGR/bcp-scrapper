@@ -541,6 +541,8 @@ const RankedResultSchema = z.object({
   field: z.number().int(),
   score: z.number(),
   counts: z.boolean(),
+  /** The field's average wh40k-elo (rounded); null when too few players are rated. */
+  fieldElo: z.number().nullable(),
 });
 
 export const RankedPlayerSchema = z.object({
@@ -595,6 +597,8 @@ export const PlayerHistoryEntrySchema = z.object({
   /** Null when the event doesn't count (small, running, older than 12 months, no placing). */
   score: z.number().nullable(),
   counts: z.boolean(),
+  /** The field's average wh40k-elo (rounded); null when too few players are rated. */
+  fieldElo: z.number().nullable(),
 });
 export type PlayerHistoryEntry = z.infer<typeof PlayerHistoryEntrySchema>;
 
