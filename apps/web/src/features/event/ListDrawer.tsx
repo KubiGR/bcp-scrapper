@@ -18,6 +18,7 @@ import { queueLists } from '../fetch-queue/fetch-queue-api';
 import { fetchQueueQuery } from '../fetch-queue/fetch-queue-queries';
 import { eventQuery, playerListQuery } from './event-queries';
 import { PlayerGames } from './PlayerGames';
+import { RankBadge } from '../rankings/RankBadge';
 
 interface ListDrawerProps {
   eventId: string;
@@ -78,7 +79,14 @@ export function ListDrawer({ eventId, player, onClose, instant = false }: ListDr
       size="lg"
       // Opened as the page loads, the slide-in never finishes (the drawer stays empty): no slide.
       transitionProps={instant ? { duration: 0 } : undefined}
-      title={player?.name}
+      title={
+        player && (
+          <>
+            {player.name}
+            <RankBadge userId={player.bcpUserId} />
+          </>
+        )
+      }
     >
       {player && (
         <Stack gap="md">

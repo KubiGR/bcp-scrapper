@@ -13,6 +13,7 @@ import { GamesTable } from './GamesTable';
 import { formatPoints, formatTotals, outcomeLabel } from './format';
 import { matchupFor, type TeamMatchup } from './team-matches';
 import { useRefreshWhenPairingsSettle } from './useRefreshWhenPairingsSettle';
+import { RankBadge } from '../rankings/RankBadge';
 
 function RoundCell({ cell }: { cell: PlayerRound | null }) {
   if (!cell) return <Text c="dimmed">—</Text>;
@@ -184,7 +185,10 @@ export function TeamPage({ eventId, teamId }: { eventId: string; teamId: string 
               {players.map((row) => (
                 <Table.Tr key={row.player.id}>
                   <Table.Td>
-                    <Text size="sm">{row.player.name}</Text>
+                    <Text size="sm">
+                      {row.player.name}
+                      <RankBadge userId={row.player.userId ?? null} />
+                    </Text>
                     <Text size="xs" c="dimmed">
                       <PlayerLine {...row.player} />
                     </Text>

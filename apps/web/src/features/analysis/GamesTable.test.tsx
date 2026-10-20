@@ -1,7 +1,7 @@
 import type { GameView } from '@bcp/shared';
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { renderWithProviders } from '../../test/render';
+import { renderWithProviders, renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { GamesTable } from './GamesTable';
 
 const player = (overrides: Partial<GameView['playerA']> = {}): GameView['playerA'] => ({
@@ -34,6 +34,28 @@ function renderTable(games: GameView[]) {
 }
 
 describe('GamesTable', () => {
+  it('shows both players’ rank and Elo badges', async () => {
+    stubFetchRoutes({
+      'GET /api/rankings/top': {
+        ranks: { 'US-RHEA': 4 },
+        elo: { 'US-RHEA': 1900, 'US-BEA': 1610 },
+      },
+    });
+    renderWithRouter(
+      <GamesTable
+        games={[
+          game({
+            playerA: player({ userId: 'US-RHEA' }),
+            playerB: player({ id: 'P2', name: 'Bea Moss', userId: 'US-BEA' }),
+          }),
+        ]}
+      />,
+    );
+    expect(await screen.findByRole('link', { name: 'Ranked #4, top 10' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'wh40k-elo 1900' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'wh40k-elo 1610' })).toBeInTheDocument();
+  });
+
   it('shows the faction and a disposition badge under a player’s name', () => {
     renderTable([
       game({
