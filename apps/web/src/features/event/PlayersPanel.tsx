@@ -31,7 +31,6 @@ import { FetchListsMenu } from './FetchListsMenu';
 import { listPath, openHere } from '../../lib/open-link';
 import { ListDrawer } from './ListDrawer';
 import { ListStatusBadge } from './ListStatusBadge';
-import classes from './PlayersPanel.module.css';
 import {
   detachmentsOf,
   dispositionsOf,
@@ -44,6 +43,7 @@ import {
   missingListCountFor,
 } from './players-filter';
 import { useQueueLists } from './use-queue-lists';
+import { PlayerName } from '../rankings/PlayerName';
 import { RankBadge } from '../rankings/RankBadge';
 import { HoverHint } from '../../components/HoverHint';
 import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
@@ -135,16 +135,9 @@ function playerColumns({
       render: (p) => (
         <>
           <Group gap="xs" wrap="nowrap">
-            <UnstyledButton
-              component="a"
-              href={listPath(eventId, p.bcpId)}
-              className={classes.playerName}
-              onClick={openHere(() => {
-                onOpen(p.bcpId);
-              })}
-            >
-              {p.name}
-            </UnstyledButton>
+            <Text size="sm" component="span">
+              <PlayerName name={p.name} userId={p.bcpUserId} />
+            </Text>
             <RankBadge userId={p.bcpUserId} />
             {p.dropped && (
               <Badge size="xs" color="gray" variant="outline">
@@ -242,7 +235,21 @@ function playerColumns({
       sortable: true,
       title: 'List',
       noWrap: true,
-      render: (p) => <ListStatusBadge status={p.listStatus} error={p.listError} />,
+      // A fetched list keeps its own address, for a new tab; a plain click opens it here.
+      render: (p) =>
+        p.listStatus === 'fetched' ? (
+          <a
+            href={listPath(eventId, p.bcpId)}
+            aria-label="Fetched"
+            onClick={openHere(() => {
+              onOpen(p.bcpId);
+            })}
+          >
+            <ListStatusBadge status={p.listStatus} error={p.listError} />
+          </a>
+        ) : (
+          <ListStatusBadge status={p.listStatus} error={p.listError} />
+        ),
     },
   ];
 }

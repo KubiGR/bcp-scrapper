@@ -5,6 +5,7 @@ import { roundsQuery } from '../analysis/analysis-queries';
 import { formatPoints, outcomeLabel } from '../analysis/format';
 import classes from './PlayerGames.module.css';
 import { playerGames } from './player-games';
+import { PlayerName } from '../rankings/PlayerName';
 import { RankBadge } from '../rankings/RankBadge';
 
 /**
@@ -51,7 +52,7 @@ export function PlayerGames({
                 {game.opponent ? (
                   <>
                     <Text size="sm">
-                      {game.opponent.name}
+                      <PlayerName name={game.opponent.name} userId={game.opponent.userId} />
                       <RankBadge userId={game.opponent.userId ?? null} />
                     </Text>
                     <Text size="xs" c="dimmed">

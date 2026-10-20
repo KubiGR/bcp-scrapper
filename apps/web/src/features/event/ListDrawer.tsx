@@ -18,6 +18,7 @@ import { queueLists } from '../fetch-queue/fetch-queue-api';
 import { fetchQueueQuery } from '../fetch-queue/fetch-queue-queries';
 import { eventQuery, playerListQuery } from './event-queries';
 import { PlayerGames } from './PlayerGames';
+import { PlayerName } from '../rankings/PlayerName';
 import { RankBadge } from '../rankings/RankBadge';
 
 interface ListDrawerProps {
@@ -82,7 +83,7 @@ export function ListDrawer({ eventId, player, onClose, instant = false }: ListDr
       title={
         player && (
           <>
-            {player.name}
+            <PlayerName name={player.name} userId={player.bcpUserId} />
             <RankBadge userId={player.bcpUserId} />
           </>
         )

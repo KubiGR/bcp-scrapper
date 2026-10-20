@@ -1,7 +1,7 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
-import { anEventDetail, aPlayer } from '../../test/sample-data';
+import { anEventDetail, aPlayer as samplePlayer } from '../../test/sample-data';
 import { PlayersPanel } from './PlayersPanel';
 
 // mantine-datatable decides per-column visibility with `useMediaQuery`, which calls
@@ -20,6 +20,10 @@ beforeEach(() => {
     dispatchEvent: () => false,
   }));
 });
+
+/** A sample player with a BCP account (as most have), so their name links to their page. */
+const aPlayer = (overrides: Parameters<typeof samplePlayer>[0] = {}) =>
+  samplePlayer({ bcpUserId: `US-${overrides.bcpId ?? 'PL-ADA'}`, ...overrides });
 
 /** A team group's collapse toggle (not its "Fetch … lists" button). */
 const teamToggle = (team: string) => ({
@@ -42,9 +46,9 @@ describe('PlayersPanel', () => {
     expect(badge).toHaveAttribute('href', '/players/US-ZED');
   });
 
-  it('opens a player list from the player’s name, a link to the list for a new tab', async () => {
+  it('links the name to the player’s page; the row and the list badge open the list', async () => {
     stubFetchRoutes({
-      'GET /api/events/EVT1/players': { items: [aPlayer()] },
+      'GET /api/events/EVT1/players': { items: [aPlayer({ bcpUserId: 'US-ADA' })] },
       'GET /api/players/PL-ADA/list': {
         playerId: 'PL-ADA',
         playerName: 'Ada Archer',
@@ -57,11 +61,14 @@ describe('PlayersPanel', () => {
     });
     renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
 
-    const nameLink = await screen.findByRole('link', { name: 'Ada Archer' });
-    expect(nameLink).toHaveAttribute('href', '/events/EVT1?tab=players&list=PL-ADA');
-    nameLink.focus();
-    fireEvent.click(nameLink);
-
+    expect(await screen.findByRole('link', { name: 'Ada Archer' })).toHaveAttribute(
+      'href',
+      '/players/US-ADA',
+    );
+    // The list keeps its own address, for a new tab.
+    const listLink = screen.getByRole('link', { name: 'Fetched' });
+    expect(listLink).toHaveAttribute('href', '/events/EVT1?tab=players&list=PL-ADA');
+    fireEvent.click(listLink);
     expect(await screen.findByText(/Gladius Task Force/)).toBeInTheDocument();
   });
 
@@ -216,7 +223,9 @@ describe('PlayersPanel', () => {
       />,
     );
     expect(await screen.findByText('Shared list text')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('link', { name: 'Ben Brass' }));
+    // Anywhere on the row but the name (that's the player's page) opens their list.
+    const ben = screen.getByRole('link', { name: 'Ben Brass' }).closest('tr');
+    fireEvent.click(ben?.querySelector('td') as Element);
     expect(onOpenPlayer).toHaveBeenCalledWith('PL-BEN');
   });
 

@@ -1,0 +1,16 @@
+/* Reads as the name it is; the underline shows it's a link on hover or keyboard focus. */
+.name {
+  color: inherit;
+  text-decoration: none;
+  border-radius: 2px;
+}
+
+.name:hover,
+.name:focus-visible {
+  text-decoration: underline;
+}
+
+.name:focus-visible {
+  outline: 1px solid var(--mantine-color-neon-5);
+  outline-offset: 2px;
+}
