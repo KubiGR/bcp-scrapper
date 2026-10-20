@@ -22,7 +22,7 @@ export interface JobContext {
   source: TournamentSource;
   progress: Progress;
   logger: Logger;
-  /** BCP's search can't filter by size, so pages are read in full; only events this big are stored. */
+  /** BCP's search can't filter by size, so pages are read in full; only big events are stored. */
   eventRule: EventSizeRule;
 }
 

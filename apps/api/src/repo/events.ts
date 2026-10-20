@@ -85,7 +85,7 @@ export async function findEvent(db: Db, id: string): Promise<EventRow | undefine
 }
 
 /**
- * Deletes every stored event smaller than `rule` (the keep rule) (foreign keys cascade to its teams,
+ * Deletes every stored event that isn't big under `rule` (foreign keys cascade to its teams,
  * players, army lists, team matchups, games and fetch-queue jobs; `sync_runs` has no event FK
  * and keeps its history). An event opened directly by URL is stored for that session but removed
  * again here at the next startup if it's small.

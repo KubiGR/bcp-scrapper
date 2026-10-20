@@ -110,7 +110,6 @@ export function PlayerPage({ userId }: { userId: string }) {
             : `#${String(data.rank)} of ${data.ranked.toLocaleString('en-GB')} · ${data.points.toFixed(1)} points`}
         </Text>
         <Text size="sm" className="numeric">
-          Elo {eloText(data.elo)} ·{' '}
           <Anchor href={WH40K_ELO_SITE} target="_blank" rel="noreferrer" inherit>
             wh40k-elo
           </Anchor>{' '}

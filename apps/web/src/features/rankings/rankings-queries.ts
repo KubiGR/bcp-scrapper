@@ -15,8 +15,8 @@ export const RANKINGS_PAGE = 100;
 export const rankingsPagesQuery = (filters: {
   search?: string;
   faction?: string;
-  /** By our Elo or wh40k-elo's instead of points. */
-  order?: 'elo' | 'wh40kElo';
+  /** By wh40k-elo's rating instead of points. */
+  order?: 'wh40kElo';
 }) => {
   const params = (offset: number) => {
     const query = new URLSearchParams();

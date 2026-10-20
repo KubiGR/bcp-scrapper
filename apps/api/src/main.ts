@@ -3,7 +3,7 @@ import { createApp } from './app';
 import { accessOptionsOf } from './auth/access';
 import { ensureAdmin } from './auth/bootstrap';
 import { createSource } from './bcp/create-source';
-import { allowedHostsOf, eventRulesOf, loadConfig, mailSettingsOf, siteUrlOf } from './config';
+import { allowedHostsOf, loadConfig, mailSettingsOf, siteUrlOf } from './config';
 import { createDb } from './db/client';
 import { AutoFetchPlanner } from './fetch-queue/auto-fetch';
 import { FetchQueueWorker } from './fetch-queue/worker';
@@ -27,8 +27,7 @@ import { httpWh40kEloClient } from './wh40k-elo/client';
 
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL, config.NODE_ENV === 'development');
-// Big events are analysed; smaller ones down to the keep rule are stored for our Elo only.
-const { eventRule, keepRule } = eventRulesOf(config);
+const eventRule = { minRounds: config.MIN_EVENT_ROUNDS, minPlayers: config.MIN_EVENT_PLAYERS };
 
 const database = createDb(config.DATABASE_URL);
 await database.migrate();
@@ -37,14 +36,14 @@ const reparsed = await reparseLists(database.db, logger);
 if (reparsed > 0) logger.info({ reparsed }, 'Re-read stored army lists');
 const accounts = await backfillPlayerUserIds(database.db);
 if (accounts > 0) logger.info({ accounts }, 'Stored players’ BCP account ids');
-const deleted = await deleteSmallEvents(database.db, keepRule);
+const deleted = await deleteSmallEvents(database.db, eventRule);
 if (deleted > 0) logger.info({ deleted }, 'Deleted small events (RTTs and events under N players)');
 const interrupted = await failInterruptedSyncRuns(database.db);
 if (interrupted > 0)
   logger.warn({ interrupted }, 'Marked sync runs cut off by a restart as failed');
 
 const { source, status } = createSource(config, { db: database.db, logger });
-const runner = new SyncRunner({ db: database.db, source, logger, eventRule: keepRule });
+const runner = new SyncRunner({ db: database.db, source, logger, eventRule });
 const fetchQueue = new FetchQueueWorker({
   db: database.db,
   source,
@@ -66,7 +65,6 @@ const autoFetch = config.AUTO_FETCH_ENABLED
       runner,
       logger: logger.child({ module: 'auto-fetch' }),
       eventRule,
-      keepRule,
       days: config.AUTO_FETCH_DAYS,
       intervalMs: config.AUTO_FETCH_INTERVAL_MS,
       catalogIntervalMs: config.AUTO_CATALOG_INTERVAL_MS,

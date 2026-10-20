@@ -8,4 +8,3 @@ export * from './standings';
 export * from './meta';
 export * from './meta-schemas';
 export * from './rankings';
-export * from './elo';

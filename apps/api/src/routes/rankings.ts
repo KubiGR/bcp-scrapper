@@ -2,7 +2,6 @@ import { RankingsQuerySchema, type EventSizeRule } from '@bcp/shared';
 import { Hono } from 'hono';
 import type { Db } from '../db/client';
 import { NotFoundError } from '../errors';
-import { eloLoader } from '../repo/elo';
 import { loadRankings, playerRanking, rankingsPage, topRanks } from '../repo/rankings';
 import { wh40kEloLoader } from '../repo/wh40k-elo';
 import { parseInput } from '../validation';
@@ -10,12 +9,8 @@ import { parseInput } from '../validation';
 /** Players ranked by tournament points (see the player rankings spec). */
 export function rankingsRoutes(deps: { db: Db; eventRule: EventSizeRule; now: () => Date }) {
   const ranked = () => loadRankings(deps.db, deps.eventRule, deps.now());
-  const ours = eloLoader(deps.db);
-  const theirs = wh40kEloLoader(deps.db);
-  const elo = async () => {
-    const [o, w] = await Promise.all([ours(), theirs()]);
-    return { ours: o, wh40k: w };
-  };
+  const wh40k = wh40kEloLoader(deps.db);
+  const elo = async () => ({ wh40k: await wh40k() });
   return new Hono()
     .get('/rankings', async (c) =>
       c.json(

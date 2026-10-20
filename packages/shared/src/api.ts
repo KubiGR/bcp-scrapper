@@ -522,8 +522,8 @@ export const RankingsQuerySchema = z.object({
   faction: z.string().trim().min(1).max(100).optional(),
   offset: z.coerce.number().int().min(0).default(0),
   limit: z.coerce.number().int().min(1).max(500).default(100),
-  /** Points (the default), our Elo or wh40k-elo's, best first; unrated players last. */
-  sort: z.enum(['points', 'elo', 'wh40kElo']).optional(),
+  /** Points (the default) or wh40k-elo's rating, best first; unrated players last. */
+  sort: z.enum(['points', 'wh40kElo']).optional(),
 });
 export type RankingsQuery = z.infer<typeof RankingsQuerySchema>;
 
@@ -555,8 +555,6 @@ export const RankedPlayerSchema = z.object({
   best: RankedResultSchema,
   /** Most played first, at most 2. */
   factions: z.array(z.string()),
-  /** Our Elo, from the games we store; null without any. */
-  elo: EloFigureSchema.nullable(),
   /** wh40k-elo's rating (all of BCP); null when it doesn't list them. */
   wh40kElo: EloFigureSchema.nullable(),
 });
@@ -608,7 +606,6 @@ export const PlayerRankingSchema = z.object({
   points: z.number(),
   /** When the oldest counted result drops out of the 12 months (YYYY-MM-DD). */
   dropsOn: z.iso.date().nullable(),
-  elo: EloFigureSchema.nullable(),
   wh40kElo: EloFigureSchema.nullable(),
   /** Newest first. */
   history: z.array(PlayerHistoryEntrySchema),

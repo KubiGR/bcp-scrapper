@@ -13,7 +13,6 @@ import {
   type RankingsQuery,
   type RankingsResponse,
   type EloFigure,
-  type EloRating,
   type TopRanks,
 } from '@bcp/shared';
 import { and, eq, gt, inArray, isNotNull, sql } from 'drizzle-orm';
@@ -23,17 +22,15 @@ import { armyLists, events, players, teams } from '../db/schema';
 import { storedCurrentList } from './lists';
 import type { Wh40kEloRating } from './wh40k-elo';
 
-/** Both Elo ratings by BCP account: ours, from the stored games, and wh40k-elo's. */
+/** wh40k-elo's ratings by BCP account. */
 export interface EloSources {
-  ours: Map<string, EloRating>;
   wh40k: Map<string, Wh40kEloRating>;
 }
-const NO_ELO: EloSources = { ours: new Map(), wh40k: new Map() };
+const NO_ELO: EloSources = { wh40k: new Map() };
 
 const figure = (rating: { elo: number; games: number } | undefined): EloFigure | null =>
   rating === undefined ? null : { elo: Math.round(rating.elo), games: rating.games };
 const eloOf = (sources: EloSources, userId: string) => ({
-  elo: figure(sources.ours.get(userId)),
   wh40kElo: figure(sources.wh40k.get(userId)),
 });
 
@@ -152,8 +149,8 @@ const withoutScores = ({ scores: _scores, best, ...player }: RankedPlayer) => ({
 });
 
 /**
- * A page of the ranking, filtered by name (plain, case-insensitive) and faction, with both Elo
- * ratings; sorted by points (rank) or by either Elo, unrated players last.
+ * A page of the ranking, filtered by name (plain, case-insensitive) and faction, with wh40k-elo's
+ * ratings; sorted by points (rank) or by that rating, unrated players last.
  */
 export function rankingsPage(
   ranked: RankedPlayer[],

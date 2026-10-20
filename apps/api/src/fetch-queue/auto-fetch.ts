@@ -28,11 +28,6 @@ export interface AutoFetchPlannerOptions {
   runner: SyncRunner;
   logger: Logger;
   eventRule: EventSizeRule;
-  /**
-   * Events kept for our Elo (at most as strict as `eventRule`): those too small to analyse get
-   * only their games fetched once over, no lists.
-   */
-  keepRule?: EventSizeRule;
   /** Only events that started within this many days are planned. */
   days: number;
   intervalMs: number;
@@ -116,7 +111,6 @@ export class AutoFetchPlanner {
   /** Queues what the window's events are missing; returns how many events and jobs it queued. */
   async planOnce(): Promise<{ events: number; jobs: number }> {
     const { db, eventRule, days } = this.#options;
-    const keepRule = this.#options.keepRule ?? eventRule;
     if (!(await getAutoFetchEnabled(db))) return { events: 0, jobs: 0 };
     // Lists fetched since the last pass teach new detachment names: split and respell with them.
     await tidyDetachments(db);
@@ -136,16 +130,11 @@ export class AutoFetchPlanner {
     let jobs = 0;
     for (const event of candidates) {
       const phase = eventPhase(event, now);
-      if (!isBigEvent(event, keepRule) || phase === 'upcoming') continue;
-      const big = isBigEvent(event, eventRule);
-      // Kept only for Elo: nothing to fetch until its games are all played.
-      if (!big && phase === 'running') continue;
+      if (!isBigEvent(event, eventRule) || phase === 'upcoming') continue;
       // Switched off mid-pass: stop adding work.
       if (!(await getAutoFetchEnabled(db))) break;
       const queued =
-        phase === 'running'
-          ? await this.#planRunning(event, now)
-          : await this.#planEvent(event, big);
+        phase === 'running' ? await this.#planRunning(event, now) : await this.#planEvent(event);
       if (queued > 0) planned += 1;
       jobs += queued;
     }
@@ -182,8 +171,7 @@ export class AutoFetchPlanner {
     return queued;
   }
 
-  /** A finished event's load and pairings; its lists too when it's big enough to analyse. */
-  async #planEvent(event: typeof events.$inferSelect, withLists: boolean): Promise<number> {
+  async #planEvent(event: typeof events.$inferSelect): Promise<number> {
     const { db } = this.#options;
     const failed = await failedTargets(db, event.id);
     if (event.lastSyncedAt === null) {
@@ -227,7 +215,6 @@ export class AutoFetchPlanner {
       // Nothing left to fetch: every round is final, so the event's pairings are complete.
       if (rounds.length === 0) await markPairingsSyncedIfComplete(db, event.id, now);
     }
-    if (!withLists) return queued;
     const missing = (await findPlayersMissingLists(db, event.id)).filter(
       (item) => !failed.players.has(item.playerId),
     );

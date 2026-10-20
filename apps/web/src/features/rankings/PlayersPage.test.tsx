@@ -23,7 +23,6 @@ const player = (overrides: Partial<RankedPlayerRow> = {}): RankedPlayerRow => ({
     counts: true,
   },
   factions: ['Orks', 'Necrons'],
-  elo: null,
   wh40kElo: null,
   ...overrides,
 });
@@ -68,32 +67,30 @@ describe('PlayersPage', () => {
     expect(within(ben).getByText('2nd of 20 teams · London GT')).toBeInTheDocument();
   });
 
-  it('shows our Elo and wh40k-elo’s side by side, a dash when unrated', async () => {
+  it('shows wh40k-elo’s rating beside the points, a dash when unrated', async () => {
     stubFetchRoutes({
       'GET /api/rankings': response([
-        player({ elo: { elo: 1612, games: 23 }, wh40kElo: { elo: 1888, games: 140 } }),
+        player({ wh40kElo: { elo: 1888, games: 140 } }),
         player({ rank: 2, userId: 'US-BEN', name: 'Ben Brass' }),
       ]),
     });
     renderWithRouter(<PlayersPage search={{}} onSearchChange={vi.fn()} />);
     const table = within(await screen.findByRole('table', { name: 'Players' }));
-    expect(table.getByRole('columnheader', { name: /^Elo/ })).toBeInTheDocument();
     expect(table.getByRole('columnheader', { name: /wh40k-elo/ })).toBeInTheDocument();
     const [ada, ben] = table.getAllByRole('row').slice(1);
     if (ada === undefined || ben === undefined) throw new Error('missing rows');
-    expect(within(ada).getByText('1612')).toHaveAttribute('title', '23 games');
     expect(within(ada).getByText('1888')).toHaveAttribute('title', '140 games');
-    expect(within(ben).getAllByText('—')).toHaveLength(2);
+    expect(within(ben).getAllByText('—')).toHaveLength(1);
   });
 
-  it('orders by either Elo through the API, kept in the address', async () => {
+  it('orders by wh40k-elo through the API, kept in the address', async () => {
     const fetchMock = stubFetchRoutes({ 'GET /api/rankings': response([player()]) });
     const onSearchChange = vi.fn();
-    renderWithRouter(<PlayersPage search={{ order: 'elo' }} onSearchChange={onSearchChange} />);
+    renderWithRouter(
+      <PlayersPage search={{ order: 'wh40kElo' }} onSearchChange={onSearchChange} />,
+    );
     await screen.findByRole('table', { name: 'Players' });
-    expect(JSON.stringify(fetchMock.mock.calls)).toContain('sort=elo');
-    fireEvent.click(screen.getByRole('radio', { name: 'wh40k-elo' }));
-    expect(onSearchChange).toHaveBeenCalledWith({ order: 'wh40kElo' });
+    expect(JSON.stringify(fetchMock.mock.calls)).toContain('sort=wh40kElo');
     fireEvent.click(screen.getByRole('radio', { name: 'Points' }));
     expect(onSearchChange).toHaveBeenLastCalledWith({});
   });

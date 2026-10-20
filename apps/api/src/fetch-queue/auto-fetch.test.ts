@@ -18,13 +18,12 @@ let now: Date;
 const source = sampleSource();
 const BIG = { minRounds: 4, minPlayers: 20 };
 
-function planner(eventRule = ALL_EVENTS, days = 60, keepRule = eventRule) {
+function planner(eventRule = ALL_EVENTS, days = 60) {
   return new AutoFetchPlanner({
     db,
-    runner: new SyncRunner({ db, source, logger: silentLogger, eventRule: keepRule }),
+    runner: new SyncRunner({ db, source, logger: silentLogger, eventRule }),
     logger: silentLogger,
     eventRule,
-    keepRule,
     days,
     intervalMs: 600_000,
     catalogIntervalMs: 21_600_000,
@@ -192,21 +191,6 @@ describe('AutoFetchPlanner', () => {
     now = new Date('2026-04-20T12:00:00Z');
     await planner(ALL_EVENTS, 5).planOnce(); // only events of the last 5 days: none
     expect((await jobs()).some((j) => j.eventId === 'EVTSINGLE01')).toBe(false);
-  });
-
-  it('fetches only the games of an event kept for Elo but too small to analyse', async () => {
-    await syncEvent({ db, source }, 'EVTTEAM0001');
-    await planner(BIG, 60, ALL_EVENTS).planOnce();
-    const team = (await jobs()).filter((j) => j.eventId === 'EVTTEAM0001');
-    expect(team.filter((j) => j.kind === 'pairings-round').map((j) => j.round)).toEqual([1, 2]);
-    expect(team.some((j) => j.kind === 'list')).toBe(false);
-
-    // While it runs there's nothing to fetch yet: no lists, and pairings wait for the end.
-    await db.delete(fetchQueue);
-    now = new Date('2026-03-28T15:00:00Z');
-    await db.update(events).set({ ended: false }).where(eq(events.id, 'EVTTEAM0001'));
-    await planner(BIG, 60, ALL_EVENTS).planOnce();
-    expect((await jobs()).some((j) => j.eventId === 'EVTTEAM0001')).toBe(false);
   });
 
   describe('a running event (EVTTEAM0001 runs 28–29 Mar)', () => {

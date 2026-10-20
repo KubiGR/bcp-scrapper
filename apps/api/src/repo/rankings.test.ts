@@ -66,30 +66,25 @@ describe('rankingsPage', () => {
     }
   });
 
-  it('adds both Elo ratings, and sorts by either with unrated players last', async () => {
+  it('adds wh40k-elo’s rating, and sorts by it with unrated players last', async () => {
     const ranked = await loadRankings(db, ALL_EVENTS, TODAY);
     const elo = {
-      ours: new Map([
-        ['US-ADA', { elo: 1530.4, games: 3, wins: 2, losses: 1, draws: 0 }],
-        ['US-BEN', { elo: 1610, games: 5, wins: 5, losses: 0, draws: 0 }],
+      wh40k: new Map([
+        ['US-HAL', { elo: 1900.4, games: 80 }],
+        ['US-ADA', { elo: 1700, games: 40 }],
       ]),
-      wh40k: new Map([['US-HAL', { elo: 1900, games: 80 }]]),
     };
     const byPoints = rankingsPage(ranked, { offset: 0, limit: 100 }, elo);
-    const ada = byPoints.players.find((p) => p.userId === 'US-ADA');
-    expect(ada?.elo).toEqual({ elo: 1530, games: 3 });
-    expect(ada?.wh40kElo).toBeNull();
     expect(byPoints.players.find((p) => p.userId === 'US-HAL')?.wh40kElo).toEqual({
       elo: 1900,
       games: 80,
     });
-    const byElo = rankingsPage(ranked, { offset: 0, limit: 100, sort: 'elo' }, elo);
-    expect(byElo.players.slice(0, 2).map((p) => p.userId)).toEqual(['US-BEN', 'US-ADA']);
+    expect(byPoints.players.find((p) => p.userId === 'US-BEN')?.wh40kElo).toBeNull();
+    const byElo = rankingsPage(ranked, { offset: 0, limit: 100, sort: 'wh40kElo' }, elo);
+    expect(byElo.players.slice(0, 2).map((p) => p.userId)).toEqual(['US-HAL', 'US-ADA']);
     expect(byElo.players).toHaveLength(8);
     // Ranks stay the points ranks.
-    expect(byElo.players[0]?.rank).toBe(ranked.find((p) => p.userId === 'US-BEN')?.rank);
-    const byTheirs = rankingsPage(ranked, { offset: 0, limit: 1, sort: 'wh40kElo' }, elo);
-    expect(byTheirs.players.map((p) => p.userId)).toEqual(['US-HAL']);
+    expect(byElo.players[0]?.rank).toBe(ranked.find((p) => p.userId === 'US-HAL')?.rank);
   });
 
   it('gives the top ranks by account', async () => {
@@ -110,12 +105,10 @@ describe('playerRanking', () => {
     expect(ada?.history.every((h) => h.counts && h.score !== null)).toBe(true);
     expect(ada?.rank).toBe(ranked.findIndex((p) => p.userId === 'US-ADA') + 1);
     expect(ada?.dropsOn).toBe('2027-03-28');
-    expect(ada?.elo).toBeNull();
+    expect(ada?.wh40kElo).toBeNull();
     const rated = await playerRanking(db, ranked, 'US-ADA', {
-      ours: new Map([['US-ADA', { elo: 1490.6, games: 1, wins: 0, losses: 1, draws: 0 }]]),
       wh40k: new Map([['US-ADA', { elo: 1700, games: 40 }]]),
     });
-    expect(rated?.elo).toEqual({ elo: 1491, games: 1 });
     expect(rated?.wh40kElo).toEqual({ elo: 1700, games: 40 });
   });
 
