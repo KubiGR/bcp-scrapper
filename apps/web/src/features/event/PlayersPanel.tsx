@@ -45,6 +45,7 @@ import {
 } from './players-filter';
 import { useQueueLists } from './use-queue-lists';
 import { RankBadge } from '../rankings/RankBadge';
+import { HoverHint } from '../../components/HoverHint';
 import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
 
 function emptyText(loadingFromBcp: boolean, playerCount: number): string {
@@ -162,6 +163,44 @@ function playerColumns({
       render: (p) => <span className="numeric">{formatRecord(p)}</span>,
     },
     {
+      accessor: 'oppWinRate',
+      sortable: true,
+      visibleMediaQuery: wide,
+      title: 'Opp. win %',
+      textAlign: 'right',
+      render: (p) => {
+        const rate = p.opponents?.winRate ?? null;
+        return rate === null ? (
+          '—'
+        ) : (
+          <HoverHint
+            hint={`How their ${String(p.opponents?.games ?? 0)} opponents did at this event (a draw is half)`}
+          >
+            <span className="numeric">{`${String(Math.round(rate * 100))}%`}</span>
+          </HoverHint>
+        );
+      },
+    },
+    {
+      accessor: 'oppElo',
+      sortable: true,
+      visibleMediaQuery: wide,
+      title: 'Opp. Elo',
+      textAlign: 'right',
+      render: (p) => {
+        const strength = p.opponents;
+        return strength?.elo === null || strength?.elo === undefined ? (
+          '—'
+        ) : (
+          <HoverHint
+            hint={`Average wh40k-elo of the ${String(strength.rated)} of ${String(strength.games)} opponents rated`}
+          >
+            <span className="numeric">{strength.elo}</span>
+          </HoverHint>
+        );
+      },
+    },
+    {
       accessor: 'listStatus',
       sortable: true,
       title: 'List',
@@ -181,6 +220,8 @@ const PLAYER_SORT = {
   // No games is no record: blank, so last either way.
   wins: (p) =>
     p.wins + p.losses + p.draws === 0 ? null : p.wins * 1_000_000 + p.draws * 1_000 - p.losses,
+  oppWinRate: (p) => p.opponents?.winRate ?? null,
+  oppElo: (p) => p.opponents?.elo ?? null,
   listStatus: (p) => p.listStatus,
 } satisfies Record<string, SortValue<EventPlayer>>;
 type PlayerSortKey = keyof typeof PLAYER_SORT;

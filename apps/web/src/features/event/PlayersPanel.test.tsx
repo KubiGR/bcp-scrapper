@@ -121,6 +121,47 @@ describe('PlayersPanel', () => {
     expect(names().at(-1)).toBe('No Games');
   });
 
+  it('shows how strong each player’s opponents here were, sortable', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [
+          aPlayer({
+            bcpId: 'P1',
+            name: 'Soft Draw',
+            placing: 1,
+            opponents: { winRate: 0.3, elo: 1480, rated: 4, games: 5 },
+          }),
+          aPlayer({
+            bcpId: 'P2',
+            name: 'Hard Road',
+            placing: 2,
+            opponents: { winRate: 0.66, elo: 1712, rated: 5, games: 5 },
+          }),
+          aPlayer({ bcpId: 'P3', name: 'No Pairings', placing: 3 }),
+        ],
+      },
+    });
+    renderWithRouter(
+      <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
+    );
+    const hard = (await screen.findByRole('link', { name: 'Hard Road' })).closest('tr');
+    if (hard === null) throw new Error('no row');
+    expect(within(hard).getByText('66%')).toBeInTheDocument();
+    expect(within(hard).getByText('1712')).toBeInTheDocument();
+    const none = screen.getByRole('link', { name: 'No Pairings' }).closest('tr');
+    if (none === null) throw new Error('no row');
+    expect(within(none).getAllByText('—').length).toBeGreaterThanOrEqual(2);
+    const names = () =>
+      screen
+        .getAllByRole('link')
+        .map((b) => b.textContent)
+        .filter((text) => ['Soft Draw', 'Hard Road', 'No Pairings'].includes(text));
+    fireEvent.click(screen.getByRole('button', { name: /^Opp\. Elo/ }));
+    expect(names()).toEqual(['Hard Road', 'Soft Draw', 'No Pairings']);
+    fireEvent.click(screen.getByRole('button', { name: /^Opp\. win/ }));
+    expect(names()).toEqual(['Hard Road', 'Soft Draw', 'No Pairings']);
+  });
+
   it('opens the list the address names, and reports the player opened', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': {

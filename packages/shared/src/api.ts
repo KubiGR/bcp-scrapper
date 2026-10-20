@@ -182,6 +182,17 @@ export const EventPlayerSchema = z.object({
    * has no such list. NO_LIST is final: not counted as failed, not retried, not queued in bulk.
    */
   listErrorCode: z.string().nullable(),
+  /** How strong their opponents at this event were; absent before any of its games are stored. */
+  opponents: z
+    .object({
+      /** The opponents' average win rate at this event (a draw is half). */
+      winRate: z.number().nullable(),
+      /** The rated opponents' average wh40k-elo, rounded. */
+      elo: z.number().nullable(),
+      rated: z.number().int(),
+      games: z.number().int(),
+    })
+    .optional(),
 });
 export type EventPlayer = z.infer<typeof EventPlayerSchema>;
 

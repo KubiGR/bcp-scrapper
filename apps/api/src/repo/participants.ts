@@ -1,5 +1,6 @@
 import {
   knownDisposition,
+  opponentStrengths,
   type EventCounts,
   type EventPlayer,
   type Player,
@@ -9,7 +10,7 @@ import { and, count, eq, isNotNull, notInArray, sql } from 'drizzle-orm';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { armyRules } from './detachment-links';
-import { armyLists, players, teams } from '../db/schema';
+import { armyLists, games, players, teams, wh40kElo } from '../db/schema';
 import { isRetryableFailure, latestQueueRowsByPlayer, type LatestQueueRow } from './fetch-queue';
 import { findPlayersMissingLists, storedCurrentList } from './lists';
 import { excludedColumns } from './upsert';
@@ -110,7 +111,7 @@ export function listStateOf(
 /** An event's players, best placing first (unplaced last, by name), with team and list state. */
 export async function listEventPlayers(db: Db, eventId: string): Promise<EventPlayer[]> {
   const rules = await armyRules(db);
-  const [rows, queue] = await Promise.all([
+  const [rows, queue, paired] = await Promise.all([
     db
       .select({
         player: players,
@@ -120,16 +121,29 @@ export async function listEventPlayers(db: Db, eventId: string): Promise<EventPl
         parsedArmy: armyLists.parsedArmy,
         detachments: armyLists.detachments,
         parsedDisposition: armyLists.parsedDisposition,
+        elo: wh40kElo.elo,
       })
       .from(players)
       .leftJoin(teams, eq(teams.id, players.teamId))
       // Only the player's current BCP list counts: one BCP replaced since is "available" again.
       .leftJoin(armyLists, storedCurrentList)
+      .leftJoin(wh40kElo, eq(wh40kElo.userId, players.bcpUserId))
       .where(eq(players.eventId, eventId))
       .orderBy(sql`${players.placing} asc nulls last`, players.name),
     latestQueueRowsByPlayer(db, eventId),
+    db
+      .select({ a: games.playerAId, b: games.playerBId })
+      .from(games)
+      .where(eq(games.eventId, eventId)),
   ]);
+  // Opponents' strength from this event alone: their records here and their wh40k-elo.
+  const strengths = opponentStrengths(
+    paired,
+    new Map(rows.map(({ player }) => [player.id, player])),
+    new Map(rows.flatMap((row) => (row.elo === null ? [] : [[row.player.id, row.elo] as const]))),
+  );
   return rows.map((row) => {
+    const strength = strengths.get(row.player.id);
     const { player, teamName, teamPlacing, storedListId } = row;
     return {
       bcpId: player.id,
@@ -148,6 +162,12 @@ export async function listEventPlayers(db: Db, eventId: string): Promise<EventPl
       disposition: player.disposition ?? knownDisposition(row.parsedDisposition),
       detachments: row.detachments ?? [],
       ...listStateOf(player.listId, storedListId, queue.get(player.id)),
+      ...(strength && {
+        opponents: {
+          ...strength,
+          elo: strength.elo === null ? null : Math.round(strength.elo),
+        },
+      }),
     };
   });
 }
