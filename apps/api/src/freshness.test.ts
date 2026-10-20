@@ -34,12 +34,16 @@ describe('isEventStale', () => {
     expect(isEventStale({ ...running, lastSyncedAt: null }, now)).toBe(true);
   });
 
-  it('never goes stale once a finished event is synced (only an explicit Refresh reloads it)', () => {
-    expect(isEventStale({ ...finished, ended: true, lastSyncedAt: hoursAgo(24 * 30) }, now)).toBe(
-      false,
-    );
+  it('never goes stale once a finished event is synced after it ended (only Refresh reloads it)', () => {
+    expect(isEventStale({ ...finished, ended: true, lastSyncedAt: hoursAgo(24) }, now)).toBe(false);
     // Not closed in BCP, but its last day is well past the grace period: still not auto-reloaded.
-    expect(isEventStale({ ...finished, lastSyncedAt: hoursAgo(24 * 30) }, now)).toBe(false);
+    expect(isEventStale({ ...finished, lastSyncedAt: hoursAgo(24) }, now)).toBe(false);
+  });
+
+  it('reloads a finished event once when it was last synced while it still ran', () => {
+    // Synced during the last round: standings and records from mid-round, never final.
+    expect(isEventStale({ ...finished, ended: true, lastSyncedAt: hoursAgo(49) }, now)).toBe(true);
+    expect(isEventStale({ ...finished, lastSyncedAt: hoursAgo(49) }, now)).toBe(true);
   });
 
   it('never goes stale for an upcoming event, however old the sync', () => {
