@@ -533,8 +533,11 @@ export const RankingsQuerySchema = z.object({
   faction: z.string().trim().min(1).max(100).optional(),
   offset: z.coerce.number().int().min(0).default(0),
   limit: z.coerce.number().int().min(1).max(500).default(100),
-  /** Points (the default) or wh40k-elo's rating, best first; unrated players last. */
-  sort: z.enum(['points', 'wh40kElo']).optional(),
+  /**
+   * Points (the default), Overall (60% wh40k-elo, 40% points) or wh40k-elo's rating, best first;
+   * unrated players last by wh40k-elo.
+   */
+  sort: z.enum(['points', 'overall', 'wh40kElo']).optional(),
 });
 export type RankingsQuery = z.infer<typeof RankingsQuerySchema>;
 
@@ -570,6 +573,13 @@ export const RankedPlayerSchema = z.object({
   factions: z.array(z.string()),
   /** wh40k-elo's rating (all of BCP); null when it doesn't list them. */
   wh40kElo: EloFigureSchema.nullable(),
+  /**
+   * 0–100: 60% their wh40k-elo percentile and 40% their points percentile among ranked players;
+   * their points percentile alone when unrated.
+   */
+  overall: z.number(),
+  /** Their place by Overall among all ranked players (1 = best). */
+  overallRank: z.number().int().positive(),
 });
 export type RankedPlayerRow = z.infer<typeof RankedPlayerSchema>;
 

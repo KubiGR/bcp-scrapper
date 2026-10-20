@@ -15,6 +15,7 @@ describe('players route search', () => {
 
   it('keeps a known Elo order and drops anything else', () => {
     expect(validate({ order: 'wh40kElo' })).toMatchObject({ order: 'wh40kElo' });
+    expect(validate({ order: 'overall' })).toMatchObject({ order: 'overall' });
     expect(validate({ order: 'nope' })).not.toHaveProperty('order', 'nope');
   });
 });

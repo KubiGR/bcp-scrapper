@@ -15,8 +15,8 @@ export const RANKINGS_PAGE = 100;
 export const rankingsPagesQuery = (filters: {
   search?: string;
   faction?: string;
-  /** By wh40k-elo's rating instead of points. */
-  order?: 'wh40kElo';
+  /** By Overall (60% wh40k-elo, 40% points) or wh40k-elo instead of points. */
+  order?: 'overall' | 'wh40kElo';
 }) => {
   const params = (offset: number) => {
     const query = new URLSearchParams();

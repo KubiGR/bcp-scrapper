@@ -180,6 +180,42 @@ const withoutScores = ({ scores: _scores, best, ...player }: RankedPlayer) => ({
   },
 });
 
+/** Overall's weight on the wh40k-elo percentile; the rest is the points percentile. */
+export const OVERALL_ELO_WEIGHT = 0.6;
+
+/** 100 for the first of `n`, 0 for the last, evenly between; 100 when alone. */
+const percentile = (index: number, n: number) => (n <= 1 ? 100 : (100 * (n - 1 - index)) / (n - 1));
+
+/**
+ * Each ranked player's Overall (0–100): 60% their wh40k-elo percentile among the rated ranked
+ * players, 40% their points percentile among all ranked; the points percentile alone when unrated.
+ */
+function overallScores(ranked: RankedPlayer[], sources: EloSources): Map<string, number> {
+  const rated = ranked
+    .flatMap((player) => {
+      const rating = sources.wh40k.get(player.userId);
+      return rating === undefined ? [] : [{ userId: player.userId, elo: rating.elo }];
+    })
+    .sort((a, b) => b.elo - a.elo);
+  // Tied ratings share the better place.
+  const eloPercentile = new Map<string, number>();
+  let place = 0;
+  rated.forEach((entry, index) => {
+    if (index > 0 && entry.elo !== rated[index - 1]?.elo) place = index;
+    eloPercentile.set(entry.userId, percentile(place, rated.length));
+  });
+  return new Map(
+    ranked.map((player, index) => {
+      const points = percentile(index, ranked.length);
+      const elo = eloPercentile.get(player.userId);
+      return [
+        player.userId,
+        elo === undefined ? points : OVERALL_ELO_WEIGHT * elo + (1 - OVERALL_ELO_WEIGHT) * points,
+      ];
+    }),
+  );
+}
+
 /**
  * A page of the ranking, filtered by name (plain, case-insensitive) and faction, with wh40k-elo's
  * ratings; sorted by points (rank) or by that rating, unrated players last.
@@ -196,13 +232,28 @@ export function rankingsPage(
       (query.faction === undefined ||
         player.scores.some((score) => score.faction === query.faction)),
   );
+  const overall = overallScores(ranked, sources);
+  // Places by Overall among all ranked; ties go to the better points rank.
+  const overallRank = new Map(
+    ranked
+      .map((player) => ({
+        userId: player.userId,
+        score: overall.get(player.userId) ?? 0,
+        rank: player.rank,
+      }))
+      .sort((a, b) => b.score - a.score || a.rank - b.rank)
+      .map((entry, index) => [entry.userId, index + 1]),
+  );
   const rows = matching.map((player) => ({
     ...withoutScores(player),
     ...eloOf(sources, player.userId),
+    overall: overall.get(player.userId) ?? 0,
+    overallRank: overallRank.get(player.userId) ?? ranked.length,
   }));
   const sort = query.sort ?? 'points';
   if (sort !== 'points') {
-    const value = (row: (typeof rows)[number]) => row[sort]?.elo ?? -Infinity;
+    const value = (row: (typeof rows)[number]) =>
+      sort === 'overall' ? -row.overallRank : (row.wh40kElo?.elo ?? -Infinity);
     rows.sort((a, b) => value(b) - value(a) || a.rank - b.rank);
   }
   return {

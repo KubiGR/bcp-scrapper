@@ -8,7 +8,7 @@ const PlayersSearchSchema = z.object({
   // As typed, spaces included: trimming here would eat the space between first and last name.
   q: z.string().min(1).max(100).optional().catch(undefined),
   faction: optionalText,
-  order: z.enum(['wh40kElo']).optional().catch(undefined),
+  order: z.enum(['overall', 'wh40kElo']).optional().catch(undefined),
 });
 
 export const Route = createFileRoute('/players/')({

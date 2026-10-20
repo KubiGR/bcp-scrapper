@@ -127,6 +127,33 @@ describe('rankingsPage', () => {
     expect(byElo.players[0]?.rank).toBe(ranked.find((p) => p.userId === 'US-HAL')?.rank);
   });
 
+  it('scores Overall from 60% wh40k-elo and 40% points percentiles, points alone when unrated', async () => {
+    const ranked = await loadRankings(db, ALL_EVENTS, TODAY);
+    // Rated: the top two by points, Elo reversed; the rest unrated.
+    const [first, second] = ranked;
+    if (first === undefined || second === undefined) throw new Error('need two');
+    const elo = {
+      wh40k: new Map([
+        [first.userId, { elo: 1500, games: 10 }],
+        [second.userId, { elo: 1900, games: 10 }],
+      ]),
+    };
+    const page = rankingsPage(ranked, { offset: 0, limit: 100, sort: 'overall' }, elo);
+    const overall = (userId: string) => page.players.find((p) => p.userId === userId)?.overall;
+    const n = ranked.length;
+    const pointsPct = (rank: number) => (100 * (n - rank)) / (n - 1);
+    // Second by points, first by Elo: 0.6 × 100 + 0.4 × points percentile.
+    expect(overall(second.userId)).toBeCloseTo(60 + 0.4 * pointsPct(second.rank), 6);
+    expect(overall(first.userId)).toBeCloseTo(0 + 0.4 * 100, 6);
+    const last = ranked.at(-1);
+    expect(overall(last?.userId ?? '')).toBeCloseTo(0, 6);
+    expect(page.players[0]?.userId).toBe(second.userId);
+    // Ranked by Overall too: 1 for the best score.
+    expect(page.players.map((p) => p.overallRank).slice(0, 2)).toEqual([1, 2]);
+    // Without the sort, Overall is still given.
+    expect(rankingsPage(ranked, { offset: 0, limit: 1 }, elo).players[0]?.overall).toBeCloseTo(40);
+  });
+
   it('gives the top ranks by account', async () => {
     const ranked = await loadRankings(db, ALL_EVENTS, TODAY);
     const { ranks } = topRanks(ranked);

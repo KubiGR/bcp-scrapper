@@ -27,8 +27,8 @@ import { HoverHint } from '../../components/HoverHint';
 export interface PlayersSearch {
   q?: string;
   faction?: string;
-  /** By wh40k-elo's rating instead of points. */
-  order?: 'wh40kElo';
+  /** By Overall (60% wh40k-elo, 40% points) or wh40k-elo instead of points. */
+  order?: 'overall' | 'wh40kElo';
 }
 
 interface PlayersPageProps {
@@ -36,11 +36,12 @@ interface PlayersPageProps {
   onSearchChange: (next: PlayersSearch) => void;
 }
 
-type Column = 'rank' | 'name' | 'points' | 'wh40kElo' | 'results';
+type Column = 'rank' | 'name' | 'points' | 'overall' | 'wh40kElo' | 'results';
 const VALUES: Record<Column, SortValue<RankedPlayerRow>> = {
   rank: (row) => row.rank,
   name: (row) => row.name,
   points: (row) => row.points,
+  overall: (row) => row.overallRank,
   wh40kElo: (row) => row.wh40kElo?.elo ?? null,
   results: (row) => row.results,
 };
@@ -67,9 +68,10 @@ export const bestResult = (best: RankedPlayerRow['best']) =>
 function PlayersTable({ rows }: { rows: RankedPlayerRow[] }) {
   const { sorted, sort, toggle } = useTableSort<RankedPlayerRow, Column>(rows, VALUES, null, {
     rank: 'asc',
+    overall: 'asc',
   });
   return (
-    <Table.ScrollContainer minWidth={700}>
+    <Table.ScrollContainer minWidth={780}>
       <Table aria-label="Players" striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
@@ -81,6 +83,9 @@ function PlayersTable({ rows }: { rows: RankedPlayerRow[] }) {
             </SortableTh>
             <SortableTh column="points" sort={sort} onSort={toggle} ta="right">
               Points
+            </SortableTh>
+            <SortableTh column="overall" sort={sort} onSort={toggle} ta="right">
+              Overall
             </SortableTh>
             <SortableTh
               column="wh40kElo"
@@ -111,6 +116,11 @@ function PlayersTable({ rows }: { rows: RankedPlayerRow[] }) {
               </Table.Td>
               <Table.Td ta="right" className="numeric">
                 {row.points.toFixed(1)}
+              </Table.Td>
+              <Table.Td ta="right" className="numeric">
+                <HoverHint hint={`Score ${String(Number(row.overall.toFixed(2)))} of 100`}>
+                  #{row.overallRank}
+                </HoverHint>
               </Table.Td>
               <Table.Td ta="right" className="numeric">
                 <EloCell figure={row.wh40kElo} />
@@ -154,7 +164,9 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
         event scores 100; bigger events score more (400 players: 200), smaller ones less (20
         players: 45). Stronger fields count more: an event whose players average 1550 wh40k-elo
         scores ×1, and every 100 above adds 50% (up to ×1.5, down to ×0.75). wh40k-elo is an Elo
-        rating from all of BCP&apos;s games, imported daily.
+        rating from all of BCP&apos;s games, imported daily. Overall ranks players by a score that
+        weighs their wh40k-elo percentile 60% and their points percentile 40% (points alone without
+        a wh40k-elo); hover a place for the score.
       </Text>
       <Group gap="md" align="flex-end" wrap="wrap">
         <TextInput
@@ -185,11 +197,12 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
             aria-label="Order by"
             data={[
               { value: 'points', label: 'Points' },
+              { value: 'overall', label: 'Overall' },
               { value: 'wh40kElo', label: 'wh40k-elo' },
             ]}
             value={search.order ?? 'points'}
             onChange={(value) => {
-              const order = value === 'wh40kElo' ? value : undefined;
+              const order = value === 'overall' || value === 'wh40kElo' ? value : undefined;
               const next: PlayersSearch = { ...search, order };
               if (order === undefined) delete next.order;
               onSearchChange(next);
