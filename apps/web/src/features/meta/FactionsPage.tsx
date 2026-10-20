@@ -118,7 +118,7 @@ function FactionRow({
         </Table.Td>
       )}
       <Table.Td className={classes.name} data-tier={tier?.key ?? 'none'}>
-        <FactionIcon faction={row.faction} />
+        <FactionIcon faction={row.faction} size={28} />
         <AnchorLink to="/analysis/meta" search={{ ...filters, factions: row.faction }}>
           {row.faction}
         </AnchorLink>

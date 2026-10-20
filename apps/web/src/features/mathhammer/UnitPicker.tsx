@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { SearchSelect } from '../../components/SearchSelect';
 import { factionsQuery, unitsQuery } from './mathhammer-queries';
 import { Check } from './inputs';
-import { renderFactionOption } from '../../components/FactionIcon';
+import { FactionIcon, renderFactionOption } from '../../components/FactionIcon';
 
 const sizeLabel = (sheet: UnitDatasheet, index: number) => {
   const size = sheet.sizes[index];
@@ -57,6 +57,7 @@ export function UnitPicker({
           size="xs"
           label={`${label} faction`}
           renderOption={renderFactionOption}
+          leftSection={<FactionIcon faction={faction} size={18} />}
           w={200}
           data={(factions.data?.factions ?? []).map((f) => f.faction)}
           value={faction}

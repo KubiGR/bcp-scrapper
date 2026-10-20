@@ -51,6 +51,13 @@ describe('FactionTable', () => {
     expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'overrep', dir: 'desc' });
   });
 
+  it('puts a bigger icon by each faction’s name', () => {
+    renderWithProviders(<FactionTable {...props} />);
+    const img = rowOf('Orks').querySelector('img');
+    expect(img).toHaveAttribute('src', '/factions/orks.png');
+    expect(img).toHaveAttribute('width', '28');
+  });
+
   it('dims factions below the minimum and sorts them after the rest', () => {
     renderWithProviders(<FactionTable {...props} sort="winRate" />);
     expect(rowOf('Grey Knights')).toHaveAttribute('data-dimmed', 'true');

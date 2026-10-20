@@ -1,5 +1,5 @@
 import type { ArchetypeRow, MetaRow } from '@bcp/shared';
-import { MultiSelect, Stack, Table, Text, useMatches } from '@mantine/core';
+import { Group, MultiSelect, Stack, Table, Text, useMatches } from '@mantine/core';
 import { plural } from '../../lib/format';
 import { SortableTh, type SortDir } from '../../lib/table-sort';
 import { DispositionBreakdown } from './DispositionBreakdown';
@@ -13,7 +13,7 @@ import {
 } from './FactionTable';
 import { DEFAULT_CHANGE_LABEL, type MetaSort } from './meta-queries';
 import { FactionIcon } from '../../components/FactionIcon';
-import { renderFactionOption } from '../../components/FactionIcon';
+import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
 
 /** One archetype with its faction: a row of the flat table. */
 interface Archetype extends ArchetypeRow {
@@ -114,6 +114,7 @@ export function ArchetypeTable({
       <MultiSelect
         aria-label="Factions"
         renderOption={renderFactionOption}
+        renderPill={renderFactionPill}
         placeholder={factions.length === 0 ? 'All factions' : undefined}
         data={rows.map((row) => ({
           value: factionKey(row.faction),
@@ -188,12 +189,17 @@ export function ArchetypeTable({
                   style={{ opacity: small ? 0.55 : 1 }}
                 >
                   <Table.Td>
-                    <Text size="sm">{archetype.detachments.join(' + ')}</Text>
-                    <Text size="xs" c="dimmed">
-                      <FactionIcon faction={archetype.faction} size={20} />
-                      {factionName(archetype.faction)}
-                    </Text>
-                    <DispositionBreakdown archetype={archetype} />
+                    {/* The faction's icon, big, beside the archetype's lines. */}
+                    <Group gap="sm" wrap="nowrap" align="center">
+                      <FactionIcon faction={archetype.faction} size={36} />
+                      <div style={{ minWidth: 0 }}>
+                        <Text size="sm">{archetype.detachments.join(' + ')}</Text>
+                        <Text size="xs" c="dimmed">
+                          {factionName(archetype.faction)}
+                        </Text>
+                        <DispositionBreakdown archetype={archetype} />
+                      </div>
+                    </Group>
                   </Table.Td>
                   <Figures
                     weeks={weeks}
