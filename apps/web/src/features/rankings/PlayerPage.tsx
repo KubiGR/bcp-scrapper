@@ -9,6 +9,7 @@ import { Panel } from '../../components/Panel';
 import { formatIsoDay, ordinal } from '../../lib/format';
 import { playerRankingQuery } from './rankings-queries';
 import { FactionIcon } from '../../components/FactionIcon';
+import { HoverHint } from '../../components/HoverHint';
 
 /** wh40k-elo's site (it has no page per player). */
 const WH40K_ELO_SITE = 'https://wh40k-elo.duckdns.org/';
@@ -18,6 +19,18 @@ const eloText = (figure: EloFigure | null) =>
   figure === null
     ? '–'
     : `${String(figure.elo)} (${String(figure.games)} ${figure.games === 1 ? 'game' : 'games'})`;
+
+/** The field's average wh40k-elo, and how much it weighs the score, on hover. */
+function FieldStrength({ fieldElo }: { fieldElo: number | null }) {
+  const factor = `score ×${String(Number(strengthFactor(fieldElo).toFixed(2)))}`;
+  const what =
+    fieldElo === null ? 'Too few rated players to tell' : 'Average wh40k-elo of the field';
+  return (
+    <HoverHint hint={`${what} · ${factor}`} label={`Field: ${what.toLowerCase()} · ${factor}`}>
+      {fieldElo ?? '–'}
+    </HoverHint>
+  );
+}
 
 /** "3rd of 64"; team events "2nd of 20 teams"; "–" without a placing. */
 const placingText = (entry: PlayerHistoryEntry) =>
@@ -62,15 +75,8 @@ function HistoryRow({ entry }: { entry: PlayerHistoryEntry }) {
         </Text>
       </Table.Td>
       <Table.Td ta="right">
-        <Text
-          size="sm"
-          c={dim}
-          className="numeric"
-          title={`${
-            entry.fieldElo === null ? 'Too few rated players to tell' : 'Average wh40k-elo'
-          } · score ×${String(Number(strengthFactor(entry.fieldElo).toFixed(2)))}`}
-        >
-          {entry.fieldElo ?? '–'}
+        <Text size="sm" c={dim} className="numeric">
+          <FieldStrength fieldElo={entry.fieldElo} />
         </Text>
       </Table.Td>
       <Table.Td ta="right">

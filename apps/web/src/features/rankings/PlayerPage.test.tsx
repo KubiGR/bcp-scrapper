@@ -1,5 +1,5 @@
 import type { PlayerHistoryEntry, PlayerRanking } from '@bcp/shared';
-import { screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { formatIsoDay } from '../../lib/format';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
@@ -100,7 +100,10 @@ describe('PlayerPage', () => {
     expect(first.getByText('1st of 96')).toBeInTheDocument();
     expect(first.getByText('98.0')).toBeInTheDocument();
     // The field's strength, and how much it weighs the score.
-    expect(first.getByText('1617')).toHaveAttribute('title', 'Average wh40k-elo · score ×1.33');
+    fireEvent.mouseEnter(first.getByText('1617'));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'Average wh40k-elo of the field · score ×1.33',
+    );
     expect(first.getByLabelText('Counts')).toBeInTheDocument();
     expect(first.getByRole('link', { name: 'List' })).toHaveAttribute(
       'href',
@@ -109,9 +112,9 @@ describe('PlayerPage', () => {
     expect(other).toHaveAttribute('data-counted', 'false');
     expect(within(other).getByText('2nd of 20 teams')).toBeInTheDocument();
     expect(within(other).queryByRole('link', { name: 'List' })).not.toBeInTheDocument();
-    expect(within(other).getByTitle('Too few rated players to tell · score ×1')).toHaveTextContent(
-      '–',
-    );
+    expect(
+      within(other).getByLabelText('Field: too few rated players to tell · score ×1'),
+    ).toHaveTextContent('–');
   });
 
   it('marks an event that started in the last week with a leaf', async () => {

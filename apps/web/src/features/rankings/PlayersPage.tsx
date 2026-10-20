@@ -21,6 +21,7 @@ import { ordinal, plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { rankingsPagesQuery } from './rankings-queries';
 import { FactionIcon, renderFactionOption } from '../../components/FactionIcon';
+import { HoverHint } from '../../components/HoverHint';
 
 /** The Players page's URL search. */
 export interface PlayersSearch {
@@ -53,9 +54,9 @@ export function EloCell({ figure }: { figure: EloFigure | null }) {
       </Text>
     );
   return (
-    <span title={`${String(figure.games)} ${figure.games === 1 ? 'game' : 'games'}`}>
+    <HoverHint hint={`${String(figure.games)} ${figure.games === 1 ? 'game' : 'games'}`}>
       {figure.elo}
-    </span>
+    </HoverHint>
   );
 }
 

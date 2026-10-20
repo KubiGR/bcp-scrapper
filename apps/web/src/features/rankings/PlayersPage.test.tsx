@@ -80,7 +80,8 @@ describe('PlayersPage', () => {
     expect(table.getByRole('columnheader', { name: /wh40k-elo/ })).toBeInTheDocument();
     const [ada, ben] = table.getAllByRole('row').slice(1);
     if (ada === undefined || ben === undefined) throw new Error('missing rows');
-    expect(within(ada).getByText('1888')).toHaveAttribute('title', '140 games');
+    fireEvent.mouseEnter(within(ada).getByText('1888'));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('140 games');
     expect(within(ben).getAllByText('—')).toHaveLength(1);
   });
 
