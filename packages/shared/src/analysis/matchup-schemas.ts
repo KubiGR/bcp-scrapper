@@ -41,6 +41,8 @@ export const MatchupsResponseSchema = z.object({
   scoring: ScaleSchema,
   /** Every detachment played in the loaded games (before filtering), A→Z. */
   detachments: z.array(z.string()),
+  /** The factions that played each detachment, so its filter can follow the chosen factions. */
+  detachmentFactions: z.record(z.string(), z.array(z.string())).default({}),
 });
 export type MatchupsResponse = z.infer<typeof MatchupsResponseSchema>;
 

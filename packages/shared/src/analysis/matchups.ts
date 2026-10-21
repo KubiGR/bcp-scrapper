@@ -327,6 +327,23 @@ export function cellGames(
 }
 
 /** Every detachment played in these games, A→Z (for the detachment filter's options). */
+/** For each detachment played in `games`, the factions that played it (A→Z), for the filters. */
+export function detachmentFactions(games: MatchupGame[]): Record<string, string[]> {
+  const byName = new Map<string, Set<string>>();
+  for (const game of games) {
+    for (const side of [game.a, game.b]) {
+      for (const name of side?.detachments ?? []) {
+        const factions = byName.get(name) ?? new Set<string>();
+        if (side?.faction) factions.add(side.faction);
+        byName.set(name, factions);
+      }
+    }
+  }
+  return Object.fromEntries(
+    [...byName].map(([name, factions]) => [name, [...factions].sort((x, y) => x.localeCompare(y))]),
+  );
+}
+
 export function detachmentsPlayed(games: MatchupGame[]): string[] {
   const names = new Set<string>();
   for (const game of games) {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   cellGames,
   computeFactionMatrix,
+  detachmentFactions,
   detachmentRows,
   scalesAgree,
   type DispositionFilter,
@@ -401,5 +402,26 @@ describe('cellGames', () => {
     const mirror = cellGames(games, 'Orks', 'Orks', noFilter);
     expect(mirror).toHaveLength(1);
     expect(mirror[0]).toMatchObject({ row: { name: 'Player 7' }, col: { name: 'Player 8' } });
+  });
+});
+
+describe('detachmentFactions', () => {
+  it('names the factions that played each detachment, A→Z', () => {
+    const factions = detachmentFactions([
+      game(
+        side('1', 'Orks', null, ['War Horde']),
+        side('2', 'Necrons', null, ['Awakened Dynasty']),
+        1,
+        0,
+        'a_win',
+      ),
+      game(side('3', 'World Eaters', null, ['War Horde']), null, null, null, null),
+      game(side('4', null, null, ['Mystery']), side('5', 'Orks', null, []), 0, 1, 'b_win'),
+    ]);
+    expect(factions).toEqual({
+      'War Horde': ['Orks', 'World Eaters'],
+      'Awakened Dynasty': ['Necrons'],
+      Mystery: [],
+    });
   });
 });

@@ -53,6 +53,40 @@ describe('MatrixControls', () => {
     expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_MATRIX_SETTINGS, factions: ['Necrons'] });
   });
 
+  it('offers only the chosen factions’ detachments, keeping any already picked', async () => {
+    const props = {
+      onChange: vi.fn(),
+      dispositions: [],
+      detachments: ['Awakened Dynasty', 'Hypercrypt Legion', 'War Horde'],
+      detachmentFactions: {
+        'Awakened Dynasty': ['Necrons'],
+        'Hypercrypt Legion': ['Necrons'],
+        'War Horde': ['Orks'],
+      },
+    };
+    const { rerender } = renderWithProviders(
+      <MatrixControls settings={DEFAULT_MATRIX_SETTINGS} {...props} />,
+    );
+    const offered = async () => {
+      fireEvent.click(screen.getByRole('combobox', { name: 'Detachment' }));
+      const names = (await screen.findAllByRole('option')).map((o) => o.textContent);
+      fireEvent.click(screen.getByRole('combobox', { name: 'Detachment' }));
+      return names;
+    };
+    expect(await offered()).toEqual(['Awakened Dynasty', 'Hypercrypt Legion', 'War Horde']);
+    rerender(
+      <MatrixControls
+        settings={{ ...DEFAULT_MATRIX_SETTINGS, factions: ['Necrons'], detachments: ['War Horde'] }}
+        {...props}
+      />,
+    );
+    expect(await offered()).toEqual(['Awakened Dynasty', 'Hypercrypt Legion', 'War Horde']);
+    rerender(
+      <MatrixControls settings={{ ...DEFAULT_MATRIX_SETTINGS, factions: ['Orks'] }} {...props} />,
+    );
+    expect(await offered()).toEqual(['War Horde']);
+  });
+
   it('shows the row/both side control only once a disposition is chosen', () => {
     renderWithProviders(
       <MatrixControls settings={DEFAULT_MATRIX_SETTINGS} onChange={vi.fn()} dispositions={[]} />,

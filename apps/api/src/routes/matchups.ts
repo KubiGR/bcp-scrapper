@@ -4,6 +4,7 @@ import {
   computeFactionMatrix,
   DETACHMENT_SEPARATOR,
   detachmentRows,
+  detachmentFactions,
   detachmentsPlayed,
   scalesAgree,
   type MatchupFilter,
@@ -119,6 +120,7 @@ export function matchupsRoutes(deps: {
         matrix: computeFactionMatrix(games, filter),
         scoring: scalesAgree(games),
         detachments: detachmentsPlayed(games),
+        detachmentFactions: detachmentFactions(games),
       });
     })
     .get('/events/:id/matchups/games', async (c) => {
@@ -148,6 +150,7 @@ export function matchupsRoutes(deps: {
         matrix: computeFactionMatrix(games, filter),
         scoring: scalesAgree(games),
         detachments: detachmentsPlayed(games),
+        detachmentFactions: detachmentFactions(games),
       });
     })
     .get('/matchups/games', async (c) => {

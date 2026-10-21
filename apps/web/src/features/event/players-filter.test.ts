@@ -44,6 +44,12 @@ describe('detachment filter', () => {
   it('lists the detachments present, A to Z', () => {
     expect(detachmentsOf(lists)).toEqual(['Kult of Speed', 'War Horde', 'Wreckas']);
   });
+
+  it('lists only the chosen factions’ detachments, keeping any already picked', () => {
+    expect(detachmentsOf(lists, ['Necrons'])).toEqual(['Wreckas']);
+    expect(detachmentsOf(lists, ['Necrons'], ['War Horde'])).toEqual(['War Horde', 'Wreckas']);
+    expect(detachmentsOf(lists, [])).toEqual(['Kult of Speed', 'War Horde', 'Wreckas']);
+  });
 });
 
 describe('filterPlayers', () => {
