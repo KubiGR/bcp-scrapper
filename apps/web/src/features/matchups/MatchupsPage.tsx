@@ -179,6 +179,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
                 }}
                 dispositions={[]}
                 detachments={matchups.data.detachments}
+                detachmentFactions={matchups.data.detachmentFactions}
                 factions={matchups.data.matrix.factions}
               />
               <Box style={{ opacity: dimmed ? 0.6 : 1 }} aria-busy={dimmed}>

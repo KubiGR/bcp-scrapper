@@ -19,6 +19,8 @@ interface MatrixControlsProps {
   dispositions: string[];
   /** Detachments played in the loaded games (from the API). */
   detachments?: string[];
+  /** The factions that played each detachment, so the offer follows the chosen factions. */
+  detachmentFactions?: Record<string, string[]>;
   /** The matrix's factions, to show only some as rows. */
   factions?: string[];
 }
@@ -28,14 +30,19 @@ export function MatrixControls({
   onChange,
   dispositions,
   detachments = [],
+  detachmentFactions = {},
   factions = [],
 }: MatrixControlsProps) {
   const factionOptions = [...new Set([...factions, ...settings.factions])].sort((a, b) =>
     a.localeCompare(b),
   );
-  const detachmentOptions = [...new Set([...detachments, ...settings.detachments])].sort((a, b) =>
-    a.localeCompare(b),
-  );
+  // The chosen factions' detachments (all when none is chosen); picked ones stay offered.
+  const ofChosen = (name: string) =>
+    settings.factions.length === 0 ||
+    (detachmentFactions[name] ?? []).some((faction) => settings.factions.includes(faction));
+  const detachmentOptions = [
+    ...new Set([...detachments.filter(ofChosen), ...settings.detachments]),
+  ].sort((a, b) => a.localeCompare(b));
   const dispositionOptions = [...new Set([...KNOWN_DISPOSITIONS, ...dispositions])];
 
   return (

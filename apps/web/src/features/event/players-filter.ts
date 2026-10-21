@@ -51,9 +51,21 @@ export function dispositionsOf(players: EventPlayer[]): string[] {
 }
 
 /** The detachments present, alphabetically, for the detachment filter. */
-export function detachmentsOf(players: EventPlayer[]): string[] {
-  return [...new Set(players.flatMap((player) => player.detachments))].sort((a, b) =>
-    a.localeCompare(b),
+/**
+ * The detachments to offer: those of the chosen factions' players (everyone's when none is
+ * chosen), plus any already picked, A to Z.
+ */
+export function detachmentsOf(
+  players: EventPlayer[],
+  factions: string[] = [],
+  picked: string[] = [],
+): string[] {
+  const ofChosen = players.filter(
+    (player) =>
+      factions.length === 0 || (player.faction !== null && factions.includes(player.faction)),
+  );
+  return [...new Set([...ofChosen.flatMap((player) => player.detachments), ...picked])].sort(
+    (a, b) => a.localeCompare(b),
   );
 }
 

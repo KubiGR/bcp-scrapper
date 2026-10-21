@@ -393,7 +393,7 @@ export function PlayersPanel({
             <MultiSelect
               aria-label="Detachment"
               placeholder={detachments.length === 0 ? 'All detachments' : undefined}
-              data={detachmentsOf(all)}
+              data={detachmentsOf(all, factions, detachments)}
               value={detachments}
               onChange={setDetachments}
               clearable

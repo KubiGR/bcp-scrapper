@@ -48,6 +48,7 @@ export function MatchupsPanel({ event }: { event: EventDetail }) {
         onChange={setSettings}
         dispositions={dispositions}
         detachments={matchups.data.detachments}
+        detachmentFactions={matchups.data.detachmentFactions}
         factions={matrix.factions}
       />
       <Box style={{ opacity: dimmed ? 0.6 : 1 }} aria-busy={dimmed}>
