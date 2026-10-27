@@ -44,11 +44,11 @@ describe('UpdatePicker', () => {
     const onChange = vi.fn();
     renderWithProviders(<UpdatePicker from="2026-06-09" to="2026-07-21" onChange={onChange} />);
     await open();
-    expect(screen.getByRole('option', { name: 'Jun 2026 · MFM' })).toHaveAttribute(
+    expect(screen.getByRole('option', { name: /^Jun 2026 · MFM/ })).toHaveAttribute(
       'aria-selected',
       'true',
     );
-    fireEvent.click(screen.getByRole('option', { name: 'Current: Sep 2026 · MFM' }));
+    fireEvent.click(screen.getByRole('option', { name: /^Current: Sep 2026 · MFM/ }));
     // Up to the current update: no end date, so a saved link keeps up with new events.
     expect(onChange).toHaveBeenCalledWith({ from: '2026-06-09', to: undefined });
   });
@@ -59,6 +59,25 @@ describe('UpdatePicker', () => {
     await open();
     expect(screen.getByRole('option', { name: /Jul 2026 · Faction Packs/ })).toHaveTextContent(
       'Orks, Tyranids',
+    );
+  });
+
+  it('says when each update was in force', async () => {
+    stubFetchRoutes({
+      'GET /api/updates': {
+        updates: [update('z', '2099-01-01', 'Far future'), ...updates.updates],
+      },
+    });
+    renderWithProviders(<UpdatePicker from="2026-01-01" to="2026-02-01" onChange={vi.fn()} />);
+    await open();
+    expect(screen.getByRole('option', { name: /^Jul 2026 · Faction Packs/ })).toHaveTextContent(
+      'Jul 22 – Sep 29, 2026',
+    );
+    expect(screen.getByRole('option', { name: /^Current: Sep 2026 · MFM/ })).toHaveTextContent(
+      'Since Sep 30, 2026',
+    );
+    expect(screen.getByRole('option', { name: /^Upcoming: Far future/ })).toHaveTextContent(
+      'From Jan 1, 2099',
     );
   });
 
