@@ -1,32 +1,47 @@
 /*
  * Below Mantine's `sm` breakpoint each result is a small card instead of a wide row:
- * player and List button, then the army, then event and record.
+ * record, player and List button, then the army, then the event. Columns never grow past the
+ * screen, so long lines wrap instead of pushing the record and List button off it.
  */
 @media (max-width: 47.99em) {
   .results thead {
     display: none;
   }
 
+  /* Blocks, not a table, so the hidden columns leave no width to scroll into. */
+  .results,
+  .results tbody {
+    display: block;
+  }
+
   .results tr {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas:
-      'player list'
-      'army army'
-      'event record';
+      'record player list'
+      'army army army'
+      'event event event';
     column-gap: var(--mantine-spacing-sm);
     padding: var(--mantine-spacing-xs) 0;
     border-bottom: 1px solid var(--table-border-color);
   }
 
   .results td {
+    min-width: 0;
     padding-top: 2px;
     padding-bottom: 2px;
     border: 0;
+    overflow-wrap: anywhere;
   }
 
   .results td:nth-child(1) {
     grid-area: player;
+  }
+
+  /* The placing line (with a team's name, which can be long) ends in an ellipsis. */
+  .results td:nth-child(1) p + p {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .results td:nth-child(2) {
@@ -35,7 +50,9 @@
 
   .results td:nth-child(3) {
     grid-area: record;
-    align-self: end;
+    padding-right: 0;
+    font-weight: 600;
+    text-align: left;
   }
 
   .results td:nth-child(4) {
