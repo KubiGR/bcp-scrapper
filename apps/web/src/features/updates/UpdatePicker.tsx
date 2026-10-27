@@ -1,6 +1,7 @@
 import { selectedUpdates, selectionRange, toIsoDate, updateOfDay } from '@bcp/shared';
 import { MultiSelect, Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
+import { formatEventDates, formatIsoDay } from '../../lib/format';
 import { updatesQuery, useUpdateSpans } from './updates-queries';
 
 interface UpdatePickerProps {
@@ -37,6 +38,17 @@ export function UpdatePicker({ from, to, onChange }: UpdatePickerProps) {
           ? `Current: ${span.name}`
           : span.name,
   }));
+  // When each was in force, under its name: the current one since its start, an upcoming one from it.
+  const dates = new Map(
+    spans.map((span) => [
+      span.id,
+      span.start > today
+        ? `From ${formatIsoDay(span.start)}`
+        : span.id === current
+          ? `Since ${formatIsoDay(span.from)}`
+          : formatEventDates(`${span.from}T00:00:00Z`, `${span.to}T00:00:00Z`),
+    ]),
+  );
   const value = selectedUpdates(spans, from, to);
   return (
     <MultiSelect
@@ -54,6 +66,9 @@ export function UpdatePicker({ from, to, onChange }: UpdatePickerProps) {
         return (
           <Stack gap={0}>
             <Text size="sm">{option.label}</Text>
+            <Text size="xs" c="dimmed" className="numeric">
+              {dates.get(option.value)}
+            </Text>
             {summary !== '' && (
               <Text size="xs" c="dimmed">
                 {summary}
