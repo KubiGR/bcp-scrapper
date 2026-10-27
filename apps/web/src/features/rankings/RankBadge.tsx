@@ -20,8 +20,8 @@ function tierOf(rank: number): { tier: Tier; top: number } {
 
 const ICON = {
   viewBox: '0 0 24 24',
-  width: 12,
-  height: 12,
+  width: 10,
+  height: 10,
   fill: 'currentColor',
   'aria-hidden': true,
 } as const;
