@@ -165,6 +165,27 @@ describe('searchTopLists', () => {
     expect(big.eventsInRange).toBe(0);
   });
 
+  it('only searches events of at least the minimum rounds when asked', async () => {
+    const [row] = await db.select().from(events).where(eq(events.id, 'EVTBRACKET01'));
+    const rounds = row?.roundCount ?? 0;
+    const all = await searchTopLists(db, query({ maxLosses: 5 }), ALL_EVENTS, TODAY);
+    expect(all.players.some((p) => p.eventId === 'EVTBRACKET01')).toBe(true);
+    const longer = await searchTopLists(
+      db,
+      query({ maxLosses: 5, minRounds: rounds + 1 }),
+      ALL_EVENTS,
+      TODAY,
+    );
+    expect(longer.players.some((p) => p.eventId === 'EVTBRACKET01')).toBe(false);
+    const exact = await searchTopLists(
+      db,
+      query({ maxLosses: 5, minRounds: rounds }),
+      ALL_EVENTS,
+      TODAY,
+    );
+    expect(exact.players.some((p) => p.eventId === 'EVTBRACKET01')).toBe(true);
+  });
+
   it('defaults to the last 90 days', async () => {
     await db
       .update(events)

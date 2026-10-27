@@ -13,6 +13,7 @@ const TopListsSearchSchema = z.object({
   from: optionalDay,
   to: optionalDay,
   maxLosses: z.coerce.number().int().min(0).max(5).optional().catch(undefined),
+  minRounds: z.coerce.number().int().min(1).max(20).optional().catch(undefined),
 });
 
 export const Route = createFileRoute('/analysis/top-lists')({
