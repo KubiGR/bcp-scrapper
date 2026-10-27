@@ -40,6 +40,10 @@ import { UpdatePicker } from '../updates/UpdatePicker';
 import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
 
 const LOSS_CHOICES = [0, 1, 2, 3, 4, 5];
+/** 1 is any big event; the default 4 keeps X-1 at 3-1 or better. */
+const ROUND_CHOICES = [1, 3, 4, 5, 6, 7, 8];
+const DEFAULT_MIN_ROUNDS = 4;
+const roundsLabel = (rounds: number) => (rounds === 1 ? 'Any' : `${rounds}+ rounds`);
 
 const split = (value: string | undefined, separator = ',') =>
   value?.split(separator).filter(Boolean) ?? [];
@@ -54,7 +58,8 @@ interface TopListsPageProps {
 
 /** Players of big events who went X-n or better, across events, with their lists. */
 export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
-  const results = useQuery(topListsQuery(search));
+  const minRounds = search.minRounds ?? DEFAULT_MIN_ROUNDS;
+  const results = useQuery(topListsQuery({ ...search, minRounds }));
   // The open row, by key: the drawer follows the refreshed results (e.g. after "Fetch this list").
   const [openKey, setOpenKey] = useState<{ eventId: string; bcpId: string } | null>(null);
   const dates = useDraftRange(topListsWindow(search, new Date()), (range) => {
@@ -126,6 +131,16 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
             }}
             allowDeselect={false}
             w={{ base: '100%', xs: 170 }}
+          />
+          <Select
+            label="Min rounds"
+            data={ROUND_CHOICES.map((n) => ({ value: String(n), label: roundsLabel(n) }))}
+            value={String(minRounds)}
+            onChange={(value) => {
+              if (value !== null) onSearchChange({ ...search, minRounds: Number(value) });
+            }}
+            allowDeselect={false}
+            w={{ base: '100%', xs: 140 }}
           />
           <MultiSelect
             label="Disposition"

@@ -40,8 +40,9 @@ test('find a tournament, queue a team’s lists and read one', async ({ page }) 
     '/api/events/EVTTEAM0001/lists/export?format=txt',
   );
 
-  // Top lists: Ada went X-n or better at a big event (the e2e size rule keeps every event).
-  await page.goto('/analysis/top-lists?from=2026-01-01&to=2026-12-31&maxLosses=5');
+  // Top lists: Ada went X-n or better at a big event (the e2e size rule keeps every event;
+  // minRounds=1 since the sample event has only 2 rounds).
+  await page.goto('/analysis/top-lists?from=2026-01-01&to=2026-12-31&maxLosses=5&minRounds=1');
   const adaTopRow = page.getByRole('row', { name: /Ada Archer/ });
   await expect(adaTopRow.getByRole('link', { name: 'Sample Team Open' })).toBeVisible();
   await adaTopRow.getByRole('button', { name: 'List' }).click();

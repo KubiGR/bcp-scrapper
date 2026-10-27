@@ -51,8 +51,8 @@ const sorted = (values: Iterable<string>) =>
   [...new Set(values)].sort((a, b) => a.localeCompare(b));
 
 /**
- * Players of big events starting in the range (default: the last 90 days) who went X-n or better,
- * filtered by faction (the guessed army counts), disposition and detachment (only read lists).
+ * Players of big events starting in the range (default: the last 90 days), of at least
+ * `minRounds` rounds when set, who went X-n or better, filtered by faction (the guessed army counts), disposition and detachment (only read lists).
  * Best record first, like standings (most wins, then draws, then fewest losses), then newest
  * event; at most TOP_LISTS_LIMIT. One query for the qualifying players; list states only for the
  * rows returned.
@@ -83,6 +83,7 @@ export async function searchTopLists(
   ).filter(
     (event) =>
       isBigEvent(event, rule) &&
+      (query.minRounds === undefined || event.roundCount >= query.minRounds) &&
       (query.type === undefined ||
         query.type === 'all' ||
         event.isTeamEvent === (query.type === 'teams')),

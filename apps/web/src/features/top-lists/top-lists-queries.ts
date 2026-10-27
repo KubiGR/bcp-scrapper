@@ -10,6 +10,7 @@ export interface TopListsSearch {
   from?: string;
   to?: string;
   maxLosses?: number;
+  minRounds?: number;
   type?: 'all' | 'singles' | 'teams';
   detachmentsMatch?: 'any' | 'exact';
 }

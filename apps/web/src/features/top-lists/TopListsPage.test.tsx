@@ -287,6 +287,25 @@ describe('TopListsPage', () => {
     expect(onSearchChange).toHaveBeenCalledWith({ factions: 'Orks', maxLosses: 0 });
   });
 
+  it('asks for events of at least 4 rounds by default, and writes another choice', async () => {
+    const urls: string[] = [];
+    stubFetchRoutes({
+      'GET /api/players/search': (url: string) => {
+        urls.push(url);
+        return Response.json(response());
+      },
+    });
+    const onSearchChange = vi.fn();
+    renderWithRouter(<TopListsPage search={{}} onSearchChange={onSearchChange} />);
+    await screen.findByText('Ada Archer');
+    expect(urls[0]).toContain('minRounds=4');
+    const [roundsInput] = screen.getAllByLabelText('Min rounds');
+    if (roundsInput === undefined) throw new Error('no Min rounds input');
+    fireEvent.click(roundsInput);
+    fireEvent.click(await screen.findByRole('option', { name: 'Any' }));
+    expect(onSearchChange).toHaveBeenCalledWith({ minRounds: 1 });
+  });
+
   it('shows the API error with a retry', async () => {
     stubFetchRoutes({
       'GET /api/players/search': () =>
