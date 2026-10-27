@@ -70,11 +70,18 @@ export function AppLayout() {
                 aria-label="Open menu"
                 aria-expanded={menuOpen}
               />
-              <Link to="/" search={FINDER_DEFAULTS} className={classes.brand} onClick={menu.close}>
-                <Logo size={26} />
-                Logis
-              </Link>
-              <span className={classes.byline}>by Andreas Dranidis</span>
+              <div className={classes.signed}>
+                <Link
+                  to="/"
+                  search={FINDER_DEFAULTS}
+                  className={classes.brand}
+                  onClick={menu.close}
+                >
+                  <Logo size={26} />
+                  Logis
+                </Link>
+                <span className={classes.byline}>by Andreas Dranidis</span>
+              </div>
             </Group>
             <Group gap="lg" wrap="nowrap" className={classes.actions}>
               {admin && <QueueIndicator />}
