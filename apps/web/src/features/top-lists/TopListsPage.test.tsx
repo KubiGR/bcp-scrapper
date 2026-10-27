@@ -138,7 +138,7 @@ describe('TopListsPage', () => {
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
     const row = (await screen.findByText('Ada Archer')).closest('tr');
     if (row === null) throw new Error('no row');
-    expect(within(row).getByText(/96 players · 12 teams/)).toBeInTheDocument();
+    expect(row.textContent).toMatch(/96 players · 12 teams/);
     expect(within(row).getByRole('img', { name: 'Medium event' })).toBeInTheDocument();
   });
 
@@ -183,9 +183,11 @@ describe('TopListsPage', () => {
     const base = response();
     stubFetchRoutes({ 'GET /api/players/search': { ...base, players: [...base.players, solo] } });
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
-    const cell = async (name: string) => (await screen.findByText(name)).closest('td');
-    expect((await cell('Ada Archer'))?.textContent).toBe('Ada ArcherAlpha Squad · #2');
-    expect((await cell('Sol Solo'))?.textContent).toBe('Sol Solo#3');
+    // Beside the event, before its date.
+    const cell = async (event: string) => (await screen.findAllByText(event))[0]?.closest('td');
+    expect((await cell('Singles GT'))?.textContent).toMatch(/^Singles GT#3 · Mar 28, 2026/);
+    const teamCell = screen.getByText('Ada Archer').closest('tr')?.querySelectorAll('td')[1];
+    expect(teamCell?.textContent).toContain('Alpha Squad · #2 · ');
   });
 
   it('makes each List a link, to open several in new tabs', async () => {
