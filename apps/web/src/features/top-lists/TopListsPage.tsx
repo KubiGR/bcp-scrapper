@@ -230,11 +230,6 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                               <PlayerName name={player.name} userId={player.bcpUserId} />
                               <RankBadge userId={player.bcpUserId} />
                             </Text>
-                            {placingLine(player) !== null && (
-                              <Text size="xs" c="dimmed" className="numeric">
-                                {placingLine(player)}
-                              </Text>
-                            )}
                           </Table.Td>
                           <Table.Td>
                             <AnchorLink
@@ -246,11 +241,22 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                             </AnchorLink>
                             {playedLately(player.eventStartDate) && <NewLeaf />}
                             <Text size="xs" c="dimmed" className="numeric">
-                              {formatIsoDay(player.eventStartDate.slice(0, 10))} ·{' '}
-                              {plural(player.eventPlayerCount, 'player')}
-                              {player.eventTeamCount !== null &&
-                                ` · ${plural(player.eventTeamCount, 'team')}`}
-                              <EventHeat playerCount={player.eventPlayerCount} />
+                              {placingLine(player) !== null && (
+                                <>
+                                  <span className={classes.placing}>{placingLine(player)}</span>
+                                  {' · '}
+                                </>
+                              )}
+                              <span className={classes.piece}>
+                                {formatIsoDay(player.eventStartDate.slice(0, 10))}
+                              </span>{' '}
+                              ·{' '}
+                              <span className={classes.piece}>
+                                {plural(player.eventPlayerCount, 'player')}
+                                {player.eventTeamCount !== null &&
+                                  ` · ${plural(player.eventTeamCount, 'team')}`}
+                                <EventHeat playerCount={player.eventPlayerCount} />
+                              </span>
                             </Text>
                           </Table.Td>
                           <Table.Td ta="right" className="numeric">

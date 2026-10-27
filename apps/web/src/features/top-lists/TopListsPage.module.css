@@ -1,6 +1,16 @@
+/* Where the player placed, at the start of the event's line: brighter than the date after it. */
+.placing {
+  color: var(--mantine-color-text);
+}
+
+/* When the event's line wraps, the date and the size (with its flames) each stay whole. */
+.piece {
+  white-space: nowrap;
+}
+
 /*
  * Below Mantine's `sm` breakpoint each result is a small card instead of a wide row:
- * record, player and List button, then the army, then the event. Columns never grow past the
+ * record and player, then the army, then the event and List button. Columns never grow past the
  * screen, so long lines wrap instead of pushing the record and List button off it.
  */
 @media (max-width: 47.99em) {
@@ -17,11 +27,11 @@
   .results tr {
     display: grid;
     /* A fixed record column, so every name starts at the same place. */
-    grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+    grid-template-columns: 4rem minmax(0, 1fr) auto;
     grid-template-areas:
-      'record player list'
+      'record player player'
       'army army army'
-      'event event event';
+      'event event list';
     column-gap: var(--mantine-spacing-sm);
     padding: var(--mantine-spacing-xs) 0;
     border-bottom: 1px solid var(--table-border-color);
@@ -51,14 +61,13 @@
     margin-left: 0;
   }
 
-  /* The placing line (with a team's name, which can be long) ends in an ellipsis. */
-  .results td:nth-child(1) p + p {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
   .results td:nth-child(2) {
     grid-area: event;
+  }
+
+  /* Placing, date and size wrap beside the List button. */
+  .results td:nth-child(2) p {
+    white-space: normal;
   }
 
   .results td:nth-child(3) {
@@ -75,5 +84,6 @@
 
   .results td:nth-child(5) {
     grid-area: list;
+    align-self: end;
   }
 }
