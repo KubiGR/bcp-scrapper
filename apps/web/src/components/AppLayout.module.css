@@ -114,7 +114,7 @@
 
   /* Hangs under the name without adding height, so the logo stays centred in the header. */
   .byline {
-    margin: -6px 0 -4px 34px;
+    margin: -2px 0 -8px 34px;
     padding-top: 0;
     font-size: 8px;
     line-height: 10px;

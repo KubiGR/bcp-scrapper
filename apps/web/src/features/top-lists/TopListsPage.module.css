@@ -16,7 +16,8 @@
 
   .results tr {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    /* A fixed record column, so every name starts at the same place. */
+    grid-template-columns: 4.5rem minmax(0, 1fr) auto;
     grid-template-areas:
       'record player list'
       'army army army'
@@ -38,6 +39,18 @@
     grid-area: player;
   }
 
+  /* Name, rank and Elo wrap as whole pieces, each wrapped line starting under the name. */
+  .results td:nth-child(1) p:first-child {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 8px;
+  }
+
+  .results td:nth-child(1) p:first-child > * {
+    margin-left: 0;
+  }
+
   /* The placing line (with a team's name, which can be long) ends in an ellipsis. */
   .results td:nth-child(1) p + p {
     overflow: hidden;
@@ -50,9 +63,10 @@
 
   .results td:nth-child(3) {
     grid-area: record;
+    /* As wide as the record, so it sits on the left whatever the cell's alignment. */
+    justify-self: start;
     padding-right: 0;
     font-weight: 600;
-    text-align: left;
   }
 
   .results td:nth-child(4) {
