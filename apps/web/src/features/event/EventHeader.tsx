@@ -1,6 +1,7 @@
 import type { EventDetail } from '@bcp/shared';
 import { Anchor, Button, Group, Stack, Text, Title } from '@mantine/core';
 import { EventStatusBadges } from '../../components/EventStatusBadges';
+import { FieldElo } from '../../components/FieldElo';
 import { EventHeat, NewLeaf, playedLately } from '../../components/EventSymbols';
 import {
   formatDateTime,
@@ -52,6 +53,11 @@ export function EventHeader({ event, syncing, onRefresh }: EventHeaderProps) {
           {[formatEventSize(event), formatRoundCount(event.roundCount)].filter(Boolean).join(' · ')}
           <EventHeat playerCount={event.playerCount} />
         </Text>
+        {event.fieldElo !== null && (
+          <Text size="sm" c="dimmed" className="numeric">
+            <FieldElo elo={event.fieldElo} />
+          </Text>
+        )}
         <UpdateLabel startDate={event.startDate} prefix="Update: " size="sm" c="dimmed" />
         <EventStatusBadges event={event} />
       </Group>

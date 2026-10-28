@@ -109,8 +109,8 @@ describe('EventsTable', () => {
         onOpen={vi.fn()}
         response={{
           items: [
-            anEvent({ bcpId: 'EVT1', name: 'Sample Team Open', roundCount: 5 }),
-            anEvent({ bcpId: 'EVT2', name: 'Other Open', roundCount: 0 }),
+            anEvent({ bcpId: 'EVT1', name: 'Sample Team Open', roundCount: 5, fieldElo: 1700 }),
+            anEvent({ bcpId: 'EVT2', name: 'Other Open', roundCount: 0, fieldElo: 1700 }),
           ],
           total: 2,
           page: 1,
@@ -120,6 +120,32 @@ describe('EventsTable', () => {
     );
     expect(screen.getByText('Rounds')).toBeInTheDocument();
     expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
+  });
+
+  it('shows each event’s field Elo, or "—" when too few players are rated', () => {
+    renderWithProviders(
+      <EventsTable
+        {...props}
+        onOpen={vi.fn()}
+        response={{
+          items: [
+            anEvent({ bcpId: 'EVT1', name: 'Strong Open', roundCount: 5, fieldElo: 1712 }),
+            anEvent({ bcpId: 'EVT2', name: 'Unrated Open', roundCount: 5, fieldElo: null }),
+          ],
+          total: 2,
+          page: 1,
+          pageSize: 25,
+        }}
+      />,
+    );
+    expect(screen.getByRole('columnheader', { name: 'Elo' })).toBeInTheDocument();
+    // In its column, and in the phone line under the name.
+    expect(
+      screen
+        .getAllByLabelText('Elite field: average wh40k-elo of the field 1712')
+        .map((e) => e.textContent),
+    ).toEqual(['Elo 1712', '1712']);
     expect(screen.getByText('—')).toBeInTheDocument();
   });
 

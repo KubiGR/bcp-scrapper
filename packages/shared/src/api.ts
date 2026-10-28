@@ -41,6 +41,8 @@ export type EventListQuery = z.infer<typeof EventListQuerySchema>;
 
 export const EventListItemSchema = EventSummarySchema.extend({
   lastSyncedAt: z.iso.datetime().nullable(),
+  /** The field's average wh40k-elo, rounded; null until at least half its players are rated. */
+  fieldElo: z.number().int().nullable(),
 });
 export type EventListItem = z.infer<typeof EventListItemSchema>;
 

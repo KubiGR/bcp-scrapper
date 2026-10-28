@@ -9,6 +9,7 @@ import { and, asc, desc, eq, gte, ilike, lt, lte, or, sql, type SQL } from 'driz
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { events } from '../db/schema';
+import { fieldElos } from './field-elo';
 import { excludedColumns } from './upsert';
 
 export type EventRow = typeof events.$inferSelect;
@@ -98,7 +99,8 @@ export async function deleteSmallEvents(db: Db, rule: EventSizeRule): Promise<nu
   return rows.length;
 }
 
-export function toEventListItem(row: EventRow): EventListItem {
+/** An event for the API; `fieldElo` is its field strength (see `fieldElos`), unrounded. */
+export function toEventListItem(row: EventRow, fieldElo: number | undefined): EventListItem {
   return {
     bcpId: row.id,
     name: row.name,
@@ -114,6 +116,7 @@ export function toEventListItem(row: EventRow): EventListItem {
     ended: row.ended,
     hideLists: row.hideLists,
     lastSyncedAt: row.lastSyncedAt?.toISOString() ?? null,
+    fieldElo: fieldElo === undefined ? null : Math.round(fieldElo),
   };
 }
 
@@ -164,5 +167,14 @@ export async function searchEvents(
       .offset((query.page - 1) * query.pageSize),
     db.$count(events, where),
   ]);
-  return { items: rows.map(toEventListItem), total, page: query.page, pageSize: query.pageSize };
+  const strength = await fieldElos(
+    db,
+    rows.map((row) => row.id),
+  );
+  return {
+    items: rows.map((row) => toEventListItem(row, strength.get(row.id))),
+    total,
+    page: query.page,
+    pageSize: query.pageSize,
+  };
 }

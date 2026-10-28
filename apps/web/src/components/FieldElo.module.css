@@ -1,0 +1,22 @@
+/* A field's strength by colour: dimmed grey when average, then blue, orange and glowing yellow. */
+.elo {
+  white-space: nowrap;
+}
+
+.elo[data-tier='average'] {
+  color: var(--mantine-color-dimmed);
+}
+
+.elo[data-tier='strong'] {
+  color: var(--mantine-color-blue-4);
+}
+
+.elo[data-tier='very-strong'] {
+  color: var(--mantine-color-orange-5);
+}
+
+.elo[data-tier='elite'] {
+  font-weight: 700;
+  color: var(--mantine-color-yellow-5);
+  text-shadow: 0 0 6px rgb(255 200 40 / 0.55);
+}
