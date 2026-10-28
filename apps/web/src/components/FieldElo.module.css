@@ -1,14 +1,14 @@
-/* A field's strength as heat, like the flames for size: plain, then yellow, orange and glowing red. */
+/* A field's strength by colour: dimmed grey when average, then blue, orange and glowing yellow. */
 .elo {
   white-space: nowrap;
 }
 
 .elo[data-tier='average'] {
-  color: var(--mantine-color-gray-4);
+  color: var(--mantine-color-dimmed);
 }
 
 .elo[data-tier='strong'] {
-  color: var(--mantine-color-yellow-5);
+  color: var(--mantine-color-blue-4);
 }
 
 .elo[data-tier='very-strong'] {
@@ -17,6 +17,6 @@
 
 .elo[data-tier='elite'] {
   font-weight: 700;
-  color: var(--mantine-color-red-6);
-  text-shadow: 0 0 6px rgb(255 80 40 / 0.55);
+  color: var(--mantine-color-yellow-5);
+  text-shadow: 0 0 6px rgb(255 200 40 / 0.55);
 }
