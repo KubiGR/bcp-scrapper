@@ -64,10 +64,8 @@ interface PlayerColumnsOptions {
 /** From tablet width up these get their own columns; on phones, a line under the player's name. */
 const wide = (theme: MantineTheme) => `(min-width: ${theme.breakpoints.sm})`;
 
-/** The phone line: team (when shown), faction, detachments and record. */
+/** The phone line: team (when shown), faction, detachments, disposition and record. */
 function PhoneLine({ player, showTeam }: { player: EventPlayer; showTeam: boolean }) {
-  const detachments = player.detachments.length > 0 ? player.detachments.join(' + ') : null;
-  const rest = [detachments, formatRecord(player)].filter((part) => part !== null);
   return (
     <Text size="xs" c="dimmed" hiddenFrom="sm">
       {showTeam && player.teamName !== null && `${player.teamName} · `}
@@ -77,7 +75,14 @@ function PhoneLine({ player, showTeam }: { player: EventPlayer; showTeam: boolea
           {' · '}
         </>
       )}
-      {rest.join(' · ')}
+      {player.detachments.length > 0 && `${player.detachments.join(' + ')} · `}
+      {player.disposition !== null && (
+        <>
+          <DispositionText disposition={player.disposition} />
+          {' · '}
+        </>
+      )}
+      {formatRecord(player)}
     </Text>
   );
 }
