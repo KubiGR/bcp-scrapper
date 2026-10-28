@@ -229,10 +229,17 @@ describe('PlayersPanel', () => {
     expect(onOpenPlayer).toHaveBeenCalledWith('PL-BEN');
   });
 
-  it('names faction, detachments and record under the player too, for phones', async () => {
+  it('names faction, detachments, disposition and record under the player too, for phones', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': {
-        items: [aPlayer({ detachments: ['Gladius Task Force'], wins: 3, losses: 1 })],
+        items: [
+          aPlayer({
+            detachments: ['Gladius Task Force'],
+            disposition: 'Take and Hold',
+            wins: 3,
+            losses: 1,
+          }),
+        ],
       },
     });
     renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
@@ -241,7 +248,7 @@ describe('PlayersPanel', () => {
       screen.getByText(
         (_, element) =>
           element?.tagName === 'P' &&
-          element.textContent === 'Space Marines · Gladius Task Force · 3-1-0',
+          element.textContent === 'Space Marines · Gladius Task Force · Take and Hold · 3-1-0',
       ),
     ).toBeInTheDocument();
   });
@@ -338,8 +345,9 @@ describe('PlayersPanel', () => {
 
     const adaRow = (await screen.findByText('Ada Archer')).closest('tr');
     const caraRow = screen.getByText('Cara Cole').closest('tr');
-    expect(adaRow && within(adaRow).getByText('Take and Hold')).toBeInTheDocument();
-    expect(caraRow && within(caraRow).getByText('Disruption')).toBeInTheDocument();
+    // In the Disposition column and in the phone line (one of them hidden by CSS in a browser).
+    expect(adaRow && within(adaRow).getAllByText('Take and Hold')).toHaveLength(2);
+    expect(caraRow && within(caraRow).getAllByText('Disruption')).toHaveLength(2);
 
     const dispositionFilter = screen.getByRole('combobox', { name: 'Disposition' });
     expect(dispositionFilter).toHaveAttribute('placeholder', 'All dispositions');
