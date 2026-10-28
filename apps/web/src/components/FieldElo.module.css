@@ -1,0 +1,25 @@
+/* A field's strength by colour: dim when weak, then cyan, violet and gold as it gets stronger. */
+.elo {
+  white-space: nowrap;
+}
+
+.elo[data-tier='weak'] {
+  color: var(--mantine-color-dark-2);
+}
+
+.elo[data-tier='average'] {
+  color: var(--mantine-color-gray-4);
+}
+
+.elo[data-tier='strong'] {
+  color: var(--mantine-color-cyan-4);
+}
+
+.elo[data-tier='very-strong'] {
+  color: var(--mantine-color-violet-4);
+}
+
+.elo[data-tier='elite'] {
+  font-weight: 700;
+  color: var(--mantine-color-yellow-5);
+}

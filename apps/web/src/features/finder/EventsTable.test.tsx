@@ -142,7 +142,9 @@ describe('EventsTable', () => {
     expect(screen.getByRole('columnheader', { name: 'Elo' })).toBeInTheDocument();
     // In its column, and in the phone line under the name.
     expect(
-      screen.getAllByLabelText('Average wh40k-elo of the field: 1712').map((e) => e.textContent),
+      screen
+        .getAllByLabelText('Elite field: average wh40k-elo of the field 1712')
+        .map((e) => e.textContent),
     ).toEqual(['Elo 1712', '1712']);
     expect(screen.getByText('—')).toBeInTheDocument();
   });
