@@ -3,7 +3,8 @@ import { BIG_EVENTS, EventListQuerySchema } from '@bcp/shared';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
-import { events } from '../db/schema';
+import { events, wh40kElo } from '../db/schema';
+import { syncEvent } from '../sync/jobs';
 import { ALL_EVENTS, sampleSource } from '../test/helpers';
 import {
   deleteSmallEvents,
@@ -153,6 +154,35 @@ describe('searchEvents', () => {
     const page2 = await searchEvents(db, query({ page: '2', pageSize: '2' }), ALL_EVENTS);
     expect(page2.items.map((e) => e.bcpId)).toEqual(['EVTTEAM0001']);
     expect(page2.total).toBe(3);
+  });
+
+  it('gives each event its field’s average wh40k-elo, once at least half its players are rated', async () => {
+    await syncEvent({ db, source }, 'EVTTEAM0001');
+    const rate = (userIds: string[], elo: number) =>
+      db.insert(wh40kElo).values(
+        userIds.map((userId) => ({
+          userId,
+          name: userId,
+          elo,
+          games: 50,
+          wins: 25,
+          losses: 25,
+          draws: 0,
+          importedAt: new Date(),
+        })),
+      );
+    const fieldElo = async () =>
+      (await searchEvents(db, query({}), ALL_EVENTS)).items.find((e) => e.bcpId === 'EVTTEAM0001')
+        ?.fieldElo;
+    await rate(['US-ADA', 'US-BEN', 'US-CARA'], 1600);
+    expect(await fieldElo()).toBeNull();
+    await rate(['US-DAN'], 1701);
+    expect(await fieldElo()).toBe(1625);
+    // Events without loaded players have none.
+    const items = (await searchEvents(db, query({}), ALL_EVENTS)).items;
+    expect(items.filter((e) => e.bcpId !== 'EVTTEAM0001').every((e) => e.fieldElo === null)).toBe(
+      true,
+    );
   });
 
   it('only shows big events for a rule that excludes small ones', async () => {

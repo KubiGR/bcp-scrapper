@@ -109,6 +109,7 @@ describe('EventDetailSchema', () => {
       ended: true,
       hideLists: false,
       lastSyncedAt: null,
+      fieldElo: null,
       stale: true,
       counts: {
         players: 0,

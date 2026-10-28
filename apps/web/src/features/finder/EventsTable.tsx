@@ -3,6 +3,7 @@ import { Table, Text, UnstyledButton, type MantineTheme } from '@mantine/core';
 import { Fragment } from 'react';
 import { DataTable } from 'mantine-datatable';
 import { EventStatusBadges } from '../../components/EventStatusBadges';
+import { FieldElo } from '../../components/FieldElo';
 import { Panel } from '../../components/Panel';
 import { formatEventDates, plural } from '../../lib/format';
 import { eventPath, openHere } from '../../lib/open-link';
@@ -161,6 +162,8 @@ export function EventsTable({
                 <Text size="xs" c="dimmed" hiddenFrom="sm" mt={4} className="numeric">
                   {plural(event.playerCount, 'player')}
                   <EventHeat playerCount={event.playerCount} />
+                  {event.fieldElo !== null && ' · '}
+                  <FieldElo elo={event.fieldElo} />
                 </Text>
                 <Text size="xs" c="dimmed" hiddenFrom="sm">
                   {`${formatEventDates(event.startDate, event.endDate)} · ${placeOf(event)}`}
@@ -192,6 +195,17 @@ export function EventsTable({
                   </Text>
                 )}
               </>
+            ),
+          },
+          {
+            accessor: 'fieldElo',
+            title: 'Elo',
+            textAlign: 'right',
+            visibleMediaQuery: wide,
+            render: (event) => (
+              <span className="numeric">
+                {event.fieldElo === null ? '—' : <FieldElo elo={event.fieldElo} bare />}
+              </span>
             ),
           },
           {

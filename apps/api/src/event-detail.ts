@@ -3,6 +3,7 @@ import type { Db } from './db/client';
 import { isEventStale } from './freshness';
 import type { FetchQueueWorker } from './fetch-queue/worker';
 import { findEvent, toEventListItem } from './repo/events';
+import { fieldElos } from './repo/field-elo';
 import { eventPairingsJobs } from './repo/fetch-queue';
 import { storedPairingsSummary } from './repo/pairings';
 import { countEventParticipants } from './repo/participants';
@@ -17,15 +18,16 @@ export async function getEventDetail(
   const { db } = deps;
   const row = await findEvent(db, eventId);
   if (!row) return null;
-  const [counts, syncs, queueSeconds, stored, jobs] = await Promise.all([
+  const [counts, syncs, queueSeconds, stored, jobs, strength] = await Promise.all([
     countEventParticipants(db, eventId),
     latestEventSyncRuns(db, eventId),
     deps.fetchQueue.estimateSecondsFor(eventId),
     storedPairingsSummary(db, eventId),
     eventPairingsJobs(db, eventId),
+    fieldElos(db, [eventId]),
   ]);
   return {
-    ...toEventListItem(row),
+    ...toEventListItem(row, strength.get(eventId)),
     stale: isEventStale(row, now),
     counts,
     syncs,
