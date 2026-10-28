@@ -1,18 +1,17 @@
 import { HoverHint } from './HoverHint';
 import classes from './FieldElo.module.css';
 
-type Tier = 'weak' | 'average' | 'strong' | 'very-strong' | 'elite';
+type Tier = 'average' | 'strong' | 'very-strong' | 'elite';
 
 /**
- * Bands of 50 around the rankings' average field (1550): about the middle half of rated events is
- * average or strong, the top tenth very strong or elite.
+ * Up to 1549 is average (the rankings' average field is 1550), then bands of 50: about half of
+ * rated events are hotter than average, the top tenth very strong or elite.
  */
 export function fieldEloTier(elo: number): { tier: Tier; name: string } {
   if (elo >= 1650) return { tier: 'elite', name: 'Elite field' };
   if (elo >= 1600) return { tier: 'very-strong', name: 'Very strong field' };
   if (elo >= 1550) return { tier: 'strong', name: 'Strong field' };
-  if (elo >= 1500) return { tier: 'average', name: 'Average field' };
-  return { tier: 'weak', name: 'Weak field' };
+  return { tier: 'average', name: 'Average field' };
 }
 
 const HINT = 'average wh40k-elo of the field';

@@ -4,19 +4,10 @@ import { renderWithProviders } from '../test/render';
 import { FieldElo, fieldEloTier } from './FieldElo';
 
 describe('FieldElo', () => {
-  it('bands fields by 50 around the average 1550', () => {
-    expect(
-      [1499, 1500, 1549, 1550, 1599, 1600, 1649, 1650].map((elo) => fieldEloTier(elo).tier),
-    ).toEqual([
-      'weak',
-      'average',
-      'average',
-      'strong',
-      'strong',
-      'very-strong',
-      'very-strong',
-      'elite',
-    ]);
+  it('calls everything up to 1549 average, then bands by 50', () => {
+    expect([1400, 1549, 1550, 1599, 1600, 1649, 1650].map((elo) => fieldEloTier(elo).tier)).toEqual(
+      ['average', 'average', 'strong', 'strong', 'very-strong', 'very-strong', 'elite'],
+    );
   });
 
   it('colours the number by its band, and names the band for screen readers', () => {
