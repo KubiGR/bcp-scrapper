@@ -2,17 +2,18 @@ import type { EventPlayer } from '@bcp/shared';
 import {
   Button,
   Code,
-  CopyButton,
   Drawer,
   Group,
   Loader,
   Skeleton,
   Stack,
   Text,
+  TextInput,
 } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { ErrorState } from '../../components/ErrorState';
+import { copyText } from '../../lib/clipboard';
 import { formatDuration } from '../../lib/format';
 import { queueLists } from '../fetch-queue/fetch-queue-api';
 import { fetchQueueQuery } from '../fetch-queue/fetch-queue-queries';
@@ -33,41 +34,62 @@ interface ListDrawerProps {
 export const listLink = (eventId: string, playerId: string) =>
   `${window.location.origin}/events/${encodeURIComponent(eventId)}?tab=players&list=${encodeURIComponent(playerId)}`;
 
+type LinkStatus = 'idle' | 'copied' | 'failed';
+
 /**
- * Shares the list's link: the phone's share sheet when there is one, otherwise the clipboard.
+ * The list's link, to copy (always) or hand to the phone's share sheet (where there is one). When
+ * the browser lets neither through, the link is shown to copy by hand.
  */
-function ShareListButton({ eventId, player }: { eventId: string; player: EventPlayer }) {
-  const [copied, setCopied] = useState(false);
+function ShareListLink({ eventId, player }: { eventId: string; player: EventPlayer }) {
+  const [status, setStatus] = useState<LinkStatus>('idle');
   const url = listLink(eventId, player.bcpId);
+  const copy = () => {
+    void copyText(url).then((ok) => {
+      setStatus(ok ? 'copied' : 'failed');
+    });
+  };
+  // Feature check: browsers without a share sheet have no `share`.
+  const canShare = 'share' in navigator;
   return (
-    <Group gap="xs" wrap="nowrap">
-      <Button
-        size="xs"
-        variant="light"
-        onClick={() => {
-          // Feature check: browsers without a share sheet leave `share` undefined.
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          if (navigator.share) {
-            // A dismissed share sheet rejects; nothing to do then.
-            navigator.share({ title: `${player.name}’s list`, url }).catch(() => undefined);
-            return;
-          }
-          navigator.clipboard.writeText(url).then(
-            () => {
-              setCopied(true);
-            },
-            () => undefined,
-          );
-        }}
-      >
-        Share list
-      </Button>
-      {copied && (
-        <Text size="xs" c="dimmed" aria-live="polite">
-          Link copied
-        </Text>
+    <Stack gap={6}>
+      <Group gap="xs" wrap="wrap">
+        {canShare && (
+          <Button
+            size="xs"
+            variant="light"
+            onClick={() => {
+              navigator.share({ title: `${player.name}’s list`, url }).catch((error: unknown) => {
+                // Closing the sheet is fine; anything else (blocked, already open), copy instead.
+                if (error instanceof DOMException && error.name === 'AbortError') return;
+                copy();
+              });
+            }}
+          >
+            Share list
+          </Button>
+        )}
+        <Button size="xs" variant={canShare ? 'subtle' : 'light'} onClick={copy}>
+          Copy link
+        </Button>
+        {status === 'copied' && (
+          <Text size="xs" c="dimmed" aria-live="polite">
+            Link copied
+          </Text>
+        )}
+      </Group>
+      {status === 'failed' && (
+        <TextInput
+          size="xs"
+          readOnly
+          value={url}
+          label="Couldn’t copy: select the link and copy it"
+          onFocus={(event) => {
+            event.currentTarget.select();
+          }}
+          autoFocus
+        />
       )}
-    </Group>
+    </Stack>
   );
 }
 
@@ -91,7 +113,7 @@ export function ListDrawer({ eventId, player, onClose, instant = false }: ListDr
     >
       {player && (
         <Stack gap="md">
-          <ShareListButton eventId={eventId} player={player} />
+          <ShareListLink eventId={eventId} player={player} />
           <PlayerGames eventId={eventId} playerId={player.bcpId} playerName={player.name} />
           <ListContent eventId={eventId} player={player} />
         </Stack>
@@ -177,6 +199,28 @@ function QueuedStatus({ eventId, player }: { eventId: string; player: EventPlaye
  * The desktop version: the site sends touch and narrow screens (and anyone it once did) to a
  * mobile version that currently leads to a missing page.
  */
+/** Copies the list's text, saying so for a moment. */
+function CopyListButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      size="xs"
+      variant="outline"
+      onClick={() => {
+        void copyText(text).then((ok) => {
+          setCopied(ok);
+          if (ok)
+            setTimeout(() => {
+              setCopied(false);
+            }, 1000);
+        });
+      }}
+    >
+      {copied ? 'Copied' : 'Copy list'}
+    </Button>
+  );
+}
+
 const COMPACTOR_URL = 'https://desjani.github.io/40kCompactor/?ui=desktop';
 
 /**
@@ -195,14 +239,7 @@ function CompactButton({ text }: { text: string }) {
         size="xs"
         variant="subtle"
         onClick={() => {
-          navigator.clipboard.writeText(text).then(
-            () => {
-              setCopied(true);
-            },
-            () => {
-              setCopied(false);
-            },
-          );
+          void copyText(text).then(setCopied);
         }}
       >
         Compact on 40kCompactor ↗
@@ -269,13 +306,7 @@ function ListContent({ eventId, player }: { eventId: string; player: EventPlayer
           {[list.data.faction, list.data.teamName].filter(Boolean).join(' · ')}
         </Text>
         <Group gap="xs">
-          <CopyButton value={text}>
-            {({ copied, copy }) => (
-              <Button size="xs" variant="outline" onClick={copy}>
-                {copied ? 'Copied' : 'Copy list'}
-              </Button>
-            )}
-          </CopyButton>
+          <CopyListButton text={text} />
           <CompactButton text={text} />
         </Group>
       </Group>

@@ -54,25 +54,61 @@ describe('ListDrawer', () => {
     renderWithProviders(
       <ListDrawer eventId="EVT1" player={aPlayer({ listStatus: 'none' })} onClose={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Share list' }));
+    // No share sheet on a desktop browser: just the link to copy.
+    expect(screen.queryByRole('button', { name: 'Share list' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }));
     expect(writeText).toHaveBeenCalledWith(
       `${window.location.origin}/events/EVT1?tab=players&list=PL-ADA`,
     );
     expect(await screen.findByText('Link copied')).toBeInTheDocument();
   });
 
-  it('shares the link through the phone’s share sheet when there is one', () => {
-    const share = vi.fn(() => Promise.resolve());
+  it('shows the link to copy by hand when the browser allows no copying', async () => {
+    const writeText = vi.fn(() => Promise.reject(new Error('NotAllowedError')));
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    stubFetchRoutes({});
+    renderWithProviders(
+      <ListDrawer eventId="EVT1" player={aPlayer({ listStatus: 'none' })} onClose={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }));
+    expect(await screen.findByLabelText('Couldn’t copy: select the link and copy it')).toHaveValue(
+      `${window.location.origin}/events/EVT1?tab=players&list=PL-ADA`,
+    );
+  });
+
+  it('shares the link through the phone’s share sheet, and copies it if the sheet fails', async () => {
+    const share = vi.fn(() => Promise.reject(new DOMException('busy', 'InvalidStateError')));
     Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    stubFetchRoutes({});
+    renderWithProviders(
+      <ListDrawer eventId="EVT1" player={aPlayer({ listStatus: 'none' })} onClose={vi.fn()} />,
+    );
+    // Copying stays one tap away beside the share sheet.
+    expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Share list' }));
+    const url = `${window.location.origin}/events/EVT1?tab=players&list=PL-ADA`;
+    expect(share).toHaveBeenCalledWith({ title: 'Ada Archer’s list', url });
+    expect(await screen.findByText('Link copied')).toBeInTheDocument();
+    expect(writeText).toHaveBeenCalledWith(url);
+    Reflect.deleteProperty(navigator, 'share');
+  });
+
+  it('does nothing more when the share sheet is closed', async () => {
+    const share = vi.fn(() => Promise.reject(new DOMException('closed', 'AbortError')));
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     stubFetchRoutes({});
     renderWithProviders(
       <ListDrawer eventId="EVT1" player={aPlayer({ listStatus: 'none' })} onClose={vi.fn()} />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Share list' }));
-    expect(share).toHaveBeenCalledWith({
-      title: 'Ada Archer’s list',
-      url: `${window.location.origin}/events/EVT1?tab=players&list=PL-ADA`,
+    await waitFor(() => {
+      expect(share).toHaveBeenCalled();
     });
+    expect(writeText).not.toHaveBeenCalled();
     Reflect.deleteProperty(navigator, 'share');
   });
 
