@@ -13,10 +13,12 @@ import type { Db } from '../db/client';
 import { armyLists, events, players, teams } from '../db/schema';
 import { latestQueueRowsByPlayer } from './fetch-queue';
 import { armyRules, foreignDetachmentCheck } from './detachment-links';
+import { fieldElos } from './field-elo';
 import { storedCurrentList } from './lists';
 import { listStateOf } from './participants';
 
 const DAY_MS = 86_400_000;
+const roundedElo = (elo: number | undefined) => (elo === undefined ? null : Math.round(elo));
 const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 /**
@@ -171,10 +173,12 @@ export async function searchTopLists(
   );
   const page = matching.slice(0, TOP_LISTS_LIMIT);
 
+  const pageEventIds = [...new Set(page.map((player) => player.row.eventId))];
+  const strengths = await fieldElos(db, pageEventIds);
   // Queue states only for the events on this page.
   const queues = new Map(
     await Promise.all(
-      [...new Set(page.map((player) => player.row.eventId))].map(
+      pageEventIds.map(
         async (eventId) => [eventId, await latestQueueRowsByPlayer(db, eventId)] as const,
       ),
     ),
@@ -203,6 +207,7 @@ export async function searchTopLists(
       eventStartDate: row.eventStartDate.toISOString(),
       eventPlayerCount: row.eventPlayerCount,
       eventTeamCount: row.eventTeamCount,
+      eventFieldElo: roundedElo(strengths.get(row.eventId)),
     }),
   );
 

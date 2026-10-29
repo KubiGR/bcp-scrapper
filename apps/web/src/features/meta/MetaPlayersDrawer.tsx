@@ -7,6 +7,7 @@ import rowClasses from '../../components/ClickableRow.module.css';
 import { ErrorState } from '../../components/ErrorState';
 import { PlayerLine } from '../../components/PlayerLine';
 import { EventHeat, NewLeaf, playedLately } from '../../components/EventSymbols';
+import { FieldElo } from '../../components/FieldElo';
 import { listPath, openHere } from '../../lib/open-link';
 import { formatEventSize, formatIsoDay } from '../../lib/format';
 import { SortableTh, useTableSort } from '../../lib/table-sort';
@@ -141,6 +142,12 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
                         teamCount: player.eventTeamCount,
                       })}
                       <EventHeat playerCount={player.eventPlayerCount} />
+                      {player.eventFieldElo !== null && (
+                        <>
+                          {' · '}
+                          <FieldElo elo={player.eventFieldElo} />
+                        </>
+                      )}
                     </Text>
                   </Table.Td>
                   <Table.Td ta="right" className="numeric">

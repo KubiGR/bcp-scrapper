@@ -1,7 +1,7 @@
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { armyLists, bsdataDetachments, events, players } from '../db/schema';
+import { armyLists, bsdataDetachments, events, players, wh40kElo } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { syncEvent } from '../sync/jobs';
 import { ALL_EVENTS, sampleSource } from '../test/helpers';
@@ -55,6 +55,26 @@ describe('searchTopLists', () => {
       eventPlayerCount: row?.playerCount,
       eventTeamCount: row?.teamCount,
     });
+  });
+
+  it('gives each player’s event its field Elo, rounded, once enough of its players are rated', async () => {
+    await db.insert(wh40kElo).values(
+      ['US-ADA', 'US-BEN', 'US-CARA', 'US-DAN'].map((userId, index) => ({
+        userId,
+        name: userId,
+        elo: 1600 + index * 0.5,
+        games: 50,
+        wins: 25,
+        losses: 25,
+        draws: 0,
+        importedAt: new Date(),
+      })),
+    );
+    const result = await searchTopLists(db, query({ maxLosses: 5 }), ALL_EVENTS, TODAY);
+    const eloOf = (eventId: string) =>
+      result.players.find((p) => p.eventId === eventId)?.eventFieldElo;
+    expect(eloOf('EVTTEAM0001')).toBe(1601);
+    expect(eloOf('EVTBRACKET01')).toBeNull();
   });
 
   it('counts draws as not losses, and never includes a player with no games', async () => {

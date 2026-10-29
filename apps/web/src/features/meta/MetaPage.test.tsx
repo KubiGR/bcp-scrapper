@@ -165,6 +165,7 @@ describe('MetaPage', () => {
             eventStartDate: '2026-03-28T09:00:00.000Z',
             eventPlayerCount: 96,
             eventTeamCount: 12,
+            eventFieldElo: null,
           },
         ],
         truncated: false,
@@ -243,6 +244,7 @@ describe('MetaPage', () => {
       eventStartDate: '2026-03-28T09:00:00.000Z',
       eventPlayerCount: 96,
       eventTeamCount: 12,
+      eventFieldElo: null,
     });
     stubFetchRoutes({
       'GET /api/meta': metaResponse(),

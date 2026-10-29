@@ -20,6 +20,7 @@ import { AnchorLink } from '../../components/AnchorLink';
 import { EventHeat, NewLeaf, playedLately } from '../../components/EventSymbols';
 import { DispositionText } from '../../components/DispositionText';
 import { ErrorState } from '../../components/ErrorState';
+import { FieldElo } from '../../components/FieldElo';
 import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
 import rowClasses from '../../components/ClickableRow.module.css';
@@ -257,6 +258,14 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                                   ` · ${plural(player.eventTeamCount, 'team')}`}
                                 <EventHeat playerCount={player.eventPlayerCount} />
                               </span>
+                              {player.eventFieldElo !== null && (
+                                <>
+                                  {' · '}
+                                  <span className={classes.piece}>
+                                    <FieldElo elo={player.eventFieldElo} />
+                                  </span>
+                                </>
+                              )}
                             </Text>
                           </Table.Td>
                           <Table.Td ta="right" className="numeric">

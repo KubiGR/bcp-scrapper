@@ -25,6 +25,7 @@ const response = (overrides: Partial<PlayerSearchResponse> = {}): PlayerSearchRe
       eventStartDate: '2026-03-28T09:00:00.000Z',
       eventPlayerCount: 96,
       eventTeamCount: 12,
+      eventFieldElo: 1712,
     },
   ],
   truncated: false,
@@ -85,6 +86,7 @@ describe('TopListsPage', () => {
       eventStartDate: '2026-05-01T09:00:00.000Z',
       eventPlayerCount: 96,
       eventTeamCount: 12,
+      eventFieldElo: null,
     };
     const base = response();
     stubFetchRoutes({ 'GET /api/players/search': { ...base, players: [zed, ...base.players] } });
@@ -110,6 +112,7 @@ describe('TopListsPage', () => {
       eventStartDate: '2026-03-28T09:00:00.000Z',
       eventPlayerCount: 96,
       eventTeamCount: 12,
+      eventFieldElo: null,
     });
     stubFetchRoutes({
       'GET /api/players/search': response({
@@ -140,6 +143,14 @@ describe('TopListsPage', () => {
     if (row === null) throw new Error('no row');
     expect(row.textContent).toMatch(/96 players · 12 teams/);
     expect(within(row).getByRole('img', { name: 'Medium event' })).toBeInTheDocument();
+  });
+
+  it('shows each event’s field Elo next to its size, as the tournament list does', async () => {
+    stubFetchRoutes({ 'GET /api/players/search': response() });
+    renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
+    const row = (await screen.findByText('Ada Archer')).closest('tr');
+    if (row === null) throw new Error('no row');
+    expect(within(row).getByText('Elo 1712')).toBeInTheDocument();
   });
 
   it('marks events played in the last week as new', async () => {
@@ -179,6 +190,7 @@ describe('TopListsPage', () => {
       eventStartDate: '2026-03-28T09:00:00.000Z',
       eventPlayerCount: 96,
       eventTeamCount: null,
+      eventFieldElo: null,
     };
     const base = response();
     stubFetchRoutes({ 'GET /api/players/search': { ...base, players: [...base.players, solo] } });

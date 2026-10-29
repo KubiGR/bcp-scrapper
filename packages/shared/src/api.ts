@@ -369,6 +369,8 @@ export const TopListPlayerSchema = EventPlayerSchema.extend({
   /** The event's size, as the tournament list shows it. */
   eventPlayerCount: z.number().int().nonnegative(),
   eventTeamCount: z.number().int().nonnegative().nullable(),
+  /** The event's field Elo, rounded, as the tournament list shows it; null until enough are rated. */
+  eventFieldElo: z.number().int().nullable(),
 });
 export type TopListPlayer = z.infer<typeof TopListPlayerSchema>;
 
