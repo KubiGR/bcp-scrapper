@@ -131,6 +131,8 @@ export class AutoFetchPlanner {
     for (const event of candidates) {
       const phase = eventPhase(event, now);
       if (!isBigEvent(event, eventRule) || phase === 'upcoming') continue;
+      // BCP answered 404 for it: every job would fail. Refresh still tries, by hand.
+      if (event.removedFromBcpAt !== null) continue;
       // Switched off mid-pass: stop adding work.
       if (!(await getAutoFetchEnabled(db))) break;
       const queued =

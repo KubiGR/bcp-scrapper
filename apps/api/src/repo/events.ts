@@ -80,6 +80,15 @@ export async function markEventSynced(db: Db, eventId: string, at = new Date()):
   await db.update(events).set({ lastSyncedAt: at }).where(eq(events.id, eventId));
 }
 
+/** BCP has nothing at this event any more: keep what we stored and stop syncing it. */
+export async function markEventRemovedFromBcp(
+  db: Db,
+  eventId: string,
+  at = new Date(),
+): Promise<void> {
+  await db.update(events).set({ removedFromBcpAt: at }).where(eq(events.id, eventId));
+}
+
 export async function findEvent(db: Db, id: string): Promise<EventRow | undefined> {
   const [row] = await db.select().from(events).where(eq(events.id, id));
   return row;
@@ -116,6 +125,7 @@ export function toEventListItem(row: EventRow, fieldElo: number | undefined): Ev
     ended: row.ended,
     hideLists: row.hideLists,
     lastSyncedAt: row.lastSyncedAt?.toISOString() ?? null,
+    removedFromBcpAt: row.removedFromBcpAt?.toISOString() ?? null,
     fieldElo: fieldElo === undefined ? null : Math.round(fieldElo),
   };
 }

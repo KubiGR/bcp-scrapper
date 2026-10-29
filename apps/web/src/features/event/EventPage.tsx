@@ -98,7 +98,7 @@ export function EventPage({ eventId, tab, onTabChange, openListId, onOpenList }:
           start({ kind: 'event', eventId });
         }}
       />
-      {!syncing && eventRun?.status === 'failed' && (
+      {!syncing && eventRun?.status === 'failed' && detail.removedFromBcpAt === null && (
         <Text size="sm" c="red">
           The last event sync failed: <SyncRunError run={eventRun} />
         </Text>

@@ -53,6 +53,8 @@ export const events = pgTable(
     lastSyncedAt: timestamptz('last_synced_at'),
     /** Set when every round's pairings were fetched by the fetch queue. */
     pairingsSyncedAt: timestamptz('pairings_synced_at'),
+    /** Set when BCP answered 404 for an event we had stored; its data stays. A later sync clears it. */
+    removedFromBcpAt: timestamptz('removed_from_bcp_at'),
     rawSummary: jsonb('raw_summary'),
     rawDetail: jsonb('raw_detail'),
     ...auditColumns,

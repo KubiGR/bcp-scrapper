@@ -6,6 +6,7 @@ import type { BcpSource, TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import { events, players, teams } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
+import { NotFoundError } from '../errors';
 import { findEvent } from '../repo/events';
 import { getSyncRun } from '../repo/sync-runs';
 import { ALL_EVENTS, sampleSource, silentLogger, sourceWith } from '../test/helpers';
@@ -86,6 +87,45 @@ describe('SyncRunner', () => {
     expect(await rowCount(teams)).toBe(4);
     expect(await rowCount(players)).toBe(8);
     expect((await findEvent(db, EVENT))?.lastSyncedAt).toBeInstanceOf(Date);
+  });
+
+  it('event: one BCP no longer has keeps its data and is marked removed, not failed', async () => {
+    const source = sampleSource();
+    await runToCompletion(
+      new SyncRunner({ db, source, logger: silentLogger, eventRule: ALL_EVENTS }),
+      { kind: 'event', eventId: EVENT },
+    );
+    const gone = withOverrides(source, {
+      getEvent: (eventId) =>
+        Promise.reject(new NotFoundError(`BCP has nothing at /v2/events/${eventId}`)),
+    });
+    const run = await runToCompletion(
+      new SyncRunner({ db, source: gone, logger: silentLogger, eventRule: ALL_EVENTS }),
+      { kind: 'event', eventId: EVENT },
+    );
+    expect(run).toMatchObject({ status: 'succeeded', done: 1 });
+    expect(await rowCount(players)).toBe(8);
+    expect((await findEvent(db, EVENT))?.removedFromBcpAt).toBeInstanceOf(Date);
+
+    // BCP has it again: a successful sync clears the mark.
+    await runToCompletion(
+      new SyncRunner({ db, source, logger: silentLogger, eventRule: ALL_EVENTS }),
+      { kind: 'event', eventId: EVENT },
+    );
+    expect((await findEvent(db, EVENT))?.removedFromBcpAt).toBeNull();
+  });
+
+  it('event: a 404 for an event never stored still fails', async () => {
+    const gone = withOverrides(sampleSource(), {
+      getEvent: (eventId) =>
+        Promise.reject(new NotFoundError(`BCP has nothing at /v2/events/${eventId}`)),
+    });
+    const run = await runToCompletion(
+      new SyncRunner({ db, source: gone, logger: silentLogger, eventRule: ALL_EVENTS }),
+      { kind: 'event', eventId: EVENT },
+    );
+    expect(run).toMatchObject({ status: 'failed', errorCode: 'NOT_FOUND' });
+    expect(await findEvent(db, EVENT)).toBeUndefined();
   });
 
   it('re-syncs drop the players BCP no longer lists', async () => {

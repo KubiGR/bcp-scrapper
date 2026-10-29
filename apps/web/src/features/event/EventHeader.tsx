@@ -66,6 +66,12 @@ export function EventHeader({ event, syncing, onRefresh }: EventHeaderProps) {
           Synced {formatDateTime(event.lastSyncedAt)}
         </Text>
       )}
+      {event.removedFromBcpAt !== null && (
+        <Text size="sm" c="dimmed">
+          BCP no longer has this event (checked {formatDateTime(event.removedFromBcpAt)}), so it
+          isn't synced any more. The players and lists below are what was stored before.
+        </Text>
+      )}
     </Stack>
   );
 }

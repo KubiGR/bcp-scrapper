@@ -71,6 +71,23 @@ describe('EventPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('says BCP removed the event instead of showing its old sync failure', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': { items: [] },
+      'GET /api/events/EVT1': anEventDetail({
+        removedFromBcpAt: '2026-10-29T10:00:00.000Z',
+        syncs: {
+          event: aSyncRun({ kind: 'event', status: 'failed', error: 'BCP has nothing here' }),
+        },
+      }),
+    });
+    renderWithProviders(<EventPage eventId="EVT1" {...tabProps} />);
+
+    expect(await screen.findByText(/BCP no longer has this event/)).toBeInTheDocument();
+    expect(screen.getByText('Removed from BCP')).toBeInTheDocument();
+    expect(screen.queryByText(/The last event sync failed/)).toBeNull();
+  });
+
   it('shows Players & lists, Rounds, Standings, Matchups on team events; no Standings on singles', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': { items: [] },

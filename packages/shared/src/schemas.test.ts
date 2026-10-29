@@ -109,6 +109,7 @@ describe('EventDetailSchema', () => {
       ended: true,
       hideLists: false,
       lastSyncedAt: null,
+      removedFromBcpAt: null,
       fieldElo: null,
       stale: true,
       counts: {

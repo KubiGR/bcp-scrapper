@@ -5,7 +5,14 @@ import classes from './EventStatusBadges.module.css';
 
 type BadgeFields = Pick<
   EventListItem,
-  'isTeamEvent' | 'isOnline' | 'startDate' | 'endDate' | 'ended' | 'hideLists' | 'lastSyncedAt'
+  | 'isTeamEvent'
+  | 'isOnline'
+  | 'startDate'
+  | 'endDate'
+  | 'ended'
+  | 'hideLists'
+  | 'lastSyncedAt'
+  | 'removedFromBcpAt'
 >;
 
 /**
@@ -39,6 +46,11 @@ export function EventStatusBadges({ event }: { event: BadgeFields }) {
       {event.hideLists && (
         <Badge size="xs" variant="outline" color="yellow">
           Lists hidden
+        </Badge>
+      )}
+      {event.removedFromBcpAt !== null && (
+        <Badge size="xs" variant="outline" color="orange">
+          Removed from BCP
         </Badge>
       )}
       {event.lastSyncedAt !== null && (
