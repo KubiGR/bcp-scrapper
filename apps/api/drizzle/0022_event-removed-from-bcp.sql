@@ -1,0 +1,1 @@
+ALTER TABLE "events" ADD COLUMN "removed_from_bcp_at" timestamp with time zone;

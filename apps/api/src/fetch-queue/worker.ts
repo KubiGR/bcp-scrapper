@@ -264,7 +264,7 @@ export class FetchQueueWorker {
   async #fetchEvent(job: ClaimedJob): Promise<TickOutcome> {
     const { db, source } = this.#options;
     const event = await syncEvent({ db, source }, job.eventId);
-    if (job.followUp === 'pairings') {
+    if (job.followUp === 'pairings' && event.removedFromBcpAt === null) {
       // Before markJobDone, so a failure here retries this job rather than a done row. Queueing
       // again is a no-op for rounds already open.
       const rounds = Array.from({ length: event.roundCount }, (_, index) => index + 1);

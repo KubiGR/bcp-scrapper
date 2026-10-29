@@ -47,6 +47,7 @@ const EVENTS = {
       ended: false,
       hideLists: false,
       lastSyncedAt: null,
+      removedFromBcpAt: null,
       fieldElo: null,
     },
   ],

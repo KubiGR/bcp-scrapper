@@ -1,9 +1,11 @@
 import { isBigEvent, type EventSizeRule, type SyncRequest } from '@bcp/shared';
 import { PageCursors, type TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
+import { NotFoundError } from '../errors';
 import type { Logger } from '../logger';
 import {
   findEvent,
+  markEventRemovedFromBcp,
   markEventSynced,
   upsertEventDetail,
   upsertEventSummaries,
@@ -50,12 +52,24 @@ async function syncCatalog(ctx: JobContext, { from, to }: RequestOf<'catalog'>):
   } while (cursor !== null);
 }
 
-/** Event detail, teams (team events only) and players. Drops teams and players BCP removed. */
+/**
+ * Event detail, teams (team events only) and players. Drops teams and players BCP removed. When
+ * BCP no longer has an event we stored (404), it keeps its data and is marked removed instead.
+ */
 export async function syncEvent(
   deps: Pick<JobContext, 'db' | 'source'>,
   eventId: string,
 ): Promise<EventRow> {
-  const event = await deps.source.getEvent(eventId);
+  let event;
+  try {
+    event = await deps.source.getEvent(eventId);
+  } catch (error) {
+    const stored = error instanceof NotFoundError ? await findEvent(deps.db, eventId) : undefined;
+    if (!stored) throw error;
+    const at = new Date();
+    await markEventRemovedFromBcp(deps.db, eventId, at);
+    return { ...stored, removedFromBcpAt: at };
+  }
   await upsertEventDetail(deps.db, event);
   if (event.isTeamEvent) {
     await replaceEventTeams(deps.db, eventId, await deps.source.getTeams(eventId));
