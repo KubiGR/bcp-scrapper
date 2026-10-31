@@ -1,4 +1,5 @@
 import {
+  defenderFacing,
   faceClasses,
   failChance,
   losses,
@@ -438,7 +439,9 @@ function allocationOrders(groups: DefenderGroup[]): number[][] {
     order
       .map((i) => {
         const g = groups[i];
-        return g === undefined ? '' : [g.toughness, g.save, g.invuln, g.wounds, g.fnp].join('/');
+        return g === undefined
+          ? ''
+          : [g.toughness, g.save, g.invuln, g.invulnAgainst, g.wounds, g.fnp].join('/');
       })
       .join('|');
   const distinct = (orders: number[][]) => {
@@ -536,8 +539,10 @@ export function calculate(calculation: Calculation): CalculationResult {
       parts: { mass: number; setup: WeaponSetup; averages: PoolAverages }[];
       score: [number, number];
     } | null = null;
+    // Invulnerable saves that only work against the other kind of attack don't count for this one.
+    const facing = { ...calculation, defender: defenderFacing(defender, weapon) };
     for (const priority of candidates) {
-      const result = resolveWeapon(space, vector, weapon, calculation, priority, oneDie, prepared);
+      const result = resolveWeapon(space, vector, weapon, facing, priority, oneDie, prepared);
       let wounds = 0;
       for (const [id, p] of result.vector) wounds += p * woundsOf(space.state(id), defender);
       const score: [number, number] = [slainOf(space, result.vector, defender), wounds];
@@ -566,7 +571,7 @@ export function calculate(calculation: Calculation): CalculationResult {
     wasted += best.wasted;
     orders.push(best.priority);
     breakdown.push({
-      ...stepOf(weapon, defender, best.priority, best.parts),
+      ...stepOf(weapon, facing.defender, best.priority, best.parts),
       damage,
       wasted: best.wasted,
       slain: slainOf(space, vector, defender) - before.slain,

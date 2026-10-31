@@ -1,5 +1,8 @@
 import type { Reroll } from './rolls';
 
+/** Some invulnerable saves only work against ranged attacks (or melee ones). */
+export type InvulnAgainst = 'all' | 'ranged' | 'melee';
+
 /** One kind of model in the target: a CHARACTER is always its own group of one. */
 export interface DefenderGroup {
   name: string;
@@ -8,6 +11,8 @@ export interface DefenderGroup {
   /** 3 for 3+. */
   save: number;
   invuln: number | null;
+  /** The attacks the invulnerable save works against. */
+  invulnAgainst: InvulnAgainst;
   wounds: number;
   fnp: number | null;
   character: boolean;

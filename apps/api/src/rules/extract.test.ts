@@ -27,8 +27,24 @@ describe('extractUnits', () => {
   it('reads a squad: models (a hidden sergeant too), sizes smallest first, default loadout', () => {
     const squad = sheet('Intercessor Squad');
     expect(squad?.models).toEqual([
-      { id: 'm-int', name: 'Intercessor', toughness: 4, save: 3, invuln: null, wounds: 2 },
-      { id: 'm-sgt', name: 'Intercessor Sergeant', toughness: 4, save: 3, invuln: null, wounds: 2 },
+      {
+        id: 'm-int',
+        name: 'Intercessor',
+        toughness: 4,
+        save: 3,
+        invuln: null,
+        invulnAgainst: 'all',
+        wounds: 2,
+      },
+      {
+        id: 'm-sgt',
+        name: 'Intercessor Sergeant',
+        toughness: 4,
+        save: 3,
+        invuln: null,
+        invulnAgainst: 'all',
+        wounds: 2,
+      },
     ]);
     expect(squad?.sizes).toEqual([
       {
@@ -112,6 +128,35 @@ describe('extractUnits', () => {
     expect(sheet('Warboss')).toMatchObject({ fnp: 6, damaged: 3, stealth: false });
     expect(sheet('Warboss')?.models[0]?.invuln).toBe(5);
     expect(sheet('Boyz')).toMatchObject({ stealth: true, fnp: null, damaged: null });
+  });
+
+  it('reads invulnerable saves that only work against ranged or melee attacks', () => {
+    const invulnOf = (row: Record<string, unknown>) => {
+      const tables = sampleTables();
+      tables.invulnerable_save = [
+        { datasheetId: 'ds-cap', miniatureId: null, rangedSave: null, meleeSave: null, ...row },
+      ];
+      const model = extractUnits(tables).datasheets.find((d) => d.name === 'Captain')?.models[0];
+      return { invuln: model?.invuln, invulnAgainst: model?.invulnAgainst };
+    };
+    const note = (rules: string) => ({ localisations: { en: { rules } } });
+    expect(invulnOf({ save: '4+' })).toEqual({ invuln: 4, invulnAgainst: 'all' });
+    expect(invulnOf({ save: '5+', ...note('*Against ranged attacks only.*') })).toEqual({
+      invuln: 5,
+      invulnAgainst: 'ranged',
+    });
+    expect(
+      invulnOf({ save: null, meleeSave: '4+', ...note('*Against melee attacks only*') }),
+    ).toEqual({ invuln: 4, invulnAgainst: 'melee' });
+    // Different against each: the better one, against all attacks.
+    expect(invulnOf({ save: '5+', ...note('*4+ against melee attacks only*') })).toEqual({
+      invuln: 4,
+      invulnAgainst: 'all',
+    });
+    expect(invulnOf({ save: null, rangedSave: '6+', meleeSave: '4+' })).toEqual({
+      invuln: 4,
+      invulnAgainst: 'all',
+    });
   });
 
   it('reads abilities that reduce or halve the Damage of attacks against the model', () => {

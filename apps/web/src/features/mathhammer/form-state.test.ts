@@ -22,6 +22,7 @@ describe('toCalculation', () => {
       toughness: 5,
       save: 5,
       invuln: null,
+      invulnAgainst: 'all',
       wounds: 1,
       fnp: null,
       character: false,

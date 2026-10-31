@@ -280,6 +280,18 @@ const SCENARIOS: [string, Calculation][] = [
     }),
   ],
   [
+    'an invulnerable save against ranged attacks only, met by guns and blades',
+    calc({
+      weapons: [
+        weapon({ models: 5, attacks: '2', ap: -3, damage: '2' }),
+        weapon({ models: 5, attacks: '2', ap: -3, damage: '2', melee: true }),
+      ],
+      defender: defender({
+        groups: [group({ models: 10, save: 3, invuln: 5, invulnAgainst: 'ranged', wounds: 3 })],
+      }),
+    }),
+  ],
+  [
     'fishing for criticals on 5+',
     calc({
       weapons: [

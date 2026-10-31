@@ -32,6 +32,8 @@ export const UnitModelSchema = z.object({
   /** 7 for no save. */
   save: z.number().int(),
   invuln: z.number().int().nullable(),
+  /** Data read before this was known has none: those invulnerable saves work against all attacks. */
+  invulnAgainst: z.enum(['all', 'ranged', 'melee']).default('all'),
   wounds: z.number().int(),
 });
 export type UnitModel = z.infer<typeof UnitModelSchema>;

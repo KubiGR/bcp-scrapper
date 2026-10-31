@@ -56,9 +56,21 @@ describe('share summary', () => {
           toughness: 11,
           save: 3,
           invuln: 4,
+          invulnAgainst: 'all',
           wounds: 16,
           fnp: 5,
           character: true,
+        },
+        {
+          name: 'Knight Despoiler',
+          models: 1,
+          toughness: 11,
+          save: 3,
+          invuln: 5,
+          invulnAgainst: 'ranged',
+          wounds: 26,
+          fnp: null,
+          character: false,
         },
       ],
       keywords: ['MONSTER'],
@@ -70,7 +82,10 @@ describe('share summary', () => {
       halveDamage: false,
       savePenaltiesIgnored: false,
     });
-    expect(summary.models).toEqual(['1× C’tan (Character) · T 11 · Sv 3+ · 4++ · W 16 · FNP 5+']);
+    expect(summary.models).toEqual([
+      '1× C’tan (Character) · T 11 · Sv 3+ · 4++ · W 16 · FNP 5+',
+      '1× Knight Despoiler · T 11 · Sv 3+ · 5++ vs ranged · W 26',
+    ]);
     expect(summary.tags).toEqual(['Stealth', '-1 to be hit', 'Damage −1', 'MONSTER']);
   });
 

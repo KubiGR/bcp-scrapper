@@ -1,6 +1,7 @@
 import { Checkbox, NumberInput, Select, TextInput } from '@mantine/core';
-import type { Reroll } from '@bcp/shared';
+import type { InvulnAgainst, Reroll } from '@bcp/shared';
 import { Children, useState, type ReactNode } from 'react';
+import { INVULN_AGAINST } from './form-state';
 import classes from './inputs.module.css';
 
 /**
@@ -179,6 +180,39 @@ export function RerollSelect({
       {...changedProps(original, from)}
       onChange={(next) => {
         const found = REROLLS.find((r) => r.value === next);
+        if (found !== undefined) onChange(found.value);
+      }}
+    />
+  );
+}
+
+/** The attacks an invulnerable save works against. */
+export function InvulnAgainstSelect({
+  value,
+  onChange,
+  original,
+  disabled,
+}: {
+  value: InvulnAgainst;
+  onChange: (value: InvulnAgainst) => void;
+  /** The datasheet's value when changed from it. */
+  original?: string | null;
+  disabled?: boolean;
+}) {
+  return (
+    <Select
+      size="xs"
+      label="vs"
+      aria-label="InSv against"
+      data={INVULN_AGAINST}
+      value={value}
+      w={90}
+      allowDeselect={false}
+      disabled={disabled}
+      classNames={{ input: classes.field }}
+      {...changedProps(original)}
+      onChange={(next) => {
+        const found = INVULN_AGAINST.find((a) => a.value === next);
         if (found !== undefined) onChange(found.value);
       }}
     />

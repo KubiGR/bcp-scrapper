@@ -5,6 +5,7 @@ import {
   parseDice,
   readKeywords,
   type Calculation,
+  type InvulnAgainst,
   type Situation,
   type UnitProfile,
   type WeaponKeywords,
@@ -12,6 +13,13 @@ import {
   isConditional,
   keywordFields,
 } from '@bcp/shared';
+
+/** The attacks an invulnerable save can work against, as the picker names them. */
+export const INVULN_AGAINST: { value: InvulnAgainst; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'ranged', label: 'Ranged' },
+  { value: 'melee', label: 'Melee' },
+];
 
 /** One weapon as typed: its profile and its keywords. */
 export interface WeaponRow {
@@ -67,6 +75,7 @@ export interface GroupRow {
   toughness: number;
   save: number;
   invuln: number | null;
+  invulnAgainst: InvulnAgainst;
   wounds: number;
   fnp: number | null;
   character: boolean;
@@ -170,6 +179,7 @@ export const newGroup = (): GroupRow => ({
   toughness: 4,
   save: 3,
   invuln: null,
+  invulnAgainst: 'all',
   wounds: 1,
   fnp: null,
   character: false,
@@ -212,6 +222,7 @@ const GROUP_FIELDS = [
   'toughness',
   'save',
   'invuln',
+  'invulnAgainst',
   'wounds',
   'fnp',
   'character',
@@ -265,6 +276,8 @@ function shown(value: string | number | boolean | null, row?: WeaponRow): string
     return row.profiles[value].name;
   }
   if (value === 'best') return 'Best';
+  const against = INVULN_AGAINST.find((a) => a.value === value);
+  if (against !== undefined) return against.label;
   return String(value);
 }
 

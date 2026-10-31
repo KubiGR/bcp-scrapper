@@ -89,7 +89,9 @@ export function defenderSummary(d: Defender): { models: string[]; tags: string[]
         `${String(g.models)}× ${g.name}${g.character ? ' (Character)' : ''}`,
         `T ${String(g.toughness)}`,
         g.save >= 7 ? 'No save' : `Sv ${String(g.save)}+`,
-        ...(g.invuln === null ? [] : [`${String(g.invuln)}++`]),
+        ...(g.invuln === null
+          ? []
+          : [`${String(g.invuln)}++${g.invulnAgainst === 'all' ? '' : ` vs ${g.invulnAgainst}`}`]),
         `W ${String(g.wounds)}`,
         ...(g.fnp === null ? [] : [`FNP ${String(g.fnp)}+`]),
       ].join(' · '),
@@ -154,6 +156,7 @@ const FIELD_LABELS: Record<string, string> = {
   toughness: 'T',
   save: 'Sv',
   invuln: 'InSv',
+  invulnAgainst: 'InSv vs',
   wounds: 'W',
   fnp: 'FNP',
   character: 'Character',
