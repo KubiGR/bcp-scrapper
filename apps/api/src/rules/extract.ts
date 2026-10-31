@@ -11,7 +11,7 @@ import {
 import { readJsLiteral } from './js-literal';
 
 /** Bump when the extraction changes: a site holding data read the old way reads it again. */
-export const RULES_FORMAT = 4;
+export const RULES_FORMAT = 5;
 
 /** 39k.pro's data wasn't where or what it should be: the site changed. */
 export class RulesShapeError extends Error {
@@ -68,6 +68,32 @@ const number = (text: string | null): number | null => {
   const match = /^\s*(-?\d+)\+?\s*$/.exec(text ?? '');
   return match === null ? null : Number(match[1]);
 };
+
+/**
+ * An invulnerable save row: its value, and whether it only works against ranged or melee
+ * attacks (from its columns or its note, e.g. "Against ranged attacks only"). A save that differs
+ * between the two (5+, "4+ against melee attacks only") is taken as the better one against all.
+ */
+function invulnOf(row: Row | undefined): Pick<UnitModel, 'invuln' | 'invulnAgainst'> | null {
+  if (row === undefined) return null;
+  const note = enText(row, 'rules');
+  const save = number(field(row, 'save'));
+  const ranged = number(field(row, 'rangedSave'));
+  const melee =
+    number(field(row, 'meleeSave')) ??
+    number(/(\d)\+ against melee attacks only/i.exec(note)?.[1] ?? null);
+  const general = save ?? ranged;
+  if (melee !== null && general !== null) {
+    return { invuln: Math.min(melee, general), invulnAgainst: 'all' };
+  }
+  if (melee !== null) return { invuln: melee, invulnAgainst: 'melee' };
+  if (general === null) return null;
+  if (/against melee attacks only/i.test(note)) return { invuln: general, invulnAgainst: 'melee' };
+  if ((save === null && ranged !== null) || /against ranged attacks/i.test(note)) {
+    return { invuln: general, invulnAgainst: 'ranged' };
+  }
+  return { invuln: general, invulnAgainst: 'all' };
+}
 
 function groupBy(rows: Row[], key: string): Map<string, Row[]> {
   const groups = new Map<string, Row[]>();
@@ -295,9 +321,7 @@ export function extractUnits(tables: Record<string, unknown>): UnitData {
   const datasheets = sheets.map((sheet): UnitDatasheet => {
     const id = field(sheet, 'id') ?? '';
     const invulns = invulnerable.get(id) ?? [];
-    const unitInvuln = number(
-      field(invulns.find((r) => field(r, 'miniatureId') === null) ?? {}, 'save'),
-    );
+    const unitInvuln = invulnOf(invulns.find((r) => field(r, 'miniatureId') === null));
     const models: UnitModel[] = [...(miniatures.get(id) ?? [])]
       .sort(byOrder)
       // A hidden statline (a sergeant shown with the squad) is still a model of the unit.
@@ -306,16 +330,14 @@ export function extractUnits(tables: Record<string, unknown>): UnitData {
         const toughness = number(field(model, 'toughness'));
         const wounds = number(field(model, 'wounds'));
         if (toughness === null || wounds === null) return [];
-        const own = number(
-          field(invulns.find((r) => field(r, 'miniatureId') === modelId) ?? {}, 'save'),
-        );
+        const own = invulnOf(invulns.find((r) => field(r, 'miniatureId') === modelId));
         return [
           {
             id: modelId,
             name: enText(model, 'name'),
             toughness,
             save: number(field(model, 'save')) ?? 7,
-            invuln: own ?? unitInvuln,
+            ...(own ?? unitInvuln ?? { invuln: null, invulnAgainst: 'all' as const }),
             wounds,
           },
         ];

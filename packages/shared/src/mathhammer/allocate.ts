@@ -138,6 +138,28 @@ export interface SaveProfile {
   damage: DamageModel;
 }
 
+/** The group's invulnerable save against this weapon: none when it only works against the other kind. */
+export function invulnAgainst(group: DefenderGroup, weapon: { melee: boolean }): number | null {
+  if (group.invulnAgainst === 'ranged' && weapon.melee) return null;
+  if (group.invulnAgainst === 'melee' && !weapon.melee) return null;
+  return group.invuln;
+}
+
+/** The defender as this weapon meets it: invulnerable saves that don't work against it dropped. */
+export function defenderFacing<D extends { groups: DefenderGroup[] }>(
+  defender: D,
+  weapon: { melee: boolean },
+): D {
+  return {
+    ...defender,
+    groups: defender.groups.map((g) => ({
+      ...g,
+      invuln: invulnAgainst(g, weapon),
+      invulnAgainst: 'all',
+    })),
+  };
+}
+
 /** Saves the group makes: unmodified 1 fails; invulnerable save; then the save after AP. */
 export function saved(face: number, group: DefenderGroup, profile: SaveProfile): boolean {
   if (face === 1) return false;

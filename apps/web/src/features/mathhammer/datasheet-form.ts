@@ -199,6 +199,7 @@ function groupsOf(
         r.toughness === model.toughness &&
         r.save === model.save &&
         r.invuln === model.invuln &&
+        r.invulnAgainst === model.invulnAgainst &&
         r.wounds === model.wounds,
     );
     if (same !== undefined && !character) {
@@ -213,6 +214,7 @@ function groupsOf(
       toughness: model.toughness,
       save: model.save,
       invuln: model.invuln,
+      invulnAgainst: model.invulnAgainst,
       wounds: model.wounds,
       fnp: unit.fnp,
       character,

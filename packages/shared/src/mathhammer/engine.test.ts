@@ -125,6 +125,19 @@ describe('calculate', () => {
     expect(
       calculate(calc({ weapons: [{ ...sure, ap: -3 }], defender: invuln })).averages.woundsDealt,
     ).toBeCloseTo(base * (4 / 6));
+    const shooting = defender({
+      groups: [group({ models: 100, save: 4, invuln: 5, invulnAgainst: 'ranged' })],
+    });
+    const dealt = (melee: boolean, target = shooting) =>
+      calculate(calc({ weapons: [{ ...sure, ap: -3, melee }], defender: target })).averages
+        .woundsDealt;
+    expect(dealt(false)).toBeCloseTo(base * (4 / 6));
+    expect(dealt(true)).toBeCloseTo(base);
+    const fighting = defender({
+      groups: [group({ models: 100, save: 4, invuln: 5, invulnAgainst: 'melee' })],
+    });
+    expect(dealt(false, fighting)).toBeCloseTo(base);
+    expect(dealt(true, fighting)).toBeCloseTo(base * (4 / 6));
     const worse = { ...sure, mods: { ...sure.mods, saveModifier: 1 } };
     expect(
       calculate(calc({ weapons: [worse], defender: target })).averages.woundsDealt,

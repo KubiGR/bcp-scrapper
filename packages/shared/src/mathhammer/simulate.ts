@@ -1,3 +1,4 @@
+import { invulnAgainst } from './allocate';
 import type { Calculation, Weapon } from './types';
 
 /** A small seeded random generator (mulberry32), so simulations repeat exactly. */
@@ -270,9 +271,9 @@ export function simulate(
             const g = pick(priority, weapon.precision);
             const group = g < 0 ? first : groups[g];
             if (group === undefined) return;
+            const invuln = invulnAgainst(group, weapon);
             const ok =
-              f !== 1 &&
-              ((group.invuln !== null && f >= group.invuln) || f + ap - saveMod >= group.save);
+              f !== 1 && ((invuln !== null && f >= invuln) || f + ap - saveMod >= group.save);
             if (ok) continue;
             if (g < 0) wasted += damageRoll(weapon, extraDamage, false);
             else lose(g, damageRoll(weapon, extraDamage, false));

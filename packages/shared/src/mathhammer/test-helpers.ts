@@ -52,6 +52,7 @@ export const group = (g: Partial<DefenderGroup> = {}): DefenderGroup => ({
   toughness: 4,
   save: 3,
   invuln: null,
+  invulnAgainst: 'all',
   wounds: 1,
   fnp: null,
   character: false,

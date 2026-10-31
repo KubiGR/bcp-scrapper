@@ -9,7 +9,17 @@ const sheet = (
   legends: false,
   factions: ['Space Marines (Astartes)'],
   keywords: [],
-  models: [{ id: `${over.id}-m`, name: over.name, toughness: 4, save: 3, invuln: null, wounds: 2 }],
+  models: [
+    {
+      id: `${over.id}-m`,
+      name: over.name,
+      toughness: 4,
+      save: 3,
+      invuln: null,
+      invulnAgainst: 'all',
+      wounds: 2,
+    },
+  ],
   sizes: [],
   loadout: [],
   weapons: [],
@@ -35,8 +45,24 @@ const data: UnitData = {
       id: 'int',
       name: 'Intercessor Squad',
       models: [
-        { id: 'sgt', name: 'Intercessor Sergeant', toughness: 4, save: 3, invuln: null, wounds: 2 },
-        { id: 'int-m', name: 'Intercessor', toughness: 4, save: 3, invuln: null, wounds: 2 },
+        {
+          id: 'sgt',
+          name: 'Intercessor Sergeant',
+          toughness: 4,
+          save: 3,
+          invuln: null,
+          invulnAgainst: 'all',
+          wounds: 2,
+        },
+        {
+          id: 'int-m',
+          name: 'Intercessor',
+          toughness: 4,
+          save: 3,
+          invuln: null,
+          invulnAgainst: 'all',
+          wounds: 2,
+        },
       ],
       sizes: [
         {

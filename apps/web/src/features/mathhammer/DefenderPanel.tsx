@@ -22,7 +22,7 @@ import {
   type DefenderForm,
   type GroupRow,
 } from './form-state';
-import { Check, CheckGrid, changedProps, Num } from './inputs';
+import { Check, CheckGrid, changedProps, InvulnAgainstSelect, Num } from './inputs';
 import inputClasses from './inputs.module.css';
 import { hasSavedList, ListPicker } from './ListPicker';
 import { UnitPicker } from './UnitPicker';
@@ -93,6 +93,14 @@ function GroupEditor({
           nullable
           onChange={(v) => {
             onChange({ invuln: v });
+          }}
+        />
+        <InvulnAgainstSelect
+          original={groupOriginalText(g, 'invulnAgainst')}
+          value={g.invulnAgainst}
+          disabled={g.invuln === null}
+          onChange={(v) => {
+            onChange({ invulnAgainst: v });
           }}
         />
         <Num

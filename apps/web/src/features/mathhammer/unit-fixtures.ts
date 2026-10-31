@@ -36,8 +36,24 @@ export const INTERCESSORS = sheet({
   id: 'ds-int',
   name: 'Intercessor Squad',
   models: [
-    { id: 'm-int', name: 'Intercessor', toughness: 4, save: 3, invuln: null, wounds: 2 },
-    { id: 'm-sgt', name: 'Intercessor Sergeant', toughness: 4, save: 3, invuln: null, wounds: 2 },
+    {
+      id: 'm-int',
+      name: 'Intercessor',
+      toughness: 4,
+      save: 3,
+      invuln: null,
+      invulnAgainst: 'all',
+      wounds: 2,
+    },
+    {
+      id: 'm-sgt',
+      name: 'Intercessor Sergeant',
+      toughness: 4,
+      save: 3,
+      invuln: null,
+      invulnAgainst: 'all',
+      wounds: 2,
+    },
   ],
   sizes: [
     {
@@ -82,7 +98,17 @@ export const CAPTAIN = sheet({
   id: 'ds-cap',
   name: 'Captain',
   keywords: ['CHARACTER', 'INFANTRY'],
-  models: [{ id: 'm-cap', name: 'Captain', toughness: 4, save: 3, invuln: 4, wounds: 5 }],
+  models: [
+    {
+      id: 'm-cap',
+      name: 'Captain',
+      toughness: 4,
+      save: 3,
+      invuln: 4,
+      invulnAgainst: 'all',
+      wounds: 5,
+    },
+  ],
   sizes: [{ points: 80, models: [{ modelId: 'm-cap', count: 1 }] }],
   loadout: [{ modelId: 'm-cap', weaponId: 'wi-mc', count: 1 }],
   weapons: [
@@ -113,7 +139,15 @@ export const KNIGHT = sheet({
   name: 'Knight Gallant',
   keywords: ['VEHICLE'],
   models: [
-    { id: 'm-knight', name: 'Knight Gallant', toughness: 11, save: 3, invuln: 5, wounds: 22 },
+    {
+      id: 'm-knight',
+      name: 'Knight Gallant',
+      toughness: 11,
+      save: 3,
+      invuln: 5,
+      invulnAgainst: 'all',
+      wounds: 22,
+    },
   ],
   sizes: [{ points: 370, models: [{ modelId: 'm-knight', count: 1 }] }],
   loadout: [
