@@ -165,6 +165,14 @@ export const EventPlayerSchema = z.object({
   teamId: z.string().nullable(),
   /** The team's BCP placing, for ordering teams. */
   teamPlacing: z.number().int().nullable(),
+  /** The team's W-L-D (team games, not the player's own). */
+  teamRecord: z
+    .object({
+      wins: z.number().int().nonnegative(),
+      losses: z.number().int().nonnegative(),
+      draws: z.number().int().nonnegative(),
+    })
+    .nullable(),
   faction: z.string().nullable(),
   /** True when `faction` was read from the player's list because BCP has none (or only an allegiance). */
   factionGuessed: z.boolean(),

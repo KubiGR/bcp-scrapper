@@ -11,6 +11,7 @@ const player = (bcpId: string, teamId: string, faction: string) => ({
   teamName: teamId,
   teamId,
   teamPlacing: null,
+  teamRecord: null,
   faction,
   factionGuessed: false,
   parentFaction: null,

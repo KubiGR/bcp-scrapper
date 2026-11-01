@@ -283,6 +283,26 @@ describe('PlayersPanel', () => {
     expect(charlie).toHaveAttribute('aria-expanded', 'false');
   });
 
+  it('shows a team’s W-L-D after its name, and none before it has played', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [
+          aPlayer({ bcpId: 'P1', teamRecord: { wins: 4, losses: 1, draws: 1 } }),
+          aPlayer({
+            bcpId: 'P2',
+            teamId: 'TM-CHARLIE',
+            teamName: 'Charlie Wing',
+            teamRecord: { wins: 0, losses: 0, draws: 0 },
+          }),
+        ],
+      },
+    });
+    renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
+    const alpha = await screen.findByRole('button', teamToggle('Alpha Squad'));
+    expect(alpha).toHaveTextContent('Alpha Squad 4-1-1');
+    expect(screen.getByRole('button', teamToggle('Charlie Wing'))).not.toHaveTextContent('0-0-0');
+  });
+
   it('shows a team’s placing before its name in the group header, or “—” without one', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': {
