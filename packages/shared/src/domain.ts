@@ -32,6 +32,9 @@ export const TeamSchema = z.object({
   eventBcpId: z.string().min(1),
   name: z.string(),
   placing: z.number().int().nullable(),
+  wins: z.number().int().nonnegative(),
+  losses: z.number().int().nonnegative(),
+  draws: z.number().int().nonnegative(),
   roundPoints: z.array(z.number()),
 });
 export type Team = z.infer<typeof TeamSchema>;

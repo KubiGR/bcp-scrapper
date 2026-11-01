@@ -277,7 +277,7 @@ describe('mapPlayer', () => {
 });
 
 describe('mapTeam', () => {
-  it('orders round points by game number', () => {
+  it('orders round points by game number and tallies the team’s W-L-D', () => {
     const raw = parseBcp(
       RawTeam,
       {
@@ -285,8 +285,9 @@ describe('mapTeam', () => {
         name: 'Alpha ',
         placing: 1,
         total_games: [
-          { gameNum: 2, gameResult: 2, gamePoints: '24' },
+          { gameNum: 2, gameResult: 0, gamePoints: '24' },
           { gameNum: 1, gameResult: 2, gamePoints: 25 },
+          { gameNum: 3, gameResult: '1', gamePoints: 50 },
         ],
       },
       'test',
@@ -296,7 +297,10 @@ describe('mapTeam', () => {
       eventBcpId: 'E1',
       name: 'Alpha',
       placing: 1,
-      roundPoints: [25, 24],
+      wins: 1,
+      losses: 1,
+      draws: 1,
+      roundPoints: [25, 24, 50],
     });
   });
 

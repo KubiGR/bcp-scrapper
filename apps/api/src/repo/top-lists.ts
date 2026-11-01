@@ -15,7 +15,7 @@ import { latestQueueRowsByPlayer } from './fetch-queue';
 import { armyRules, foreignDetachmentCheck } from './detachment-links';
 import { fieldElos } from './field-elo';
 import { storedCurrentList } from './lists';
-import { listStateOf } from './participants';
+import { listStateOf, teamRecordColumns, teamRecordOf } from './participants';
 
 const DAY_MS = 86_400_000;
 const roundedElo = (elo: number | undefined) => (elo === undefined ? null : Math.round(elo));
@@ -116,6 +116,7 @@ export async function searchTopLists(
         teamId: players.teamId,
         teamName: teams.name,
         teamPlacing: teams.placing,
+        ...teamRecordColumns,
         faction: players.faction,
         parentFaction: players.parentFaction,
         placing: players.placing,
@@ -191,6 +192,7 @@ export async function searchTopLists(
       teamName: row.teamName,
       teamId: row.teamId,
       teamPlacing: row.teamPlacing,
+      teamRecord: teamRecordOf(row),
       faction,
       factionGuessed,
       parentFaction: row.parentFaction,

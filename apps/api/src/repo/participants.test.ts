@@ -114,9 +114,15 @@ describe('listEventPlayers', () => {
     expect(all.find((p) => p.bcpId === 'PL-HAL')?.opponents).toBeUndefined();
   });
 
-  it('lists each player’s team id and placing', async () => {
-    const ada = (await listEventPlayers(db, EVENT)).find((p) => p.bcpId === 'PL-ADA');
-    expect(ada).toMatchObject({ teamId: 'TM-ALPHA', teamName: 'Alpha Squad', teamPlacing: 2 });
+  it('lists each player’s team id, placing and record', async () => {
+    const all = await listEventPlayers(db, EVENT);
+    const ada = all.find((p) => p.bcpId === 'PL-ADA');
+    expect(ada).toMatchObject({
+      teamId: 'TM-ALPHA',
+      teamName: 'Alpha Squad',
+      teamPlacing: 2,
+      teamRecord: { wins: 1, losses: 1, draws: 0 },
+    });
   });
 
   it('gives each player’s BCP account id', async () => {

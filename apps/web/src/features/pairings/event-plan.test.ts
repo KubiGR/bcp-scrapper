@@ -14,6 +14,7 @@ const player = (
   teamName: teamId === 'T1' ? 'Dice Bunker' : 'Mighty Ducks',
   teamId,
   teamPlacing: null,
+  teamRecord: null,
   faction,
   factionGuessed: false,
   parentFaction: null,

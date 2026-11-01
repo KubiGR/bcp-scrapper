@@ -483,6 +483,14 @@ export function PlayersPanel({
                           </>
                         )}
                         {group.teamName}
+                        {group.teamRecord !== null &&
+                          group.teamRecord.wins + group.teamRecord.losses + group.teamRecord.draws >
+                            0 && (
+                            <Text span c="dimmed" fw={400} className="numeric">
+                              {' '}
+                              {formatRecord(group.teamRecord)}
+                            </Text>
+                          )}
                       </Text>
                       <span className="numeric">{group.players.length}</span>
                     </Group>

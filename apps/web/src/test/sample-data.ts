@@ -86,6 +86,7 @@ export function aPlayer(overrides: Partial<EventPlayer> = {}): EventPlayer {
     factionGuessed: false,
     detachments: [],
     teamPlacing: 2,
+    teamRecord: { wins: 3, losses: 1, draws: 0 },
     faction: 'Space Marines',
     parentFaction: 'Space Marines',
     placing: 2,

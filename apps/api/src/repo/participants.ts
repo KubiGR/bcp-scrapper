@@ -25,6 +25,9 @@ export async function upsertTeams(db: Db, list: Fetched<Team>[]): Promise<void> 
         eventId: team.eventBcpId,
         name: team.name,
         placing: team.placing,
+        wins: team.wins,
+        losses: team.losses,
+        draws: team.draws,
         roundPoints: team.roundPoints,
         raw: team.raw,
       })),
@@ -108,6 +111,23 @@ export function listStateOf(
   return { listStatus: bcpListId === null ? 'none' : 'available', ...none };
 }
 
+/** The joined team's W-L-D, read back with `teamRecordOf`. */
+export const teamRecordColumns = {
+  teamWins: teams.wins,
+  teamLosses: teams.losses,
+  teamDraws: teams.draws,
+};
+
+/** The player's team record; null when the player has no stored team. */
+export function teamRecordOf(row: {
+  teamWins: number | null;
+  teamLosses: number | null;
+  teamDraws: number | null;
+}): EventPlayer['teamRecord'] {
+  const { teamWins: wins, teamLosses: losses, teamDraws: draws } = row;
+  return wins === null || losses === null || draws === null ? null : { wins, losses, draws };
+}
+
 /** An event's players, best placing first (unplaced last, by name), with team and list state. */
 export async function listEventPlayers(db: Db, eventId: string): Promise<EventPlayer[]> {
   const rules = await armyRules(db);
@@ -117,6 +137,7 @@ export async function listEventPlayers(db: Db, eventId: string): Promise<EventPl
         player: players,
         teamName: teams.name,
         teamPlacing: teams.placing,
+        ...teamRecordColumns,
         storedListId: armyLists.listId,
         parsedArmy: armyLists.parsedArmy,
         detachments: armyLists.detachments,
@@ -152,6 +173,7 @@ export async function listEventPlayers(db: Db, eventId: string): Promise<EventPl
       teamName,
       teamId: player.teamId,
       teamPlacing,
+      teamRecord: teamRecordOf(row),
       ...rules.army(player.faction, row.parsedArmy, row.detachments ?? []),
       parentFaction: player.parentFaction,
       placing: player.placing,

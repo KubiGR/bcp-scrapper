@@ -108,6 +108,7 @@ export function mapTeam(raw: RawTeam, eventId: string): Team {
     eventBcpId: eventId,
     name: raw.name.trim(),
     placing: raw.placing ?? null,
+    ...tallyRecord(raw.total_games),
     roundPoints: games.map((game) => game.gamePoints ?? 0),
   };
 }

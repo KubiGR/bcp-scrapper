@@ -16,6 +16,7 @@ const player = (
   teamName,
   teamId,
   teamPlacing: null,
+  teamRecord: null,
   faction,
   factionGuessed: false,
   parentFaction: null,

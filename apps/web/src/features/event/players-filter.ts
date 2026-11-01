@@ -106,6 +106,7 @@ export interface PlayerGroup {
   teamId: string | null;
   teamName: string;
   teamPlacing: number | null;
+  teamRecord: EventPlayer['teamRecord'];
   players: EventPlayer[];
 }
 
@@ -120,6 +121,7 @@ export function groupPlayersByTeam(players: EventPlayer[]): PlayerGroup[] {
       teamId: player.teamId,
       teamName: player.teamId === null ? 'No team' : (player.teamName ?? 'Unknown team'),
       teamPlacing: player.teamPlacing,
+      teamRecord: player.teamRecord,
       players: [],
     };
     group.players.push(player);
