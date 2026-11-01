@@ -21,7 +21,6 @@ import { FactionTable, type PlayersFilter } from './FactionTable';
 import {
   DEFAULT_MIN_PLAYERS,
   metaQuery,
-  metaWindow,
   type ChangeSpans,
   type MetaSearch,
   type MetaSort,
@@ -29,7 +28,7 @@ import {
 import { MetaPlayersDrawer } from './MetaPlayersDrawer';
 import { TeamMeta } from './TeamMeta';
 import { UpdatePicker } from '../updates/UpdatePicker';
-import { effectiveOf, updatesQuery } from '../updates/updates-queries';
+import { effectiveOf, updatesQuery, useDateWindow } from '../updates/updates-queries';
 
 interface MetaPageProps {
   search: MetaSearch;
@@ -73,10 +72,11 @@ export function changeSpans(
 export function MetaPage({ search, onSearchChange }: MetaPageProps) {
   // Change compares the latest game update in range with the one before it, when updates are known.
   const updates = useQuery(updatesQuery);
-  const change = changeSpans(effectiveOf(updates.data), metaWindow(search, new Date()).to);
+  const window = useDateWindow(search);
+  const change = changeSpans(effectiveOf(updates.data), window.to);
   const meta = useQuery(metaQuery(search, change?.spans));
   const [players, setPlayers] = useState<PlayersFilter | null>(null);
-  const dates = useDraftRange(metaWindow(search, new Date()), (range) => {
+  const dates = useDraftRange(window, (range) => {
     onSearchChange({ ...search, from: range.from, to: range.to });
   });
   const minPlayers = search.minPlayers ?? DEFAULT_MIN_PLAYERS;
@@ -113,8 +113,8 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
           w={{ base: '100%', xs: 280 }}
         />
         <UpdatePicker
-          from={metaWindow(search, new Date()).from}
-          to={metaWindow(search, new Date()).to}
+          from={window.from}
+          to={window.to}
           onChange={(range) => {
             onSearchChange({ ...search, from: range.from, to: range.to });
           }}

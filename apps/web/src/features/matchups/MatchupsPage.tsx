@@ -14,12 +14,12 @@ import {
   crossCellGamesQuery,
   crossDetachmentRowsQuery,
   crossMatchupsQuery,
-  crossWindow,
   type CrossSearch,
 } from './matchups-queries';
 import type { MatrixPick } from './matrix-pick';
 import { DEFAULT_MATRIX_SETTINGS, hasSideFilter, type MatrixSettings } from './matrix-view';
 import { UpdatePicker } from '../updates/UpdatePicker';
+import { useDateWindow } from '../updates/updates-queries';
 
 const splitIds = (value: string | undefined): string[] =>
   value === undefined ? [] : value.split(',').filter(Boolean);
@@ -36,8 +36,7 @@ interface MatchupsPageProps {
  * button, and the combined heatmap with the same controls and drill-down as an event's Matchups
  * tab. */
 export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
-  const now = new Date();
-  const window = crossWindow(search, now);
+  const window = useDateWindow(search);
   const [cell, setCell] = useState<MatrixPick | null>(null);
   const [eventsOpen, setEventsOpen] = useState(false);
 

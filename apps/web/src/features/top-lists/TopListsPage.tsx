@@ -34,7 +34,8 @@ import { ListDrawer } from '../event/ListDrawer';
 import { formatRecord, lossLabel } from '../event/players-filter';
 import { FOUND_PLAYER_SORT, placingLine } from './player-sort';
 import classes from './TopListsPage.module.css';
-import { topListsQuery, topListsWindow, type TopListsSearch } from './top-lists-queries';
+import { useDateWindow } from '../updates/updates-queries';
+import { topListsQuery, type TopListsSearch } from './top-lists-queries';
 import { PlayerName } from '../rankings/PlayerName';
 import { RankBadge } from '../rankings/RankBadge';
 import { UpdatePicker } from '../updates/UpdatePicker';
@@ -63,7 +64,8 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
   const results = useQuery(topListsQuery({ ...search, minRounds }));
   // The open row, by key: the drawer follows the refreshed results (e.g. after "Fetch this list").
   const [openKey, setOpenKey] = useState<{ eventId: string; bcpId: string } | null>(null);
-  const dates = useDraftRange(topListsWindow(search, new Date()), (range) => {
+  const window = useDateWindow(search);
+  const dates = useDraftRange(window, (range) => {
     onSearchChange({ ...search, from: range.from, to: range.to });
   });
 
@@ -117,8 +119,8 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
             w={{ base: '100%', xs: 280 }}
           />
           <UpdatePicker
-            from={topListsWindow(search, new Date()).from}
-            to={topListsWindow(search, new Date()).to}
+            from={window.from}
+            to={window.to}
             onChange={(range) => {
               onSearchChange({ ...search, from: range.from, to: range.to });
             }}

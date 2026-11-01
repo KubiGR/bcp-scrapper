@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  defaultRangeFrom,
   effectiveUpdates,
   groupUpdates,
   isUpdateCommit,
@@ -197,6 +198,13 @@ describe('effectiveUpdates and spans', () => {
     expect(updateOfDay(updates, '2026-07-21')?.id).toBe('a');
     expect(updateOfDay(updates, '2026-07-22')?.id).toBe('b');
     expect(updateOfDay(updates, '2026-06-01')).toBeNull();
+  });
+
+  it('starts a range without a start at the update in force on its end, or 90 days back', () => {
+    const updates = effectiveUpdates(auto, noEdits);
+    expect(defaultRangeFrom(updates, '2026-08-01')).toBe('2026-07-22');
+    expect(defaultRangeFrom(updates, '2026-06-01')).toBe('2026-03-03');
+    expect(defaultRangeFrom([], '2026-06-01')).toBe('2026-03-03');
   });
 
   it('turns picked updates into one range, filling gaps', () => {

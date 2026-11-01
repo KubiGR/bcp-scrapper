@@ -267,6 +267,11 @@ export function updateOfDay(updates: EffectiveUpdate[], day: string): EffectiveU
   return found;
 }
 
+/** A range's start when none is given: the start of the update in force on its last day, else 90 days back. */
+export function defaultRangeFrom(updates: EffectiveUpdate[], to: string): string {
+  return updateOfDay(updates, to)?.start ?? addDays(to, -90);
+}
+
 /** Each update's days: to the day before the next one, the newest to today (never before its start). */
 export function updateSpans(updates: EffectiveUpdate[], today: string): UpdateSpan[] {
   return updates.map((update, index) => {

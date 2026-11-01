@@ -15,6 +15,7 @@ import { z } from 'zod';
 import type { Db } from '../db/client';
 import { queueManyEventPairings } from '../fetch-queue/queue-pairings';
 import type { FetchQueueWorker } from '../fetch-queue/worker';
+import { rangeOrCurrentUpdate } from '../repo/game-updates';
 import { loadMatchupGames, pairingsStates, teamEventsInRange } from '../repo/matchups';
 import { parseInput } from '../validation';
 import { requireEvent } from './require-event';
@@ -66,8 +67,6 @@ const toFilter = (q: z.infer<typeof FilterSchema>): MatchupFilter => ({
   side: q.side,
 });
 
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
-
 export function matchupsRoutes(deps: {
   db: Db;
   fetchQueue: FetchQueueWorker;
@@ -79,9 +78,7 @@ export function matchupsRoutes(deps: {
   /** The events of a range and which of them count: synced unless excluded, others only if included. */
   async function selection(query: Record<string, string>) {
     const range = parseInput(RangeSchema, query);
-    const today = deps.now();
-    const to = range.to ?? isoDay(today);
-    const from = range.from ?? isoDay(new Date(today.getTime() - 90 * 86_400_000));
+    const { from, to } = await rangeOrCurrentUpdate(db, range, deps.now());
     const rows = await teamEventsInRange(db, { from, to }, deps.eventRule);
     const states = await pairingsStates(
       db,

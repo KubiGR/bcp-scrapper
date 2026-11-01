@@ -24,15 +24,9 @@ import { groupByTier, tierOf, tierPercent, winRateFill, type Tier } from './fact
 import classes from './FactionsPage.module.css';
 import { changeSpans, EVENT_TYPES } from './MetaPage';
 import { Movement, Podium } from './FactionsOverview';
-import {
-  DEFAULT_MIN_PLAYERS,
-  metaQuery,
-  metaWindow,
-  sharePercent,
-  type MetaSearch,
-} from './meta-queries';
+import { DEFAULT_MIN_PLAYERS, metaQuery, sharePercent, type MetaSearch } from './meta-queries';
 import { UpdatePicker } from '../updates/UpdatePicker';
-import { effectiveOf, updatesQuery } from '../updates/updates-queries';
+import { effectiveOf, updatesQuery, useDateWindow } from '../updates/updates-queries';
 
 /** The Factions page's URL search: the Meta API's filters, and the table's layout. */
 export type FactionsSearch = Pick<MetaSearch, 'from' | 'to' | 'type'> & {
@@ -292,9 +286,10 @@ export function FactionsPage({ search, onSearchChange }: FactionsPageProps) {
   const { layout, ...filters } = search;
   // Movement compares the latest game update in range with the one before it, when they're known.
   const updates = useQuery(updatesQuery);
-  const change = changeSpans(effectiveOf(updates.data), metaWindow(filters, new Date()).to);
+  const window = useDateWindow(filters);
+  const change = changeSpans(effectiveOf(updates.data), window.to);
   const meta = useQuery(metaQuery(filters, change?.spans));
-  const dates = useDraftRange(metaWindow(filters, new Date()), (range) => {
+  const dates = useDraftRange(window, (range) => {
     onSearchChange({ ...search, from: range.from, to: range.to });
   });
   const [query, setQuery] = useState('');
@@ -317,8 +312,8 @@ export function FactionsPage({ search, onSearchChange }: FactionsPageProps) {
           w={{ base: '100%', xs: 280 }}
         />
         <UpdatePicker
-          from={metaWindow(filters, new Date()).from}
-          to={metaWindow(filters, new Date()).to}
+          from={window.from}
+          to={window.to}
           onChange={(range) => {
             onSearchChange({ ...search, from: range.from, to: range.to });
           }}

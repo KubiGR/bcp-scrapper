@@ -1,4 +1,4 @@
-import { addDays, PlayerSearchResponseSchema, toIsoDate, type DateRange } from '@bcp/shared';
+import { PlayerSearchResponseSchema } from '@bcp/shared';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { apiGet } from '../../api/client';
 
@@ -22,12 +22,6 @@ export function topListsParams(search: TopListsSearch): string {
       value === undefined || value === '' ? [] : [[key, String(value)]],
     ),
   ).toString();
-}
-
-/** The range shown when the URL has none: the API's default, the last 90 days. */
-export function topListsWindow(search: TopListsSearch, now: Date): DateRange {
-  const to = search.to ?? toIsoDate(now);
-  return { from: search.from ?? addDays(to, -90), to };
 }
 
 export const topListsQuery = (search: TopListsSearch) =>

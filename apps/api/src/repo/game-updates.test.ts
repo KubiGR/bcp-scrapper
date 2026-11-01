@@ -5,7 +5,12 @@ import type { Db } from '../db/client';
 import { events } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { bsdataStatus } from './bsdata';
-import { editGameUpdate, listGameUpdates, syncUpdateCommits } from './game-updates';
+import {
+  editGameUpdate,
+  listGameUpdates,
+  rangeOrCurrentUpdate,
+  syncUpdateCommits,
+} from './game-updates';
 
 let db: Db;
 let close: () => Promise<void>;
@@ -117,6 +122,23 @@ describe('game updates', () => {
       autoStart: '2026-07-22',
       merged: false,
       hidden: false,
+    });
+  });
+
+  it('starts a range without a start at the update in force on its end', async () => {
+    await syncUpdateCommits(db, fakeClient(history).client);
+    const today = new Date('2026-10-03T12:00:00Z');
+    expect(await rangeOrCurrentUpdate(db, {}, today)).toEqual({
+      from: '2026-09-30',
+      to: '2026-10-03',
+    });
+    expect(await rangeOrCurrentUpdate(db, { to: '2026-08-01' }, today)).toEqual({
+      from: '2026-07-22',
+      to: '2026-08-01',
+    });
+    expect(await rangeOrCurrentUpdate(db, { from: '2026-01-01' }, today)).toEqual({
+      from: '2026-01-01',
+      to: '2026-10-03',
     });
   });
 

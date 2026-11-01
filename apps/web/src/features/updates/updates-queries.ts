@@ -1,7 +1,9 @@
 import {
+  defaultRangeFrom,
   GameUpdatesResponseSchema,
   toIsoDate,
   updateSpans,
+  type DateRange,
   type EffectiveUpdate,
   type GameUpdatePatch,
   type GameUpdatesResponse,
@@ -27,6 +29,19 @@ export const effectiveOf = (data: GameUpdatesResponse | undefined): EffectiveUpd
 export function useUpdateSpans(): UpdateSpan[] {
   const { data } = useQuery(updatesQuery);
   return updateSpans(effectiveOf(data), toIsoDate(new Date()));
+}
+
+/**
+ * A page's dates as the URL has them; without a start, since the update in force on the end day
+ * (today without an end), as the API reads them.
+ */
+export function useDateWindow(range: {
+  from?: string | undefined;
+  to?: string | undefined;
+}): DateRange {
+  const { data } = useQuery(updatesQuery);
+  const to = range.to ?? toIsoDate(new Date());
+  return { from: range.from ?? defaultRangeFrom(effectiveOf(data), to), to };
 }
 
 /** An admin's edit to an update (null name/start: back to BSData's). */
