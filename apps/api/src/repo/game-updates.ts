@@ -1,5 +1,7 @@
 import {
+  defaultRangeFrom,
   effectiveUpdates,
+  toIsoDate,
   groupUpdates,
   updateSpans,
   type AutoUpdate,
@@ -71,6 +73,16 @@ async function updatesAndEdits(
 export async function effectiveGameUpdates(db: Db): Promise<EffectiveUpdate[]> {
   const { auto, edits } = await updatesAndEdits(db);
   return effectiveUpdates(auto, edits);
+}
+
+/** A date range as asked; without a start, from the start of the update in force on its end. */
+export async function rangeOrCurrentUpdate(
+  db: Db,
+  range: { from?: string | undefined; to?: string | undefined },
+  today: Date,
+): Promise<{ from: string; to: string }> {
+  const to = range.to ?? toIsoDate(today);
+  return { from: range.from ?? defaultRangeFrom(await effectiveGameUpdates(db), to), to };
 }
 
 /** Every update read from BSData, newest first, with its stored events. */

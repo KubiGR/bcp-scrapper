@@ -1,13 +1,10 @@
 import {
-  addDays,
   BulkPairingsResultSchema,
   CellGamesResponseSchema,
   CrossEventMatchupsResponseSchema,
   DetachmentRowsResponseSchema,
   MatchupsResponseSchema,
-  toIsoDate,
   type BulkPairingsResult,
-  type DateRange,
   type DetachmentRowsResponse,
 } from '@bcp/shared';
 import { keepPreviousData, queryOptions, type UseQueryOptions } from '@tanstack/react-query';
@@ -113,13 +110,6 @@ const crossParams = (search: CrossSearch) =>
       (entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1] !== '',
     ),
   ).toString();
-
-/** The default date range shown when the URL has none: the API's own default (last 90 days). */
-export function crossWindow(search: Pick<CrossSearch, 'from' | 'to'>, now: Date): DateRange {
-  const to = search.to ?? toIsoDate(now);
-  const from = search.from ?? addDays(to, -90);
-  return { from, to };
-}
 
 export const crossMatchupsQuery = (search: CrossSearch) =>
   queryOptions({

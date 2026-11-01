@@ -1,4 +1,4 @@
-import { addDays, MetaResponseSchema, toIsoDate, type DateRange } from '@bcp/shared';
+import { MetaResponseSchema } from '@bcp/shared';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { apiGet } from '../../api/client';
 
@@ -51,12 +51,6 @@ export const metaQuery = (search: MetaSearch, compare?: ChangeSpans) =>
     },
     placeholderData: keepPreviousData,
   });
-
-/** The range shown when the URL has none: the API's default, the last 90 days. */
-export function metaWindow(search: MetaSearch, now: Date): DateRange {
-  const to = search.to ?? toIsoDate(now);
-  return { from: search.from ?? addDays(to, -90), to };
-}
 
 /**
  * Like the matchups heatmap: below 45 % bad, above 55 % good; judged on the rounded percentage

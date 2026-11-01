@@ -8,7 +8,8 @@ import {
 } from '@bcp/shared';
 import { Hono } from 'hono';
 import type { Db } from '../db/client';
-import { loadMetaRows, metaRange } from '../repo/meta';
+import { rangeOrCurrentUpdate } from '../repo/game-updates';
+import { loadMetaRows } from '../repo/meta';
 import { parseInput } from '../validation';
 
 /** Popular factions and archetypes, their results, and what top teams bring. */
@@ -16,7 +17,7 @@ export function metaRoutes(deps: { db: Db; eventRule: EventSizeRule; now: () => 
   return new Hono().get('/meta', async (c) => {
     const query = parseInput(MetaQuerySchema, c.req.query());
     const today = deps.now();
-    const { from, to } = metaRange(query, today);
+    const { from, to } = await rangeOrCurrentUpdate(deps.db, query, today);
     // The change column compares two spans: the ones given (e.g. two game updates), else the
     // range's last 30 days with the 30 days before them.
     const spans =

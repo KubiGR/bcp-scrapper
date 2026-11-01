@@ -5,6 +5,7 @@ import {
   Select,
   type MantineColorsTuple,
 } from '@mantine/core';
+import { DatePickerInput } from '@mantine/dates';
 import { prefixFilter } from './lib/prefix-filter';
 import classes from './theme.module.css';
 
@@ -85,5 +86,7 @@ export const theme = createTheme({
       classNames: { inputField: classes.multiSelectField },
     }),
     Autocomplete: Autocomplete.extend({ defaultProps: { filter: prefixFilter } }),
+    // The calendar marks today, so a range can be read against it.
+    DatePickerInput: DatePickerInput.extend({ defaultProps: { highlightToday: true } }),
   },
 });
