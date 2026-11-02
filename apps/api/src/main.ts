@@ -19,7 +19,7 @@ import { backfillPlayerUserIds } from './repo/player-accounts';
 import { failInterruptedSyncRuns } from './repo/sync-runs';
 import { serveWebApp } from './static';
 import { SyncRunner } from './sync/runner';
-import { adminWork, newUserMail } from './notify/admin-mail';
+import { adminWork, approvedMail, newUserMail } from './notify/admin-mail';
 import { sendDigestIfDue } from './notify/digest';
 import { smtpMailer } from './notify/mailer';
 import { importWh40kElo, wh40kEloDue } from './repo/wh40k-elo';
@@ -143,7 +143,7 @@ const importWh40kEloIfDue = async () => {
 void importWh40kEloIfDue();
 const wh40kEloTimer = setInterval(() => void importWh40kEloIfDue(), 60 * 60 * 1000);
 
-// Email to the admins: someone new waiting for approval, and the day's to-do.
+// Email to the admins (someone new waiting for approval, the to-do every 3 days) and to those let in.
 const mail = mailSettingsOf(config);
 const mailer = mail === null ? null : smtpMailer(mail.smtp, logger.child({ module: 'email' }));
 const siteUrl = siteUrlOf(config);
@@ -157,6 +157,11 @@ const access =
         onNewUser: (email: string) => {
           mailer.send({ to: mail.to, ...newUserMail(email, siteUrl) }).catch((error: unknown) => {
             logger.warn({ err: error, email }, 'Could not email the admins about a new user');
+          });
+        },
+        onApproved: (email: string) => {
+          mailer.send({ to: [email], ...approvedMail(siteUrl) }).catch((error: unknown) => {
+            logger.warn({ err: error, email }, 'Could not email someone they were approved');
           });
         },
       };

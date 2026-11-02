@@ -132,7 +132,7 @@ token for who the visitor is. Add these to the stack's variables and redeploy:
 
 ### Email to the admins
 
-The app can email the admins when someone new signs in and waits for approval, and once a day with
+The app can email the admins when someone new signs in and waits for approval, and every 3 days with
 what's left to do (people waiting, detachment names to link, detachments outside their faction),
 only when there's anything. It's off until a sending account is set. With Gmail:
 
@@ -140,12 +140,12 @@ only when there's anything. It's off until a sending account is set. With Gmail:
 2. Create an **app password** (Google Account → Security → App passwords), named e.g. "Logis".
 3. Add these to the stack's variables and redeploy:
 
-| Variable        | Value                                                                            |
-| --------------- | -------------------------------------------------------------------------------- |
-| `SMTP_USER`     | The Gmail address that sends, e.g. `you@gmail.com`                               |
-| `SMTP_PASSWORD` | The 16-letter app password (not your Google password)                            |
-| `NOTIFY_EMAILS` | Optional: comma-separated recipients; `ADMIN_EMAILS` when empty                  |
-| `DIGEST_HOUR`   | Optional: the hour (UTC, 0–23) the daily email goes; 6 by default (09:00 Athens) |
+| Variable        | Value                                                                                             |
+| --------------- | ------------------------------------------------------------------------------------------------- |
+| `SMTP_USER`     | The Gmail address that sends, e.g. `you@gmail.com`                                                |
+| `SMTP_PASSWORD` | The 16-letter app password (not your Google password)                                             |
+| `NOTIFY_EMAILS` | Optional: comma-separated recipients; `ADMIN_EMAILS` when empty                                   |
+| `DIGEST_HOUR`   | Optional: the hour (UTC, 0–23) the summary email goes (every 3 days); 6 by default (09:00 Athens) |
 
 Links in the emails point at `https://PUBLIC_HOSTNAME`. Another SMTP server works too: set
 `SMTP_HOST` and `SMTP_PORT` as well (465 for TLS, 587 for STARTTLS). The app's log says

@@ -77,7 +77,7 @@ export function authMiddleware(deps: {
       if (email === null) {
         if (api) throw new UnauthorizedError();
         return c.html(
-          gatePage('Not signed in', 'Open this site through its address to sign in.'),
+          gatePage('Not signed in', ['Open this site through its address to sign in.']),
           401,
         );
       }
@@ -90,13 +90,7 @@ export function authMiddleware(deps: {
       await touchLastSeen(db, user.id, now());
       if (user.disabled) {
         if (api) throw new ForbiddenError('Waiting for approval');
-        return c.html(
-          gatePage(
-            'Waiting for approval',
-            `You're signed in as ${email}. The site's admin will let you in soon.`,
-          ),
-          403,
-        );
+        return c.html(waitingPage(email, options.access.onApproved !== undefined), 403);
       }
       // The environment decides who is an admin, whatever was stored.
       c.set('user', { ...user, role, mustChangePassword: false });
@@ -134,22 +128,60 @@ export function authMiddleware(deps: {
 const escapeHtml = (text: string) =>
   text.replace(/[&<>"']/g, (ch) => `&#${String(ch.charCodeAt(0))};`);
 
+/** How often the waiting page looks again, so it opens the app soon after approval. */
+const WAITING_REFRESH_SECONDS = 60;
+
+/** Cloudflare Access's sign-out, which lets them sign in again with another account. */
+const ACCESS_LOGOUT_PATH = '/cdn-cgi/access/logout';
+
+/** For someone signed in but not yet approved: what happens next, and a way out. */
+function waitingPage(email: string, emailsOnApproval: boolean): string {
+  return gatePage(
+    'Your request to join has been sent',
+    [
+      `You're signed in as ${email}. The admin has been told and will let you in.`,
+      emailsOnApproval
+        ? 'Keep this page open: it opens Logis by itself once you’re approved. We’ll also email you.'
+        : 'Keep this page open: it opens Logis by itself once you’re approved.',
+    ],
+    {
+      refreshSeconds: WAITING_REFRESH_SECONDS,
+      link: { href: ACCESS_LOGOUT_PATH, text: 'Not you? Sign in with another account' },
+    },
+  );
+}
+
 /** A page on its own, with no script: all someone not let in gets to see. */
-function gatePage(title: string, message: string): string {
+function gatePage(
+  title: string,
+  paragraphs: string[],
+  extra: { refreshSeconds?: number; link?: { href: string; text: string } } = {},
+): string {
+  const body = paragraphs
+    .map((text) => `<p style="font-size:14px;color:#8b93a7;margin:0 0 8px">${escapeHtml(text)}</p>`)
+    .join('\n');
+  const refresh =
+    extra.refreshSeconds === undefined
+      ? ''
+      : `<meta http-equiv="refresh" content="${String(extra.refreshSeconds)}">\n`;
+  const link =
+    extra.link === undefined
+      ? ''
+      : `<p style="font-size:14px;margin:16px 0 0"><a href="${escapeHtml(extra.link.href)}" style="color:#26e2ff">${escapeHtml(extra.link.text)}</a></p>\n`;
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Logis · ${escapeHtml(title)}</title>
+${refresh}<title>Logis · ${escapeHtml(title)}</title>
 </head>
 <body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f19;color:#e6e9ef;font-family:system-ui,sans-serif">
 <main style="max-width:360px;padding:24px;text-align:center">
 <h1 style="font-size:20px;letter-spacing:.12em;margin:0 0 12px">LOGIS</h1>
 <p style="font-size:16px;margin:0 0 8px">${escapeHtml(title)}</p>
-<p style="font-size:14px;color:#8b93a7;margin:0">${escapeHtml(message)}</p>
-</main>
+${body}
+${link}</main>
 </body>
 </html>`;
 }

@@ -37,7 +37,11 @@ async function token(
     .sign(claims.key ?? privateKey);
 }
 
-function makeApp(now?: () => Date, onNewUser?: (email: string) => void) {
+function makeApp(
+  now?: () => Date,
+  onNewUser?: (email: string) => void,
+  onApproved?: (email: string) => void,
+) {
   return createApp({
     now,
     db,
@@ -61,7 +65,14 @@ function makeApp(now?: () => Date, onNewUser?: (email: string) => void) {
     auth: {
       required: true,
       secret: '',
-      access: { teamDomain: TEAM, aud: AUD, adminEmails: [ADMIN], keys: jwks, onNewUser },
+      access: {
+        teamDomain: TEAM,
+        aud: AUD,
+        adminEmails: [ADMIN],
+        keys: jwks,
+        onNewUser,
+        ...(onApproved && { onApproved }),
+      },
     },
   });
 }
@@ -234,6 +245,23 @@ describe('Cloudflare Access login', () => {
     expect((await send(app, 'GET', '/api/users', { jwt: ana2 })).status).toBe(403);
   });
 
+  it('tells someone once when an admin lets them in, not when ignoring or editing them', async () => {
+    const onApproved = vi.fn();
+    const app = makeApp(undefined, undefined, onApproved);
+    const admin = await token();
+    await send(app, 'GET', '/api/events', { jwt: admin });
+    await send(app, 'GET', '/api/events', { jwt: await token({ email: 'ana@example.com' }) });
+    const list = (await (await send(app, 'GET', '/api/users', { jwt: admin })).json()) as {
+      users: { id: number; username: string }[];
+    };
+    const path = `/api/users/${String(list.users.find((u) => u.username === 'ana@example.com')?.id)}`;
+    await send(app, 'PATCH', path, { jwt: admin, body: { ignored: true } });
+    expect(onApproved).not.toHaveBeenCalled();
+    await send(app, 'PATCH', path, { jwt: admin, body: { disabled: false, ignored: false } });
+    await send(app, 'PATCH', path, { jwt: admin, body: { disabled: false } });
+    expect(onApproved.mock.calls).toEqual([['ana@example.com']]);
+  });
+
   it('tells the admins once when someone new signs in to wait for approval', async () => {
     const onNewUser = vi.fn();
     const app = makeApp(undefined, onNewUser);
@@ -345,8 +373,8 @@ describe('Cloudflare Access login', () => {
         '<!doctype html><script src="/assets/app.js"></script>',
       );
     });
-    const withWeb = () => {
-      const app = makeApp();
+    const withWeb = (onApproved?: (email: string) => void) => {
+      const app = makeApp(undefined, undefined, onApproved);
       serveWebApp(app, dist);
       return app;
     };
@@ -361,9 +389,21 @@ describe('Cloudflare Access login', () => {
         const response = await send(app, 'GET', path, { jwt });
         expect(response.status, path).toBe(403);
         const html = await response.text();
-        expect(html, path).toContain('Waiting for approval');
+        expect(html, path).toContain('Your request to join has been sent');
         expect(html, path).not.toContain('<script');
       }
+    });
+
+    it('tells someone waiting what happens next: the page looks again, and they can switch account', async () => {
+      const jwt = await token({ email: 'ana@example.com' });
+      const html = await (await send(withWeb(), 'GET', '/', { jwt })).text();
+      expect(html).toContain('signed in as ana@example.com');
+      expect(html).toContain('<meta http-equiv="refresh" content="60">');
+      expect(html).toContain('href="/cdn-cgi/access/logout"');
+      // No email promised when none will be sent.
+      expect(html).not.toContain('email you');
+      const mailing = await (await send(withWeb(vi.fn()), 'GET', '/', { jwt })).text();
+      expect(mailing).toContain('also email you');
     });
 
     it('serves the app once approved, and to an admin', async () => {

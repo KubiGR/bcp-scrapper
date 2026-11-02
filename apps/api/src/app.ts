@@ -115,7 +115,14 @@ export function createApp(deps: AppDeps) {
   app.route('/api', authRoutes({ db: deps.db, options: auth, limiters, now }));
   if (auth.required) {
     // With Access there are no passwords: only listing, approving (enabling) and removing.
-    app.route('/api', userRoutes({ db: deps.db, passwords: auth.access === undefined }));
+    app.route(
+      '/api',
+      userRoutes({
+        db: deps.db,
+        passwords: auth.access === undefined,
+        onApproved: auth.access?.onApproved,
+      }),
+    );
   }
   app.route('/api', eventRoutes({ ...deps, now }));
   app.route('/api', syncRoutes(deps));

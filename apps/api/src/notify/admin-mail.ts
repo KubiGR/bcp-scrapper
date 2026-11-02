@@ -48,7 +48,17 @@ export function newUserMail(email: string, siteUrl: string): Mail {
   };
 }
 
-/** The day's summary of what's left to do; null when there's nothing. */
+/** To someone an admin just let in. */
+export function approvedMail(siteUrl: string): Mail {
+  return {
+    subject: 'You’re in: Logis is open to you',
+    text: ['An admin approved you, so Logis is open to you now.', '', `Open it: ${siteUrl}`].join(
+      '\n',
+    ),
+  };
+}
+
+/** The summary of what's left to do; null when there's nothing. */
 export function digestMail(work: AdminWork, siteUrl: string): Mail | null {
   const parts: string[] = [];
   const sections: string[] = [];
