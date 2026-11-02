@@ -389,7 +389,7 @@ describe('Cloudflare Access login', () => {
         const response = await send(app, 'GET', path, { jwt });
         expect(response.status, path).toBe(403);
         const html = await response.text();
-        expect(html, path).toContain('Your request to join has been sent');
+        expect(html, path).toContain('Waiting for approval');
         expect(html, path).not.toContain('<script');
       }
     });
@@ -397,13 +397,15 @@ describe('Cloudflare Access login', () => {
     it('tells someone waiting what happens next: the page looks again, and they can switch account', async () => {
       const jwt = await token({ email: 'ana@example.com' });
       const html = await (await send(withWeb(), 'GET', '/', { jwt })).text();
-      expect(html).toContain('signed in as ana@example.com');
+      expect(html).toContain('join Logis as ana@example.com');
       expect(html).toContain('<meta http-equiv="refresh" content="60">');
+      // The timer bar fills in the time to that next look.
+      expect(html).toContain('animation-duration:60s');
       expect(html).toContain('href="/cdn-cgi/access/logout"');
       // No email promised when none will be sent.
       expect(html).not.toContain('email you');
       const mailing = await (await send(withWeb(vi.fn()), 'GET', '/', { jwt })).text();
-      expect(mailing).toContain('also email you');
+      expect(mailing).toContain('also email you when you’re in');
     });
 
     it('serves the app once approved, and to an admin', async () => {

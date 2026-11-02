@@ -137,16 +137,15 @@ const ACCESS_LOGOUT_PATH = '/cdn-cgi/access/logout';
 /** For someone signed in but not yet approved: what happens next, and a way out. */
 function waitingPage(email: string, emailsOnApproval: boolean): string {
   return gatePage(
-    'Your request to join has been sent',
+    'Waiting for approval',
     [
-      `You're signed in as ${email}. The admin has been told and will let you in.`,
-      emailsOnApproval
-        ? 'Keep this page open: it opens Logis by itself once you’re approved. We’ll also email you.'
-        : 'Keep this page open: it opens Logis by itself once you’re approved.',
+      `You asked to join Logis as ${email}. An admin has to approve you first, and they’ve been told.`,
+      'There’s nothing else you need to do. Leave this page open: Logis opens here by itself once you’re approved.',
+      ...(emailsOnApproval ? ['We’ll also email you when you’re in.'] : []),
     ],
     {
       refreshSeconds: WAITING_REFRESH_SECONDS,
-      link: { href: ACCESS_LOGOUT_PATH, text: 'Not you? Sign in with another account' },
+      link: { href: ACCESS_LOGOUT_PATH, text: 'Wrong account? Sign in with a different one' },
     },
   );
 }
@@ -157,17 +156,22 @@ function gatePage(
   paragraphs: string[],
   extra: { refreshSeconds?: number; link?: { href: string; text: string } } = {},
 ): string {
-  const body = paragraphs
-    .map((text) => `<p style="font-size:14px;color:#8b93a7;margin:0 0 8px">${escapeHtml(text)}</p>`)
-    .join('\n');
+  const body = paragraphs.map((text) => `<p>${escapeHtml(text)}</p>`).join('\n');
+  const seconds = extra.refreshSeconds;
   const refresh =
-    extra.refreshSeconds === undefined
+    seconds === undefined ? '' : `<meta http-equiv="refresh" content="${String(seconds)}">\n`;
+  // The time to the next look, in CSS alone: a bar filling over the refresh's seconds.
+  const timer =
+    seconds === undefined
       ? ''
-      : `<meta http-equiv="refresh" content="${String(extra.refreshSeconds)}">\n`;
+      : `<div class="timer" role="status">
+<p class="checking"><span class="spinner" aria-hidden="true"></span>Checking for approval every minute</p>
+<div class="bar" aria-hidden="true"><div style="animation-duration:${String(seconds)}s"></div></div>
+</div>\n`;
   const link =
     extra.link === undefined
       ? ''
-      : `<p style="font-size:14px;margin:16px 0 0"><a href="${escapeHtml(extra.link.href)}" style="color:#26e2ff">${escapeHtml(extra.link.text)}</a></p>\n`;
+      : `<p class="switch"><a href="${escapeHtml(extra.link.href)}">${escapeHtml(extra.link.text)}</a></p>\n`;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -175,13 +179,30 @@ function gatePage(
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 ${refresh}<title>Logis · ${escapeHtml(title)}</title>
+<style>
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f19;color:#e6e9ef;font-family:system-ui,sans-serif}
+main{max-width:480px;padding:24px;text-align:center}
+h1{font-size:24px;letter-spacing:.12em;margin:0 0 20px}
+h2{font-size:24px;font-weight:600;margin:0 0 16px}
+p{font-size:17px;line-height:1.5;color:#8b93a7;margin:0 0 12px}
+a{color:#26e2ff}
+.switch{font-size:16px;margin-top:24px}
+.timer{margin-top:28px}
+.checking{display:flex;align-items:center;justify-content:center;gap:10px;font-size:15px;margin-bottom:10px}
+.spinner{width:14px;height:14px;border:2px solid #2a3656;border-top-color:#26e2ff;border-radius:50%;animation:spin 1s linear infinite}
+.bar{height:4px;background:#1b2440;overflow:hidden}
+.bar div{height:100%;width:100%;background:#26e2ff;transform-origin:left;animation:fill linear forwards}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation:none}}
+</style>
 </head>
-<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f19;color:#e6e9ef;font-family:system-ui,sans-serif">
-<main style="max-width:360px;padding:24px;text-align:center">
-<h1 style="font-size:20px;letter-spacing:.12em;margin:0 0 12px">LOGIS</h1>
-<p style="font-size:16px;margin:0 0 8px">${escapeHtml(title)}</p>
+<body>
+<main>
+<h1>LOGIS</h1>
+<h2>${escapeHtml(title)}</h2>
 ${body}
-${link}</main>
+${timer}${link}</main>
 </body>
 </html>`;
 }
