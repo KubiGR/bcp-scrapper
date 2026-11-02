@@ -143,7 +143,7 @@ const importWh40kEloIfDue = async () => {
 void importWh40kEloIfDue();
 const wh40kEloTimer = setInterval(() => void importWh40kEloIfDue(), 60 * 60 * 1000);
 
-// Email to the admins (someone new waiting for approval, the day’s to-do) and to those let in.
+// Email to the admins (someone new waiting for approval, the to-do every 3 days) and to those let in.
 const mail = mailSettingsOf(config);
 const mailer = mail === null ? null : smtpMailer(mail.smtp, logger.child({ module: 'email' }));
 const siteUrl = siteUrlOf(config);

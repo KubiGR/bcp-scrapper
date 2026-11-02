@@ -34,7 +34,7 @@ function setup(work: AdminWork = WORK) {
 }
 
 describe('sendDigestIfDue', () => {
-  it('waits for the hour, then sends once a day', async () => {
+  it('waits for the hour, then sends at most every 3 days', async () => {
     const { send, run } = setup();
     await run('2026-10-20T05:59:00Z');
     expect(send).not.toHaveBeenCalled();
@@ -49,6 +49,11 @@ describe('sendDigestIfDue', () => {
     await run('2026-10-20T15:00:00Z');
     expect(send).toHaveBeenCalledTimes(1);
     await run('2026-10-21T06:30:00Z');
+    await run('2026-10-22T06:30:00Z');
+    expect(send).toHaveBeenCalledTimes(1);
+    await run('2026-10-23T05:59:00Z');
+    expect(send).toHaveBeenCalledTimes(1);
+    await run('2026-10-23T06:00:00Z');
     expect(send).toHaveBeenCalledTimes(2);
   });
 

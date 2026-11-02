@@ -58,7 +58,7 @@ export function approvedMail(siteUrl: string): Mail {
   };
 }
 
-/** The day's summary of what's left to do; null when there's nothing. */
+/** The summary of what's left to do; null when there's nothing. */
 export function digestMail(work: AdminWork, siteUrl: string): Mail | null {
   const parts: string[] = [];
   const sections: string[] = [];
