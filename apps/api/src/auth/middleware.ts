@@ -137,16 +137,15 @@ const ACCESS_LOGOUT_PATH = '/cdn-cgi/access/logout';
 /** For someone signed in but not yet approved: what happens next, and a way out. */
 function waitingPage(email: string, emailsOnApproval: boolean): string {
   return gatePage(
-    'Your request to join has been sent',
+    'Waiting for approval',
     [
-      `You're signed in as ${email}. The admin has been told and will let you in.`,
-      emailsOnApproval
-        ? 'Keep this page open: it opens Logis by itself once you’re approved. We’ll also email you.'
-        : 'Keep this page open: it opens Logis by itself once you’re approved.',
+      `You asked to join Logis as ${email}. An admin has to approve you first, and they’ve been told.`,
+      'There’s nothing else you need to do. Leave this page open: Logis opens here by itself once you’re approved.',
+      ...(emailsOnApproval ? ['We’ll also email you when you’re in.'] : []),
     ],
     {
       refreshSeconds: WAITING_REFRESH_SECONDS,
-      link: { href: ACCESS_LOGOUT_PATH, text: 'Not you? Sign in with another account' },
+      link: { href: ACCESS_LOGOUT_PATH, text: 'Wrong account? Sign in with a different one' },
     },
   );
 }
@@ -166,7 +165,7 @@ function gatePage(
     seconds === undefined
       ? ''
       : `<div class="timer" role="status">
-<p class="checking"><span class="spinner" aria-hidden="true"></span>Checking again every minute</p>
+<p class="checking"><span class="spinner" aria-hidden="true"></span>Checking for approval every minute</p>
 <div class="bar" aria-hidden="true"><div style="animation-duration:${String(seconds)}s"></div></div>
 </div>\n`;
   const link =
