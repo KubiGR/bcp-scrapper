@@ -399,6 +399,8 @@ describe('Cloudflare Access login', () => {
       const html = await (await send(withWeb(), 'GET', '/', { jwt })).text();
       expect(html).toContain('signed in as ana@example.com');
       expect(html).toContain('<meta http-equiv="refresh" content="60">');
+      // The timer bar fills in the time to that next look.
+      expect(html).toContain('animation-duration:60s');
       expect(html).toContain('href="/cdn-cgi/access/logout"');
       // No email promised when none will be sent.
       expect(html).not.toContain('email you');
