@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { digestMail, newUserMail } from './admin-mail';
+import { approvedMail, digestMail, newUserMail } from './admin-mail';
 
 const SITE = 'https://logis.example.com';
 
@@ -9,6 +9,14 @@ describe('newUserMail', () => {
     expect(mail.subject).toBe('Logis: ana@example.com is waiting for approval');
     expect(mail.text).toContain('ana@example.com signed in');
     expect(mail.text).toContain(`${SITE}/settings?tab=users`);
+  });
+});
+
+describe('approvedMail', () => {
+  it('tells someone they are in, with a link to the site', () => {
+    const mail = approvedMail(SITE);
+    expect(mail.subject).toContain('You’re in');
+    expect(mail.text).toContain(SITE);
   });
 });
 

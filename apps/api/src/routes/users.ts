@@ -44,7 +44,12 @@ function refuse(message: string): never {
  * new accounts and password resets; without (Cloudflare Access) people arrive by themselves and
  * wait to be approved, so only listing, enabling/disabling and removing are offered.
  */
-export function userRoutes(deps: { db: Db; passwords: boolean }) {
+export function userRoutes(deps: {
+  db: Db;
+  passwords: boolean;
+  /** Told the email of someone just let in (enabled after waiting), to tell them. */
+  onApproved?: (email: string) => void;
+}) {
   const { db, passwords } = deps;
   const app = new Hono<AuthEnv>();
   app.use('/users', requireAdmin);
@@ -110,7 +115,7 @@ export function userRoutes(deps: { db: Db; passwords: boolean }) {
     );
     // Read, check and change with the admins locked: two admins demoting each other at once
     // can't both pass "another admin remains".
-    const updated = await withAdminsLocked(db, async (tx) => {
+    const { updated, approved } = await withAdminsLocked(db, async (tx) => {
       const user = await target(c.req.param('id'), tx);
       const self = user.id === c.get('user')?.id;
       if (self && change.disabled === true) refuse('You can’t disable yourself');
@@ -120,9 +125,12 @@ export function userRoutes(deps: { db: Db; passwords: boolean }) {
         !user.disabled &&
         (change.role === 'member' || change.disabled === true);
       if (losesAdmin) await keepAnAdmin(tx, user.id);
-      return updateUser(tx, user.id, change);
+      // Let in after waiting: enabled now, disabled before.
+      const approved = user.disabled && change.disabled === false;
+      return { updated: await updateUser(tx, user.id, change), approved };
     });
     if (change.disabled === true && updated !== null) await deleteUserSessions(db, updated.id);
+    if (approved && updated !== null) deps.onApproved?.(updated.username);
     return c.json({ user: updated });
   });
 

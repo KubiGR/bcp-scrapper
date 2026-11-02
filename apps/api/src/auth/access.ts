@@ -13,6 +13,8 @@ export interface AccessOptions {
   keys: JWTVerifyGetKey;
   /** Called with the email of someone new who now waits for approval (to tell the admins). */
   onNewUser?: (email: string) => void;
+  /** Called with the email of someone an admin just let in (to tell them); unset without email. */
+  onApproved?: (email: string) => void;
 }
 
 /** The header Cloudflare adds to every request it lets through. */
