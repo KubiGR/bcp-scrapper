@@ -5,7 +5,8 @@ import {
   type ListExportFormat,
 } from '@bcp/shared';
 import { queryOptions } from '@tanstack/react-query';
-import { apiGet } from '../../api/client';
+import { z } from 'zod';
+import { apiDelete, apiGet, apiPost } from '../../api/client';
 
 const enc = encodeURIComponent;
 
@@ -38,3 +39,13 @@ export const playerListQuery = (playerId: string) =>
 
 export const exportUrl = (eventId: string, format: ListExportFormat) =>
   `/api/events/${enc(eventId)}/lists/export?format=${format}`;
+
+const BlockedSchema = z.object({ blockedAt: z.iso.datetime().nullable() });
+
+/** An admin blocks the event: Logis stops asking BCP for it (and drops its queued work). */
+export const blockEvent = (eventId: string) =>
+  apiPost(`/api/events/${enc(eventId)}/block`, {}, BlockedSchema);
+
+/** Makes a blocked event fetchable again. */
+export const unblockEvent = (eventId: string) =>
+  apiDelete(`/api/events/${enc(eventId)}/block`, BlockedSchema);

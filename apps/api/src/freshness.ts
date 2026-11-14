@@ -38,7 +38,8 @@ export function syncedBeforeEnd(event: {
  * Whether the event page should (re)load the event from BCP: never synced; its phase is
  * `running` and it was synced 10+ minutes ago; or it's over but was last synced before it ended
  * (once: the load makes it final). Upcoming and finished events otherwise stay cached until the
- * user presses Refresh. An event BCP removed is never stale: reloading it would only 404.
+ * user presses Refresh. An event BCP removed is never stale: reloading it would only 404. Nor is
+ * one an admin blocked: it isn't fetched at all.
  */
 export function isEventStale(
   event: {
@@ -47,10 +48,11 @@ export function isEventStale(
     ended: boolean;
     lastSyncedAt: Date | null;
     removedFromBcpAt?: Date | null;
+    blockedAt?: Date | null;
   },
   now: Date,
 ): boolean {
-  if (event.removedFromBcpAt) return false;
+  if (event.removedFromBcpAt || event.blockedAt) return false;
   if (event.lastSyncedAt === null) return true;
   const phase = eventPhase(event, now);
   if (phase === 'finished') return syncedBeforeEnd(event);

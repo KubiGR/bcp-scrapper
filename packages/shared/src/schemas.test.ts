@@ -110,6 +110,7 @@ describe('EventDetailSchema', () => {
       hideLists: false,
       lastSyncedAt: null,
       removedFromBcpAt: null,
+      blockedAt: null,
       fieldElo: null,
       stale: true,
       counts: {

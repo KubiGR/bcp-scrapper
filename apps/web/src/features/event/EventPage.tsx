@@ -98,11 +98,14 @@ export function EventPage({ eventId, tab, onTabChange, openListId, onOpenList }:
           start({ kind: 'event', eventId });
         }}
       />
-      {!syncing && eventRun?.status === 'failed' && detail.removedFromBcpAt === null && (
-        <Text size="sm" c="red">
-          The last event sync failed: <SyncRunError run={eventRun} />
-        </Text>
-      )}
+      {!syncing &&
+        eventRun?.status === 'failed' &&
+        detail.removedFromBcpAt === null &&
+        detail.blockedAt === null && (
+          <Text size="sm" c="red">
+            The last event sync failed: <SyncRunError run={eventRun} />
+          </Text>
+        )}
       <Tabs
         value={activeTab}
         onChange={(value) => {

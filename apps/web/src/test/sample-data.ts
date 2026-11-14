@@ -41,6 +41,7 @@ export function anEvent(overrides: Partial<EventListItem> = {}): EventListItem {
     hideLists: false,
     lastSyncedAt: '2026-09-23T10:00:00.000Z',
     removedFromBcpAt: null,
+    blockedAt: null,
     fieldElo: null,
     ...overrides,
   };

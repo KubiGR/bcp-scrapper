@@ -1,7 +1,7 @@
 import type { FetchQueuePauseReason, FetchQueueState } from '@bcp/shared';
 import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
-import { AppError, BcpAuthError, BcpRateLimitedError } from '../errors';
+import { AppError, BcpAuthError, BcpRateLimitedError, EventBlockedError } from '../errors';
 import type { Logger } from '../logger';
 import { getAutoFetchEnabled } from '../repo/app-settings';
 import { findEvent } from '../repo/events';
@@ -227,7 +227,8 @@ export class FetchQueueWorker {
         this.pause('rate-limited', until);
         return log('paused', 'warn', { reason: 'rate-limited', until: until.toISOString() });
       }
-      if (claimed.attempts < MAX_ATTEMPTS) {
+      // Blocked after it was claimed: trying again won't help, and its failures don't count.
+      if (claimed.attempts < MAX_ATTEMPTS && !(error instanceof EventBlockedError)) {
         const wait =
           BACKOFF_MS[claimed.attempts - 1] ?? BACKOFF_MS[BACKOFF_MS.length - 1] ?? 60_000;
         await retryJobLater(

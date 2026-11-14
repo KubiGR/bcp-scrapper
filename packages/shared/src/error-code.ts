@@ -11,5 +11,7 @@ export const ApiErrorCodeSchema = z.enum([
   'UNAUTHORIZED',
   'FORBIDDEN',
   'RATE_LIMITED',
+  /** An admin blocked the event: nothing is fetched for it until it's unblocked. */
+  'EVENT_BLOCKED',
 ]);
 export type ApiErrorCode = z.infer<typeof ApiErrorCodeSchema>;

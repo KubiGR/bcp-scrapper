@@ -53,6 +53,7 @@ export async function upsertEventSummaries(db: Db, list: Fetched<EventSummary>[]
           'lastSyncedAt',
           // Our own bookkeeping, not BCP's: a re-save must not reset it.
           'pairingsSyncedAt',
+          'blockedAt',
         ]),
         city: sql`coalesce(${events.city}, excluded.city)`,
         teamCount: sql`coalesce(${events.teamCount}, excluded.team_count)`,
@@ -72,6 +73,7 @@ export async function upsertEventDetail(db: Db, event: Fetched<EventSummary>): P
         'rawSummary',
         'lastSyncedAt',
         'pairingsSyncedAt',
+        'blockedAt',
       ]),
     });
 }
@@ -87,6 +89,25 @@ export async function markEventRemovedFromBcp(
   at = new Date(),
 ): Promise<void> {
   await db.update(events).set({ removedFromBcpAt: at }).where(eq(events.id, eventId));
+}
+
+/** An admin blocks (`at`) or unblocks (null) the event; returns whether it exists. */
+export async function setEventBlocked(db: Db, eventId: string, at: Date | null): Promise<boolean> {
+  const rows = await db
+    .update(events)
+    .set({ blockedAt: at })
+    .where(eq(events.id, eventId))
+    .returning({ id: events.id });
+  return rows.length > 0;
+}
+
+/** Whether an admin blocked the event (an event not stored isn't). */
+export async function isEventBlocked(db: Db, eventId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ blockedAt: events.blockedAt })
+    .from(events)
+    .where(eq(events.id, eventId));
+  return (row?.blockedAt ?? null) !== null;
 }
 
 export async function findEvent(db: Db, id: string): Promise<EventRow | undefined> {
@@ -126,6 +147,7 @@ export function toEventListItem(row: EventRow, fieldElo: number | undefined): Ev
     hideLists: row.hideLists,
     lastSyncedAt: row.lastSyncedAt?.toISOString() ?? null,
     removedFromBcpAt: row.removedFromBcpAt?.toISOString() ?? null,
+    blockedAt: row.blockedAt?.toISOString() ?? null,
     fieldElo: fieldElo === undefined ? null : Math.round(fieldElo),
   };
 }

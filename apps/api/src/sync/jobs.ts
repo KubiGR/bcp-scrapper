@@ -1,10 +1,11 @@
 import { isBigEvent, type EventSizeRule, type SyncRequest } from '@bcp/shared';
 import { PageCursors, type TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
-import { NotFoundError } from '../errors';
+import { EventBlockedError, NotFoundError } from '../errors';
 import type { Logger } from '../logger';
 import {
   findEvent,
+  isEventBlocked,
   markEventRemovedFromBcp,
   markEventSynced,
   upsertEventDetail,
@@ -55,11 +56,13 @@ async function syncCatalog(ctx: JobContext, { from, to }: RequestOf<'catalog'>):
 /**
  * Event detail, teams (team events only) and players. Drops teams and players BCP removed. When
  * BCP no longer has an event we stored (404), it keeps its data and is marked removed instead.
+ * An event an admin blocked is refused: BCP isn't asked.
  */
 export async function syncEvent(
   deps: Pick<JobContext, 'db' | 'source'>,
   eventId: string,
 ): Promise<EventRow> {
+  if (await isEventBlocked(deps.db, eventId)) throw new EventBlockedError(eventId);
   let event;
   try {
     event = await deps.source.getEvent(eventId);
@@ -88,6 +91,7 @@ export async function ensureEventSynced(
   eventId: string,
 ): Promise<EventRow> {
   const existing = await findEvent(deps.db, eventId);
+  if (existing?.blockedAt) throw new EventBlockedError(eventId);
   return existing?.lastSyncedAt ? existing : syncEvent(deps, eventId);
 }
 

@@ -13,6 +13,7 @@ import { authRoutes } from './routes/auth';
 import { bcpRoutes } from './routes/bcp';
 import { catalogRoutes } from './routes/catalog';
 import { detachmentLinkRoutes } from './routes/detachment-links';
+import { eventBlockRoutes } from './routes/event-block';
 import { eventRoutes } from './routes/events';
 import { fetchQueueRoutes } from './routes/fetch-queue';
 import { matchupsRoutes } from './routes/matchups';
@@ -121,6 +122,7 @@ export function createApp(deps: AppDeps) {
     );
   }
   app.route('/api', eventRoutes({ ...deps, now }));
+  app.route('/api', eventBlockRoutes({ db: deps.db, now, authRequired: auth.required }));
   app.route('/api', syncRoutes(deps));
   app.route('/api', bcpRoutes(deps));
   app.route('/api', catalogRoutes({ ...deps, now }));

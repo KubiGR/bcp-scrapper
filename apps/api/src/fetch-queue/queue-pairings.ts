@@ -1,6 +1,6 @@
 import type { BulkPairingsResult, QueuePairingsResult } from '@bcp/shared';
 import type { Db } from '../db/client';
-import { NotFoundError } from '../errors';
+import { EventBlockedError, NotFoundError } from '../errors';
 import { findEvent } from '../repo/events';
 import { enqueueEventPairings, eventPairingsJobs } from '../repo/fetch-queue';
 import type { FetchQueueWorker } from './worker';
@@ -17,6 +17,7 @@ export async function queueEventPairings(
 ): Promise<QueuePairingsResult> {
   const event = await findEvent(deps.db, eventId);
   if (!event) throw new NotFoundError(`Event ${eventId} is not in the local catalogue`);
+  if (event.blockedAt) throw new EventBlockedError(eventId);
   const rounds = event.lastSyncedAt
     ? Array.from({ length: event.roundCount }, (_, index) => index + 1)
     : null;
@@ -26,7 +27,7 @@ export async function queueEventPairings(
 
 /**
  * Queues pairings for many events at once (the cross-event page). Events whose pairings are
- * already synced are skipped; open jobs are never duplicated. Nothing is fetched here: the
+ * already synced, and events an admin blocked, are skipped; open jobs are never duplicated. Nothing is fetched here: the
  * worker does it, one job per tick.
  */
 export async function queueManyEventPairings(
@@ -38,7 +39,7 @@ export async function queueManyEventPairings(
   let queuedRounds = 0;
   for (const eventId of new Set(eventIds)) {
     const event = await findEvent(deps.db, eventId);
-    if (!event || event.pairingsSyncedAt) continue;
+    if (!event || event.pairingsSyncedAt || event.blockedAt) continue;
     const before = await eventPairingsJobs(deps.db, eventId);
     const result = await queueEventPairings(deps, eventId, priority);
     if (result.queuedRounds > 0 || (result.eventQueued && before.queued === 0)) {

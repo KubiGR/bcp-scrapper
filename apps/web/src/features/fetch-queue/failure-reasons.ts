@@ -26,6 +26,10 @@ const REASONS: Record<string, FailureReason> = {
     label: 'Not found',
     explanation: 'BCP no longer has these, or they never existed.',
   },
+  EVENT_BLOCKED: {
+    label: 'Event blocked',
+    explanation: 'An admin blocked the event while these waited. Unblock it, then retry.',
+  },
   NO_LIST: {
     label: 'No list on BCP',
     explanation: 'These players never submitted a list on BCP: nothing to retry.',
