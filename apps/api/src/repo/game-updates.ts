@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   defaultRangeFrom,
   effectiveUpdates,
@@ -6,67 +7,60 @@ import {
   updateSpans,
   type AutoUpdate,
   type EffectiveUpdate,
+  type GameUpdateCreate,
   type GameUpdatePatch,
   type GameUpdatesResponse,
   type UpdateEdits,
 } from '@bcp/shared';
-import { eq, sql } from 'drizzle-orm';
-import type { BsdataClient } from '../bsdata/client';
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
-import { appSettings, bsdataCommits, events, gameUpdates } from '../db/schema';
-import { HISTORY_ERROR } from './bsdata';
+import { bsdataCommits, events, gameUpdates } from '../db/schema';
 
-/** Reads BSData's new commits (all of them the first time); returns how many were added. */
-export async function syncUpdateCommits(db: Db, client: BsdataClient): Promise<number> {
-  try {
-    const added = await readNewCommits(db, client);
-    await db.delete(appSettings).where(eq(appSettings.key, HISTORY_ERROR));
-    return added;
-  } catch (error) {
-    // Shown on the BSData card until a read works again.
-    const message = error instanceof Error ? error.message : String(error);
-    await db
-      .insert(appSettings)
-      .values({ key: HISTORY_ERROR, value: message })
-      .onConflictDoUpdate({
-        target: appSettings.key,
-        set: { value: message, updatedAt: new Date() },
-      });
-    throw error;
-  }
-}
-
-async function readNewCommits(db: Db, client: BsdataClient): Promise<number> {
-  const stored = new Set(
-    (await db.select({ sha: bsdataCommits.sha }).from(bsdataCommits)).map((row) => row.sha),
-  );
-  const commits = await client.commits((sha) => stored.has(sha));
-  if (commits.length === 0) return 0;
-  const added = await db
-    .insert(bsdataCommits)
-    .values(commits)
-    .onConflictDoNothing()
-    .returning({ sha: bsdataCommits.sha });
-  return added.length;
-}
-
-/** BSData's updates (oldest first) and the admin edits to them. */
+/**
+ * Every update, oldest first: BSData's (from its stored history) and those added by hand, with
+ * the admin edits to them and the ids of the added ones.
+ */
 async function updatesAndEdits(
   db: Db,
-): Promise<{ auto: AutoUpdate[]; edits: Map<string, UpdateEdits> }> {
+): Promise<{ auto: AutoUpdate[]; edits: Map<string, UpdateEdits>; added: Set<string> }> {
   const [commits, rows] = await Promise.all([
     db.select().from(bsdataCommits),
     db.select().from(gameUpdates),
   ]);
+  const added = rows.flatMap((row) =>
+    row.addedName === null || row.addedStart === null
+      ? []
+      : [
+          {
+            id: row.id,
+            start: row.addedStart,
+            lastCommit: row.addedStart,
+            name: row.addedName,
+            summary: '',
+            suggestions: [row.addedName],
+          },
+        ],
+  );
   return {
-    auto: groupUpdates(commits),
+    // By start; the sort is stable, so BSData's go first on a shared day.
+    auto: [...groupUpdates(commits), ...added].sort((a, b) => a.start.localeCompare(b.start)),
     edits: new Map(
       rows.map((row) => [
         row.id,
         { name: row.name, start: row.startOverride, merged: row.merged, hidden: row.hidden },
       ]),
     ),
+    added: new Set(added.map((update) => update.id)),
   };
+}
+
+/** Visible updates, in order, start on strictly later days. */
+function inOrder(auto: AutoUpdate[], edits: Map<string, UpdateEdits>): boolean {
+  const starts = auto.flatMap((update) => {
+    const edit = edits.get(update.id);
+    return edit?.merged === true || edit?.hidden === true ? [] : [edit?.start ?? update.start];
+  });
+  return !starts.some((start, i) => i > 0 && start <= (starts[i - 1] ?? ''));
 }
 
 /** The updates people pick from, oldest first. */
@@ -85,9 +79,9 @@ export async function rangeOrCurrentUpdate(
   return { from: range.from ?? defaultRangeFrom(await effectiveGameUpdates(db), to), to };
 }
 
-/** Every update read from BSData, newest first, with its stored events. */
+/** Every update, newest first, with its stored events. */
 export async function listGameUpdates(db: Db, today: string): Promise<GameUpdatesResponse> {
-  const { auto, edits } = await updatesAndEdits(db);
+  const { auto, edits, added } = await updatesAndEdits(db);
   const spans = updateSpans(effectiveUpdates(auto, edits), today);
   const days = (
     await db
@@ -113,6 +107,7 @@ export async function listGameUpdates(db: Db, today: string): Promise<GameUpdate
           events: eventsOf(update.id),
           summary: update.summary,
           suggestions: update.suggestions,
+          added: added.has(update.id),
         };
       })
       .reverse(),
@@ -120,14 +115,13 @@ export async function listGameUpdates(db: Db, today: string): Promise<GameUpdate
 }
 
 /**
- * Applies an admin's edit, unless it would leave the visible updates out of BSData's order or
- * sharing a start (whatever the edit: a new start, a reset, showing or un-merging one).
+ * Applies an admin's edit, unless it would leave the visible updates out of order or sharing a
+ * start (whatever the edit: a new start, a reset, showing or un-merging one).
  */
 export async function editGameUpdate(
   db: Db,
   id: string,
   patch: GameUpdatePatch,
-  _today: string,
 ): Promise<'ok' | 'not-found' | 'out-of-order'> {
   const { auto, edits } = await updatesAndEdits(db);
   if (!auto.some((u) => u.id === id)) return 'not-found';
@@ -138,12 +132,7 @@ export async function editGameUpdate(
     merged: patch.merged ?? current.merged,
     hidden: patch.hidden ?? current.hidden,
   });
-  // Visible updates in BSData's order must start on strictly later days.
-  const starts = auto.flatMap((update) => {
-    const edit = after.get(update.id);
-    return edit?.merged === true || edit?.hidden === true ? [] : [edit?.start ?? update.start];
-  });
-  if (starts.some((start, i) => i > 0 && start <= (starts[i - 1] ?? ''))) return 'out-of-order';
+  if (!inOrder(auto, after)) return 'out-of-order';
   const set = {
     ...(patch.name === undefined ? {} : { name: patch.name }),
     ...(patch.start === undefined ? {} : { startOverride: patch.start }),
@@ -156,4 +145,36 @@ export async function editGameUpdate(
     .values({ id, ...set })
     .onConflictDoUpdate({ target: gameUpdates.id, set });
   return 'ok';
+}
+
+/** Adds an update by hand (BSData is gone), unless another visible one starts that day. */
+export async function addGameUpdate(
+  db: Db,
+  update: GameUpdateCreate,
+): Promise<'ok' | 'out-of-order'> {
+  const { auto, edits } = await updatesAndEdits(db);
+  const id = `added-${randomUUID()}`;
+  const withNew = [
+    ...auto,
+    {
+      id,
+      start: update.start,
+      lastCommit: update.start,
+      name: update.name,
+      summary: '',
+      suggestions: [],
+    },
+  ].sort((a, b) => a.start.localeCompare(b.start));
+  if (!inOrder(withNew, edits)) return 'out-of-order';
+  await db.insert(gameUpdates).values({ id, addedName: update.name, addedStart: update.start });
+  return 'ok';
+}
+
+/** Deletes an update added by hand; BSData's can only be hidden. */
+export async function deleteGameUpdate(db: Db, id: string): Promise<'ok' | 'not-found'> {
+  const deleted = await db
+    .delete(gameUpdates)
+    .where(and(eq(gameUpdates.id, id), isNotNull(gameUpdates.addedStart)))
+    .returning({ id: gameUpdates.id });
+  return deleted.length === 0 ? 'not-found' : 'ok';
 }

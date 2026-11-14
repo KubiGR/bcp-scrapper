@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
+import { factionDetachments } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import type { RulesClient } from '../rules/client';
 import { SAMPLE_HOME, sampleBundle, sampleTables } from '../test/rules-sample';
+import { detachmentsByFaction } from './faction-detachments';
 import { loadUnits, rulesDue, rulesStatus, syncRules } from './rules';
 
 let db: Db;
@@ -51,6 +53,22 @@ describe('syncRules', () => {
       'Warboss',
       'Gretchin',
     ]);
+  });
+
+  it('stores each faction’s detachments, keeping factions the read didn’t cover', async () => {
+    await db.insert(factionDetachments).values([
+      { faction: 'Orks', name: 'Old Horde' },
+      { faction: 'Necrons', name: 'Awakened Dynasty' },
+    ]);
+    await syncRules(db, fakeSite().client, NOW);
+    expect(await detachmentsByFaction(db)).toEqual(
+      new Map([
+        ['Blood Angels', ['Gladius Task Force', 'Liberator Assault Group']],
+        ['Necrons', ['Awakened Dynasty']],
+        ['Orks', ['War Horde']],
+        ['Space Marines (Astartes)', ['Gladius Task Force']],
+      ]),
+    );
   });
 
   it('skips a script it has already read', async () => {

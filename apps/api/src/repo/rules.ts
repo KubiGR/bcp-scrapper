@@ -2,6 +2,8 @@ import { UnitDataSchema, type RulesStatus, type UnitData } from '@bcp/shared';
 import { eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { appSettings, rulesSnapshot } from '../db/schema';
+import { replaceFactionDetachments } from './faction-detachments';
+import { tidyDetachments } from './lists';
 import { bundleUrlOf, type RulesClient } from '../rules/client';
 import { readRulesBundle, RULES_FORMAT } from '../rules/extract';
 
@@ -81,8 +83,9 @@ export async function rulesDue(db: Db, now: Date): Promise<boolean> {
 }
 
 /**
- * Checks 39k.pro: when its script changed (or RULES_FORMAT did), reads it and replaces the stored rules. Any
- * failure (download, a changed shape) keeps the old rules and is recorded as the error.
+ * Checks 39k.pro: when its script changed (or RULES_FORMAT did), reads it and replaces the stored
+ * rules and each faction's detachments (then lists take the detachments' spellings). Any failure
+ * (download, a changed shape) keeps the old ones and is recorded as the error.
  */
 export async function syncRules(
   db: Db,
@@ -96,13 +99,17 @@ export async function syncRules(
     const [stored] = await db.select({ bundle: rulesSnapshot.bundle }).from(rulesSnapshot);
     const storedFormat = await setting(db, FORMAT);
     if (stored?.bundle !== bundle || storedFormat !== `v${String(format)}`) {
-      const { dataVersion, data } = readRulesBundle(await client.bundle(bundle));
+      const { dataVersion, data, detachments } = readRulesBundle(await client.bundle(bundle));
       const values = { bundle, dataVersion, readAt: now, data };
-      await db
-        .insert(rulesSnapshot)
-        .values({ id: 1, ...values })
-        .onConflictDoUpdate({ target: rulesSnapshot.id, set: values });
+      await db.transaction(async (tx) => {
+        await tx
+          .insert(rulesSnapshot)
+          .values({ id: 1, ...values })
+          .onConflictDoUpdate({ target: rulesSnapshot.id, set: values });
+        await replaceFactionDetachments(tx, detachments);
+      });
       await putSetting(db, FORMAT, `v${String(format)}`, now);
+      await tidyDetachments(db);
     }
   } catch (caught) {
     error = messageOf(caught);

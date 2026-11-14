@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { sampleBundle, sampleTables } from '../test/rules-sample';
-import { extractUnits, readRulesBundle, RulesShapeError } from './extract';
+import { extractDetachments, extractUnits, readRulesBundle, RulesShapeError } from './extract';
 
 describe('extractUnits', () => {
   const data = extractUnits(sampleTables());
@@ -199,6 +199,22 @@ describe('extractUnits', () => {
     const tables = sampleTables();
     delete tables.unit_composition;
     expect(() => extractUnits(tables)).toThrow('39k.pro data has no unit_composition');
+  });
+});
+
+describe('extractDetachments', () => {
+  it('lists each faction’s detachments as the GW app allows them, without Combat Patrol ones', () => {
+    expect(extractDetachments(sampleTables())).toEqual(
+      new Map([
+        ['Blood Angels', ['Gladius Task Force', 'Liberator Assault Group']],
+        ['Orks', ['War Horde']],
+        ['Space Marines (Astartes)', ['Gladius Task Force']],
+      ]),
+    );
+  });
+
+  it('is empty when the site has no detachment tables', () => {
+    expect(extractDetachments({ ...sampleTables(), detachment: [] }).size).toBe(0);
   });
 });
 

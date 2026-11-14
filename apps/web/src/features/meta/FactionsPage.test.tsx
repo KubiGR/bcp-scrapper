@@ -135,6 +135,7 @@ describe('FactionsPage', () => {
       hidden: false,
       events: 4,
       summary: '',
+      added: false,
       suggestions: [name],
     });
     const fetchMock = stubFetchRoutes({

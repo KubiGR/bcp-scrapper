@@ -15,6 +15,7 @@ import {
   unkeepDetachment,
   unlinkDetachment,
 } from '../repo/detachment-links';
+import { detachmentsStatus } from '../repo/faction-detachments';
 import { parseInput } from '../validation';
 import { requireJson } from './require-json';
 
@@ -29,6 +30,8 @@ export function detachmentLinkRoutes(deps: { db: Db; authRequired: boolean }) {
   return (
     new Hono<AuthEnv>()
       .get('/detachments', async (c) => c.json(await detachmentNames(db)))
+      // Each faction's known detachments (read from 39k.pro), for Settings.
+      .get('/detachments/known', async (c) => c.json(await detachmentsStatus(db)))
       // A few of the lists behind a name, to see what players meant by it.
       .get('/detachments/lists', async (c) => {
         const { name, faction } = parseInput(DetachmentListsQuerySchema, c.req.query());

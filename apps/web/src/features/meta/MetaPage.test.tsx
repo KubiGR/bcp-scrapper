@@ -26,6 +26,7 @@ describe('MetaPage', () => {
       hidden: false,
       events: 4,
       summary: '',
+      added: false,
       suggestions: [name],
     });
     const fetchMock = stubFetchRoutes({
@@ -63,6 +64,7 @@ describe('MetaPage', () => {
             hidden: false,
             events: 4,
             summary: '',
+            added: false,
             suggestions: ['Sep 2026 · MFM'],
           },
         ],

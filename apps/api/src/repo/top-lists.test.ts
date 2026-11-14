@@ -1,7 +1,7 @@
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { armyLists, bsdataDetachments, events, players, wh40kElo } from '../db/schema';
+import { armyLists, factionDetachments, events, players, wh40kElo } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { syncEvent } from '../sync/jobs';
 import { ALL_EVENTS, sampleSource } from '../test/helpers';
@@ -119,7 +119,7 @@ describe('searchTopLists', () => {
 
   it('offers every qualifying faction, and the detachments of the chosen factions', async () => {
     await record('PL-ADA', 3, 0, 0);
-    await db.insert(bsdataDetachments).values([{ faction: 'Orks', name: 'War Horde' }]);
+    await db.insert(factionDetachments).values([{ faction: 'Orks', name: 'War Horde' }]);
     await db.update(players).set({ faction: 'Orks' }).where(eq(players.id, 'PL-ADA'));
     await storeList(db, 'PL-ADA', gwList('Orks', 'War Horde'));
     const necrons = await searchTopLists(
@@ -275,7 +275,7 @@ describe('searchTopLists', () => {
   it('offers only BSData’s detachments for the army', async () => {
     await record('PL-ADA', 3, 0, 0);
     await db.update(players).set({ faction: 'Orks' }).where(eq(players.id, 'PL-ADA'));
-    await db.insert(bsdataDetachments).values([
+    await db.insert(factionDetachments).values([
       { faction: 'Orks', name: 'War Horde' },
       { faction: 'Chaos Daemons', name: 'Khorne Daemonkin' },
     ]);

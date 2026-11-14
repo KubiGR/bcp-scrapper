@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { bsdataDetachments } from '../db/schema';
+import { factionDetachments } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { armyRules } from './detachment-links';
 import { keepDetachment, linkDetachment } from './detachment-links';
@@ -16,7 +16,7 @@ beforeEach(async () => {
   await resetDb(db);
   const bsdata = (faction: string, ...names: string[]) => names.map((name) => ({ faction, name }));
   await db
-    .insert(bsdataDetachments)
+    .insert(factionDetachments)
     .values([
       ...bsdata('World Eaters', 'Berzerker Warband'),
       ...bsdata('Chaos Knights', 'Iconoclast Fiefdom'),

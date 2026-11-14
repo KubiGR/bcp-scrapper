@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { armyLists, bsdataDetachments, players } from '../db/schema';
+import { armyLists, factionDetachments, players } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { syncEvent } from '../sync/jobs';
 import { ALL_EVENTS, sampleSource } from '../test/helpers';
@@ -65,7 +65,7 @@ describe('loadMetaRows', () => {
   });
 
   it('counts a detachment BSData doesn’t list for the army as unknown, unless kept', async () => {
-    await db.insert(bsdataDetachments).values({ faction: 'Orks', name: 'War Horde' });
+    await db.insert(factionDetachments).values({ faction: 'Orks', name: 'War Horde' });
     await record('PL-ADA', 3, 1);
     await db.update(players).set({ faction: 'Orks' }).where(eq(players.id, 'PL-ADA'));
     await storeList(db, 'PL-ADA', gwList('Orks', 'Wreckas'));
@@ -79,7 +79,7 @@ describe('loadMetaRows', () => {
   });
 
   it('counts a list’s army over BCP’s, or else the one BSData army its detachment belongs to', async () => {
-    await db.insert(bsdataDetachments).values([
+    await db.insert(factionDetachments).values([
       { faction: 'World Eaters', name: 'Berzerker Warband' },
       { faction: 'Chaos Knights', name: 'Iconoclast Fiefdom' },
     ]);

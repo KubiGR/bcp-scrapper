@@ -314,16 +314,25 @@ export const GameUpdateSchema = z.object({
   events: z.number().int().nonnegative(),
   /** The factions its BSData commits touched, most first ("" when none are named). */
   summary: z.string(),
+  /** Added by an admin (since BSData's takedown), not read from BSData; only these are deleted. */
+  added: z.boolean(),
   /** Generated names to pick from when renaming (the generated name first). */
   suggestions: z.array(z.string()),
 });
 export type GameUpdate = z.infer<typeof GameUpdateSchema>;
 
-/** GET /api/updates: every update read from BSData, newest first. */
+/** GET /api/updates: every update (read from BSData or added by hand), newest first. */
 export const GameUpdatesResponseSchema = z.object({ updates: z.array(GameUpdateSchema) });
 export type GameUpdatesResponse = z.infer<typeof GameUpdatesResponseSchema>;
 
-/** PATCH /api/updates/:id: null name/start go back to BSData's. */
+/** POST /api/updates: an update added by hand, e.g. a new Balance Dataslate. */
+export const GameUpdateCreateSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  start: isoDay,
+});
+export type GameUpdateCreate = z.infer<typeof GameUpdateCreateSchema>;
+
+/** PATCH /api/updates/:id: null name/start go back to the update's own. */
 export const GameUpdatePatchSchema = z.object({
   name: z.string().trim().min(1).max(100).nullable().optional(),
   start: isoDay.nullable().optional(),

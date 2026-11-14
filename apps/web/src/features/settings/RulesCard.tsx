@@ -6,15 +6,22 @@ import { formatDateTime, plural } from '../../lib/format';
 import { meQuery } from '../auth/auth-queries';
 import { refreshRules, rulesQuery } from './rules-queries';
 
-/** Mathhammer's unit data from 39k.pro: what was read, when, and the last check's error. */
+/**
+ * Mathhammer's unit data and each faction's detachments from 39k.pro: what was read, when, and
+ * the last check's error.
+ */
 export function RulesCard() {
   const status = useQuery(rulesQuery);
   const me = useQuery(meQuery);
   const queryClient = useQueryClient();
   const refresh = useMutation({
     mutationFn: refreshRules,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.setQueryData(rulesQuery.queryKey, data);
+      // The detachments come with it: lists may have new spellings, and Meta new unknowns.
+      await queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] !== rulesQuery.queryKey[0],
+      });
     },
   });
   const readOnly = me.data?.authRequired === true && me.data.user?.role !== 'admin';
@@ -27,7 +34,7 @@ export function RulesCard() {
       {data && (
         <Stack gap="xs">
           <Text size="sm" c="dimmed">
-            Datasheets and weapons for Mathhammer, from{' '}
+            Datasheets and weapons for Mathhammer, and each faction’s detachments, from{' '}
             <Anchor href="https://39k.pro" target="_blank" inherit>
               39k.pro
             </Anchor>

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { armyLists, bsdataDetachments, players } from '../db/schema';
+import { armyLists, factionDetachments, players } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { sampleSource } from '../test/helpers';
 import { gwList, storeList } from '../test/lists';
@@ -73,7 +73,7 @@ describe('detachmentLists', () => {
 
 describe('detachments outside an army’s BSData list', () => {
   beforeEach(async () => {
-    await db.insert(bsdataDetachments).values([
+    await db.insert(factionDetachments).values([
       { faction: 'World Eaters', name: 'Berzerker Warband' },
       { faction: 'Chaos Daemons', name: 'Blood Legion' },
       { faction: 'Chaos Daemons', name: 'Shadow Legion' },

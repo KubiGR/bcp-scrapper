@@ -52,7 +52,7 @@ const ALL = '';
  * every one, those played in the name's factions first.
  */
 function targetOptions(unsure: Unsure, targets: Target[], faction: string): string[] {
-  // BSData's detachments before BCP's names.
+  // The known detachments (the GW app's) before BCP's names.
   const byBsdata = (list: Target[]) => [
     ...list.filter((t) => t.bsdata),
     ...list.filter((t) => !t.bsdata),
@@ -408,7 +408,7 @@ export function DetachmentNamesCard({
   const ignored = names.data?.ignored.filter(inFaction) ?? [];
   const links = names.data?.links.filter(inFaction) ?? [];
   const learned = names.data?.learned.filter(inFaction) ?? [];
-  // A faction BSData covers knows BSData's detachments; others the names BCP uses.
+  // A covered faction knows the GW app's detachments; others the names BCP uses.
   const covered = names.data?.bsdataFactions.includes(faction) === true;
   const known =
     names.data?.targets.filter((t) => t.factions.includes(faction) && (!covered || t.bsdata)) ?? [];
@@ -549,9 +549,9 @@ export function DetachmentNamesCard({
                 Not in this faction
               </Text>
               <Text size="xs" c="dimmed">
-                Detachments lists use that BSData doesn’t list for their army, most used first. Meta
-                counts them as detachment unknown unless you keep them anyway; Ignore only takes one
-                off the to-do list.
+                Detachments lists use that the GW app doesn’t list for their army, most used first.
+                Meta counts them as detachment unknown unless you keep them anyway; Ignore only
+                takes one off the to-do list.
               </Text>
               {groupByName(wrong).map((group) => {
                 const one = group.pairs.length === 1 ? group.pairs[0] : undefined;
@@ -588,8 +588,8 @@ export function DetachmentNamesCard({
                     )}
                     <Text size="xs" c="dimmed">
                       {group.bsdataFactions.length === 0
-                        ? 'BSData doesn’t list it'
-                        : `BSData has it for ${group.bsdataFactions.join(', ')}`}
+                        ? 'The GW app doesn’t list it'
+                        : `The GW app has it for ${group.bsdataFactions.join(', ')}`}
                     </Text>
                     <DetachmentListsButton name={group.name} faction={one?.faction} />
                     <Button

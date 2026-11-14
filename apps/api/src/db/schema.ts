@@ -353,22 +353,17 @@ export const detachmentLinks = pgTable('detachment_links', {
   createdAt: timestamptz('created_at').notNull().defaultNow(),
 });
 
-/** Each faction's detachments, read from BSData (replaced per faction on every sync). */
-export const bsdataDetachments = pgTable(
+/**
+ * Each faction's detachments, read from the GW app's data on 39k.pro with the unit data (replaced
+ * per faction on every read). The table keeps the name it had when BSData filled it.
+ */
+export const factionDetachments = pgTable(
   'bsdata_detachments',
   { faction: text('faction').notNull(), name: text('name').notNull() },
   (t) => [primaryKey({ columns: [t.faction, t.name] })],
 );
 
-/** BSData files read, with the version read (git blob sha) and the last error. */
-export const bsdataFiles = pgTable('bsdata_files', {
-  path: text('path').primaryKey(),
-  sha: text('sha').notNull(),
-  checkedAt: timestamptz('checked_at').notNull().defaultNow(),
-  error: text('error'),
-});
-
-/** A detachment kept for a faction although BSData doesn't list it there ("Keep anyway"). */
+/** A detachment kept for a faction although its known list doesn't have it ("Keep anyway"). */
 export const detachmentKeeps = pgTable(
   'detachment_keeps',
   {
@@ -382,7 +377,10 @@ export const detachmentKeeps = pgTable(
   (t) => [primaryKey({ columns: [t.faction, t.nameKey] })],
 );
 
-/** BSData's commits (first line of each message), for building game updates. */
+/**
+ * BSData's commits (first line of each message), for building game updates: its history up to
+ * Games Workshop's takedown of BSData in November 2026; later updates are added by hand.
+ */
 export const bsdataCommits = pgTable('bsdata_commits', {
   sha: text('sha').primaryKey(),
   /** The commit author's UTC day (YYYY-MM-DD). */
@@ -390,11 +388,17 @@ export const bsdataCommits = pgTable('bsdata_commits', {
   message: text('message').notNull(),
 });
 
-/** Admin edits to a game update, keyed by its first commit's sha. */
+/**
+ * Admin edits to a game update, keyed by its first commit's sha; or an update an admin added by
+ * hand (`addedName` and `addedStart` set, keyed by a generated id).
+ */
 export const gameUpdates = pgTable('game_updates', {
   id: text('id').primaryKey(),
+  /** An added update's own name and start (YYYY-MM-DD); null for BSData's. */
+  addedName: text('added_name'),
+  addedStart: text('added_start'),
   name: text('name'),
-  /** YYYY-MM-DD; null = BSData's start. */
+  /** YYYY-MM-DD; null = the update's own start. */
   startOverride: text('start_override'),
   merged: boolean('merged').notNull().default(false),
   hidden: boolean('hidden').notNull().default(false),

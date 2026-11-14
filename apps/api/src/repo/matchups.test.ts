@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
 import { createTestDb, resetDb } from '../db/test-db';
-import { bsdataDetachments, events, fetchQueue, players } from '../db/schema';
+import { factionDetachments, events, fetchQueue, players } from '../db/schema';
 import { enqueueEventPairings } from './fetch-queue';
 import { loadMatchupGames, pairingsStates } from './matchups';
 import { syncEvent } from '../sync/jobs';
@@ -50,7 +50,7 @@ describe('loadMatchupGames', () => {
 
   it('counts a list’s army over BCP’s, and a detachment outside its army’s BSData list as unknown', async () => {
     await loadBracketEvent();
-    await db.insert(bsdataDetachments).values([
+    await db.insert(factionDetachments).values([
       { faction: 'World Eaters', name: 'Berzerker Warband' },
       { faction: 'Adepta Sororitas', name: 'Hallowed Martyrs' },
     ]);

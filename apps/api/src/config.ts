@@ -33,11 +33,6 @@ const EnvSchema = z.object({
     .enum(['true', 'false', '1', '0'])
     .default('true')
     .transform((value) => value === 'true' || value === '1'),
-  /** Reading each faction's detachments from BSData on GitHub once a day; false switches it off. */
-  BSDATA_ENABLED: z
-    .enum(['true', 'false', '1', '0'])
-    .default('true')
-    .transform((value) => value === 'true' || value === '1'),
   /** Reading Mathhammer's unit data from 39k.pro once a day; false switches it off. */
   RULES_ENABLED: z
     .enum(['true', 'false', '1', '0'])

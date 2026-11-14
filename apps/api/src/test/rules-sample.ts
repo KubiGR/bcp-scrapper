@@ -97,6 +97,20 @@ export const sampleTables = (): Record<string, unknown[]> => ({
     { id: 'ds-grot', publicationId: 'pub-ork', isLegends: false, ...loc({ name: 'Gretchin' }) },
     { id: 'ds-cp', publicationId: 'pub-cp', isLegends: false, ...loc({ name: 'Patrol Squad' }) },
   ],
+  // Gladius for Space Marines and Blood Angels, Liberator for Blood Angels only; a patrol one left out.
+  detachment: [
+    { id: 'det-gladius', publicationId: 'pub-sm', ...loc({ name: 'Gladius Task Force' }) },
+    { id: 'det-lib', publicationId: 'pub-sm', ...loc({ name: 'Liberator Assault Group' }) },
+    { id: 'det-horde', publicationId: 'pub-ork', ...loc({ name: 'War Horde' }) },
+    { id: 'det-cp', publicationId: 'pub-cp', ...loc({ name: 'Patrol Detachment' }) },
+  ],
+  detachment_faction_keyword: [
+    { detachmentId: 'det-gladius', factionKeywordId: 'fk-sm' },
+    { detachmentId: 'det-gladius', factionKeywordId: 'fk-ba' },
+    { detachmentId: 'det-lib', factionKeywordId: 'fk-ba' },
+    { detachmentId: 'det-horde', factionKeywordId: 'fk-ork' },
+    { detachmentId: 'det-cp', factionKeywordId: 'fk-sm' },
+  ],
   datasheet_faction_keyword: [
     { datasheetId: 'ds-int', factionKeywordId: 'fk-sm' },
     { datasheetId: 'ds-cap', factionKeywordId: 'fk-sm' },

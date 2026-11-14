@@ -439,7 +439,8 @@ export const DetachmentNamesResponseSchema = z.object({
     z.object({ name: z.string(), target: z.string(), factions: z.array(z.string()) }),
   ),
   /**
-   * Detachments to link names to: BSData's (`bsdata`, with the factions BSData lists them for)
+   * Detachments to link names to: the known ones (`bsdata`, with the factions the GW app lists
+   * them for; read from BSData until its takedown, from 39k.pro since)
    * and BCP's names (with the factions they're played in).
    */
   targets: z.array(
@@ -449,15 +450,15 @@ export const DetachmentNamesResponseSchema = z.object({
   links: z.array(
     z.object({ name: z.string(), target: z.string().nullable(), factions: z.array(z.string()) }),
   ),
-  /** Factions BSData covers: their known detachments are BSData's. */
+  /** Factions with known detachments (the GW app's, via 39k.pro). */
   bsdataFactions: z.array(z.string()),
-  /** Detachments lists use for an army BSData covers but doesn't list them for. */
+  /** Detachments lists use for a covered army that its known list doesn't have. */
   wrong: z.array(
     z.object({
       faction: z.string(),
       name: z.string(),
       lists: z.number().int().nonnegative(),
-      /** Factions BSData lists this detachment for. */
+      /** Factions the known lists have this detachment for. */
       bsdataFactions: z.array(z.string()),
     }),
   ),
@@ -657,15 +658,13 @@ export const PlayerRankingSchema = z.object({
 });
 export type PlayerRanking = z.infer<typeof PlayerRankingSchema>;
 
-/** GET /api/bsdata: when BSData was last checked, its factions' detachment counts, file errors. */
-export const BsdataStatusSchema = z.object({
-  checkedAt: z.iso.datetime().nullable(),
+/** GET /api/detachments/known: each faction's known detachment count (read from 39k.pro). */
+export const DetachmentsStatusSchema = z.object({
   factions: z.array(z.object({ faction: z.string(), detachments: z.number().int() })),
-  errors: z.array(z.object({ path: z.string(), error: z.string() })),
-  /** BCP's factions BSData has no detachments for (yet): BCP's names count there. */
+  /** BCP's factions with no known detachments: BCP's names count there. */
   uncovered: z.array(z.string()),
 });
-export type BsdataStatus = z.infer<typeof BsdataStatusSchema>;
+export type DetachmentsStatus = z.infer<typeof DetachmentsStatusSchema>;
 
 /** POST / DELETE /api/detachments/keeps: keep a detachment for a faction anyway, or undo it. */
 export const DetachmentKeepRequestSchema = z.object({

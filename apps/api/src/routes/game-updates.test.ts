@@ -2,9 +2,8 @@ import type { GameUpdatesResponse, UpdateCommit } from '@bcp/shared';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createSession } from '../auth/sessions';
-import type { BsdataClient } from '../bsdata/client';
 import type { Db } from '../db/client';
-import { users } from '../db/schema';
+import { bsdataCommits, users } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { SyncRunner } from '../sync/runner';
 import { ALL_EVENTS, sampleSource, silentLogger, testFetchQueue } from '../test/helpers';
@@ -16,11 +15,6 @@ const history: UpdateCommit[] = [
   { sha: 'b', day: '2026-07-22', message: 'Faction Pack changes' },
   { sha: 'a', day: '2026-06-09', message: 'MFM' },
 ];
-const bsdata: BsdataClient = {
-  commits: () => Promise.resolve(history),
-  tree: () => Promise.resolve({ commit: 'c', files: [] }),
-  file: () => Promise.resolve({}),
-};
 const appWith = (auth?: { required: boolean; secret: string }) =>
   createApp({
     db,
@@ -36,7 +30,6 @@ const appWith = (auth?: { required: boolean; secret: string }) =>
     logger: silentLogger,
     eventRule: ALL_EVENTS,
     now: () => new Date('2026-10-03T10:00:00Z'),
-    bsdata,
     auth,
   });
 
@@ -46,7 +39,22 @@ beforeAll(async () => {
 afterAll(() => close());
 beforeEach(async () => {
   await resetDb(db);
+  // BSData's history as stored before its takedown.
+  await db.insert(bsdataCommits).values(history);
 });
+
+const send = (
+  app: ReturnType<typeof createApp>,
+  method: string,
+  path: string,
+  body?: unknown,
+  headers: Record<string, string> = {},
+) =>
+  app.request(path, {
+    method,
+    headers: { 'content-type': 'application/json', ...headers },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
 
 const patch = (
   app: ReturnType<typeof createApp>,
@@ -61,9 +69,8 @@ const patch = (
   });
 
 describe('/api/updates', () => {
-  it('lists the updates read with BSData, newest first, and edits one', async () => {
+  it('lists BSData’s updates, newest first, and edits one', async () => {
     const app = appWith();
-    await app.request('/api/bsdata/refresh', { method: 'POST' });
     const listed = (await (await app.request('/api/updates')).json()) as GameUpdatesResponse;
     expect(listed.updates.map((u) => [u.id, u.name])).toEqual([
       ['b', 'Summer 2026 Faction Packs'],
@@ -77,13 +84,35 @@ describe('/api/updates', () => {
 
   it('refuses a start out of order, an unknown update and a bad body', async () => {
     const app = appWith();
-    await app.request('/api/bsdata/refresh', { method: 'POST' });
     expect((await patch(app, 'b', { start: '2026-06-01' })).status).toBe(400);
     expect((await patch(app, 'nope', { name: 'x' })).status).toBe(404);
     expect((await patch(app, 'a', { start: 'soon' })).status).toBe(400);
   });
 
-  it('with logins on, only admins can edit', async () => {
+  it('adds an update by hand, refuses one clashing with another’s start, and deletes it', async () => {
+    const app = appWith();
+    const added = await send(app, 'POST', '/api/updates', {
+      name: 'Balance Dataslate',
+      start: '2026-09-15',
+    });
+    expect(added.status).toBe(200);
+    const [first] = ((await added.json()) as GameUpdatesResponse).updates;
+    expect(first).toMatchObject({ name: 'Balance Dataslate', added: true });
+    expect(
+      (await send(app, 'POST', '/api/updates', { name: 'Clash', start: '2026-07-22' })).status,
+    ).toBe(400);
+    expect(
+      (await send(app, 'POST', '/api/updates', { name: '', start: '2026-10-01' })).status,
+    ).toBe(400);
+    expect((await send(app, 'DELETE', '/api/updates/a')).status).toBe(404);
+    const deleted = await send(app, 'DELETE', `/api/updates/${first?.id ?? ''}`);
+    expect(((await deleted.json()) as GameUpdatesResponse).updates.map((u) => u.id)).toEqual([
+      'b',
+      'a',
+    ]);
+  });
+
+  it('with logins on, only admins can change them', async () => {
     const secret = 's'.repeat(32);
     const app = appWith({ required: true, secret });
     const [member] = await db
@@ -92,12 +121,14 @@ describe('/api/updates', () => {
       .returning();
     if (member === undefined) throw new Error('seed');
     const { token } = await createSession(db, secret, member.id, new Date());
-    const response = await patch(
-      app,
-      'a',
-      { name: 'x' },
-      { cookie: `bcp_session=${token}`, host: 'localhost', origin: 'http://localhost' },
-    );
-    expect(response.status).toBe(403);
+    const headers = {
+      cookie: `bcp_session=${token}`,
+      host: 'localhost',
+      origin: 'http://localhost',
+    };
+    expect((await patch(app, 'a', { name: 'x' }, headers)).status).toBe(403);
+    const body = { name: 'x', start: '2026-10-01' };
+    expect((await send(app, 'POST', '/api/updates', body, headers)).status).toBe(403);
+    expect((await send(app, 'DELETE', '/api/updates/a', undefined, headers)).status).toBe(403);
   });
 });
