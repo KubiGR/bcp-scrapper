@@ -5,12 +5,13 @@ import {
   updateSpans,
   type DateRange,
   type EffectiveUpdate,
+  type GameUpdateCreate,
   type GameUpdatePatch,
   type GameUpdatesResponse,
   type UpdateSpan,
 } from '@bcp/shared';
 import { queryOptions, useQuery } from '@tanstack/react-query';
-import { apiGet, apiPatch } from '../../api/client';
+import { apiDelete, apiGet, apiPatch, apiPost } from '../../api/client';
 
 export const updatesQuery = queryOptions({
   queryKey: ['game-updates'],
@@ -44,6 +45,14 @@ export function useDateWindow(range: {
   return { from: range.from ?? defaultRangeFrom(effectiveOf(data), to), to };
 }
 
-/** An admin's edit to an update (null name/start: back to BSData's). */
+/** An admin's edit to an update (null name/start: back to the update's own). */
 export const patchGameUpdate = (id: string, patch: GameUpdatePatch) =>
   apiPatch(`/api/updates/${encodeURIComponent(id)}`, patch, GameUpdatesResponseSchema);
+
+/** An update an admin adds by hand (BSData, where they came from, was taken down). */
+export const addGameUpdate = (update: GameUpdateCreate) =>
+  apiPost('/api/updates', update, GameUpdatesResponseSchema);
+
+/** Deletes an update added by hand. */
+export const deleteGameUpdate = (id: string) =>
+  apiDelete(`/api/updates/${encodeURIComponent(id)}`, GameUpdatesResponseSchema);

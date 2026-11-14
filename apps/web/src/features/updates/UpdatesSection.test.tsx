@@ -119,9 +119,60 @@ describe('UpdatesSection', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('says when no updates were read yet', async () => {
+  it('says when there are no updates yet', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/updates': { updates: [] } });
     renderWithProviders(<UpdatesSection />);
-    expect(await screen.findByText('No updates read from BSData yet.')).toBeInTheDocument();
+    expect(await screen.findByText('No updates yet.')).toBeInTheDocument();
+  });
+
+  it('adds an update by hand', async () => {
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/updates': twoUpdates(),
+      'POST /api/updates': twoUpdates(),
+    });
+    renderWithProviders(<UpdatesSection />);
+    const add = await screen.findByRole('button', { name: 'Add update' });
+    expect(add).toBeDisabled();
+    fireEvent.change(screen.getByRole('textbox', { name: 'New update' }), {
+      target: { value: ' Balance Dataslate ' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Starts (YYYY-MM-DD)' }), {
+      target: { value: '2026-11-20' },
+    });
+    fireEvent.click(add);
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+      expect(JSON.parse(call?.[1]?.body as string)).toEqual({
+        name: 'Balance Dataslate',
+        start: '2026-11-20',
+      });
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: 'New update' })).toHaveValue('');
+    });
+  });
+
+  it('marks an update added by hand, and only that one can be deleted', async () => {
+    const [jul, jun] = twoUpdates().updates;
+    if (jul === undefined || jun === undefined) throw new Error('fixture');
+    const added = { ...jul, id: 'added-1', name: 'Dataslate', autoName: 'Dataslate', added: true };
+    const fetchMock = stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/updates': { updates: [added, jun] },
+      'DELETE /api/updates/added-1': { updates: [jun] },
+    });
+    renderWithProviders(<UpdatesSection />);
+    expect(await screen.findByText('Added by hand')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Delete Jun 2026 · Faction Packs' }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Dataslate' }));
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(true);
+    });
+    await waitFor(() => {
+      expect(screen.queryByText('Added by hand')).not.toBeInTheDocument();
+    });
   });
 });

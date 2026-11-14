@@ -150,11 +150,6 @@ describe('loadConfig', () => {
     expect(config.ADMIN_USERNAME).toBe('kubi');
   });
 
-  it('reads BSData syncing: on unless switched off', () => {
-    expect(loadConfig({}).BSDATA_ENABLED).toBe(true);
-    expect(loadConfig({ BSDATA_ENABLED: 'false' }).BSDATA_ENABLED).toBe(false);
-  });
-
   it('reads the automatic fetching settings, with defaults', () => {
     expect(loadConfig({})).toMatchObject({
       AUTO_FETCH_ENABLED: true,

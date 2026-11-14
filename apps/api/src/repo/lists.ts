@@ -19,7 +19,7 @@ import type { Db } from '../db/client';
 import { armyRules } from './detachment-links';
 import type { Logger } from '../logger';
 import { armyLists, detachmentLinks, players, teams } from '../db/schema';
-import { bsdataByFaction } from './bsdata';
+import { detachmentsByFaction } from './faction-detachments';
 
 /** Joins a player's stored list only while it is their current BCP list. */
 export const storedCurrentList = and(
@@ -189,7 +189,7 @@ async function detachmentVocabulary(db: Db): Promise<DetachmentVocabulary> {
       [...spelled].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? lower,
     ]),
   );
-  const bsdata = await bsdataByFaction(db);
+  const bsdata = await detachmentsByFaction(db);
   const bsdataAll = [...new Set([...bsdata.values()].flat())];
   // BSData's names are detachments too, so joined lines split on them.
   bsdataAll.forEach((name) => known.add(name));

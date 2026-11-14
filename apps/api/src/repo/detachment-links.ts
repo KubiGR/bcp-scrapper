@@ -12,7 +12,7 @@ import {
 import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { armyLists, detachmentKeeps, detachmentLinks, events, players } from '../db/schema';
-import { bsdataByFaction } from './bsdata';
+import { detachmentsByFaction } from './faction-detachments';
 import { learnedTranslations, tidyDetachments } from './lists';
 
 const keyOf = (name: string) => cleanDetachmentName(name).toLowerCase();
@@ -80,7 +80,7 @@ function ownFactions(counts: Map<string, number>): string[] {
 /** Lower-case BSData detachments per faction, and the kept (faction, lower-case name) pairs. */
 async function bsdataRules(db: Db) {
   const [bsdata, keeps, ownLinks] = await Promise.all([
-    bsdataByFaction(db),
+    detachmentsByFaction(db),
     db.select().from(detachmentKeeps).orderBy(detachmentKeeps.faction, detachmentKeeps.name),
     db
       .select({ nameKey: detachmentLinks.nameKey })

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../db/client';
-import { armyLists, bsdataDetachments, players } from '../db/schema';
+import { armyLists, factionDetachments, players } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { sampleSource } from '../test/helpers';
 import { gwList, storeList } from '../test/lists';
@@ -29,7 +29,7 @@ beforeEach(async () => {
 const detachmentsOf = async (playerId: string) =>
   (await db.select().from(armyLists).where(eq(armyLists.playerId, playerId)))[0]?.detachments;
 const bsdata = (faction: string, ...names: string[]) =>
-  db.insert(bsdataDetachments).values(names.map((name) => ({ faction, name })));
+  db.insert(factionDetachments).values(names.map((name) => ({ faction, name })));
 
 describe('lists and BSData', () => {
   it('stores BSData’s spelling of a list’s detachment', async () => {

@@ -14,6 +14,7 @@ const update = (id: string, start: string, name: string): GameUpdate => ({
   hidden: false,
   events: 3,
   summary: id === 'b' ? 'Orks, Tyranids' : '',
+  added: false,
   suggestions: [name],
 });
 const updates = {

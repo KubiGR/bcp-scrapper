@@ -1,6 +1,6 @@
 import type { GameUpdate, GameUpdatesResponse } from '@bcp/shared';
 
-/** A game update for tests (BSData's name and start unless overridden). */
+/** A game update for tests (one read from BSData unless overridden). */
 export const aGameUpdate = (overrides: Partial<GameUpdate> = {}): GameUpdate => ({
   id: 'b',
   name: 'Jul 2026 · MFM',
@@ -11,6 +11,7 @@ export const aGameUpdate = (overrides: Partial<GameUpdate> = {}): GameUpdate => 
   hidden: false,
   events: 2,
   summary: 'Orks, Tyranids',
+  added: false,
   suggestions: ['Jul 2026 · MFM', 'Orks shake-up', 'Update 2 · Jul 2026'],
   ...overrides,
 });

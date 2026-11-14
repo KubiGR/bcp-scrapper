@@ -11,7 +11,7 @@ import {
 import { readJsLiteral } from './js-literal';
 
 /** Bump when the extraction changes: a site holding data read the old way reads it again. */
-export const RULES_FORMAT = 5;
+export const RULES_FORMAT = 6;
 
 /** 39k.pro's data wasn't where or what it should be: the site changed. */
 export class RulesShapeError extends Error {
@@ -107,6 +107,55 @@ function groupBy(rows: Row[], key: string): Map<string, Row[]> {
   return groups;
 }
 
+/** Faction keyword id → the app's faction name, for keywords the app knows. */
+function appFactions(factionKeywords: Row[]): Map<string, string> {
+  const appFaction = new Map<string, string>();
+  for (const keyword of factionKeywords) {
+    const id = field(keyword, 'id');
+    const common = enText(keyword, 'commonName');
+    const faction =
+      canonicalArmy(enText(keyword, 'name')) ?? (common === '' ? null : canonicalArmy(common));
+    if (id !== null && faction !== null) appFaction.set(id, faction);
+  }
+  return appFaction;
+}
+
+/**
+ * Each faction's detachments (A→Z), as the GW app lets each faction take them: a chapter gets
+ * its own and the Space Marines ones it may use. Combat Patrol detachments are left out.
+ */
+export function extractDetachments(tables: Record<string, unknown>): Map<string, string[]> {
+  const rows = (name: string): Row[] => {
+    const value = tables[name];
+    return Array.isArray(value) ? value.filter(isRow) : [];
+  };
+  const patrol = new Set(
+    rows('publication')
+      .filter((p) => p.isCombatPatrol === true)
+      .map((p) => field(p, 'id')),
+  );
+  const appFaction = appFactions(rows('faction_keyword'));
+  const names = new Map(
+    rows('detachment')
+      .filter((d) => d.isCombatPatrol !== true && !patrol.has(field(d, 'publicationId')))
+      .map((d) => [field(d, 'id'), enText(d, 'name')]),
+  );
+  const byFaction = new Map<string, Set<string>>();
+  for (const link of rows('detachment_faction_keyword')) {
+    const name = names.get(field(link, 'detachmentId'));
+    const faction = appFaction.get(field(link, 'factionKeywordId') ?? '');
+    if (name === undefined || name === '' || faction === undefined) continue;
+    const set = byFaction.get(faction) ?? new Set<string>();
+    set.add(name);
+    byFaction.set(faction, set);
+  }
+  return new Map(
+    [...byFaction]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([faction, set]) => [faction, [...set].sort((a, b) => a.localeCompare(b))]),
+  );
+}
+
 /** GW-app tables from 39k.pro → the English unit data Mathhammer uses. */
 export function extractUnits(tables: Record<string, unknown>): UnitData {
   const table = (name: string): Row[] => {
@@ -129,14 +178,7 @@ export function extractUnits(tables: Record<string, unknown>): UnitData {
 
   // Factions, as the app names them.
   const factionKeywords = table('faction_keyword');
-  const appFaction = new Map<string, string>();
-  for (const keyword of factionKeywords) {
-    const id = field(keyword, 'id');
-    const common = enText(keyword, 'commonName');
-    const faction =
-      canonicalArmy(enText(keyword, 'name')) ?? (common === '' ? null : canonicalArmy(common));
-    if (id !== null && faction !== null) appFaction.set(id, faction);
-  }
+  const appFaction = appFactions(factionKeywords);
   const factionsOf = (ids: (string | null)[]) =>
     unique(ids.flatMap((id) => (id === null ? [] : [appFaction.get(id) ?? ''])))
       .filter((faction) => faction !== '')
@@ -448,8 +490,15 @@ function damageReductionOf(abilities: { name: string; text: string }[]) {
   return null;
 }
 
-/** Finds 39k.pro's data in its script, reads it as text (never runs it) and extracts the units. */
-export function readRulesBundle(script: string): { dataVersion: number | null; data: UnitData } {
+/**
+ * Finds 39k.pro's data in its script, reads it as text (never runs it) and extracts the units and
+ * each faction's detachments.
+ */
+export function readRulesBundle(script: string): {
+  dataVersion: number | null;
+  data: UnitData;
+  detachments: Map<string, string[]>;
+} {
   const at = script.indexOf('{publication:');
   if (at < 0) {
     throw new RulesShapeError('No rules data found in 39k.pro’s script (the site changed)');
@@ -469,5 +518,6 @@ export function readRulesBundle(script: string): { dataVersion: number | null; d
   return {
     dataVersion: version?.[1] === undefined ? null : Number(version[1]),
     data: parsed.data,
+    detachments: extractDetachments(value),
   };
 }

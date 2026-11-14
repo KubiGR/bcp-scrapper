@@ -38,7 +38,7 @@ const rowOf = (name: string) => {
   return row;
 };
 
-describe('DetachmentNamesCard with BSData', () => {
+describe('DetachmentNamesCard with known detachments', () => {
   const orksOnly = (overrides: Partial<DetachmentNamesResponse> = {}) =>
     names({
       unsure: [{ name: 'Horda de Guerra', lists: 4, factions: ['Orks'] }],
@@ -54,7 +54,7 @@ describe('DetachmentNamesCard with BSData', () => {
       ...overrides,
     });
 
-  it('shows BSData’s detachments as a covered faction’s known ones', async () => {
+  it('shows the GW app’s detachments as a covered faction’s known ones', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': orksOnly() });
     renderWithProviders(<DetachmentNamesCard />);
     const known = within(await screen.findByRole('list', { name: 'Known Orks detachments' }));
@@ -154,7 +154,7 @@ describe('DetachmentNamesCard with BSData', () => {
     expect(onFactionChange).toHaveBeenCalledWith('Orks');
   });
 
-  it('lists detachments outside the faction’s BSData list, to keep anyway or undo', async () => {
+  it('lists detachments outside the faction’s known list, to keep anyway or undo', async () => {
     const withPairs = orksOnly({
       wrong: [
         { faction: 'Orks', name: 'Wreckas', lists: 2, bsdataFactions: [] },
@@ -174,8 +174,8 @@ describe('DetachmentNamesCard with BSData', () => {
     renderWithProviders(<DetachmentNamesCard />);
     const section = within(await screen.findByRole('region', { name: 'Not in this faction' }));
     expect(section.getByText('Wreckas · 2 lists')).toBeInTheDocument();
-    expect(section.getByText('BSData doesn’t list it')).toBeInTheDocument();
-    expect(section.getByText('BSData has it for Chaos Daemons')).toBeInTheDocument();
+    expect(section.getByText('The GW app doesn’t list it')).toBeInTheDocument();
+    expect(section.getByText('The GW app has it for Chaos Daemons')).toBeInTheDocument();
     fireEvent.click(section.getByRole('button', { name: 'Keep Wreckas for Orks' }));
     await waitFor(() => {
       expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true);

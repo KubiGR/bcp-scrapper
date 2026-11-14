@@ -6,13 +6,14 @@ import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { formatIsoDay, plural } from '../../lib/format';
 import { meQuery } from '../auth/auth-queries';
-import { patchGameUpdate, updatesQuery } from './updates-queries';
+import { addGameUpdate, deleteGameUpdate, patchGameUpdate, updatesQuery } from './updates-queries';
 
 type Editing = { id: string; field: 'name' | 'start'; value: string } | null;
 
 /**
- * Settings → Game updates: the edition's updates read from BSData's history. Admins can rename
- * one, move its start (e.g. to GW's release day), merge it into the update before, or hide it.
+ * Settings → Game updates: the edition's updates, read from BSData's history until its takedown
+ * and added by hand since. Admins can add one, rename one, move its start (e.g. to GW's release
+ * day), merge it into the update before, hide it, or delete one they added.
  */
 export function UpdatesSection() {
   const updates = useQuery(updatesQuery);
@@ -26,6 +27,20 @@ export function UpdatesSection() {
     onSuccess: (data) => {
       queryClient.setQueryData(updatesQuery.queryKey, data);
       setEditing(null);
+    },
+  });
+  const [adding, setAdding] = useState({ name: '', start: '' });
+  const add = useMutation({
+    mutationFn: () => addGameUpdate({ name: adding.name.trim(), start: adding.start.trim() }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(updatesQuery.queryKey, data);
+      setAdding({ name: '', start: '' });
+    },
+  });
+  const remove = useMutation({
+    mutationFn: deleteGameUpdate,
+    onSuccess: (data) => {
+      queryClient.setQueryData(updatesQuery.queryKey, data);
     },
   });
   const list = updates.data?.updates ?? [];
@@ -71,6 +86,10 @@ export function UpdatesSection() {
             run({ hidden: !update.hidden });
           },
         )}
+        {update.added &&
+          button('Delete', `Delete ${update.name}`, () => {
+            remove.mutate(update.id);
+          })}
       </Group>
     );
   };
@@ -82,11 +101,12 @@ export function UpdatesSection() {
       {updates.data && (
         <Stack gap="xs">
           <Text size="sm" c="dimmed">
-            Points (MFM), Faction Packs, Dataslates and codexes, read from BSData’s history. Each
-            event counts under the update in force on its first day.
+            Points (MFM), Faction Packs, Dataslates and codexes. Read from BSData’s history until it
+            was taken down in November 2026; add newer ones below. Each event counts under the
+            update in force on its first day.
           </Text>
           {list.length === 0 ? (
-            <Text size="sm">No updates read from BSData yet.</Text>
+            <Text size="sm">No updates yet.</Text>
           ) : (
             <Table.ScrollContainer minWidth={520}>
               <Table aria-label="Game updates">
@@ -102,8 +122,13 @@ export function UpdatesSection() {
                             {update.summary}
                           </Text>
                         )}
-                        {update.name !== update.autoName && (
+                        {!update.added && update.name !== update.autoName && (
                           <Text size="xs" c="dimmed">{`BSData: ${update.autoName}`}</Text>
+                        )}
+                        {update.added && (
+                          <Badge size="xs" variant="light" color="gray">
+                            Added by hand
+                          </Badge>
                         )}
                         {update.merged && (
                           <Badge size="xs" variant="light" color="gray">
@@ -120,7 +145,7 @@ export function UpdatesSection() {
                         <Text size="sm" className="numeric">
                           {formatIsoDay(update.start)}
                         </Text>
-                        {update.start !== update.autoStart && (
+                        {!update.added && update.start !== update.autoStart && (
                           <Text
                             size="xs"
                             c="dimmed"
@@ -194,10 +219,46 @@ export function UpdatesSection() {
               </Table>
             </Table.ScrollContainer>
           )}
-          {save.error && (
-            <Text size="sm" c="red">
-              {save.error.message}
-            </Text>
+          {!readOnly && (
+            <Group gap="xs" align="flex-end" wrap="wrap">
+              <TextInput
+                size="xs"
+                label="New update"
+                placeholder="e.g. Balance Dataslate"
+                value={adding.name}
+                onChange={(e) => {
+                  setAdding({ ...adding, name: e.currentTarget.value });
+                }}
+              />
+              <TextInput
+                size="xs"
+                label="Starts (YYYY-MM-DD)"
+                placeholder="2026-11-20"
+                value={adding.start}
+                onChange={(e) => {
+                  setAdding({ ...adding, start: e.currentTarget.value });
+                }}
+                w={150}
+              />
+              <Button
+                size="xs"
+                loading={add.isPending}
+                disabled={adding.name.trim() === '' || adding.start.trim() === ''}
+                onClick={() => {
+                  add.mutate();
+                }}
+              >
+                Add update
+              </Button>
+            </Group>
+          )}
+          {[save.error, add.error, remove.error].map(
+            (error) =>
+              error && (
+                <Text key={error.message} size="sm" c="red">
+                  {error.message}
+                </Text>
+              ),
           )}
           {readOnly && (
             <Text size="xs" c="dimmed">

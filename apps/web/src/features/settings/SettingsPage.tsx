@@ -5,7 +5,7 @@ import { FetchQueueCard } from '../fetch-queue/FetchQueueCard';
 import { UpdatesSection } from '../updates/UpdatesSection';
 import { AutoFetchCard } from './AutoFetchCard';
 import { BcpStatusCard } from './BcpStatusCard';
-import { BsdataCard } from './BsdataCard';
+import { DetachmentsCard } from './DetachmentsCard';
 import { DetachmentNamesCard } from './DetachmentNamesCard';
 import { RulesCard } from './RulesCard';
 import { SETTINGS_TABS, type SettingsTab } from './settings-search';
@@ -62,7 +62,7 @@ export function SettingsPage({
             </Grid.Col>
             <Grid.Col span={{ base: 12, lg: 6 }}>
               <Stack gap="lg">
-                <BsdataCard />
+                <DetachmentsCard />
                 <UpdatesSection />
                 <RulesCard />
               </Stack>
