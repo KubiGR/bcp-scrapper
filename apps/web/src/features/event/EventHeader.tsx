@@ -10,6 +10,7 @@ import {
   formatRoundCount,
 } from '../../lib/format';
 import { UpdateLabel } from '../updates/UpdateLabel';
+import { BlockEventButton } from './BlockEventButton';
 
 interface EventHeaderProps {
   event: EventDetail;
@@ -35,9 +36,13 @@ export function EventHeader({ event, syncing, onRefresh }: EventHeaderProps) {
           >
             Open on BCP ↗
           </Anchor>
-          <Button variant="outline" size="sm" loading={syncing} onClick={onRefresh}>
-            Refresh from BCP
-          </Button>
+          <BlockEventButton event={event} />
+          {/* A blocked event isn't fetched, by hand either: Unblock first. */}
+          {event.blockedAt === null && (
+            <Button variant="outline" size="sm" loading={syncing} onClick={onRefresh}>
+              Refresh from BCP
+            </Button>
+          )}
         </Group>
       </Group>
       <Group gap="md" wrap="wrap">
@@ -64,6 +69,12 @@ export function EventHeader({ event, syncing, onRefresh }: EventHeaderProps) {
       {event.lastSyncedAt !== null && (
         <Text size="xs" c="dimmed" className="numeric">
           Synced {formatDateTime(event.lastSyncedAt)}
+        </Text>
+      )}
+      {event.blockedAt !== null && (
+        <Text size="sm" c="dimmed">
+          An admin blocked this event ({formatDateTime(event.blockedAt)}), so Logis doesn't ask BCP
+          for it any more. The players and lists below are what was stored before.
         </Text>
       )}
       {event.removedFromBcpAt !== null && (

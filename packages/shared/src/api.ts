@@ -43,6 +43,8 @@ export const EventListItemSchema = EventSummarySchema.extend({
   lastSyncedAt: z.iso.datetime().nullable(),
   /** When BCP stopped knowing this event (it answered 404); its stored data is still shown. */
   removedFromBcpAt: z.iso.datetime().nullable(),
+  /** When an admin blocked the event: Logis no longer asks BCP for it until it's unblocked. */
+  blockedAt: z.iso.datetime().nullable(),
   /** The field's average wh40k-elo, rounded; null until at least half its players are rated. */
   fieldElo: z.number().int().nullable(),
 });

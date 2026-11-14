@@ -4,7 +4,7 @@ import type { Db } from '../db/client';
 import { events, fetchQueue } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { setAutoFetchEnabled } from '../repo/app-settings';
-import { upsertEventSummaries } from '../repo/events';
+import { setEventBlocked, upsertEventSummaries } from '../repo/events';
 import { markJobFailed } from '../repo/fetch-queue';
 import { syncEvent } from '../sync/jobs';
 import { syncRoundPairings } from '../sync/round-pairings';
@@ -60,6 +60,12 @@ describe('AutoFetchPlanner', () => {
         origin: 'auto',
       },
     ]);
+  });
+
+  it('skips an event an admin blocked', async () => {
+    await setEventBlocked(db, 'EVTSINGLE01', new Date());
+    expect(await planner(BIG).planOnce()).toEqual({ events: 0, jobs: 0 });
+    expect(await jobs()).toEqual([]);
   });
 
   it('queues the rounds and every missing list of a synced event, once', async () => {

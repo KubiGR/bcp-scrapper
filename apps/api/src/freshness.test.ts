@@ -46,6 +46,15 @@ describe('isEventStale', () => {
     ).toBe(false);
   });
 
+  it('never reloads an event an admin blocked', () => {
+    expect(isEventStale({ ...running, lastSyncedAt: null, blockedAt: hoursAgo(1) }, now)).toBe(
+      false,
+    );
+    expect(
+      isEventStale({ ...running, lastSyncedAt: hoursAgo(24), blockedAt: hoursAgo(1) }, now),
+    ).toBe(false);
+  });
+
   it('reloads a finished event once when it was last synced while it still ran', () => {
     // Synced during the last round: standings and records from mid-round, never final.
     expect(isEventStale({ ...finished, ended: true, lastSyncedAt: hoursAgo(49) }, now)).toBe(true);

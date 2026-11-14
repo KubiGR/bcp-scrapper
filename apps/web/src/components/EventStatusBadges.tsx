@@ -13,6 +13,7 @@ type BadgeFields = Pick<
   | 'hideLists'
   | 'lastSyncedAt'
   | 'removedFromBcpAt'
+  | 'blockedAt'
 >;
 
 /**
@@ -46,6 +47,11 @@ export function EventStatusBadges({ event }: { event: BadgeFields }) {
       {event.hideLists && (
         <Badge size="xs" variant="outline" color="yellow">
           Lists hidden
+        </Badge>
+      )}
+      {event.blockedAt !== null && (
+        <Badge size="xs" variant="filled" color="red">
+          Blocked
         </Badge>
       )}
       {event.removedFromBcpAt !== null && (

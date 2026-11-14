@@ -84,6 +84,17 @@ export class ForbiddenError extends AppError {
   }
 }
 
+/** An admin blocked the event: nothing is fetched for it from BCP until it's unblocked. */
+export class EventBlockedError extends AppError {
+  constructor(eventId: string) {
+    super(
+      'EVENT_BLOCKED',
+      409,
+      `Event ${eventId} is blocked, so Logis doesn't fetch it from BCP. An admin can unblock it.`,
+    );
+  }
+}
+
 /** Too many failed logins; the client may try again after `retryAfterSeconds`. */
 export class LoginRateLimitedError extends AppError {
   readonly retryAfterSeconds: number;

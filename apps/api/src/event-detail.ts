@@ -26,10 +26,12 @@ export async function getEventDetail(
     eventPairingsJobs(db, eventId),
     fieldElos(db, [eventId]),
   ]);
+  // A blocked event isn't fetched again: its old failures are history, not something to retry.
+  const blocked = row.blockedAt !== null;
   return {
     ...toEventListItem(row, strength.get(eventId)),
     stale: isEventStale(row, now),
-    counts,
+    counts: blocked ? { ...counts, listsFailed: 0 } : counts,
     syncs,
     queueSeconds,
     pairings: {
@@ -38,9 +40,9 @@ export async function getEventDetail(
       roundsDone: stored.rounds,
       queued: jobs.queued,
       queuedRounds: jobs.queuedRounds,
-      failed: jobs.failed,
-      failedRounds: jobs.failedRounds,
-      loadFailed: jobs.loadFailed,
+      failed: blocked ? 0 : jobs.failed,
+      failedRounds: blocked ? [] : jobs.failedRounds,
+      loadFailed: blocked ? false : jobs.loadFailed,
       gamesAvailable: stored.matchups === 0 || stored.games > 0,
     },
   };

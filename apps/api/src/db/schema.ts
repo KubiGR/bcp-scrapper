@@ -55,6 +55,8 @@ export const events = pgTable(
     pairingsSyncedAt: timestamptz('pairings_synced_at'),
     /** Set when BCP answered 404 for an event we had stored; its data stays. A later sync clears it. */
     removedFromBcpAt: timestamptz('removed_from_bcp_at'),
+    /** Set when an admin blocked the event: Logis stops asking BCP for it until unblocked. */
+    blockedAt: timestamptz('blocked_at'),
     rawSummary: jsonb('raw_summary'),
     rawDetail: jsonb('raw_detail'),
     ...auditColumns,

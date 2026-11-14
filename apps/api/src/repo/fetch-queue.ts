@@ -18,6 +18,7 @@ import {
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from '../db/client';
 import { events, fetchQueue, players } from '../db/schema';
+import { isEventBlocked } from './events';
 import { storedPairingRounds } from './pairings';
 
 export type FetchJobKind = (typeof fetchQueue.$inferSelect)['kind'];
@@ -51,6 +52,15 @@ export interface ClaimedJob {
 }
 
 const OPEN = ['queued', 'fetching'] as const;
+
+/**
+ * The job's event isn't blocked by an admin: blocked events are never fetched, and their failures
+ * don't count (nor are they retried).
+ */
+const eventNotBlocked = sql`not exists (
+  select 1 from ${events}
+  where ${events.id} = ${fetchQueue.eventId} and ${events.blockedAt} is not null
+)`;
 const PAIRINGS_KINDS = ['event', 'pairings-round'] as const;
 const ALL_KINDS: readonly FetchJobKind[] = ['list', 'event', 'pairings-round'];
 
@@ -78,7 +88,7 @@ export async function enqueueLists(
   priority: number,
   origin: JobOrigin = 'user',
 ): Promise<number> {
-  if (items.length === 0) return 0;
+  if (items.length === 0 || (await isEventBlocked(db, eventId))) return 0;
   const inserted = await db
     .insert(fetchQueue)
     .values(items.map((item) => ({ kind: 'list' as const, eventId, ...item, priority, origin })))
@@ -107,6 +117,7 @@ export async function enqueueEventLoad(
   eventId: string,
   { priority, origin = 'user' }: { priority: number; origin?: JobOrigin },
 ): Promise<boolean> {
+  if (await isEventBlocked(db, eventId)) return false;
   const inserted = await db
     .insert(fetchQueue)
     .values({ kind: 'event', eventId, priority, origin })
@@ -130,6 +141,7 @@ export async function enqueueEventPairings(
     origin = 'user',
   }: { rounds: number[] | null; priority: number; origin?: JobOrigin },
 ): Promise<{ eventQueued: boolean; queuedRounds: number }> {
+  if (await isEventBlocked(db, eventId)) return { eventQueued: false, queuedRounds: 0 };
   let result: { eventQueued: boolean; queuedRounds: number };
   if (rounds === null) {
     await db
@@ -182,6 +194,7 @@ export async function claimNextJob(db: Db, now: Date): Promise<ClaimedJob | null
   const next = sql`(
     select ${fetchQueue.id} from ${fetchQueue}
     where ${fetchQueue.status} = 'queued' and ${fetchQueue.notBefore} <= ${now.toISOString()}::timestamptz
+      and ${eventNotBlocked}
     order by ${fetchQueue.priority} desc, ${fetchQueue.queuedAt}, ${fetchQueue.id}
     limit 1
     for update skip locked
@@ -255,6 +268,15 @@ export async function requeueInterrupted(db: Db): Promise<number> {
   return rows.length;
 }
 
+/** Removes all of an event's queued jobs (lists, its load and pairings); one being fetched finishes. */
+export async function cancelQueuedEventJobs(db: Db, eventId: string): Promise<number> {
+  const rows = await db
+    .delete(fetchQueue)
+    .where(and(eq(fetchQueue.eventId, eventId), eq(fetchQueue.status, 'queued')))
+    .returning({ id: fetchQueue.id });
+  return rows.length;
+}
+
 /** Removes an event's queued list jobs; its pairings jobs stay. */
 export async function cancelQueuedLists(db: Db, eventId: string): Promise<number> {
   const rows = await db
@@ -324,6 +346,7 @@ export async function retryFailedJobs(
         eventId === undefined ? undefined : eq(fetchQueue.eventId, eventId),
         only === 'pairings' ? inArray(fetchQueue.kind, [...PAIRINGS_KINDS]) : undefined,
         code === undefined ? undefined : eq(fetchQueue.errorCode, code),
+        eventNotBlocked,
         isNewestTry(db),
       ),
     )
@@ -362,14 +385,14 @@ export async function queueDetails(
       .from(fetchQueue)
       .innerJoin(events, eq(events.id, fetchQueue.eventId))
       .leftJoin(players, eq(players.id, fetchQueue.playerId))
-      .where(and(eq(fetchQueue.status, 'failed'), isNewestTry(db)))
+      .where(and(eq(fetchQueue.status, 'failed'), eventNotBlocked, isNewestTry(db)))
       .orderBy(desc(fetchQueue.finishedAt), desc(fetchQueue.id)),
     db
       .select({ ...jobColumns, status: fetchQueue.status, origin: fetchQueue.origin })
       .from(fetchQueue)
       .innerJoin(events, eq(events.id, fetchQueue.eventId))
       .leftJoin(players, eq(players.id, fetchQueue.playerId))
-      .where(inArray(fetchQueue.status, [...OPEN]))
+      .where(and(inArray(fetchQueue.status, [...OPEN]), eventNotBlocked))
       // The one being fetched first, then the claim order (see claimNextJob).
       .orderBy(
         sql`${fetchQueue.status} = 'fetching' desc`,
@@ -451,7 +474,8 @@ export async function queueTotals(
     // Automatic jobs are counted apart (autoJobSummary): they'd drown the user's own work.
     .where(and(inArray(fetchQueue.status, [...OPEN]), eq(fetchQueue.origin, 'user')))
     .groupBy(fetchQueue.kind, fetchQueue.status);
-  const newest = await newestJobPerTarget(db);
+  // A blocked event's failures don't count: nothing will fetch it again.
+  const newest = await newestJobPerTarget(db, eventNotBlocked);
   const of = (kind: FetchJobKind, status: FetchQueueStatus) =>
     open.find((row) => row.kind === kind && row.status === status)?.n ?? 0;
   const totalsOf = (kind: FetchJobKind): JobTotals => ({

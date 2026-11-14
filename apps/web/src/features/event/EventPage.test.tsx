@@ -88,6 +88,24 @@ describe('EventPage', () => {
     expect(screen.queryByText(/The last event sync failed/)).toBeNull();
   });
 
+  it('marks a blocked event, hides its old sync failure and offers no Refresh', async () => {
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': { items: [] },
+      'GET /api/events/EVT1': anEventDetail({
+        blockedAt: '2026-11-14T10:00:00.000Z',
+        syncs: {
+          event: aSyncRun({ kind: 'event', status: 'failed', error: 'BCP is unavailable' }),
+        },
+      }),
+    });
+    renderWithProviders(<EventPage eventId="EVT1" {...tabProps} />);
+
+    expect(await screen.findByText(/An admin blocked this event/)).toBeInTheDocument();
+    expect(screen.getByText('Blocked')).toBeInTheDocument();
+    expect(screen.queryByText(/The last event sync failed/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Refresh from BCP' })).toBeNull();
+  });
+
   it('shows Players & lists, Rounds, Standings, Matchups on team events; no Standings on singles', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': { items: [] },

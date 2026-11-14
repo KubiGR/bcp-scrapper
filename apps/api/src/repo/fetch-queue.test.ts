@@ -6,9 +6,10 @@ import { createTestDb, resetDb } from '../db/test-db';
 import { sampleSource, silentLogger } from '../test/helpers';
 import { syncEvent } from '../sync/jobs';
 import { syncRoundPairings } from '../sync/round-pairings';
-import { upsertEventDetail, upsertEventSummaries } from './events';
+import { setEventBlocked, upsertEventDetail, upsertEventSummaries } from './events';
 import {
   autoJobSummary,
+  cancelQueuedEventJobs,
   cancelQueuedLists,
   deleteQueuedAutoJobs,
   claimNextJob,
@@ -95,6 +96,40 @@ describe('fetch queue repository', () => {
       expect(await retryFailedJobs(db, undefined, undefined, 'BCP_UNAVAILABLE')).toBe(1);
       const details = await queueDetails(db);
       expect(details.failures.map((f) => f.code)).toEqual([NO_LIST_CODE]);
+    });
+
+    it("leaves out a blocked event's failures: not listed, counted or retried", async () => {
+      await setEventBlocked(db, EVENT, new Date());
+      expect((await queueDetails(db)).failures).toEqual([]);
+      expect((await queueTotals(db)).failed).toBe(0);
+      expect(await retryFailedJobs(db)).toBe(0);
+
+      await setEventBlocked(db, EVENT, null);
+      expect((await queueTotals(db)).failed).toBe(1);
+    });
+  });
+
+  describe('a blocked event', () => {
+    it('queues nothing new and is never claimed', async () => {
+      await enqueueLists(db, EVENT, [ada], 0);
+      await setEventBlocked(db, EVENT, new Date());
+      expect(await enqueueLists(db, EVENT, [ben], 0)).toBe(0);
+      expect(await enqueueEventPairings(db, EVENT, { rounds: [1, 2], priority: 0 })).toEqual({
+        eventQueued: false,
+        queuedRounds: 0,
+      });
+      expect(await claimNextJob(db, soon())).toBeNull();
+
+      await setEventBlocked(db, EVENT, null);
+      expect(await claimNextJob(db, soon())).toMatchObject({ playerId: ada.playerId });
+    });
+
+    it('can have all its queued jobs removed at once, pairings included', async () => {
+      await enqueueLists(db, EVENT, [ada, ben], 0);
+      await enqueueEventPairings(db, EVENT, { rounds: [1, 2], priority: 0 });
+      await claimNextJob(db, soon()); // one is being fetched: it stays
+      expect(await cancelQueuedEventJobs(db, EVENT)).toBe(3);
+      expect(await queueTotals(db)).toMatchObject({ queued: 0, fetching: 1 });
     });
   });
 

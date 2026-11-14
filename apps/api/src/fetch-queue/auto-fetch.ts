@@ -133,6 +133,8 @@ export class AutoFetchPlanner {
       if (!isBigEvent(event, eventRule) || phase === 'upcoming') continue;
       // BCP answered 404 for it: every job would fail. Refresh still tries, by hand.
       if (event.removedFromBcpAt !== null) continue;
+      // An admin blocked it: Logis doesn't ask BCP for it at all.
+      if (event.blockedAt !== null) continue;
       // Switched off mid-pass: stop adding work.
       if (!(await getAutoFetchEnabled(db))) break;
       const queued =

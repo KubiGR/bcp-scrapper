@@ -7,7 +7,7 @@ import type { Db } from '../db/client';
 import { events, players, teams } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { NotFoundError } from '../errors';
-import { findEvent } from '../repo/events';
+import { findEvent, setEventBlocked } from '../repo/events';
 import { getSyncRun } from '../repo/sync-runs';
 import { ALL_EVENTS, sampleSource, silentLogger, sourceWith } from '../test/helpers';
 import { SyncRunner } from './runner';
@@ -113,6 +113,38 @@ describe('SyncRunner', () => {
       { kind: 'event', eventId: EVENT },
     );
     expect((await findEvent(db, EVENT))?.removedFromBcpAt).toBeNull();
+  });
+
+  it('event: one an admin blocked is refused without asking BCP; unblocked, it syncs', async () => {
+    const source = sampleSource();
+    await runToCompletion(
+      new SyncRunner({ db, source, logger: silentLogger, eventRule: ALL_EVENTS }),
+      { kind: 'event', eventId: EVENT },
+    );
+    await setEventBlocked(db, EVENT, new Date());
+    let asked = 0;
+    const counting = withOverrides(source, {
+      getEvent: (eventId) => {
+        asked += 1;
+        return source.getEvent(eventId);
+      },
+    });
+    const runner = new SyncRunner({
+      db,
+      source: counting,
+      logger: silentLogger,
+      eventRule: ALL_EVENTS,
+    });
+    const run = await runToCompletion(runner, { kind: 'event', eventId: EVENT });
+    expect(run).toMatchObject({ status: 'failed', errorCode: 'EVENT_BLOCKED' });
+    expect(run?.error).toMatch(/blocked/);
+    expect(asked).toBe(0);
+
+    await setEventBlocked(db, EVENT, null);
+    expect(await runToCompletion(runner, { kind: 'event', eventId: EVENT })).toMatchObject({
+      status: 'succeeded',
+    });
+    expect(asked).toBe(1);
   });
 
   it('event: a 404 for an event never stored still fails', async () => {
