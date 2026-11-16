@@ -157,4 +157,14 @@ describe('PlayersPage', () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it('folds how points work away until asked for', async () => {
+    stubFetchRoutes({ 'GET /api/rankings': response([player()]) });
+    renderWithRouter(<PlayersPage search={{}} onSearchChange={vi.fn()} />);
+    const toggle = await screen.findByRole('button', { name: /How points work/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText(/The 5 best results of the last 12 months/)).toBeInTheDocument();
+  });
 });

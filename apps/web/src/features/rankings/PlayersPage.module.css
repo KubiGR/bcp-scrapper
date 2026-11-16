@@ -36,3 +36,17 @@
 .facts li + li {
   margin-top: 2px;
 }
+
+/* The fold's toggle looks like a panel title, with an arrow. */
+.explainerToggle {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 32px;
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mantine-color-dimmed);
+}

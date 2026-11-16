@@ -9,7 +9,10 @@ import {
   Stack,
   Text,
   TextInput,
+  UnstyledButton,
+  Collapse,
 } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { SearchSelect } from '../../components/SearchSelect';
 import { AnchorLink } from '../../components/AnchorLink';
@@ -165,6 +168,8 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
       ? undefined
       : { ...first, players: rankings.data?.pages.flatMap((page) => page.players) ?? [] };
 
+  // Folded away until asked for: the rankings come first.
+  const [explainerOpen, { toggle: toggleExplainer }] = useDisclosure(false);
   const sidebar = (
     <>
       <FilterToggle active={Number(Boolean(search.q)) + Number(Boolean(search.faction))}>
@@ -213,47 +218,57 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
           </Stack>
         </Panel>
       </FilterToggle>
-      <Panel title="How points work">
-        <Stack gap="sm">
-          <div>
-            <Text size="xs" fw={600}>
-              Points
-            </Text>
-            <Text size="xs" c="dimmed">
-              The 5 best results of the last 12 months at big events.
-            </Text>
-            <ul className={classes.facts}>
-              <li>
-                <Text size="xs" c="dimmed">
-                  Size: 1st of 100 players scores 100; of 400, 200; of 20, 45.
-                </Text>
-              </li>
-              <li>
-                <Text size="xs" c="dimmed">
-                  Field: an average of 1550 wh40k-elo scores ×1; each 100 above adds 50% (×0.75 to
-                  ×1.5).
-                </Text>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <Text size="xs" fw={600}>
-              Overall
-            </Text>
-            <Text size="xs" c="dimmed">
-              60% wh40k-elo percentile, 40% points percentile (points alone when unrated). Hover a
-              place for the score.
-            </Text>
-          </div>
-          <div>
-            <Text size="xs" fw={600}>
-              wh40k-elo
-            </Text>
-            <Text size="xs" c="dimmed">
-              An Elo rating from all of BCP&apos;s games, imported daily.
-            </Text>
-          </div>
-        </Stack>
+      <Panel>
+        <UnstyledButton
+          onClick={toggleExplainer}
+          aria-expanded={explainerOpen}
+          className={classes.explainerToggle}
+        >
+          <span>How points work</span>
+          <span aria-hidden>{explainerOpen ? '▾' : '▸'}</span>
+        </UnstyledButton>
+        <Collapse expanded={explainerOpen}>
+          <Stack gap="sm" mt="sm">
+            <div>
+              <Text size="xs" fw={600}>
+                Points
+              </Text>
+              <Text size="xs" c="dimmed">
+                The 5 best results of the last 12 months at big events.
+              </Text>
+              <ul className={classes.facts}>
+                <li>
+                  <Text size="xs" c="dimmed">
+                    Size: 1st of 100 players scores 100; of 400, 200; of 20, 45.
+                  </Text>
+                </li>
+                <li>
+                  <Text size="xs" c="dimmed">
+                    Field: an average of 1550 wh40k-elo scores ×1; each 100 above adds 50% (×0.75 to
+                    ×1.5).
+                  </Text>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <Text size="xs" fw={600}>
+                Overall
+              </Text>
+              <Text size="xs" c="dimmed">
+                60% wh40k-elo percentile, 40% points percentile (points alone when unrated). Hover a
+                place for the score.
+              </Text>
+            </div>
+            <div>
+              <Text size="xs" fw={600}>
+                wh40k-elo
+              </Text>
+              <Text size="xs" c="dimmed">
+                An Elo rating from all of BCP&apos;s games, imported daily.
+              </Text>
+            </div>
+          </Stack>
+        </Collapse>
       </Panel>
     </>
   );
