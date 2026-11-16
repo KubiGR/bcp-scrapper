@@ -20,6 +20,13 @@ import { ErrorState } from '../../components/ErrorState';
 import { FieldElo } from '../../components/FieldElo';
 import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
+import {
+  Card,
+  CardGroup,
+  PageHeading,
+  SidebarLayout,
+  scoreboardClasses,
+} from '../../components/Scoreboard';
 import { PlayerLine } from '../../components/PlayerLine';
 import { formatIsoDay, plural } from '../../lib/format';
 import { listPath, openHere } from '../../lib/open-link';
@@ -120,8 +127,9 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
   const notLoaded = results.data ? results.data.eventsInRange - results.data.eventsLoaded : 0;
 
   return (
-    <div className={classes.layout}>
-      <Box component="aside" aria-label="Filters" className={classes.sidebar}>
+    <SidebarLayout
+      sidebarLabel="Filters"
+      sidebar={
         <FilterToggle
           active={
             [factions, dispositions, detachments].filter((chosen) => chosen.length > 0).length
@@ -201,32 +209,33 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
             </Stack>
           </Panel>
         </FilterToggle>
-      </Box>
-
-      <Stack gap="lg" className={classes.main}>
-        <div className={classes.heading}>
-          <div>
-            <Title order={1}>Top lists</Title>
-            {results.data && (
-              <Text c="dimmed" mt={4}>
-                {plural(found.length, 'player')}
-                {results.data.truncated ? '+' : ''} at {lossLabel(maxLosses)}
-                {factions.length > 0 ? `, ${factions.join(', ')}` : ''}
-              </Text>
-            )}
-          </div>
-          <Select
-            label="Sort by"
-            data={SORTS.map(({ value, label }) => ({ value, label }))}
-            value={sortKey}
-            onChange={(value) => {
-              const next = SORTS.find((option) => option.value === value);
-              if (next) setSortKey(next.value);
-            }}
-            allowDeselect={false}
-            w={170}
-          />
-        </div>
+      }
+    >
+      <Stack gap="lg">
+        <PageHeading
+          controls={
+            <Select
+              label="Sort by"
+              data={SORTS.map(({ value, label }) => ({ value, label }))}
+              value={sortKey}
+              onChange={(value) => {
+                const next = SORTS.find((option) => option.value === value);
+                if (next) setSortKey(next.value);
+              }}
+              allowDeselect={false}
+              w={170}
+            />
+          }
+        >
+          <Title order={1}>Top lists</Title>
+          {results.data && (
+            <Text c="dimmed" mt={4}>
+              {plural(found.length, 'player')}
+              {results.data.truncated ? '+' : ''} at {lossLabel(maxLosses)}
+              {factions.length > 0 ? `, ${factions.join(', ')}` : ''}
+            </Text>
+          )}
+        </PageHeading>
 
         {results.isPending && <Skeleton height={200} />}
         {results.error && (
@@ -260,13 +269,11 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                   if (first === undefined) return null;
                   const record = formatRecord(first);
                   return (
-                    <section key={record} className={classes.group} aria-label={record}>
-                      <h2 className={classes.groupHeading}>
-                        <span className={classes.groupRecord}>{record}</span>
-                        <span className={classes.groupLabel}>
-                          {recordGroupLabel(first, group.length)}
-                        </span>
-                      </h2>
+                    <CardGroup
+                      key={record}
+                      label={record}
+                      description={recordGroupLabel(first, group.length)}
+                    >
                       {group.map((player) => (
                         <ResultCard
                           key={`${player.eventId}:${player.bcpId}`}
@@ -274,11 +281,11 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                           onOpen={openPlayer}
                         />
                       ))}
-                    </section>
+                    </CardGroup>
                   );
                 })
               ) : (
-                <div className={classes.group}>
+                <div className={scoreboardClasses.group}>
                   {sorted.map((player) => (
                     <ResultCard
                       key={`${player.eventId}:${player.bcpId}`}
@@ -300,7 +307,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
           setOpenKey(null);
         }}
       />
-    </div>
+    </SidebarLayout>
   );
 }
 
@@ -315,11 +322,8 @@ interface ResultCardProps {
 function ResultCard({ player, showRecord = false, onOpen }: ResultCardProps) {
   const placing = placingLine(player);
   return (
-    <article
-      className={classes.card}
-      onClick={(e) => {
-        // Links and buttons on the card do their own thing.
-        if (e.target instanceof Element && e.target.closest('a, button')) return;
+    <Card
+      onOpen={() => {
         onOpen(player);
       }}
     >
@@ -381,6 +385,6 @@ function ResultCard({ player, showRecord = false, onOpen }: ResultCardProps) {
       >
         List
       </Button>
-    </article>
+    </Card>
   );
 }

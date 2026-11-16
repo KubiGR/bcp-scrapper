@@ -1,0 +1,60 @@
+/* A team group's heading: tick box, the toggle (placing, name, record), then its actions. */
+.teamHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+  padding-bottom: var(--mantine-spacing-xs);
+  border-bottom: 1px solid rgb(255 255 255 / 0.07);
+}
+
+.teamToggle {
+  flex: 1 1 240px;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--mantine-spacing-sm);
+}
+
+.teamName {
+  font-size: var(--mantine-font-size-lg);
+  font-weight: 600;
+}
+
+/* A player card's pieces, left to right; each wraps under the one before on a narrow card. */
+.placing {
+  flex: 0 0 3rem;
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-lg);
+  color: var(--mantine-color-dimmed);
+}
+
+.who {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.army {
+  flex: 3 1 240px;
+  min-width: 0;
+}
+
+.record {
+  flex: 0 0 4.5rem;
+  font-family: var(--mantine-font-family-monospace);
+  font-weight: 600;
+}
+
+.opp {
+  flex: 0 0 5.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.list {
+  flex: 0 0 auto;
+  margin-left: auto;
+}

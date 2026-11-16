@@ -31,6 +31,21 @@ const teamToggle = (team: string) => ({
     el.getAttribute('aria-expanded') !== null && el.textContent.includes(team),
 });
 
+/** Picks an order from the "Sort by" menu. */
+const pickSort = async (label: string) => {
+  const [input] = screen.getAllByLabelText('Sort by');
+  if (input === undefined) throw new Error('no Sort by input');
+  fireEvent.click(input);
+  fireEvent.click(await screen.findByRole('option', { name: label }));
+};
+
+/** The card a player's name is on. */
+const cardOf = (name: string) => {
+  const card = screen.getByRole('link', { name }).closest('article');
+  if (card === null) throw new Error(`no card for ${name}`);
+  return card;
+};
+
 describe('PlayersPanel', () => {
   it('marks a top-ranked player with their rank', async () => {
     stubFetchRoutes({
@@ -46,7 +61,7 @@ describe('PlayersPanel', () => {
     expect(badge).toHaveAttribute('href', '/players/US-ZED');
   });
 
-  it('links the name to the player’s page; the row and the list badge open the list', async () => {
+  it('links the name to the player’s page; the card and the list badge open the list', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': { items: [aPlayer({ bcpUserId: 'US-ADA' })] },
       'GET /api/players/PL-ADA/list': {
@@ -72,7 +87,7 @@ describe('PlayersPanel', () => {
     expect(await screen.findByText(/Gladius Task Force/)).toBeInTheDocument();
   });
 
-  it('sorts the players on a column header', async () => {
+  it('sorts the players by the order picked', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': {
         items: [
@@ -91,14 +106,13 @@ describe('PlayersPanel', () => {
         .map((b) => b.textContent)
         .filter((text) => text === 'Zed Zulu' || text === 'Ada Archer');
     expect(names()).toEqual(['Zed Zulu', 'Ada Archer']);
-    // The table's sortable headers are buttons.
-    fireEvent.click(screen.getByRole('button', { name: /^Player/ }));
+    await pickSort('Player');
     expect(names()).toEqual(['Ada Archer', 'Zed Zulu']);
-    fireEvent.click(screen.getByRole('button', { name: /^#/ }));
+    await pickSort('Placing');
     expect(names()).toEqual(['Zed Zulu', 'Ada Archer']);
   });
 
-  it('sorts W-L-D like standings: most wins, then draws, then fewest losses', async () => {
+  it('groups by record like standings: most wins, then draws, then fewest losses', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': {
         items: [
@@ -121,11 +135,16 @@ describe('PlayersPanel', () => {
         .filter((text) =>
           ['Three Oh', 'Four One', 'Five Oh', 'Four Draw', 'No Games'].includes(text),
         );
-    fireEvent.click(screen.getByRole('button', { name: /^W-L-D/ }));
     expect(names()).toEqual(['Five Oh', 'Four Draw', 'Four One', 'Three Oh', 'No Games']);
-    // No games is no record: last either way.
-    fireEvent.click(screen.getByRole('button', { name: /^W-L-D/ }));
-    expect(names().at(-1)).toBe('No Games');
+    expect(
+      screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual([
+      '5-0-0Undefeated · 1 player',
+      '4-0-1Undefeated, 1 draw · 1 player',
+      '4-1-0One loss · 1 player',
+      '3-0-0Undefeated · 1 player',
+      'No games1 player',
+    ]);
   });
 
   it('shows how strong each player’s opponents here were, sortable', async () => {
@@ -151,16 +170,16 @@ describe('PlayersPanel', () => {
     renderWithRouter(
       <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
     );
-    const hard = (await screen.findByRole('link', { name: 'Hard Road' })).closest('tr');
+    const hard = (await screen.findByRole('link', { name: 'Hard Road' })).closest('article');
     if (hard === null) throw new Error('no row');
     // Tougher draws get hotter colours: 60/65/70% and 1650/1700/1750 Elo; easy ones are dimmed.
     expect(within(hard).getByText('66%')).toHaveAttribute('data-draw', 'tough-2');
     expect(within(hard).getByText('1712')).toHaveAttribute('data-draw', 'tough-2');
-    const soft = screen.getByRole('link', { name: 'Soft Draw' }).closest('tr');
+    const soft = screen.getByRole('link', { name: 'Soft Draw' }).closest('article');
     if (soft === null) throw new Error('no row');
     expect(within(soft).getByText('30%')).toHaveAttribute('data-draw', 'easy');
     expect(within(soft).getByText('1480')).toHaveAttribute('data-draw', 'easy');
-    const none = screen.getByRole('link', { name: 'No Pairings' }).closest('tr');
+    const none = screen.getByRole('link', { name: 'No Pairings' }).closest('article');
     if (none === null) throw new Error('no row');
     expect(within(none).getAllByText('—').length).toBeGreaterThanOrEqual(2);
     const names = () =>
@@ -168,9 +187,9 @@ describe('PlayersPanel', () => {
         .getAllByRole('link')
         .map((b) => b.textContent)
         .filter((text) => ['Soft Draw', 'Hard Road', 'No Pairings'].includes(text));
-    fireEvent.click(screen.getByRole('button', { name: /^Opp\. Elo/ }));
+    await pickSort('Opp. Elo');
     expect(names()).toEqual(['Hard Road', 'Soft Draw', 'No Pairings']);
-    fireEvent.click(screen.getByRole('button', { name: /^Opp\. win/ }));
+    await pickSort('Opp. win %');
     expect(names()).toEqual(['Hard Road', 'Soft Draw', 'No Pairings']);
   });
 
@@ -186,7 +205,7 @@ describe('PlayersPanel', () => {
       <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
     );
     const row = async (name: string) => {
-      const tr = (await screen.findByRole('link', { name })).closest('tr');
+      const tr = (await screen.findByRole('link', { name })).closest('article');
       if (tr === null) throw new Error('no row');
       return within(tr);
     };
@@ -223,13 +242,12 @@ describe('PlayersPanel', () => {
       />,
     );
     expect(await screen.findByText('Shared list text')).toBeInTheDocument();
-    // Anywhere on the row but the name (that's the player's page) opens their list.
-    const ben = screen.getByRole('link', { name: 'Ben Brass' }).closest('tr');
-    fireEvent.click(ben?.querySelector('td') as Element);
+    // Anywhere on the card but the name (that's the player's page) opens their list.
+    fireEvent.click(cardOf('Ben Brass'));
     expect(onOpenPlayer).toHaveBeenCalledWith('PL-BEN');
   });
 
-  it('names faction, detachments, disposition and record under the player too, for phones', async () => {
+  it('names faction, detachments and disposition on the card, and the record at a team event', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': {
         items: [
@@ -244,13 +262,10 @@ describe('PlayersPanel', () => {
     });
     renderWithRouter(<PlayersPanel event={anEventDetail()} loadingFromBcp={false} />);
     await screen.findByRole('link', { name: 'Ada Archer' });
-    expect(
-      screen.getByText(
-        (_, element) =>
-          element?.tagName === 'P' &&
-          element.textContent === 'Space Marines · Gladius Task Force · Take and Hold · 3-1-0',
-      ),
-    ).toBeInTheDocument();
+    const card = within(cardOf('Ada Archer'));
+    expect(card.getByText('Space Marines · Gladius Task Force')).toBeInTheDocument();
+    expect(card.getByText('Take and Hold')).toBeInTheDocument();
+    expect(card.getByText('3-1-0')).toBeInTheDocument();
   });
 
   it('groups a team event’s players by team, collapsibly', async () => {
@@ -349,7 +364,7 @@ describe('PlayersPanel', () => {
     expect(noTeam).toBeInTheDocument();
   });
 
-  it('shows a Disposition column, "—" when unset, and a disposition filter', async () => {
+  it('shows each player’s disposition, and a disposition filter', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': {
         items: [
@@ -363,11 +378,10 @@ describe('PlayersPanel', () => {
       <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
     );
 
-    const adaRow = (await screen.findByText('Ada Archer')).closest('tr');
-    const caraRow = screen.getByText('Cara Cole').closest('tr');
-    // In the Disposition column and in the phone line (one of them hidden by CSS in a browser).
-    expect(adaRow && within(adaRow).getAllByText('Take and Hold')).toHaveLength(2);
-    expect(caraRow && within(caraRow).getAllByText('Disruption')).toHaveLength(2);
+    const adaRow = (await screen.findByText('Ada Archer')).closest('article');
+    const caraRow = screen.getByText('Cara Cole').closest('article');
+    expect(adaRow && within(adaRow).getByText('Take and Hold')).toBeInTheDocument();
+    expect(caraRow && within(caraRow).getByText('Disruption')).toBeInTheDocument();
 
     const dispositionFilter = screen.getByRole('combobox', { name: 'Disposition' });
     expect(dispositionFilter).toHaveAttribute('placeholder', 'All dispositions');
@@ -386,7 +400,7 @@ describe('PlayersPanel', () => {
     expect(screen.queryByText('Nyx None')).not.toBeInTheDocument();
   });
 
-  it('shows a Detachment column, a detachment filter, and ⚠ on a guessed army', async () => {
+  it('shows each player’s detachments, a detachment filter, and ⚠ on a guessed army', async () => {
     stubFetchRoutes({
       'GET /api/events/EVT1/players': {
         items: [
@@ -406,11 +420,10 @@ describe('PlayersPanel', () => {
       <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
     );
 
-    const adaRow = (await screen.findByText('Ada Archer')).closest('tr');
-    expect(adaRow && within(adaRow).getByText('Kult of Speed + Wreckas')).toBeInTheDocument();
-    const caraRow = screen.getByText('Cara Cole').closest('tr');
-    // In the Faction column and in the phone line (one of them hidden by CSS in a browser).
-    expect(caraRow && within(caraRow).getAllByLabelText('Guessed from the list')).toHaveLength(2);
+    const adaRow = (await screen.findByText('Ada Archer')).closest('article');
+    expect(adaRow && within(adaRow).getByText(/Kult of Speed \+ Wreckas/)).toBeInTheDocument();
+    const caraRow = screen.getByText('Cara Cole').closest('article');
+    expect(caraRow && within(caraRow).getByLabelText('Guessed from the list')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Detachment' }));
     fireEvent.click(await screen.findByRole('option', { name: 'Hypercrypt Legion' }));

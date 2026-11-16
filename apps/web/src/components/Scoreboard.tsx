@@ -1,0 +1,116 @@
+import type { MouseEvent, ReactNode } from 'react';
+import classes from './Scoreboard.module.css';
+
+export { classes as scoreboardClasses };
+
+interface SidebarLayoutProps {
+  /** What the sidebar holds, e.g. "Filters"; names it for screen readers. */
+  sidebarLabel: string;
+  sidebar: ReactNode;
+  children: ReactNode;
+}
+
+/** The Scoreboard layout: a sidebar (filters, totals, actions) beside the page's content. */
+export function SidebarLayout({ sidebarLabel, sidebar, children }: SidebarLayoutProps) {
+  return (
+    <div className={classes.layout}>
+      <aside aria-label={sidebarLabel} className={classes.sidebar}>
+        {sidebar}
+      </aside>
+      <div className={classes.main}>{children}</div>
+    </div>
+  );
+}
+
+/** A page's title row: the title and its line on the left, controls (a sort) on the right. */
+export function PageHeading({ children, controls }: { children: ReactNode; controls?: ReactNode }) {
+  return (
+    <div className={classes.pageHeading}>
+      <div>{children}</div>
+      {controls}
+    </div>
+  );
+}
+
+interface CardGroupProps {
+  /** The group's key, shown big: "4-1-0", "Nov 14–15", "Tier 1". */
+  label: ReactNode;
+  /** What the key means, after it: "One loss · 6 players". */
+  description?: ReactNode;
+  /** Names the group for screen readers; defaults to the label when that's text. */
+  ariaLabel?: string;
+  children: ReactNode;
+}
+
+/** A run of cards under a big heading. */
+export function CardGroup({ label, description, ariaLabel, children }: CardGroupProps) {
+  return (
+    <section
+      className={classes.group}
+      aria-label={ariaLabel ?? (typeof label === 'string' ? label : undefined)}
+    >
+      <h2 className={classes.groupHeading}>
+        <span className={classes.groupKey}>{label}</span>
+        {description !== undefined && <span className={classes.groupLabel}>{description}</span>}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+interface CardProps {
+  /** Clicking anywhere on the card but its links and buttons; none, not clickable. */
+  onOpen?: () => void;
+  className?: string;
+  children: ReactNode;
+}
+
+/** One item's card; with `onOpen`, the whole card opens it. */
+export function Card({ onOpen, className, children }: CardProps) {
+  const open =
+    onOpen === undefined
+      ? undefined
+      : (e: MouseEvent) => {
+          // Links, buttons and form controls on the card do their own thing.
+          if (e.target instanceof Element && e.target.closest('a, button, input, label')) return;
+          onOpen();
+        };
+  return (
+    <article
+      className={className === undefined ? classes.card : `${classes.card} ${className}`}
+      data-clickable={onOpen === undefined ? undefined : true}
+      onClick={open}
+    >
+      {children}
+    </article>
+  );
+}
+
+/** A figure with its label under it: "1543" over "field Elo". */
+export function Stat({
+  value,
+  label,
+  className,
+}: {
+  value: ReactNode;
+  label: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={className === undefined ? classes.stat : `${classes.stat} ${className}`}>
+      <span className={classes.statValue}>{value}</span>
+      <span className={classes.statLabel}>{label}</span>
+    </div>
+  );
+}
+
+/** A row of stat tiles under a page's title. */
+export function StatTiles({ items }: { items: { value: ReactNode; label: string }[] }) {
+  return (
+    <div className={classes.tiles}>
+      {items.map((item) => (
+        <Stat key={item.label} value={item.value} label={item.label} className={classes.tile} />
+      ))}
+    </div>
+  );
+}
