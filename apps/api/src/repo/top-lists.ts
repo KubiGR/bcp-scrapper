@@ -8,7 +8,7 @@ import {
   type PlayerSearchResponse,
   type TopListPlayer,
 } from '@bcp/shared';
-import { and, desc, gt, gte, inArray, lt, lte, sql } from 'drizzle-orm';
+import { and, desc, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { armyLists, events, players, teams } from '../db/schema';
 import { latestQueueRowsByPlayer } from './fetch-queue';
@@ -53,10 +53,11 @@ const sorted = (values: Iterable<string>) =>
   [...new Set(values)].sort((a, b) => a.localeCompare(b));
 
 /**
- * Players of big events starting in the range (default: the last 90 days), of at least
- * `minRounds` rounds when set, who went X-n or better, filtered by faction (the guessed army counts), disposition and detachment (only read lists).
- * Best record first, like standings (most wins, then draws, then fewest losses), then newest
- * event; at most TOP_LISTS_LIMIT. One query for the qualifying players; list states only for the
+ * Players of big events starting in the range (default: the last 90 days) who played at least
+ * `minRounds` games when set (a player who dropped, or an event still running, falls short), who
+ * went X-n or better, filtered by faction (the guessed army counts), disposition and detachment (only read lists).
+ * Best record first: fewest losses (X-0, then X-1, like the record filter), then most wins, then
+ * most draws; then newest event; at most TOP_LISTS_LIMIT. One query for the qualifying players; list states only for the
  * rows returned.
  */
 export async function searchTopLists(
@@ -143,15 +144,15 @@ export async function searchTopLists(
         and(
           inArray(players.eventId, ids),
           lte(players.losses, query.maxLosses),
-          // qualifiesForMaxLosses: at least one game played.
-          gt(sql`${players.wins} + ${players.losses} + ${players.draws}`, 0),
+          // qualifiesForMaxLosses: at least one game played; with a minimum, that many.
+          gte(sql`${players.wins} + ${players.losses} + ${players.draws}`, query.minRounds ?? 1),
         ),
       )
-      // Best record first, like standings: most wins, then draws, then fewest losses; then newest.
+      // Best record first: fewest losses, then most wins, then most draws; then newest.
       .orderBy(
+        players.losses,
         desc(players.wins),
         desc(players.draws),
-        players.losses,
         desc(events.startDate),
         players.name,
       ),

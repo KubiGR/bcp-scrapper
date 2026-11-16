@@ -4,15 +4,15 @@ import type { SortValue } from '../../lib/table-sort';
 type FoundPlayer = PlayerSearchResponse['players'][number];
 
 /**
- * How a found player's columns sort (Top lists, Meta's players). The record sorts like standings:
- * most wins, then draws, then fewest losses.
+ * How a found player's columns sort (Top lists, Meta's players). The record sorts fewest losses
+ * first (X-0, then X-1, like the record filter), then most wins, then most draws.
  */
 export const FOUND_PLAYER_SORT = {
   player: (p) => p.name,
   event: (p) => Date.parse(p.eventStartDate),
   // No games is no record: blank, so last either way.
   record: (p) =>
-    p.wins + p.losses + p.draws === 0 ? null : p.wins * 1_000_000 + p.draws * 1_000 - p.losses,
+    p.wins + p.losses + p.draws === 0 ? null : -p.losses * 1_000_000 + p.wins * 1_000 + p.draws,
   army: (p) => p.faction,
 } satisfies Record<string, SortValue<FoundPlayer>>;
 

@@ -104,7 +104,7 @@ describe('TopListsPage', () => {
     expect(names()).toEqual(['Zed Zulu', 'Ada Archer']);
   });
 
-  it('starts sorted by W-L-D like standings: most wins, then draws, then fewest losses', async () => {
+  it('starts sorted by W-L-D: fewest losses first, then most wins', async () => {
     const player = (bcpId: string, name: string, wins: number, losses: number) => ({
       ...aPlayer({ bcpId, name, wins, losses, draws: 0 }),
       eventId: 'EVT1',
@@ -120,6 +120,7 @@ describe('TopListsPage', () => {
           player('P1', 'Three Oh', 3, 0),
           player('P2', 'Four One', 4, 1),
           player('P3', 'Five Oh', 5, 0),
+          player('P4', 'Three One', 3, 1),
         ],
       }),
     });
@@ -130,10 +131,10 @@ describe('TopListsPage', () => {
         .getAllByRole('row')
         .slice(1)
         .map((row) => row.querySelector('td p')?.textContent);
-    expect(names()).toEqual(['Five Oh', 'Four One', 'Three Oh']);
-    // A click flips it: fewest wins first.
+    expect(names()).toEqual(['Five Oh', 'Three Oh', 'Four One', 'Three One']);
+    // A click flips it: worst record first.
     fireEvent.click(screen.getByRole('button', { name: /^W-L-D/ }));
-    expect(names()).toEqual(['Three Oh', 'Four One', 'Five Oh']);
+    expect(names()).toEqual(['Three One', 'Four One', 'Three Oh', 'Five Oh']);
   });
 
   it('shows each event’s size next to its date, standing out more the bigger it is', async () => {
