@@ -1,12 +1,12 @@
 import { Anchor, Popover, Stack, UnstyledButton } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { detachmentNamesQuery } from '../settings/detachment-names-queries';
 import classes from './AdminTodo.module.css';
 import { isAdminView, meQuery, usersQuery } from './auth-queries';
+import { useTitleCount } from '../../lib/page-title';
 
-const SITE_TITLE = 'Logis';
 const EVERY_FEW_MINUTES = 3 * 60_000;
 
 const plural = (n: number, one: string, many: string) => `${String(n)} ${n === 1 ? one : many}`;
@@ -67,10 +67,7 @@ export function AdminTodo() {
   const detachments = unlinked + outside;
   const total = admin ? waiting + detachments : 0;
 
-  // The tab shows the count too, so it's seen from another tab.
-  useEffect(() => {
-    document.title = total > 0 ? `(${String(total)}) ${SITE_TITLE}` : SITE_TITLE;
-  }, [total]);
+  useTitleCount(total);
 
   if (total === 0) return null;
   const items = [

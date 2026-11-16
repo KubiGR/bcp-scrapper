@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 import { MetaPage } from '../features/meta/MetaPage';
 import type { MetaSearch } from '../features/meta/meta-queries';
+import { listed, usePageTitle } from '../lib/page-title';
 
 const optionalDay = z.iso.date().optional().catch(undefined);
 
@@ -28,6 +29,7 @@ export const Route = createFileRoute('/analysis/meta')({
 function MetaRoute() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  usePageTitle(listed(search.factions, '|'), 'Meta');
   return (
     <MetaPage
       search={search}

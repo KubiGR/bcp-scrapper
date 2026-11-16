@@ -16,6 +16,7 @@ import {
   type FinderSearch,
 } from './finder-search';
 import { SizeFilter } from './SizeFilter';
+import { usePageTitle } from '../../lib/page-title';
 
 const route = getRouteApi('/');
 
@@ -27,6 +28,7 @@ const SEARCH_EMPTY =
 export function FinderPage() {
   const search = route.useSearch();
   const navigate = route.useNavigate();
+  usePageTitle(search.q && `“${search.q}”`, search.country, 'Tournaments');
   const now = new Date();
   const window = finderWindow(search, now);
   const events = useQuery(eventsQuery(toEventsQueryString(search, now)));

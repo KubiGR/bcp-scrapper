@@ -10,6 +10,7 @@ import { formatIsoDay, ordinal } from '../../lib/format';
 import { playerRankingQuery } from './rankings-queries';
 import { FactionIcon } from '../../components/FactionIcon';
 import { HoverHint } from '../../components/HoverHint';
+import { usePageTitle } from '../../lib/page-title';
 
 /** wh40k-elo's site (it has no page per player). */
 const WH40K_ELO_SITE = 'https://wh40k-elo.duckdns.org/';
@@ -109,6 +110,7 @@ function HistoryRow({ entry }: { entry: PlayerHistoryEntry }) {
 /** One player's ranking and every event they played, the counted results marked. */
 export function PlayerPage({ userId }: { userId: string }) {
   const player = useQuery(playerRankingQuery(userId));
+  usePageTitle(player.data?.name ?? 'Player');
   if (player.isPending) return <Skeleton height={240} />;
   if (player.error) {
     return player.error instanceof ApiError && player.error.status === 404 ? (

@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 import { PlayersPage, type PlayersSearch } from '../features/rankings/PlayersPage';
+import { usePageTitle } from '../lib/page-title';
 
 const optionalText = z.string().trim().min(1).max(100).optional().catch(undefined);
 
@@ -19,6 +20,7 @@ export const Route = createFileRoute('/players/')({
 function PlayersRoute() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  usePageTitle(search.q?.trim() && `“${search.q.trim()}”`, search.faction, 'Players');
   return (
     <PlayersPage
       search={search}
