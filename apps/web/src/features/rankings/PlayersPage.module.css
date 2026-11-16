@@ -26,3 +26,13 @@
 .figure {
   flex: 0 0 4rem;
 }
+
+/* How points work: short labelled parts, the point's two factors as a tight list. */
+.facts {
+  margin: 4px 0 0;
+  padding-left: 1.1em;
+}
+
+.facts li + li {
+  margin-top: 2px;
+}
