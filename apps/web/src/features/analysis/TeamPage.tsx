@@ -173,9 +173,9 @@ export function TeamPage({ eventId, teamId }: { eventId: string; teamId: string 
           { value: players.length, label: players.length === 1 ? 'player' : 'players' },
         ]}
       />
-      <CardGroup label="Players" description="and their game each round">
+      <CardGroup dense label="Players" description="and their game each round">
         {players.map((row) => (
-          <Card key={row.player.id}>
+          <Card dense key={row.player.id}>
             <div className={classes.who}>
               <Text fw={600}>
                 <PlayerName name={row.player.name} userId={row.player.userId} />

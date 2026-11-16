@@ -45,7 +45,7 @@ function HistoryCard({ entry }: { entry: PlayerHistoryEntry }) {
   const dim = entry.score === null ? 'dimmed' : undefined;
   const army = [entry.faction, entry.detachments.join(' + ')].filter(Boolean).join(' · ');
   return (
-    <Card className={classes.entry}>
+    <Card dense className={classes.entry}>
       <div data-counted={entry.score !== null} className={classes.entryInner}>
         <Text c={dim} className={`numeric ${classes.placing}`}>
           {placingText(entry)}
@@ -142,14 +142,14 @@ export function PlayerPage({ userId }: { userId: string }) {
       </div>
       <section aria-label="History" className={classes.history}>
         {counted.length > 0 && (
-          <CardGroup label="Counts" description="the 5 best results, which make the points">
+          <CardGroup dense label="Counts" description="the 5 best results, which make the points">
             {counted.map((entry) => (
               <HistoryCard key={entry.playerId} entry={entry} />
             ))}
           </CardGroup>
         )}
         {others.length > 0 && (
-          <CardGroup label="Other" description="results that don’t count now">
+          <CardGroup dense label="Other" description="results that don’t count now">
             {others.map((entry) => (
               <HistoryCard key={entry.playerId} entry={entry} />
             ))}
