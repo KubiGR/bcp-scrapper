@@ -1,7 +1,9 @@
+import { DETACHMENT_SEPARATOR } from '@bcp/shared';
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 import { TopListsPage } from '../features/top-lists/TopListsPage';
 import type { TopListsSearch } from '../features/top-lists/top-lists-queries';
+import { listed, usePageTitle } from '../lib/page-title';
 
 const optionalDay = z.iso.date().optional().catch(undefined);
 const optionalText = z.string().trim().min(1).optional().catch(undefined);
@@ -24,6 +26,13 @@ export const Route = createFileRoute('/analysis/top-lists')({
 function TopListsRoute() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  usePageTitle(
+    listed(search.factions),
+    listed(search.detachments, DETACHMENT_SEPARATOR),
+    listed(search.dispositions),
+    `X-${String(search.maxLosses ?? 1)}`,
+    'Top lists',
+  );
   return (
     <TopListsPage
       search={search}

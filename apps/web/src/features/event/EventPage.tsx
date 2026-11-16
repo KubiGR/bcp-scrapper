@@ -13,6 +13,7 @@ import { SyncRunError, useSync } from '../sync/use-sync';
 import { EventHeader } from './EventHeader';
 import { eventQuery } from './event-queries';
 import { PlayersPanel } from './PlayersPanel';
+import { usePageTitle } from '../../lib/page-title';
 
 /** The event page's tabs, in order; the selected one lives in the URL (`?tab=`). */
 export const EVENT_TABS = [
@@ -41,6 +42,10 @@ interface EventPageProps {
 
 export function EventPage({ eventId, tab, onTabChange, openListId, onOpenList }: EventPageProps) {
   const event = useQuery(eventQuery(eventId));
+  usePageTitle(
+    event.data?.name ?? 'Event',
+    EVENT_TABS.find((option) => option.value === tab)?.label,
+  );
   const { start, follow, isSyncing } = useSync({
     label: 'Event sync',
     invalidate: [['event', eventId]],

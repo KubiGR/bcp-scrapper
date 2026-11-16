@@ -15,6 +15,7 @@ import { matchupFor, type TeamMatchup } from './team-matches';
 import { useRefreshWhenPairingsSettle } from './useRefreshWhenPairingsSettle';
 import { PlayerName } from '../rankings/PlayerName';
 import { RankBadge } from '../rankings/RankBadge';
+import { usePageTitle } from '../../lib/page-title';
 
 function RoundCell({ cell }: { cell: PlayerRound | null }) {
   if (!cell) return <Text c="dimmed">—</Text>;
@@ -144,6 +145,7 @@ export function TeamPage({ eventId, teamId }: { eventId: string; teamId: string 
   useRefreshWhenPairingsSettle(eventId, queued);
   const live = queued > 0;
   const team = useQuery(teamQuery(eventId, teamId, live));
+  usePageTitle(team.data?.team.name ?? 'Team', event.data?.name);
 
   if (team.isPending) return <Skeleton height={240} />;
   if (team.error) return <ErrorState error={team.error} onRetry={() => void team.refetch()} />;

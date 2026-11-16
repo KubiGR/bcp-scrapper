@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 import { MatchupsPage } from '../features/matchups/MatchupsPage';
 import { fromLegacySearch, type CrossSearch } from '../features/matchups/matchups-queries';
+import { listed, usePageTitle } from '../lib/page-title';
 
 const optionalDay = z.iso.date().optional().catch(undefined);
 const optionalText = z.string().trim().min(1).optional().catch(undefined);
@@ -30,6 +31,7 @@ export const Route = createFileRoute('/analysis/matchups')({
 function MatchupsRoute() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  usePageTitle(listed(search.factions, '|'), 'Matchups');
   return (
     <MatchupsPage
       search={fromLegacySearch(search)}

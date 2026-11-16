@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { AdminOnly } from '../features/auth/AdminOnly';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { SettingsSearchSchema } from '../features/settings/settings-search';
+import { usePageTitle } from '../lib/page-title';
 
 export const Route = createFileRoute('/settings')({
   validateSearch: SettingsSearchSchema,
@@ -11,6 +12,7 @@ export const Route = createFileRoute('/settings')({
 function SettingsRoute() {
   const { tab, faction, focus } = Route.useSearch();
   const navigate = Route.useNavigate();
+  usePageTitle('Settings');
   return (
     <AdminOnly>
       <SettingsPage
