@@ -8,6 +8,17 @@
 .cardPlayer {
   flex: 0 1 180px;
   min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+}
+
+/* The event's name on one line; the whole name on hover. */
+.eventName {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* Rank and Elo under the name, each a whole piece. */

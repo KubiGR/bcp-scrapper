@@ -254,6 +254,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                   const record = formatRecord(first);
                   return (
                     <CardGroup
+                      dense
                       key={record}
                       label={record}
                       description={recordGroupLabel(first, group.length)}
@@ -269,7 +270,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                   );
                 })
               ) : (
-                <div className={scoreboardClasses.group}>
+                <div className={scoreboardClasses.group} data-dense>
                   {sorted.map((player) => (
                     <ResultCard
                       key={`${player.eventId}:${player.bcpId}`}
@@ -307,13 +308,14 @@ function ResultCard({ player, showRecord = false, onOpen }: ResultCardProps) {
   const placing = placingLine(player);
   return (
     <Card
+      dense
       onOpen={() => {
         onOpen(player);
       }}
     >
       {showRecord && <span className={classes.cardRecord}>{formatRecord(player)}</span>}
       <div className={classes.cardPlayer}>
-        <Text fw={600}>
+        <Text fw={600} size="sm">
           <PlayerName name={player.name} userId={player.bcpUserId} />
         </Text>
         <Text size="sm" c="dimmed" className={classes.badges}>
@@ -321,7 +323,7 @@ function ResultCard({ player, showRecord = false, onOpen }: ResultCardProps) {
         </Text>
       </div>
       <div className={classes.cardEvent}>
-        <Text>
+        <Text size="sm" className={classes.eventName} title={player.eventName}>
           <AnchorLink
             to="/events/$eventId"
             params={{ eventId: player.eventId }}
@@ -362,6 +364,7 @@ function ResultCard({ player, showRecord = false, onOpen }: ResultCardProps) {
         component="a"
         href={listPath(player.eventId, player.bcpId)}
         variant="light"
+        size="xs"
         className={classes.cardList}
         onClick={openHere(() => {
           onOpen(player);

@@ -251,6 +251,7 @@ export function PlayersPanel({
         const [first] = members;
         return (
           <CardGroup
+            dense
             key={record}
             label={record}
             description={first === undefined ? undefined : recordMeaning(first, members.length)}
@@ -263,7 +264,7 @@ export function PlayersPanel({
       });
     }
     return (
-      <div className={scoreboardClasses.group}>
+      <div className={scoreboardClasses.group} data-dense>
         {sorted.map((player) => (
           <PlayerCard key={player.bcpId} player={player} showRecord {...cardProps} />
         ))}
@@ -462,7 +463,9 @@ function TeamGroup({
         )}
       </div>
       <Collapse expanded={expanded}>
-        <div className={scoreboardClasses.group}>{children}</div>
+        <div className={scoreboardClasses.group} data-dense>
+          {children}
+        </div>
       </Collapse>
     </section>
   );
@@ -482,6 +485,7 @@ function PlayerCard({ eventId, player, showRecord = false, onOpen }: PlayerCardP
   const strength = player.opponents;
   return (
     <Card
+      dense
       onOpen={() => {
         onOpen(player.bcpId);
       }}

@@ -59,14 +59,14 @@ export function SettingsPage({
         </Tabs.List>
         <Tabs.Panel value="general">
           <Grid gap="lg">
-            <Grid.Col span={{ base: 12, lg: 6 }}>
+            <Grid.Col span={{ base: 12, xl: 6 }}>
               <Stack gap="lg">
                 <BcpStatusCard />
                 <FetchQueueCard />
                 <AutoFetchCard />
               </Stack>
             </Grid.Col>
-            <Grid.Col span={{ base: 12, lg: 6 }}>
+            <Grid.Col span={{ base: 12, xl: 6 }}>
               <Stack gap="lg">
                 <DetachmentsCard />
                 <UpdatesSection />

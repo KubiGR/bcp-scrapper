@@ -52,12 +52,14 @@ export function UpdatesSection() {
     const run = (patch: GameUpdatePatch) => {
       save.mutate({ id: update.id, patch });
     };
+    // Short labels, to fit the column; the full meaning is in the aria label and on hover.
     const button = (label: string, aria: string, onClick: () => void) => (
       <Button
         size="compact-xs"
         variant="subtle"
         disabled={readOnly || save.isPending}
         aria-label={aria}
+        title={aria}
         onClick={onClick}
       >
         {label}
@@ -76,7 +78,7 @@ export function UpdatesSection() {
               run({ merged: false });
             })
           : hasVisibleBefore(update) &&
-            button('Merge into previous', `Merge into previous: ${update.name}`, () => {
+            button('Merge', `Merge into previous: ${update.name}`, () => {
               run({ merged: true });
             })}
         {button(
