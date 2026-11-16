@@ -1,0 +1,25 @@
+/* From tablet width up the tabs are a list on the left; the tab's panel fills the rest. */
+.tabs {
+  flex: 0 0 auto;
+}
+
+.tabs .tab {
+  justify-content: flex-start;
+}
+
+.panel {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-top: var(--mantine-spacing-md);
+}
+
+@media (min-width: 48em) {
+  .tabs {
+    width: 220px;
+    margin-right: var(--mantine-spacing-xl);
+  }
+
+  .panel {
+    padding-top: 0;
+  }
+}

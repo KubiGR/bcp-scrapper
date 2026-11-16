@@ -1,4 +1,4 @@
-import { Button, Group, Stack, Tabs, Title } from '@mantine/core';
+import { Button, Group, Stack, Tabs, Title, useMatches } from '@mantine/core';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { AttackerPanel } from './AttackerPanel';
 import { DefenderPanel } from './DefenderPanel';
@@ -58,6 +58,8 @@ export function MathhammerPage() {
   const back = STEPS[stepAt - 1];
   const next = STEPS[stepAt + 1];
 
+  // From tablet width up the steps are a list on the left, like the other pages' sidebars.
+  const orientation = useMatches<'horizontal' | 'vertical'>({ base: 'horizontal', sm: 'vertical' });
   return (
     <Stack gap="lg">
       <Title order={1}>Mathhammer</Title>
@@ -65,45 +67,49 @@ export function MathhammerPage() {
       <Tabs
         value={step}
         keepMounted={false}
+        orientation={orientation}
+        classNames={{ list: classes.steps, tab: classes.step }}
         onChange={(value) => {
           const chosen = STEPS.find((s) => s.value === value);
           if (chosen) setStep(chosen.value);
         }}
       >
-        <Tabs.List grow mb="lg">
+        <Tabs.List grow={orientation === 'horizontal'} mb="lg">
           {STEPS.map((s, i) => (
             <Tabs.Tab key={s.value} value={s.value}>
               {`${String(i + 1)}. ${s.label}`}
             </Tabs.Tab>
           ))}
         </Tabs.List>
-        <Tabs.Panel value="attacker">{attacker}</Tabs.Panel>
-        <Tabs.Panel value="defender">{defender}</Tabs.Panel>
-        <Tabs.Panel value="result">{result}</Tabs.Panel>
-        <Group justify="space-between" mt="lg" className={classes.stepNav}>
-          {back ? (
-            <Button
-              variant="default"
-              onClick={() => {
-                setStep(back.value);
-              }}
-            >
-              {`Back: ${back.label}`}
-            </Button>
-          ) : (
-            <span />
-          )}
-          {next && (
-            <Button
-              onClick={() => {
-                setStep(next.value);
-                toTop();
-              }}
-            >
-              {`Next: ${next.label}`}
-            </Button>
-          )}
-        </Group>
+        <div className={classes.stepBody}>
+          <Tabs.Panel value="attacker">{attacker}</Tabs.Panel>
+          <Tabs.Panel value="defender">{defender}</Tabs.Panel>
+          <Tabs.Panel value="result">{result}</Tabs.Panel>
+          <Group justify="space-between" mt="lg" className={classes.stepNav}>
+            {back ? (
+              <Button
+                variant="default"
+                onClick={() => {
+                  setStep(back.value);
+                }}
+              >
+                {`Back: ${back.label}`}
+              </Button>
+            ) : (
+              <span />
+            )}
+            {next && (
+              <Button
+                onClick={() => {
+                  setStep(next.value);
+                  toTop();
+                }}
+              >
+                {`Next: ${next.label}`}
+              </Button>
+            )}
+          </Group>
+        </div>
       </Tabs>
       {/* Away from the result, its headline numbers stay at the bottom. */}
       {step !== 'result' && (
