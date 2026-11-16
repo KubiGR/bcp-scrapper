@@ -1,15 +1,16 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { pickOption } from '../../test/pick-option';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { FactionsPage } from './FactionsPage';
 import { metaResponse, necrons, orks, tiny, unknown } from './meta-test-data';
 
-const tableRows = async () =>
-  within(await screen.findByRole('table', { name: 'Factions' }))
-    .getAllByRole('row')
-    .slice(1);
-/** The faction rows, without the tier headings. */
-const rowsOf = async () => (await tableRows()).filter((row) => row.dataset.faction !== undefined);
+/** The faction cards, in order. */
+const rowsOf = async () => [
+  ...(await screen.findByRole('list', { name: 'Factions' })).querySelectorAll<HTMLElement>(
+    '[data-faction]',
+  ),
+];
 const nameOf = (row: HTMLElement) => row.dataset.faction;
 const cells = (row: HTMLElement | undefined) => {
   if (row === undefined) throw new Error('no row');
@@ -22,26 +23,26 @@ describe('FactionsPage', () => {
       'GET /api/meta': metaResponse({ factions: [unknown, orks, necrons, tiny] }),
     });
     renderWithRouter(<FactionsPage search={{}} onSearchChange={vi.fn()} />);
-    const rows = await tableRows();
-    expect(rows.map((row) => row.dataset.faction ?? row.textContent)).toEqual([
-      'SDominant55%+1 faction',
-      'Orks',
-      'DWeakunder 46%1 faction',
-      'Necrons',
-      '–Too few playersunder 10 players1 faction',
-      'Grey Knights',
+    const rows = await rowsOf();
+    expect(rows.map(nameOf)).toEqual(['Orks', 'Necrons', 'Grey Knights']);
+    expect(
+      screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual([
+      'SDominant · 55%+ · 1 faction',
+      'DWeak · under 46% · 1 faction',
+      '–Too few players · under 10 players · 1 faction',
     ]);
-    const ork = cells(rows[1]);
+    const ork = cells(rows[0]);
     expect(ork.getByText('20 players · 20% share · 100 games')).toBeInTheDocument();
     expect(ork.getByText('58.0%')).toBeInTheDocument();
     expect(ork.getByLabelText('2 event wins')).toBeInTheDocument();
     expect(ork.getByText('50%')).toHaveAttribute('data-tone', 'good');
     expect(ork.getByText('S')).toHaveAttribute('data-tier', 'S');
     // The bar fills from even (50%) towards 58% on a 35–65% track.
-    const fill = rows[1]?.querySelector<HTMLElement>('[data-rate-fill]');
+    const fill = rows[0]?.querySelector<HTMLElement>('[data-rate-fill]');
     expect(fill?.style.left).toBe('50%');
     expect(parseFloat(fill?.style.width ?? '')).toBeCloseTo(26.67, 1);
-    expect(rows[5]).toHaveAttribute('data-dimmed', 'true');
+    expect(rows[2]).toHaveAttribute('data-dimmed', 'true');
     expect(screen.getByText('100 players · 3 events')).toBeInTheDocument();
   });
 
@@ -50,10 +51,14 @@ describe('FactionsPage', () => {
       'GET /api/meta': metaResponse({ factions: [unknown, orks, necrons, tiny] }),
     });
     renderWithRouter(<FactionsPage search={{ layout: 'flat' }} onSearchChange={vi.fn()} />);
-    const rows = await tableRows();
+    const rows = await rowsOf();
     // Reliable: Grey Knights 82%, Orks 50%, Necrons 32%.
     expect(rows.map(nameOf)).toEqual(['Grey Knights', 'Orks', 'Necrons']);
-    expect(rows.map((row) => row.querySelector('td')?.textContent)).toEqual(['1', '2', '3']);
+    expect(rows.map((row) => row.querySelector('[data-rank]')?.textContent)).toEqual([
+      '1',
+      '2',
+      '3',
+    ]);
   });
 
   it('switches layout in the search', async () => {
@@ -79,11 +84,11 @@ describe('FactionsPage', () => {
     const rows = await rowsOf();
     const ork = cells(rows.find((row) => nameOf(row) === 'Orks'));
     expect(ork.getByText('1.40×')).toHaveAttribute('data-tone', 'good');
-    fireEvent.click(screen.getByRole('button', { name: /Overrep/ }));
+    await pickOption('Sort by', 'Overrep');
     expect((await rowsOf()).map(nameOf)).toEqual(['Orks', 'Grey Knights', 'Necrons']);
   });
 
-  it('sorts within each tier by another column on click', async () => {
+  it('sorts within each tier by the order picked', async () => {
     stubFetchRoutes({
       'GET /api/meta': metaResponse({
         factions: [
@@ -95,7 +100,7 @@ describe('FactionsPage', () => {
     });
     renderWithRouter(<FactionsPage search={{}} onSearchChange={vi.fn()} />);
     expect((await rowsOf()).map(nameOf)).toEqual(['Orks', 'Custodes', 'Necrons']);
-    fireEvent.click(screen.getByRole('button', { name: 'Wins' }));
+    await pickOption('Sort by', 'Event wins');
     expect((await rowsOf()).map(nameOf)).toEqual(['Custodes', 'Orks', 'Necrons']);
   });
 
@@ -103,8 +108,12 @@ describe('FactionsPage', () => {
     stubFetchRoutes({ 'GET /api/meta': metaResponse() });
     renderWithRouter(<FactionsPage search={{ type: 'teams' }} onSearchChange={vi.fn()} />);
     await rowsOf();
-    expect(screen.queryByRole('button', { name: 'Wins' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('2 event wins')).not.toBeInTheDocument();
+    const [sortBy] = screen.getAllByLabelText('Sort by');
+    if (sortBy === undefined) throw new Error('no Sort by');
+    fireEvent.click(sortBy);
+    expect(await screen.findByRole('option', { name: 'Win rate' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Event wins' })).not.toBeInTheDocument();
   });
 
   it('puts the three best win rates on a podium, with their change', async () => {
@@ -195,7 +204,7 @@ describe('FactionsPage', () => {
         onSearchChange={vi.fn()}
       />,
     );
-    const table = await screen.findByRole('table', { name: 'Factions' });
+    const table = await screen.findByRole('list', { name: 'Factions' });
     const link = within(table).getByRole('link', { name: 'Orks' });
     const href = new URL(link.getAttribute('href') ?? '', 'http://x');
     expect(href.pathname).toBe('/analysis/meta');

@@ -1,25 +1,23 @@
 import type { MetaRow } from '@bcp/shared';
-import {
-  Group,
-  Input,
-  SegmentedControl,
-  Skeleton,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-} from '@mantine/core';
+import { Input, SegmentedControl, Skeleton, Stack, Select, Text, TextInput } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
-import { Fragment, useState } from 'react';
+import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
 import { FactionIcon } from '../../components/FactionIcon';
 import { ErrorState } from '../../components/ErrorState';
 import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
-import { PageTitle, SidebarLayout } from '../../components/Scoreboard';
+import {
+  Card,
+  CardGroup,
+  PageTitle,
+  scoreboardClasses,
+  SidebarLayout,
+  Stat,
+} from '../../components/Scoreboard';
 import { plural } from '../../lib/format';
-import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
+import { sortRows, type SortDir, type SortValue } from '../../lib/table-sort';
 import { useDraftRange } from '../../lib/use-draft-range';
 import { OVERREP_TITLE, OverrepText, ReliableText } from './FactionTable';
 import { groupByTier, tierOf, tierPercent, winRateFill, type Tier } from './faction-tiers';
@@ -91,7 +89,8 @@ function WinRateBar({ row, tier }: { row: KnownRow; tier: Tier | null }) {
   );
 }
 
-function FactionRow({
+/** One faction: its name and size, event wins, win rate (bar), reliable win rate, overrep, tier. */
+function FactionCard({
   row,
   rank,
   filters,
@@ -107,89 +106,61 @@ function FactionRow({
 }) {
   const tier = row.players < DEFAULT_MIN_PLAYERS ? null : tierOf(row.winRate);
   return (
-    <Table.Tr data-faction={row.faction} data-dimmed={tier === null} className={classes.row}>
+    <Card
+      dense
+      className={classes.card}
+      data={{ faction: row.faction, dimmed: tier === null, tier: tier?.key ?? 'none' }}
+    >
       {rank !== undefined && (
-        <Table.Td className={`numeric ${classes.rank}`} w={40}>
+        <span className={`numeric ${classes.rank}`} data-rank>
           {rank}
-        </Table.Td>
+        </span>
       )}
-      <Table.Td className={classes.name} data-tier={tier?.key ?? 'none'}>
+      <div className={classes.name}>
         <FactionIcon faction={row.faction} size={28} />
-        <AnchorLink to="/analysis/meta" search={{ ...filters, factions: row.faction }}>
-          {row.faction}
-        </AnchorLink>
-        <Text size="xs" c="dimmed" className={`numeric ${classes.sub}`}>
-          {`${plural(row.players, 'player')} · ${sharePercent(row.share)} share · ${plural(row.games, 'game')}`}
-        </Text>
-      </Table.Td>
+        <div className={classes.nameText}>
+          <AnchorLink to="/analysis/meta" search={{ ...filters, factions: row.faction }}>
+            {row.faction}
+          </AnchorLink>
+          <Text size="xs" c="dimmed" className={`numeric ${classes.sub}`}>
+            {`${plural(row.players, 'player')} · ${sharePercent(row.share)} share · ${plural(row.games, 'game')}`}
+          </Text>
+        </div>
+      </div>
       {wins && (
-        <Table.Td ta="right" visibleFrom="sm">
-          {row.eventWins === 0 ? (
-            <Text size="sm" c="dimmed" className="numeric" component="span">
-              0
-            </Text>
-          ) : (
-            <Text
-              size="sm"
-              className="numeric"
-              component="span"
-              aria-label={`${String(row.eventWins)} event wins`}
-            >
-              <span aria-hidden className={classes.trophy}>
-                🏆
-              </span>{' '}
-              {row.eventWins}
-            </Text>
-          )}
-        </Table.Td>
+        <Stat
+          className={classes.figure}
+          value={
+            row.eventWins === 0 ? (
+              <Text span c="dimmed" inherit>
+                0
+              </Text>
+            ) : (
+              <span aria-label={`${String(row.eventWins)} event wins`}>
+                <span aria-hidden className={classes.trophy}>
+                  🏆
+                </span>{' '}
+                {row.eventWins}
+              </span>
+            )
+          }
+          label="event wins"
+        />
       )}
-      <Table.Td>
-        <WinRateBar row={row} tier={tier} />
-      </Table.Td>
-      <Table.Td ta="right" visibleFrom="sm">
-        <ReliableText row={row} />
-      </Table.Td>
-      <Table.Td ta="right" visibleFrom="sm">
-        <OverrepText overrep={row.overrep} />
-      </Table.Td>
-      <Table.Td ta="center" w={56}>
-        <TierBadge tier={tier} />
-      </Table.Td>
-    </Table.Tr>
+      <WinRateBar row={row} tier={tier} />
+      <Stat className={classes.figure} value={<ReliableText row={row} />} label="reliable" />
+      <Stat
+        className={classes.figure}
+        value={<OverrepText overrep={row.overrep} />}
+        label={<span title={OVERREP_TITLE}>overrep</span>}
+      />
+      <TierBadge tier={tier} />
+    </Card>
   );
 }
 
-/** A tier's heading row: badge, name, the win rates it covers and how many factions are in it. */
-function TierHeading({
-  tier,
-  count,
-  columns,
-}: {
-  tier: Tier | null;
-  count: number;
-  columns: number;
-}) {
-  return (
-    <Table.Tr className={classes.heading} data-tier-heading>
-      <Table.Th colSpan={columns} scope="rowgroup">
-        <Group gap="sm" wrap="nowrap">
-          <TierBadge tier={tier} />
-          <Text fw={700} size="sm" component="span">
-            {tier?.name ?? 'Too few players'}
-          </Text>
-          <Text size="xs" c="dimmed" className="numeric" component="span">
-            {tier?.range ?? `under ${String(DEFAULT_MIN_PLAYERS)} players`}
-          </Text>
-          <Text size="xs" c="dimmed" className="numeric" component="span" ml="auto">
-            {plural(count, 'faction')}
-          </Text>
-        </Group>
-      </Table.Th>
-    </Table.Tr>
-  );
-}
-
-function FactionsTable({
+/** The factions as cards: by tier, each tier under its letter; or flat, numbered. */
+function FactionCards({
   rows,
   filters,
   flat,
@@ -199,86 +170,44 @@ function FactionsTable({
   flat: boolean;
 }) {
   const wins = filters.type !== 'teams';
-  // By tier, the best win rate first within each tier; flat, the win rate allowing for sample
-  // size, so a big solid faction outranks a small lucky one.
-  const { sorted, sort, toggle } = useTableSort<KnownRow, Column>(rows, VALUES, {
-    key: flat ? 'reliable' : 'winRate',
-    dir: 'desc',
-  });
-  const columns = 5 + Number(flat) + Number(wins);
+  if (flat) {
+    return (
+      <div className={scoreboardClasses.group} data-dense role="list" aria-label="Factions">
+        {rows.map((row, index) => (
+          <div role="listitem" key={row.faction}>
+            <FactionCard row={row} rank={index + 1} filters={filters} wins={wins} />
+          </div>
+        ))}
+      </div>
+    );
+  }
   return (
-    <Table.ScrollContainer minWidth={0}>
-      <Table aria-label="Factions" highlightOnHover verticalSpacing="sm" className={classes.table}>
-        <Table.Thead>
-          <Table.Tr>
-            {flat && <Table.Th w={40}>#</Table.Th>}
-            <SortableTh column="faction" sort={sort} onSort={toggle}>
-              Faction
-            </SortableTh>
-            {wins && (
-              <SortableTh
-                column="eventWins"
-                sort={sort}
-                onSort={toggle}
-                ta="right"
-                visibleFrom="sm"
-                title="Singles events won (team events don’t count)"
-              >
-                Wins
-              </SortableTh>
-            )}
-            <SortableTh column="winRate" sort={sort} onSort={toggle}>
-              Win rate
-            </SortableTh>
-            <SortableTh
-              column="reliable"
-              sort={sort}
-              onSort={toggle}
-              ta="right"
-              visibleFrom="sm"
-              title="The win rate allowing for how many games there are: the low end of its 95% range. Few games pull it down."
-            >
-              Reliable
-            </SortableTh>
-            <SortableTh
-              column="overrep"
-              sort={sort}
-              onSort={toggle}
-              ta="right"
-              visibleFrom="sm"
-              title={OVERREP_TITLE}
-            >
-              Overrep
-            </SortableTh>
-            <Table.Th ta="center" w={56}>
-              Tier
-            </Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {flat
-            ? sorted.map((row, index) => (
-                <FactionRow
-                  key={row.faction}
-                  row={row}
-                  rank={index + 1}
-                  filters={filters}
-                  wins={wins}
-                />
-              ))
-            : groupByTier(sorted, DEFAULT_MIN_PLAYERS).map((group) => (
-                <Fragment key={group.tier?.key ?? 'few'}>
-                  <TierHeading tier={group.tier} count={group.rows.length} columns={columns} />
-                  {group.rows.map((row) => (
-                    <FactionRow key={row.faction} row={row} filters={filters} wins={wins} />
-                  ))}
-                </Fragment>
-              ))}
-        </Table.Tbody>
-      </Table>
-    </Table.ScrollContainer>
+    <Stack gap="lg" role="list" aria-label="Factions">
+      {groupByTier(rows, DEFAULT_MIN_PLAYERS).map((group) => (
+        <div role="listitem" key={group.tier?.key ?? 'few'}>
+          <CardGroup
+            dense
+            label={group.tier?.key ?? '–'}
+            description={`${group.tier?.name ?? 'Too few players'} · ${group.tier?.range ?? `under ${String(DEFAULT_MIN_PLAYERS)} players`} · ${plural(group.rows.length, 'faction')}`}
+          >
+            {group.rows.map((row) => (
+              <FactionCard key={row.faction} row={row} filters={filters} wins={wins} />
+            ))}
+          </CardGroup>
+        </div>
+      ))}
+    </Stack>
   );
 }
+
+/** The orders on offer, each its natural way round. */
+const SORTS: { value: Column; label: string; dir: SortDir }[] = [
+  { value: 'winRate', label: 'Win rate', dir: 'desc' },
+  { value: 'reliable', label: 'Reliable win rate', dir: 'desc' },
+  { value: 'eventWins', label: 'Event wins', dir: 'desc' },
+  { value: 'overrep', label: 'Overrep', dir: 'desc' },
+  { value: 'faction', label: 'Faction A–Z', dir: 'asc' },
+];
 
 /**
  * Every faction's share of the players at big events and how it does, by reliable win rate; each
@@ -295,6 +224,14 @@ export function FactionsPage({ search, onSearchChange }: FactionsPageProps) {
     onSearchChange({ ...search, from: range.from, to: range.to });
   });
   const [query, setQuery] = useState('');
+  // The order picked, for the layout it was picked in; each layout starts from its own default:
+  // by tier, the best win rate first; flat, the win rate allowing for sample size.
+  const flat = layout === 'flat';
+  const [picked, setPicked] = useState<{ flat: boolean; key: Column } | null>(null);
+  const sortKey = picked?.flat === flat ? picked.key : flat ? 'reliable' : 'winRate';
+  const sortOptions = SORTS.filter(
+    (option) => option.value !== 'eventWins' || search.type !== 'teams',
+  );
   // Only known factions: the Unknown faction isn't one to compare.
   const known = (meta.data?.factions ?? []).filter((row): row is KnownRow => row.faction !== null);
   const needle = query.trim().toLowerCase();
@@ -304,6 +241,16 @@ export function FactionsPage({ search, onSearchChange }: FactionsPageProps) {
     <FilterToggle active={Number(query.trim() !== '') + Number(search.type !== undefined)}>
       <Panel title="Filters">
         <Stack gap="sm">
+          <Select
+            label="Sort by"
+            data={sortOptions.map(({ value, label }) => ({ value, label }))}
+            value={sortKey}
+            onChange={(value) => {
+              const next = SORTS.find((option) => option.value === value);
+              if (next) setPicked({ flat, key: next.value });
+            }}
+            allowDeselect={false}
+          />
           <TextInput
             aria-label="Search factions"
             placeholder="Search factions…"
@@ -399,12 +346,14 @@ export function FactionsPage({ search, onSearchChange }: FactionsPageProps) {
                     No faction matches “{query.trim()}”.
                   </Text>
                 ) : (
-                  // Keyed by layout: each starts from its own default sort.
-                  <FactionsTable
-                    key={layout ?? 'tiers'}
-                    rows={rows}
+                  <FactionCards
+                    rows={sortRows(
+                      rows,
+                      VALUES[sortKey],
+                      SORTS.find((option) => option.value === sortKey)?.dir ?? 'desc',
+                    )}
                     filters={filters}
-                    flat={layout === 'flat'}
+                    flat={flat}
                   />
                 )}
               </Panel>

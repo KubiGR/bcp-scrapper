@@ -80,11 +80,16 @@ interface CardProps {
   className?: string;
   /** Less padding and smaller figures, for long lists. */
   dense?: boolean;
+  /** Data attributes for the card (`data-faction`, `data-dimmed`), for styling and tests. */
+  data?: Record<string, string | number | boolean | undefined>;
   children: ReactNode;
 }
 
 /** One item's card; with `onOpen`, the whole card opens it. */
-export function Card({ onOpen, className, dense, children }: CardProps) {
+export function Card({ onOpen, className, dense, data = {}, children }: CardProps) {
+  const attributes = Object.fromEntries(
+    Object.entries(data).map(([key, value]) => [`data-${key}`, value]),
+  );
   const open =
     onOpen === undefined
       ? undefined
@@ -95,6 +100,7 @@ export function Card({ onOpen, className, dense, children }: CardProps) {
         };
   return (
     <article
+      {...attributes}
       className={className === undefined ? classes.card : `${classes.card} ${className}`}
       data-clickable={onOpen === undefined ? undefined : true}
       data-dense={dense === true ? true : undefined}
