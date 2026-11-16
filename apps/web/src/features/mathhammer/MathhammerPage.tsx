@@ -1,4 +1,5 @@
-import { Button, Group, Stack, Tabs, Title, useMatches } from '@mantine/core';
+import { Button, Group, Stack, Tabs, useMatches } from '@mantine/core';
+import { PageTitle } from '../../components/Scoreboard';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { AttackerPanel } from './AttackerPanel';
 import { DefenderPanel } from './DefenderPanel';
@@ -62,7 +63,7 @@ export function MathhammerPage() {
   const orientation = useMatches<'horizontal' | 'vertical'>({ base: 'horizontal', sm: 'vertical' });
   return (
     <Stack gap="lg">
-      <Title order={1}>Mathhammer</Title>
+      <PageTitle>Mathhammer</PageTitle>
       {/* One step at a time: attacker, then defender, then the result. */}
       <Tabs
         value={step}

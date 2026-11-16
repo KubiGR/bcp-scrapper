@@ -1,9 +1,9 @@
 import type { QueueDetails } from '@bcp/shared';
-import { Accordion, Button, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Accordion, Button, Group, Stack, Table, Text } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnchorLink } from '../../components/AnchorLink';
 import { Panel } from '../../components/Panel';
-import { CardGroup, SidebarLayout } from '../../components/Scoreboard';
+import { CardGroup, PageTitle, SidebarLayout } from '../../components/Scoreboard';
 import { formatDateTime } from '../../lib/format';
 import { failureReason } from './failure-reasons';
 import { fetchQueueQuery, queueDetailsQuery, retryFailed } from './fetch-queue-queries';
@@ -119,7 +119,7 @@ export function QueuePage() {
       sidebar={state && <Panel title="Queue">{<QueueControls state={state} />}</Panel>}
     >
       <Stack gap="xl">
-        <Title order={1}>Queue</Title>
+        <PageTitle>Queue</PageTitle>
         {error && <Text c="red">{error.message}</Text>}
         {details && (
           <>

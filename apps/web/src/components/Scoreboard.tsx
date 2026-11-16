@@ -1,3 +1,4 @@
+import { Title, VisuallyHidden, type TitleOrder } from '@mantine/core';
 import type { MouseEvent, ReactNode } from 'react';
 import classes from './Scoreboard.module.css';
 
@@ -19,6 +20,18 @@ export function SidebarLayout({ sidebarLabel, sidebar, children }: SidebarLayout
       </aside>
       <div className={classes.main}>{children}</div>
     </div>
+  );
+}
+
+/**
+ * A page's title, for screen readers only: the menu already shows which page is open, so the
+ * space goes to the content.
+ */
+export function PageTitle({ children, order = 1 }: { children: ReactNode; order?: TitleOrder }) {
+  return (
+    <VisuallyHidden>
+      <Title order={order}>{children}</Title>
+    </VisuallyHidden>
   );
 }
 

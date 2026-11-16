@@ -1,10 +1,10 @@
-import { Stack, Title, VisuallyHidden } from '@mantine/core';
+import { Stack } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { ErrorState } from '../../components/ErrorState';
 import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
-import { SidebarLayout } from '../../components/Scoreboard';
+import { PageTitle, SidebarLayout } from '../../components/Scoreboard';
 import { AdvancedSearch } from './AdvancedSearch';
 import { CatalogStatus } from './CatalogStatus';
 import { CoverageNotice } from './CoverageNotice';
@@ -65,10 +65,7 @@ export function FinderPage() {
       }
     >
       <Stack gap="lg">
-        {/* The menu already says where you are: the heading is for screen readers only. */}
-        <VisuallyHidden>
-          <Title order={1}>Tournaments</Title>
-        </VisuallyHidden>
+        <PageTitle>Tournaments</PageTitle>
         {!isLatestView(search) && <CoverageNotice window={window} />}
         {events.error ? (
           <ErrorState error={events.error} onRetry={() => void events.refetch()} />

@@ -1,21 +1,12 @@
 import { addDays, updateOfDay, type EffectiveUpdate } from '@bcp/shared';
-import {
-  Box,
-  Input,
-  NumberInput,
-  SegmentedControl,
-  Skeleton,
-  Stack,
-  Text,
-  Title,
-} from '@mantine/core';
+import { Box, Input, NumberInput, SegmentedControl, Skeleton, Stack, Text } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
 import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
-import { SidebarLayout } from '../../components/Scoreboard';
+import { PageTitle, SidebarLayout } from '../../components/Scoreboard';
 import { plural } from '../../lib/format';
 import { useDraftRange } from '../../lib/use-draft-range';
 import { ArchetypeTable } from './ArchetypeTable';
@@ -166,7 +157,7 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
     <SidebarLayout sidebarLabel="Filters" sidebar={sidebar}>
       <Stack gap="lg">
         <div>
-          <Title order={1}>Meta</Title>
+          <PageTitle>Meta</PageTitle>
           <Text c="dimmed" mt={4}>
             Popular {view === 'armies' ? 'factions' : 'archetypes'}, how they do, and what top teams
             bring

@@ -10,7 +10,6 @@ import {
   Table,
   Text,
   TextInput,
-  Title,
 } from '@mantine/core';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { SearchSelect } from '../../components/SearchSelect';
@@ -18,7 +17,7 @@ import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
-import { SidebarLayout } from '../../components/Scoreboard';
+import { PageTitle, SidebarLayout } from '../../components/Scoreboard';
 import { ordinal, plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { rankingsPagesQuery } from './rankings-queries';
@@ -224,7 +223,7 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
     <SidebarLayout sidebarLabel="Filters" sidebar={sidebar}>
       <Stack gap="lg">
         <div>
-          <Title order={1}>Players</Title>
+          <PageTitle>Players</PageTitle>
           <Text c="dimmed" mt={4}>
             Ranked by{' '}
             {search.order === 'overall'

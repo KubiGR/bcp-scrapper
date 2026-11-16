@@ -285,6 +285,16 @@ export function PlayersPanel({
           >
             <Panel title="Filters">
               <Stack gap="sm">
+                <Select
+                  label="Sort by"
+                  data={SORTS.map(({ value, label }) => ({ value, label }))}
+                  value={sortKey}
+                  onChange={(value) => {
+                    const next = SORTS.find((option) => option.value === value);
+                    if (next) setSortKey(next.value);
+                  }}
+                  allowDeselect={false}
+                />
                 <TextInput
                   aria-label="Search players"
                   placeholder="Search player or team"
@@ -351,24 +361,11 @@ export function PlayersPanel({
       }
     >
       <Stack gap="lg">
-        <Group justify="space-between" align="flex-end">
+        {players.data && (
           <Text c="dimmed">
-            {players.data
-              ? `${String(sorted.length)} of ${String(all.length)} ${all.length === 1 ? 'player' : 'players'}`
-              : ''}
+            {`${String(sorted.length)} of ${String(all.length)} ${all.length === 1 ? 'player' : 'players'}`}
           </Text>
-          <Select
-            label="Sort by"
-            data={SORTS.map(({ value, label }) => ({ value, label }))}
-            value={sortKey}
-            onChange={(value) => {
-              const next = SORTS.find((option) => option.value === value);
-              if (next) setSortKey(next.value);
-            }}
-            allowDeselect={false}
-            w={170}
-          />
-        </Group>
+        )}
         {content()}
       </Stack>
 

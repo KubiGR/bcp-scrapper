@@ -1,4 +1,5 @@
-import { Grid, Stack, Tabs, Text, Title, useMatches } from '@mantine/core';
+import { Grid, Stack, Tabs, Text, useMatches } from '@mantine/core';
+import { PageTitle } from '../../components/Scoreboard';
 import { useQuery } from '@tanstack/react-query';
 import { meQuery } from '../auth/auth-queries';
 import { FetchQueueCard } from '../fetch-queue/FetchQueueCard';
@@ -38,7 +39,7 @@ export function SettingsPage({
   const orientation = useMatches<'horizontal' | 'vertical'>({ base: 'horizontal', sm: 'vertical' });
   return (
     <Stack gap="lg">
-      <Title order={1}>Settings</Title>
+      <PageTitle>Settings</PageTitle>
       <Tabs
         value={tab}
         orientation={orientation}

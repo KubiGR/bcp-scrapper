@@ -1,15 +1,5 @@
 import { DETACHMENT_SEPARATOR, KNOWN_DISPOSITIONS, type PlayerSearchResponse } from '@bcp/shared';
-import {
-  Alert,
-  Box,
-  Button,
-  MultiSelect,
-  Select,
-  Skeleton,
-  Stack,
-  Text,
-  Title,
-} from '@mantine/core';
+import { Alert, Box, Button, MultiSelect, Select, Skeleton, Stack, Text } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -23,9 +13,9 @@ import { Panel } from '../../components/Panel';
 import {
   Card,
   CardGroup,
-  PageHeading,
-  SidebarLayout,
+  PageTitle,
   scoreboardClasses,
+  SidebarLayout,
 } from '../../components/Scoreboard';
 import { PlayerLine } from '../../components/PlayerLine';
 import { formatIsoDay, plural } from '../../lib/format';
@@ -137,6 +127,16 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
         >
           <Panel title="Filters">
             <Stack gap="md">
+              <Select
+                label="Sort by"
+                data={SORTS.map(({ value, label }) => ({ value, label }))}
+                value={sortKey}
+                onChange={(value) => {
+                  const next = SORTS.find((option) => option.value === value);
+                  if (next) setSortKey(next.value);
+                }}
+                allowDeselect={false}
+              />
               <MultiSelect
                 label="Factions"
                 renderOption={renderFactionOption}
@@ -212,30 +212,14 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
       }
     >
       <Stack gap="lg">
-        <PageHeading
-          controls={
-            <Select
-              label="Sort by"
-              data={SORTS.map(({ value, label }) => ({ value, label }))}
-              value={sortKey}
-              onChange={(value) => {
-                const next = SORTS.find((option) => option.value === value);
-                if (next) setSortKey(next.value);
-              }}
-              allowDeselect={false}
-              w={170}
-            />
-          }
-        >
-          <Title order={1}>Top lists</Title>
-          {results.data && (
-            <Text c="dimmed" mt={4}>
-              {plural(found.length, 'player')}
-              {results.data.truncated ? '+' : ''} at {lossLabel(maxLosses)}
-              {factions.length > 0 ? `, ${factions.join(', ')}` : ''}
-            </Text>
-          )}
-        </PageHeading>
+        <PageTitle>Top lists</PageTitle>
+        {results.data && (
+          <Text c="dimmed">
+            {plural(found.length, 'player')}
+            {results.data.truncated ? '+' : ''} at {lossLabel(maxLosses)}
+            {factions.length > 0 ? `, ${factions.join(', ')}` : ''}
+          </Text>
+        )}
 
         {results.isPending && <Skeleton height={200} />}
         {results.error && (

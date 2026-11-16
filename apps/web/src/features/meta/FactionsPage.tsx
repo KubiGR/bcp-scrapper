@@ -8,7 +8,6 @@ import {
   Table,
   Text,
   TextInput,
-  Title,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
@@ -18,7 +17,7 @@ import { FactionIcon } from '../../components/FactionIcon';
 import { ErrorState } from '../../components/ErrorState';
 import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
-import { SidebarLayout } from '../../components/Scoreboard';
+import { PageTitle, SidebarLayout } from '../../components/Scoreboard';
 import { plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { useDraftRange } from '../../lib/use-draft-range';
@@ -363,7 +362,7 @@ export function FactionsPage({ search, onSearchChange }: FactionsPageProps) {
     <SidebarLayout sidebarLabel="Filters" sidebar={sidebar}>
       <Stack gap="lg">
         <div>
-          <Title order={1}>Factions</Title>
+          <PageTitle>Factions</PageTitle>
           <Text c="dimmed" mt={4}>
             Grouped by win rate at big events; each opens its archetypes on Meta
           </Text>

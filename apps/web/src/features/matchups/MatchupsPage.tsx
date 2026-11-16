@@ -1,12 +1,12 @@
 import { DETACHMENT_SEPARATOR } from '@bcp/shared';
-import { Box, Button, Drawer, Group, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Box, Button, Drawer, Group, Skeleton, Stack, Text } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
 import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
-import { SidebarLayout } from '../../components/Scoreboard';
+import { PageTitle, SidebarLayout } from '../../components/Scoreboard';
 import { plural } from '../../lib/format';
 import { useDraftRange } from '../../lib/use-draft-range';
 import { CellDrawer } from './CellDrawer';
@@ -149,7 +149,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
   return (
     <SidebarLayout sidebarLabel="Filters" sidebar={sidebar}>
       <Stack gap="lg">
-        <Title order={1}>Faction matchups</Title>
+        <PageTitle>Faction matchups</PageTitle>
         {matchups.isPending && <Skeleton height={160} />}
         {matchups.error && (
           <ErrorState error={matchups.error} onRetry={() => void matchups.refetch()} />
