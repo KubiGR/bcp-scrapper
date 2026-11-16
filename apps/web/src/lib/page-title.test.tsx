@@ -7,7 +7,7 @@ describe('page titles', () => {
     expect(joinParts(['Orks, Tyranids', undefined, '', false, 'X-1', 'Top lists'])).toBe(
       'Orks, Tyranids · X-1 · Top lists',
     );
-    expect(composeTitle('Top lists', 0)).toBe('Top lists · Logis');
+    expect(composeTitle('Top lists', 0)).toBe('Top lists');
     expect(composeTitle('', 2)).toBe('(2) Logis');
     expect(listed('Orks|Tyranids', '|')).toBe('Orks, Tyranids');
     expect(listed(undefined)).toBeUndefined();
@@ -28,10 +28,10 @@ describe('page titles', () => {
         initialProps: { parts: ['Top lists'] },
       },
     );
-    expect(document.title).toBe('Top lists · Logis');
+    expect(document.title).toBe('Top lists');
     page.rerender({ parts: ['Genestealer Cult', 'X-1', 'Top lists'] });
     count.rerender({ n: 3 });
-    expect(document.title).toBe('(3) Genestealer Cult · X-1 · Top lists · Logis');
+    expect(document.title).toBe('(3) Genestealer Cult · X-1 · Top lists');
     page.unmount();
     expect(document.title).toBe('(3) Logis');
     count.rerender({ n: 0 });

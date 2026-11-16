@@ -12,10 +12,11 @@ export const joinParts = (parts: readonly Part[]): string =>
 
 /**
  * The tab's title: the admin to-do count, then the page with what it shows, most specific first so
- * it survives a narrow tab ("(2) Genestealer Cult · X-1 · Top lists · Logis").
+ * it survives a narrow tab ("(2) Genestealer Cult · X-1 · Top lists"). The site's name only stands
+ * in for a page that names none: the tab's icon already says it's Logis.
  */
 export function composeTitle(page: string, count: number): string {
-  const title = page === '' ? SITE_TITLE : `${page} · ${SITE_TITLE}`;
+  const title = page === '' ? SITE_TITLE : page;
   return count > 0 ? `(${String(count)}) ${title}` : title;
 }
 
