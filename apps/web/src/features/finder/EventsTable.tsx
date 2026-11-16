@@ -103,7 +103,6 @@ export function EventsTable({
   return (
     <Stack gap="lg" pos="relative">
       <LoadingOverlay visible={fetching && response === undefined} />
-      {response && <Text c="dimmed">{plural(total, 'event')}</Text>}
 
       {records.length === 0 ? (
         <Text c="dimmed" py="xl" ta="center">
@@ -139,7 +138,13 @@ export function EventsTable({
             allowDeselect={false}
             w={110}
           />
-          {pages > 1 && <Pagination total={pages} value={page} onChange={onPageChange} />}
+          {/* The total once, by the pages: each week's heading counts its own. */}
+          <Group gap="md" align="center">
+            <Text c="dimmed" size="sm">
+              {plural(total, 'event')}
+            </Text>
+            {pages > 1 && <Pagination total={pages} value={page} onChange={onPageChange} />}
+          </Group>
         </Group>
       )}
     </Stack>
