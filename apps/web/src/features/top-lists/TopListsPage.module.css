@@ -58,7 +58,7 @@
   color: var(--mantine-color-text);
 }
 
-/* When the event's line wraps, the date and the size (with its flames) each stay whole. */
+/* When the event's line wraps, the date and the size each stay whole. */
 .piece {
   white-space: nowrap;
 }

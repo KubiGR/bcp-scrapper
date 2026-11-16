@@ -9,7 +9,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { EventStatusBadges } from '../../components/EventStatusBadges';
-import { sizeName, sizeTier } from '../../components/EventSymbols';
+import { HotCount } from '../../components/EventSymbols';
 import { FieldElo } from '../../components/FieldElo';
 import { Card, CardGroup, Stat, scoreboardClasses } from '../../components/Scoreboard';
 import { formatEventDates, plural } from '../../lib/format';
@@ -177,15 +177,7 @@ function EventCard({ event, onOpen }: { event: EventListItem; onOpen: (id: strin
       </div>
       <Stat
         className={classes.size}
-        value={
-          <span
-            className={classes.players}
-            data-size={sizeTier(event.playerCount)}
-            title={sizeName(sizeTier(event.playerCount))}
-          >
-            {plural(event.playerCount, 'player')}
-          </span>
-        }
+        value={<HotCount playerCount={event.playerCount} />}
         label={event.teamCount === null ? 'singles' : plural(event.teamCount, 'team')}
       />
       <Stat

@@ -4,7 +4,7 @@ import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
-import { EventHeat, NewLeaf, playedLately } from '../../components/EventSymbols';
+import { HotCount, NewLeaf, playedLately } from '../../components/EventSymbols';
 import { DispositionText } from '../../components/DispositionText';
 import { ErrorState } from '../../components/ErrorState';
 import { FieldElo } from '../../components/FieldElo';
@@ -343,9 +343,8 @@ function ResultCard({ player, showRecord = false, onOpen }: ResultCardProps) {
           <span className={classes.piece}>{formatIsoDay(player.eventStartDate.slice(0, 10))}</span>{' '}
           ·{' '}
           <span className={classes.piece}>
-            {plural(player.eventPlayerCount, 'player')}
+            <HotCount playerCount={player.eventPlayerCount} />
             {player.eventTeamCount !== null && ` · ${plural(player.eventTeamCount, 'team')}`}
-            <EventHeat playerCount={player.eventPlayerCount} />
           </span>
           {player.eventFieldElo !== null && (
             <>

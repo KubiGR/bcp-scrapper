@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import { plural } from '../lib/format';
 import classes from './EventSymbols.module.css';
 
 export type SizeTier = 'small' | 'medium' | 'large' | 'major';
@@ -18,10 +20,6 @@ export function playedLately(startDate: string, now = Date.now()): boolean {
   return ago >= 0 && ago < WEEK_MS;
 }
 
-/** "Major event", "Small event": a size tier in words. */
-export const sizeName = (tier: SizeTier): string => NAMES[tier];
-
-const FLAMES: Record<SizeTier, number> = { small: 0, medium: 1, large: 2, major: 3 };
 const NAMES: Record<SizeTier, string> = {
   small: 'Small event',
   medium: 'Medium event',
@@ -29,39 +27,18 @@ const NAMES: Record<SizeTier, string> = {
   major: 'Major event',
 };
 
-function Flame() {
-  return (
-    <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden fill="currentColor">
-      <path d="M12 2c.6 3.2 3.4 4.9 4.9 7.6A6 6 0 1 1 6.4 14c0-2.3 1.2-4 2.6-5.2-.1 1.9.7 3.2 1.9 3.6C10.3 8.7 10.6 5 12 2z" />
-    </svg>
-  );
-}
+/** "Major event", "Small event": a size tier in words. */
+export const sizeName = (tier: SizeTier): string => NAMES[tier];
 
 /**
- * Flames for an event's size: none for a small one, up to three, hotter the bigger it is. After
- * the text, or `before` it (in a column aligned right).
+ * An event's player count, hotter in colour the bigger the event (yellow, orange, red); plain for a
+ * small one. Its size in words on hover. Shows "432 players" unless given its own text.
  */
-export function EventHeat({
-  playerCount,
-  before = false,
-}: {
-  playerCount: number;
-  before?: boolean;
-}) {
+export function HotCount({ playerCount, children }: { playerCount: number; children?: ReactNode }) {
   const tier = sizeTier(playerCount);
-  if (FLAMES[tier] === 0) return null;
   return (
-    <span
-      role="img"
-      aria-label={NAMES[tier]}
-      title={NAMES[tier]}
-      className={classes.heat}
-      data-tier={tier}
-      data-before={before || undefined}
-    >
-      {Array.from({ length: FLAMES[tier] }, (_, i) => (
-        <Flame key={i} />
-      ))}
+    <span className={classes.hot} data-size={tier} title={NAMES[tier]}>
+      {children ?? plural(playerCount, 'player')}
     </span>
   );
 }

@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders } from '../test/render';
-import { EventHeat, NameWithLeaf, NewLeaf, playedLately, sizeTier } from './EventSymbols';
+import { HotCount, NameWithLeaf, NewLeaf, playedLately, sizeTier } from './EventSymbols';
 
 describe('sizeTier', () => {
   it('steps up with the rankings’ 50, 100 and 200 players', () => {
@@ -21,23 +21,24 @@ describe('playedLately', () => {
   });
 });
 
-describe('EventHeat', () => {
-  it('shows more flames the bigger the event, none for a small one', () => {
-    const flames = (players: number) => {
-      const { container, unmount } = renderWithProviders(<EventHeat playerCount={players} />);
-      const count = container.querySelectorAll('svg').length;
+describe('HotCount', () => {
+  it('colours the player count by the event’s size, its size in words on hover', () => {
+    const size = (players: number) => {
+      const { unmount } = renderWithProviders(<HotCount playerCount={players} />);
+      const count = screen.getByText(`${String(players)} players`);
+      const found = [count.getAttribute('data-size'), count.getAttribute('title')];
       unmount();
-      return count;
+      return found;
     };
-    expect(flames(30)).toBe(0);
-    expect(flames(60)).toBe(1);
-    expect(flames(150)).toBe(2);
-    expect(flames(400)).toBe(3);
+    expect(size(30)).toEqual(['small', 'Small event']);
+    expect(size(60)).toEqual(['medium', 'Medium event']);
+    expect(size(150)).toEqual(['large', 'Large event']);
+    expect(size(400)).toEqual(['major', 'Major event']);
   });
 
-  it('names the size for screen readers', () => {
-    renderWithProviders(<EventHeat playerCount={400} />);
-    expect(screen.getByRole('img', { name: 'Major event' })).toBeInTheDocument();
+  it('shows its own text when given one', () => {
+    renderWithProviders(<HotCount playerCount={400}>400 players · 80 teams</HotCount>);
+    expect(screen.getByText('400 players · 80 teams')).toHaveAttribute('data-size', 'major');
   });
 });
 

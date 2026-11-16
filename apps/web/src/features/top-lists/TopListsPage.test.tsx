@@ -155,7 +155,7 @@ describe('TopListsPage', () => {
     const row = (await screen.findByText('Ada Archer')).closest('article');
     if (row === null) throw new Error('no row');
     expect(row.textContent).toMatch(/96 players · 12 teams/);
-    expect(within(row).getByRole('img', { name: 'Medium event' })).toBeInTheDocument();
+    expect(within(row).getByText('96 players')).toHaveAttribute('data-size', 'medium');
   });
 
   it('shows each event’s field Elo next to its size, as the tournament list does', async () => {

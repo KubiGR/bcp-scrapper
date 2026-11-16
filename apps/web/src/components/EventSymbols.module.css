@@ -1,27 +1,15 @@
-/* Flames side by side, hotter in colour the bigger the event. */
-.heat {
-  display: inline-flex;
-  gap: 1px;
-  margin-left: 6px;
-  vertical-align: -2px;
-}
-
-.heat[data-before] {
-  margin-right: 6px;
-  margin-left: 0;
-}
-
-.heat[data-tier='medium'] {
+/* A player count, hotter in colour the bigger the event. */
+.hot[data-size='medium'] {
   color: var(--mantine-color-yellow-5);
 }
 
-.heat[data-tier='large'] {
+.hot[data-size='large'] {
   color: var(--mantine-color-orange-5);
 }
 
-.heat[data-tier='major'] {
-  color: var(--mantine-color-red-6);
-  filter: drop-shadow(0 0 3px rgb(255 80 40 / 0.55));
+.hot[data-size='major'] {
+  color: var(--mantine-color-red-5);
+  text-shadow: 0 0 8px rgb(255 80 40 / 0.45);
 }
 
 .leaf {

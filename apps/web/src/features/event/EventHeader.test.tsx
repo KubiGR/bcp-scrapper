@@ -28,7 +28,7 @@ describe('EventHeader', () => {
     expect(link.getAttribute('rel')).toContain('noreferrer');
   });
 
-  it('shows flames for a big event, and a leaf for one that started this week', () => {
+  it('colours a big event’s player count, and shows a leaf for one that started this week', () => {
     renderWithProviders(
       <EventHeader
         event={anEventDetail({
@@ -39,7 +39,7 @@ describe('EventHeader', () => {
         onRefresh={vi.fn()}
       />,
     );
-    expect(screen.getByRole('img', { name: 'Major event' })).toBeInTheDocument();
+    expect(screen.getByText('432')).toHaveAttribute('data-size', 'major');
     expect(screen.getByRole('img', { name: 'New this week' })).toBeInTheDocument();
   });
 

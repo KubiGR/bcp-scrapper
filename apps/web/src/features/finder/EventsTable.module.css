@@ -38,20 +38,6 @@
   flex: 1 1 130px;
 }
 
-/* The player count, hotter in colour the bigger the event (as the flames elsewhere). */
-.players[data-size='medium'] {
-  color: var(--mantine-color-yellow-5);
-}
-
-.players[data-size='large'] {
-  color: var(--mantine-color-orange-5);
-}
-
-.players[data-size='major'] {
-  color: var(--mantine-color-red-5);
-  text-shadow: 0 0 8px rgb(255 80 40 / 0.45);
-}
-
 .figure {
   flex: 0 0 5rem;
 }
