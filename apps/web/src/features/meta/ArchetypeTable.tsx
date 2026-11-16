@@ -1,19 +1,13 @@
 import type { ArchetypeRow, MetaRow } from '@bcp/shared';
-import { Group, MultiSelect, Stack, Table, Text, useMatches } from '@mantine/core';
+import { Stack, Text } from '@mantine/core';
 import { plural } from '../../lib/format';
-import { SortableTh, type SortDir } from '../../lib/table-sort';
+import { Card, scoreboardClasses } from '../../components/Scoreboard';
+import { type SortDir } from '../../lib/table-sort';
+import classes from './MetaCards.module.css';
 import { DispositionBreakdown } from './DispositionBreakdown';
-import {
-  changeOf,
-  factionKey,
-  factionName,
-  Figures,
-  OVERREP_TITLE,
-  type PlayersFilter,
-} from './FactionTable';
+import { changeOf, factionKey, factionName, Figures, type PlayersFilter } from './FactionTable';
 import { DEFAULT_CHANGE_LABEL, type MetaSort } from './meta-queries';
 import { FactionIcon } from '../../components/FactionIcon';
-import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
 
 /** One archetype with its faction: a row of the flat table. */
 interface Archetype extends ArchetypeRow {
@@ -33,9 +27,6 @@ interface ArchetypeTableProps {
   dir: SortDir;
   /** Shown factions; empty = all. */
   factions: string[];
-  /** The next sort; null = back to the default. */
-  onSortChange: (next: { sort: MetaSort; dir: SortDir } | null) => void;
-  onFactionsChange: (factions: string[]) => void;
   onOpenPlayers: (filter: PlayersFilter) => void;
 }
 
@@ -55,12 +46,8 @@ export function ArchetypeTable({
   sort,
   dir,
   factions,
-  onSortChange,
-  onFactionsChange,
   onOpenPlayers,
 }: ArchetypeTableProps) {
-  // Phones drop Share and X-1 (see the cells), so the rest fits without scrolling.
-  const tableMinWidth = useMatches({ base: 0, sm: 560 });
   const shown = rows.filter(
     (row) => factions.length === 0 || factions.includes(factionKey(row.faction)),
   );
@@ -100,124 +87,41 @@ export function ArchetypeTable({
       nameOf(a).localeCompare(nameOf(b)),
   );
 
-  // First click: numbers high to low, names A→Z; second flips; third goes back to the default.
-  const onSort = (key: MetaSort) => {
-    const first: SortDir = key === 'faction' ? 'asc' : 'desc';
-    if (key !== sort) onSortChange({ sort: key, dir: first });
-    else if (dir === first) onSortChange({ sort: key, dir: first === 'asc' ? 'desc' : 'asc' });
-    else onSortChange(null);
-  };
-  const state = { key: sort, dir };
-
   return (
     <Stack gap="sm">
-      <MultiSelect
-        aria-label="Factions"
-        renderOption={renderFactionOption}
-        renderPill={renderFactionPill}
-        placeholder={factions.length === 0 ? 'All factions' : undefined}
-        data={rows.map((row) => ({
-          value: factionKey(row.faction),
-          label: factionName(row.faction),
-        }))}
-        value={factions}
-        onChange={onFactionsChange}
-        searchable
-        clearable
-        w={{ base: '100%', xs: 320 }}
-      />
-      <Table.ScrollContainer minWidth={tableMinWidth}>
-        <Table verticalSpacing="xs">
-          <Table.Thead>
-            <Table.Tr>
-              <SortableTh column="faction" sort={state} onSort={onSort}>
-                Archetype
-              </SortableTh>
-              <SortableTh column="players" sort={state} onSort={onSort} ta="right">
-                Players
-              </SortableTh>
-              <Table.Th ta="right" visibleFrom="sm">
-                Share
-              </Table.Th>
-              <Table.Th ta="right" visibleFrom="sm">
-                Trend
-              </Table.Th>
-              <SortableTh column="winRate" sort={state} onSort={onSort} ta="right">
-                Win rate
-              </SortableTh>
-              <SortableTh
-                column="reliable"
-                sort={state}
-                onSort={onSort}
-                ta="right"
-                title="The win rate allowing for how many games there are: the low end of its 95% range. Few games pull it down."
-              >
-                Reliable
-              </SortableTh>
-              <SortableTh
-                column="change"
-                sort={state}
-                onSort={onSort}
-                ta="right"
-                visibleFrom="sm"
-                title={changeLabel}
-              >
-                Change
-              </SortableTh>
-              <SortableTh column="x1" sort={state} onSort={onSort} ta="right" visibleFrom="sm">
-                X-1 or better
-              </SortableTh>
-              <SortableTh
-                column="overrep"
-                sort={state}
-                onSort={onSort}
-                ta="right"
-                visibleFrom="sm"
-                title={OVERREP_TITLE}
-              >
-                Overrep
-              </SortableTh>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {sorted.map((archetype) => {
-              const small = dimmed(archetype);
-              return (
-                <Table.Tr
-                  key={nameOf(archetype)}
-                  data-dimmed={small}
-                  style={{ opacity: small ? 0.55 : 1 }}
-                >
-                  <Table.Td>
-                    {/* The faction's icon, big, beside the archetype's lines. */}
-                    <Group gap="sm" wrap="nowrap" align="center">
-                      <FactionIcon faction={archetype.faction} size={36} />
-                      <div style={{ minWidth: 0 }}>
-                        <Text size="sm">{archetype.detachments.join(' + ')}</Text>
-                        <Text size="xs" c="dimmed">
-                          {factionName(archetype.faction)}
-                        </Text>
-                        <DispositionBreakdown archetype={archetype} />
-                      </div>
-                    </Group>
-                  </Table.Td>
-                  <Figures
-                    weeks={weeks}
-                    row={archetype}
-                    label={nameOf(archetype)}
-                    onOpen={() => {
-                      onOpenPlayers({
-                        faction: archetype.faction,
-                        detachments: archetype.detachments,
-                      });
-                    }}
-                  />
-                </Table.Tr>
-              );
-            })}
-          </Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
+      <div role="list" aria-label="Archetypes" className={scoreboardClasses.group} data-dense>
+        {sorted.map((archetype) => (
+          <div role="listitem" key={nameOf(archetype)}>
+            <Card dense data={{ dimmed: dimmed(archetype) }} className={classes.card}>
+              {/* The faction's icon, big, beside the archetype's lines. */}
+              <div className={classes.name}>
+                <FactionIcon faction={archetype.faction} size={36} />
+                <div style={{ minWidth: 0 }}>
+                  <Text size="sm" fw={600}>
+                    {archetype.detachments.join(' + ')}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {factionName(archetype.faction)}
+                  </Text>
+                  <DispositionBreakdown archetype={archetype} />
+                </div>
+              </div>
+              <Figures
+                weeks={weeks}
+                row={archetype}
+                label={nameOf(archetype)}
+                changeLabel={changeLabel}
+                onOpen={() => {
+                  onOpenPlayers({
+                    faction: archetype.faction,
+                    detachments: archetype.detachments,
+                  });
+                }}
+              />
+            </Card>
+          </div>
+        ))}
+      </div>
       {withoutDetachment > 0 && (
         <Text size="xs" c="dimmed">
           {plural(withoutDetachment, 'player')} without a known detachment in English aren’t shown.

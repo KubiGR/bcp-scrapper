@@ -72,23 +72,18 @@ const props = {
   sort: 'winRate' as const,
   dir: 'desc' as const,
   factions: [] as string[],
-  onSortChange: vi.fn(),
-  onFactionsChange: vi.fn(),
   onOpenPlayers: vi.fn(),
 };
 const rowOf = (detachments: string) => {
-  const row = screen.getByText(detachments).closest('tr');
-  if (row === null) throw new Error(`no row ${detachments}`);
+  const row = screen.getByText(detachments).closest('article');
+  if (row === null) throw new Error(`no card ${detachments}`);
   return row;
 };
 const order = () =>
-  screen
-    .getAllByRole('row')
-    .slice(1)
-    .map((row) => row.querySelector('td p')?.textContent);
+  [...document.querySelectorAll('article')].map((card) => card.querySelector('p')?.textContent);
 
 describe('ArchetypeTable', () => {
-  it('lists every faction’s archetypes in one table, with their faction and figures', () => {
+  it('lists every faction’s archetypes as cards, with their faction and figures', () => {
     renderWithProviders(<ArchetypeTable {...props} />);
     const ork = within(rowOf('Kult of Speed + Wreckas'));
     expect(ork.getByText('Orks')).toBeInTheDocument();
@@ -121,7 +116,7 @@ describe('ArchetypeTable', () => {
 
   it('leaves out players without a known detachment, and says how many', () => {
     renderWithProviders(<ArchetypeTable {...props} />);
-    expect(screen.getAllByRole('row')).toHaveLength(4);
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
     expect(
       screen.getByText('8 players without a known detachment in English aren’t shown.'),
     ).toBeInTheDocument();
@@ -143,24 +138,7 @@ describe('ArchetypeTable', () => {
     ]);
   });
 
-  it('cycles a column header: high to low, low to high, then off', () => {
-    const onSortChange = vi.fn();
-    const { rerender } = renderWithProviders(
-      <ArchetypeTable {...props} onSortChange={onSortChange} />,
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Players' }));
-    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'players', dir: 'desc' });
-    fireEvent.click(screen.getByRole('button', { name: /Win rate/ }));
-    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'winRate', dir: 'asc' });
-    rerender(<ArchetypeTable {...props} dir="asc" onSortChange={onSortChange} />);
-    fireEvent.click(screen.getByRole('button', { name: /Win rate/ }));
-    expect(onSortChange).toHaveBeenLastCalledWith(null);
-    fireEvent.click(screen.getByRole('button', { name: 'Archetype' }));
-    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'faction', dir: 'asc' });
-  });
-
   it('sorts by the reliable win rate, so a big solid archetype beats a small lucky one', () => {
-    const onSortChange = vi.fn();
     renderWithProviders(
       <ArchetypeTable
         {...props}
@@ -170,34 +148,21 @@ describe('ArchetypeTable', () => {
         ]}
         minPlayers={1}
         sort="reliable"
-        onSortChange={onSortChange}
       />,
     );
     expect(order()).toEqual(['Big Solid', 'Small Lucky']);
-    expect(screen.getByRole('columnheader', { name: /Reliable/ })).toHaveAttribute(
-      'aria-sort',
-      'descending',
-    );
     expect(within(rowOf('Small Lucky')).getByText('52%')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Win rate/ }));
-    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'winRate', dir: 'desc' });
   });
   it('sorts by change in win rate, with rows without one last either way', () => {
-    const onSortChange = vi.fn();
-    const { rerender } = renderWithProviders(
-      <ArchetypeTable {...props} sort="change" onSortChange={onSortChange} />,
-    );
+    const { rerender } = renderWithProviders(<ArchetypeTable {...props} sort="change" />);
     // Kult of Speed + Wreckas fell 3 points; the others have too few games to tell.
     expect(within(rowOf('Kult of Speed + Wreckas')).getByText('−3.0 pp')).toHaveAttribute(
       'data-tone',
       'bad',
     );
     expect(order()[0]).toBe('Kult of Speed + Wreckas');
-    rerender(<ArchetypeTable {...props} sort="change" dir="asc" onSortChange={onSortChange} />);
+    rerender(<ArchetypeTable {...props} sort="change" dir="asc" />);
     expect(order()[0]).toBe('Kult of Speed + Wreckas');
-    // Already low to high: the third click turns it off.
-    fireEvent.click(screen.getByRole('button', { name: /Change/ }));
-    expect(onSortChange).toHaveBeenLastCalledWith(null);
   });
 
   it('narrows to the chosen factions', () => {

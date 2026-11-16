@@ -1,5 +1,14 @@
 import { addDays, updateOfDay, type EffectiveUpdate } from '@bcp/shared';
-import { Box, Input, NumberInput, SegmentedControl, Skeleton, Stack, Text } from '@mantine/core';
+import {
+  Box,
+  Input,
+  MultiSelect,
+  NumberInput,
+  SegmentedControl,
+  Skeleton,
+  Stack,
+  Text,
+} from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -10,7 +19,14 @@ import { PageTitle, SidebarLayout } from '../../components/Scoreboard';
 import { plural } from '../../lib/format';
 import { useDraftRange } from '../../lib/use-draft-range';
 import { ArchetypeTable } from './ArchetypeTable';
-import { FactionTable, type PlayersFilter } from './FactionTable';
+import {
+  factionKey,
+  factionName,
+  FactionTable,
+  MetaSortSelect,
+  type PlayersFilter,
+} from './FactionTable';
+import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
 import {
   DEFAULT_MIN_PLAYERS,
   metaQuery,
@@ -90,6 +106,7 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
     >
       <Panel title="Filters">
         <Stack gap="sm">
+          <MetaSortSelect sort={sort} onSortChange={onSortChange} />
           <Input.Wrapper label="View">
             <SegmentedControl
               aria-label="View"
@@ -101,6 +118,36 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
               }}
             />
           </Input.Wrapper>
+          {view === 'archetypes' && (
+            <MultiSelect
+              label="Factions"
+              renderOption={renderFactionOption}
+              renderPill={renderFactionPill}
+              placeholder={factions.length === 0 ? 'All factions' : undefined}
+              // The chosen ones too, so they show while the data loads.
+              data={[
+                ...(meta.data?.factions ?? []).map((row) => ({
+                  value: factionKey(row.faction),
+                  label: factionName(row.faction),
+                })),
+                ...factions
+                  .filter(
+                    (key) =>
+                      !(meta.data?.factions ?? []).some((row) => factionKey(row.faction) === key),
+                  )
+                  .map((key) => ({ value: key, label: key })),
+              ]}
+              value={factions}
+              onChange={(next) => {
+                onSearchChange({
+                  ...search,
+                  factions: next.length > 0 ? next.join('|') : undefined,
+                });
+              }}
+              searchable
+              clearable
+            />
+          )}
           <UpdatePicker
             from={window.from}
             to={window.to}
@@ -185,9 +232,10 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
                   No players with games yet.
                 </Text>
               ) : (
-                <Panel
-                  title={`${plural(meta.data.totals.players, 'player')} · ${plural(meta.data.totals.games, 'game')}`}
-                >
+                <Stack gap="sm">
+                  <Text size="xs" c="dimmed" ff="monospace" tt="uppercase" className="numeric">
+                    {`${plural(meta.data.totals.players, 'player')} · ${plural(meta.data.totals.games, 'game')}`}
+                  </Text>
                   {view === 'archetypes' ? (
                     <ArchetypeTable
                       changeLabel={change?.label}
@@ -197,13 +245,6 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
                       sort={sort}
                       dir={dir}
                       factions={factions}
-                      onSortChange={onSortChange}
-                      onFactionsChange={(next) => {
-                        onSearchChange({
-                          ...search,
-                          factions: next.length > 0 ? next.join('|') : undefined,
-                        });
-                      }}
                       onOpenPlayers={setPlayers}
                     />
                   ) : (
@@ -215,7 +256,6 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
                       sort={sort}
                       dir={dir}
                       expanded={expanded}
-                      onSortChange={onSortChange}
                       onToggle={(key) => {
                         const next = expanded.includes(key)
                           ? expanded.filter((k) => k !== key)
@@ -228,7 +268,7 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
                       onOpenPlayers={setPlayers}
                     />
                   )}
-                </Panel>
+                </Stack>
               )}
               {meta.data.teams !== null && (
                 <Panel title="What top teams bring">
