@@ -4,6 +4,9 @@ import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
+import { FilterToggle } from '../../components/FilterToggle';
+import { Panel } from '../../components/Panel';
+import { SidebarLayout } from '../../components/Scoreboard';
 import { plural } from '../../lib/format';
 import { useDraftRange } from '../../lib/use-draft-range';
 import { CellDrawer } from './CellDrawer';
@@ -79,173 +82,188 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
     />
   );
 
+  const sidebar = (
+    <FilterToggle
+      active={settings.factions.length + settings.dispositions.length + settings.detachments.length}
+    >
+      <Panel title="Filters">
+        <Stack gap="sm">
+          <DatePickerInput
+            type="range"
+            label="Dates"
+            valueFormat="D MMM YYYY"
+            allowSingleDateInRange
+            value={dates.draft}
+            onChange={dates.onRangeChange}
+          />
+          <UpdatePicker
+            from={window.from}
+            to={window.to}
+            w="100%"
+            onChange={(range) => {
+              onSearchChange({ ...search, from: range.from, to: range.to });
+            }}
+          />
+          {matchups.data && matchups.data.events.length > 0 && (
+            <Button
+              variant="default"
+              fullWidth
+              onClick={() => {
+                setEventsOpen(true);
+              }}
+            >
+              {`Events · ${String(matchups.data.events.filter((e) => e.included).length)} of ${String(matchups.data.events.length)}`}
+            </Button>
+          )}
+          {matchups.data && matchups.data.events.length > 0 && (
+            <MatrixControls
+              stacked
+              settings={settings}
+              onChange={(next) => {
+                onSearchChange({
+                  ...search,
+                  // Best first is the default: only A→Z goes in the address.
+                  order: next.order === 'name' ? 'name' : undefined,
+                  minGames: next.minGames,
+                  dispositions:
+                    next.dispositions.length > 0 ? next.dispositions.join(',') : undefined,
+                  detachments:
+                    next.detachments.length > 0
+                      ? next.detachments.join(DETACHMENT_SEPARATOR)
+                      : undefined,
+                  side: next.side,
+                  factions: next.factions.length > 0 ? next.factions.join('|') : undefined,
+                });
+              }}
+              dispositions={[]}
+              detachments={matchups.data.detachments}
+              detachmentFactions={matchups.data.detachmentFactions}
+              factions={matchups.data.matrix.factions}
+            />
+          )}
+        </Stack>
+      </Panel>
+    </FilterToggle>
+  );
+
   return (
-    <Stack gap="lg">
-      <Title order={1}>Faction matchups</Title>
-      <Group gap="md" align="flex-end" wrap="wrap">
-        <DatePickerInput
-          type="range"
-          label="Dates"
-          valueFormat="D MMM YYYY"
-          allowSingleDateInRange
-          value={dates.draft}
-          onChange={dates.onRangeChange}
-          w={{ base: '100%', xs: 280 }}
-        />
-        <UpdatePicker
-          from={window.from}
-          to={window.to}
-          onChange={(range) => {
-            onSearchChange({ ...search, from: range.from, to: range.to });
+    <SidebarLayout sidebarLabel="Filters" sidebar={sidebar}>
+      <Stack gap="lg">
+        <Title order={1}>Faction matchups</Title>
+        {matchups.isPending && <Skeleton height={160} />}
+        {matchups.error && (
+          <ErrorState error={matchups.error} onRetry={() => void matchups.refetch()} />
+        )}
+        {matchups.data && (
+          <>
+            {matchups.data.events.some((event) => event.pairings === 'fetching') && (
+              <Text size="sm" c="dimmed" aria-live="polite">
+                Fetching pairings for{' '}
+                <span className="numeric">
+                  {matchups.data.events.filter((event) => event.pairings === 'fetching').length}
+                </span>{' '}
+                {plural(
+                  matchups.data.events.filter((event) => event.pairings === 'fetching').length,
+                  'event',
+                )}
+                …
+              </Text>
+            )}
+            {(() => {
+              const unsynced = matchups.data.events.filter(
+                (event) => event.pairings === 'missing' || event.pairings === 'partial',
+              ).length;
+              return unsynced > 0 ? (
+                <Text size="sm" c="dimmed">
+                  {plural(unsynced, 'event')} {unsynced === 1 ? 'is' : 'are'} missing pairings:
+                  fetch them under Events.
+                </Text>
+              ) : null;
+            })()}
+            {matchups.data.events.length === 0 ? (
+              eventSelection
+            ) : (
+              // The event list is long: it lives in a drawer, so the matrix comes first.
+              <Drawer
+                opened={eventsOpen}
+                onClose={() => {
+                  setEventsOpen(false);
+                }}
+                position="right"
+                size="xl"
+                title="Events in this range"
+              >
+                {eventSelection}
+              </Drawer>
+            )}
+            {matchups.data.events.length > 0 && (
+              <>
+                <Box style={{ opacity: dimmed ? 0.6 : 1 }} aria-busy={dimmed}>
+                  {(() => {
+                    const noneIncluded = !matchups.data.events.some((event) => event.included);
+                    const noGames = matchups.data.matrix.games === 0;
+                    const dispositionActive = hasSideFilter(settings);
+                    if (!noneIncluded && noGames && dispositionActive) {
+                      return (
+                        <Group gap="sm">
+                          <Text size="sm" c="dimmed">
+                            No games match this filter.
+                          </Text>
+                          <Button
+                            size="xs"
+                            variant="light"
+                            onClick={() => {
+                              onSearchChange({
+                                ...search,
+                                dispositions: undefined,
+                                detachments: undefined,
+                              });
+                            }}
+                          >
+                            Clear filter
+                          </Button>
+                        </Group>
+                      );
+                    }
+                    if (noneIncluded || noGames) {
+                      return (
+                        <Text size="sm" c="dimmed">
+                          Tick at least one event with pairings to see matchups.
+                        </Text>
+                      );
+                    }
+                    return (
+                      <>
+                        <Text size="sm" c="dimmed">
+                          <span className="numeric">{matchups.data.matrix.games}</span> games ·{' '}
+                          <span className="numeric">{matchups.data.matrix.factions.length}</span>{' '}
+                          factions
+                        </Text>
+                        <FactionMatrix
+                          matrix={matchups.data.matrix}
+                          scoring={matchups.data.scoring}
+                          settings={settings}
+                          onCell={setCell}
+                          detachments={crossDetachmentRowsQuery(search)}
+                        />
+                      </>
+                    );
+                  })()}
+                </Box>
+              </>
+            )}
+          </>
+        )}
+        <CellDrawer
+          cell={cell}
+          games={games.data?.games}
+          loading={cell !== null && games.isPending}
+          error={games.error}
+          onClose={() => {
+            setCell(null);
           }}
         />
-        {matchups.data && matchups.data.events.length > 0 && (
-          <Button
-            variant="default"
-            onClick={() => {
-              setEventsOpen(true);
-            }}
-          >
-            {`Events · ${String(matchups.data.events.filter((e) => e.included).length)} of ${String(matchups.data.events.length)}`}
-          </Button>
-        )}
-      </Group>
-      {matchups.isPending && <Skeleton height={160} />}
-      {matchups.error && (
-        <ErrorState error={matchups.error} onRetry={() => void matchups.refetch()} />
-      )}
-      {matchups.data && (
-        <>
-          {matchups.data.events.some((event) => event.pairings === 'fetching') && (
-            <Text size="sm" c="dimmed" aria-live="polite">
-              Fetching pairings for{' '}
-              <span className="numeric">
-                {matchups.data.events.filter((event) => event.pairings === 'fetching').length}
-              </span>{' '}
-              {plural(
-                matchups.data.events.filter((event) => event.pairings === 'fetching').length,
-                'event',
-              )}
-              …
-            </Text>
-          )}
-          {(() => {
-            const unsynced = matchups.data.events.filter(
-              (event) => event.pairings === 'missing' || event.pairings === 'partial',
-            ).length;
-            return unsynced > 0 ? (
-              <Text size="sm" c="dimmed">
-                {plural(unsynced, 'event')} {unsynced === 1 ? 'is' : 'are'} missing pairings: fetch
-                them under Events.
-              </Text>
-            ) : null;
-          })()}
-          {matchups.data.events.length === 0 ? (
-            eventSelection
-          ) : (
-            // The event list is long: it lives in a drawer, so the matrix comes first.
-            <Drawer
-              opened={eventsOpen}
-              onClose={() => {
-                setEventsOpen(false);
-              }}
-              position="right"
-              size="xl"
-              title="Events in this range"
-            >
-              {eventSelection}
-            </Drawer>
-          )}
-          {matchups.data.events.length > 0 && (
-            <>
-              <MatrixControls
-                settings={settings}
-                onChange={(next) => {
-                  onSearchChange({
-                    ...search,
-                    // Best first is the default: only A→Z goes in the address.
-                    order: next.order === 'name' ? 'name' : undefined,
-                    minGames: next.minGames,
-                    dispositions:
-                      next.dispositions.length > 0 ? next.dispositions.join(',') : undefined,
-                    detachments:
-                      next.detachments.length > 0
-                        ? next.detachments.join(DETACHMENT_SEPARATOR)
-                        : undefined,
-                    side: next.side,
-                    factions: next.factions.length > 0 ? next.factions.join('|') : undefined,
-                  });
-                }}
-                dispositions={[]}
-                detachments={matchups.data.detachments}
-                detachmentFactions={matchups.data.detachmentFactions}
-                factions={matchups.data.matrix.factions}
-              />
-              <Box style={{ opacity: dimmed ? 0.6 : 1 }} aria-busy={dimmed}>
-                {(() => {
-                  const noneIncluded = !matchups.data.events.some((event) => event.included);
-                  const noGames = matchups.data.matrix.games === 0;
-                  const dispositionActive = hasSideFilter(settings);
-                  if (!noneIncluded && noGames && dispositionActive) {
-                    return (
-                      <Group gap="sm">
-                        <Text size="sm" c="dimmed">
-                          No games match this filter.
-                        </Text>
-                        <Button
-                          size="xs"
-                          variant="light"
-                          onClick={() => {
-                            onSearchChange({
-                              ...search,
-                              dispositions: undefined,
-                              detachments: undefined,
-                            });
-                          }}
-                        >
-                          Clear filter
-                        </Button>
-                      </Group>
-                    );
-                  }
-                  if (noneIncluded || noGames) {
-                    return (
-                      <Text size="sm" c="dimmed">
-                        Tick at least one event with pairings to see matchups.
-                      </Text>
-                    );
-                  }
-                  return (
-                    <>
-                      <Text size="sm" c="dimmed">
-                        <span className="numeric">{matchups.data.matrix.games}</span> games ·{' '}
-                        <span className="numeric">{matchups.data.matrix.factions.length}</span>{' '}
-                        factions
-                      </Text>
-                      <FactionMatrix
-                        matrix={matchups.data.matrix}
-                        scoring={matchups.data.scoring}
-                        settings={settings}
-                        onCell={setCell}
-                        detachments={crossDetachmentRowsQuery(search)}
-                      />
-                    </>
-                  );
-                })()}
-              </Box>
-            </>
-          )}
-        </>
-      )}
-      <CellDrawer
-        cell={cell}
-        games={games.data?.games}
-        loading={cell !== null && games.isPending}
-        error={games.error}
-        onClose={() => {
-          setCell(null);
-        }}
-      />
-    </Stack>
+      </Stack>
+    </SidebarLayout>
   );
 }
