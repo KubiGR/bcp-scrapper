@@ -363,7 +363,10 @@ export const PlayerSearchQuerySchema = z
     detachmentsMatch: z.enum(['any', 'exact']).optional(),
     /** Event type; all when absent. */
     type: z.enum(['all', 'singles', 'teams']).optional(),
-    /** Only events of at least this many rounds; any big event when absent. */
+    /**
+     * Only players with at least this many games, at events of at least this many rounds; any
+     * player with a game when absent.
+     */
     minRounds: z.coerce.number().int().min(1).max(20).optional(),
   })
   .refine((q) => !q.from || !q.to || q.from <= q.to, {

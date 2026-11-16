@@ -85,7 +85,7 @@ describe('searchTopLists', () => {
     expect(ids).not.toContain('PL-BEN');
   });
 
-  it('sorts like standings: most wins, then most draws, then fewest losses', async () => {
+  it('sorts fewest losses first, then most wins, then most draws', async () => {
     await record('PL-ADA', 3, 1, 0);
     await record('PL-BEN', 4, 1, 0);
     await record('PL-CARA', 2, 0, 0);
@@ -95,8 +95,8 @@ describe('searchTopLists', () => {
     const ids = found
       .map((p) => p.bcpId)
       .filter((id) => ['PL-ADA', 'PL-BEN', 'PL-CARA', 'PL-DAN', 'PL-EVE'].includes(id));
-    expect(ids).toEqual(['PL-DAN', 'PL-BEN', 'PL-ADA', 'PL-EVE', 'PL-CARA']);
-    const keys = found.map((p) => p.wins * 1_000_000 + p.draws * 1_000 - p.losses);
+    expect(ids).toEqual(['PL-DAN', 'PL-CARA', 'PL-BEN', 'PL-ADA', 'PL-EVE']);
+    const keys = found.map((p) => -p.losses * 1_000_000 + p.wins * 1_000 + p.draws);
     expect(keys).toEqual([...keys].sort((x, y) => y - x));
   });
 
@@ -204,6 +204,27 @@ describe('searchTopLists', () => {
       TODAY,
     );
     expect(exact.players.some((p) => p.eventId === 'EVTBRACKET01')).toBe(true);
+  });
+
+  it('leaves out a player with fewer games than the minimum (dropped, or still playing)', async () => {
+    const [row] = await db.select().from(events).where(eq(events.id, 'EVTBRACKET01'));
+    const rounds = row?.roundCount ?? 0;
+    const [short, full] = await db
+      .select({ id: players.id })
+      .from(players)
+      .where(eq(players.eventId, 'EVTBRACKET01'));
+    if (short === undefined || full === undefined) throw new Error('fixture');
+    await record(short.id, 2, 0, 0);
+    await record(full.id, rounds - 1, 1, 0);
+    const found = await searchTopLists(
+      db,
+      query({ maxLosses: 5, minRounds: rounds }),
+      ALL_EVENTS,
+      TODAY,
+    );
+    const ids = found.players.map((p) => p.bcpId);
+    expect(ids).toContain(full.id);
+    expect(ids).not.toContain(short.id);
   });
 
   it('defaults to the last 90 days', async () => {
