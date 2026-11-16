@@ -18,6 +18,9 @@ export function playedLately(startDate: string, now = Date.now()): boolean {
   return ago >= 0 && ago < WEEK_MS;
 }
 
+/** "Major event", "Small event": a size tier in words. */
+export const sizeName = (tier: SizeTier): string => NAMES[tier];
+
 const FLAMES: Record<SizeTier, number> = { small: 0, medium: 1, large: 2, major: 3 };
 const NAMES: Record<SizeTier, string> = {
   small: 'Small event',

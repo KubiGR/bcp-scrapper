@@ -1,14 +1,14 @@
-import { Stack, Title } from '@mantine/core';
+import { Stack, Title, VisuallyHidden } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { ErrorState } from '../../components/ErrorState';
 import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
-import { PageHeading, SidebarLayout } from '../../components/Scoreboard';
+import { SidebarLayout } from '../../components/Scoreboard';
 import { AdvancedSearch } from './AdvancedSearch';
 import { CatalogStatus } from './CatalogStatus';
 import { CoverageNotice } from './CoverageNotice';
-import { EventsTable } from './EventsTable';
+import { EventsSort, EventsTable } from './EventsTable';
 import { eventsQuery } from './finder-queries';
 import {
   finderWindow,
@@ -50,26 +50,31 @@ export function FinderPage() {
           <Panel title="Filters">
             <Stack gap="md">
               <SizeFilter search={search} onChange={update} />
+              <EventsSort
+                sort={search.sort}
+                dir={search.dir}
+                onSortChange={(next) => {
+                  update({ sort: next?.sort ?? 'date', dir: next?.dir ?? 'desc', page: 1 });
+                }}
+              />
               <AdvancedSearch search={search} window={window} onChange={update} />
+              <CatalogStatus />
             </Stack>
           </Panel>
         </FilterToggle>
       }
     >
       <Stack gap="lg">
-        <PageHeading controls={<CatalogStatus />}>
+        {/* The menu already says where you are: the heading is for screen readers only. */}
+        <VisuallyHidden>
           <Title order={1}>Tournaments</Title>
-        </PageHeading>
+        </VisuallyHidden>
         {!isLatestView(search) && <CoverageNotice window={window} />}
         {events.error ? (
           <ErrorState error={events.error} onRetry={() => void events.refetch()} />
         ) : (
           <EventsTable
             sort={search.sort}
-            dir={search.dir}
-            onSortChange={(next) => {
-              update({ sort: next?.sort ?? 'date', dir: next?.dir ?? 'desc', page: 1 });
-            }}
             response={events.data}
             fetching={events.isFetching}
             page={search.page}

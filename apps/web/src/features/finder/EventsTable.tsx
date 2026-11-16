@@ -9,7 +9,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { EventStatusBadges } from '../../components/EventStatusBadges';
-import { EventHeat, NameWithLeaf } from '../../components/EventSymbols';
+import { sizeName, sizeTier } from '../../components/EventSymbols';
 import { FieldElo } from '../../components/FieldElo';
 import { Card, CardGroup, Stat, scoreboardClasses } from '../../components/Scoreboard';
 import { formatEventDates, plural } from '../../lib/format';
@@ -30,11 +30,33 @@ const ORDERS = [
   { value: 'players-asc', label: 'Smallest first', sort: 'players', dir: 'asc' },
 ] as const satisfies readonly { value: string; label: string; sort: EventSort; dir: SortDir }[];
 
-interface EventsTableProps {
-  /** The server's sort (the list is paged there); `onSortChange(null)` goes back to newest first. */
+interface EventsSortProps {
   sort: EventSort;
   dir: SortDir;
+  /** `null` goes back to newest first, the default. */
   onSortChange: (next: { sort: EventSort; dir: SortDir } | null) => void;
+}
+
+/** The events' order: newest, oldest, biggest or smallest first (the server sorts and pages). */
+export function EventsSort({ sort, dir, onSortChange }: EventsSortProps) {
+  return (
+    <Select
+      label="Sort by"
+      data={ORDERS.map(({ value, label }) => ({ value, label }))}
+      value={`${sort}-${dir}`}
+      onChange={(value) => {
+        const next = ORDERS.find((option) => option.value === value);
+        if (next === undefined) return;
+        onSortChange(next.value === 'date-desc' ? null : { sort: next.sort, dir: next.dir });
+      }}
+      allowDeselect={false}
+    />
+  );
+}
+
+interface EventsTableProps {
+  /** The server's sort (the list is paged there): by date, a group per week. */
+  sort: EventSort;
   response: EventListResponse | undefined;
   fetching: boolean;
   page: number;
@@ -62,8 +84,6 @@ function byWeek(events: EventListItem[]) {
 /** The big events found, as cards: by date a group per week, by size one list; paged. */
 export function EventsTable({
   sort,
-  dir,
-  onSortChange,
   response,
   fetching,
   page,
@@ -76,7 +96,6 @@ export function EventsTable({
   const records = response?.items ?? [];
   const total = response?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / perPage));
-  const order = `${sort}-${dir}`;
   const card = (event: EventListItem) => (
     <EventCard key={event.bcpId} event={event} onOpen={onOpen} />
   );
@@ -84,21 +103,7 @@ export function EventsTable({
   return (
     <Stack gap="lg" pos="relative">
       <LoadingOverlay visible={fetching && response === undefined} />
-      <Group justify="space-between" align="flex-end">
-        <Text c="dimmed">{response ? plural(total, 'event') : ''}</Text>
-        <Select
-          label="Sort by"
-          data={ORDERS.map(({ value, label }) => ({ value, label }))}
-          value={order}
-          onChange={(value) => {
-            const next = ORDERS.find((option) => option.value === value);
-            if (next === undefined) return;
-            onSortChange(next.value === 'date-desc' ? null : { sort: next.sort, dir: next.dir });
-          }}
-          allowDeselect={false}
-          w={170}
-        />
-      </Group>
+      {response && <Text c="dimmed">{plural(total, 'event')}</Text>}
 
       {records.length === 0 ? (
         <Text c="dimmed" py="xl" ta="center">
@@ -157,7 +162,7 @@ function EventCard({ event, onOpen }: { event: EventListItem; onOpen: (id: strin
             onOpen(event.bcpId);
           })}
         >
-          <NameWithLeaf name={event.name} startDate={event.startDate} />
+          {event.name}
         </UnstyledButton>
         <Text size="sm" c="dimmed" className={classes.when}>
           <span className="numeric">{formatEventDates(event.startDate, event.endDate)}</span>
@@ -168,18 +173,15 @@ function EventCard({ event, onOpen }: { event: EventListItem; onOpen: (id: strin
       <Stat
         className={classes.size}
         value={
-          <>
-            {event.playerCount}
-            <EventHeat playerCount={event.playerCount} />
-          </>
+          <span
+            className={classes.players}
+            data-size={sizeTier(event.playerCount)}
+            title={sizeName(sizeTier(event.playerCount))}
+          >
+            {plural(event.playerCount, 'player')}
+          </span>
         }
-        label={
-          event.teamCount === null
-            ? event.playerCount === 1
-              ? 'player'
-              : 'players'
-            : `players · ${plural(event.teamCount, 'team')}`
-        }
+        label={event.teamCount === null ? 'singles' : plural(event.teamCount, 'team')}
       />
       <Stat
         className={classes.figure}

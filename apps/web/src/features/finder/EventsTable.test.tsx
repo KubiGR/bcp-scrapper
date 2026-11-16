@@ -5,14 +5,12 @@ import { pickOption } from '../../test/pick-option';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
 import { anEvent } from '../../test/sample-data';
 import { twoUpdates } from '../updates/test-updates';
-import { EventsTable } from './EventsTable';
+import { EventsSort, EventsTable } from './EventsTable';
 
 const props = {
   sort: 'date' as const,
-  dir: 'desc' as const,
   perPage: 25 as const,
   onPerPageChange: vi.fn(),
-  onSortChange: vi.fn(),
   fetching: false,
   page: 1,
   onPageChange: vi.fn(),
@@ -41,22 +39,31 @@ describe('EventsTable', () => {
     expect(screen.getByText('Before first update')).toBeInTheDocument();
   });
 
-  it('marks an event that started in the last week with a leaf', () => {
+  it('colours the player count by the event’s size, without flames or a leaf', () => {
     renderWithProviders(
       <EventsTable
         {...props}
         onOpen={vi.fn()}
         response={{
           items: [
-            anEvent({ startDate: new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString() }),
+            anEvent({
+              bcpId: 'E1',
+              playerCount: 432,
+              startDate: new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString(),
+            }),
+            anEvent({ bcpId: 'E2', name: 'Small RTT', playerCount: 24 }),
           ],
-          total: 1,
+          total: 2,
           page: 1,
           pageSize: 25,
         }}
       />,
     );
-    expect(screen.getByRole('img', { name: 'New this week' })).toBeInTheDocument();
+    expect(screen.getByText('432 players')).toHaveAttribute('data-size', 'major');
+    expect(screen.getByText('432 players')).toHaveAttribute('title', 'Major event');
+    expect(screen.getByText('24 players')).toHaveAttribute('data-size', 'small');
+    expect(screen.queryByRole('img', { name: 'Major event' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'New this week' })).not.toBeInTheDocument();
   });
 
   it('lists events with size and badges, and opens one on click', () => {
@@ -73,11 +80,8 @@ describe('EventsTable', () => {
         }}
       />,
     );
-    // The size with flames for a major event, the teams by it.
-    expect(screen.getByText('players · 108 teams').parentElement).toHaveTextContent(
-      '432players · 108 teams',
-    );
-    expect(screen.getByRole('img', { name: 'Major event' })).toBeInTheDocument();
+    // The players, the teams under them.
+    expect(screen.getByText('108 teams').parentElement).toHaveTextContent('432 players108 teams');
     expect(screen.getByText('Teams')).toBeInTheDocument();
     // A real link (⌘-click opens a new tab), with phrasing content only: no <p>.
     const link = screen.getByRole('link', { name: 'Sample Team Open' });
@@ -152,9 +156,8 @@ describe('EventsTable', () => {
 
   it('sorts by the order picked; newest first is the default', async () => {
     const onSortChange = vi.fn();
-    const response = { items: [anEvent()], total: 1, page: 1, pageSize: 25 };
     const { rerender } = renderWithProviders(
-      <EventsTable {...props} onOpen={vi.fn()} response={response} onSortChange={onSortChange} />,
+      <EventsSort sort="date" dir="desc" onSortChange={onSortChange} />,
     );
     const pick = (label: string) => pickOption('Sort by', label);
     await pick('Biggest first');
@@ -164,15 +167,7 @@ describe('EventsTable', () => {
     await pick('Oldest first');
     expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'date', dir: 'asc' });
     // Newest first is the default: picking it clears the sort.
-    rerender(
-      <EventsTable
-        {...props}
-        sort="players"
-        onOpen={vi.fn()}
-        response={response}
-        onSortChange={onSortChange}
-      />,
-    );
+    rerender(<EventsSort sort="players" dir="desc" onSortChange={onSortChange} />);
     await pick('Newest first');
     expect(onSortChange).toHaveBeenLastCalledWith(null);
   });
