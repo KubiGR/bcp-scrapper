@@ -1,6 +1,7 @@
 import type { MetaRow } from '@bcp/shared';
 import {
   Group,
+  Input,
   SegmentedControl,
   Skeleton,
   Stack,
@@ -15,7 +16,9 @@ import { Fragment, useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
 import { FactionIcon } from '../../components/FactionIcon';
 import { ErrorState } from '../../components/ErrorState';
+import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
+import { SidebarLayout } from '../../components/Scoreboard';
 import { plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { useDraftRange } from '../../lib/use-draft-range';
@@ -298,101 +301,117 @@ export function FactionsPage({ search, onSearchChange }: FactionsPageProps) {
   const needle = query.trim().toLowerCase();
   const rows = known.filter((row) => row.faction.toLowerCase().includes(needle));
 
-  return (
-    <Stack gap="lg">
-      <Title order={1}>Factions</Title>
-      <Group gap="md" align="flex-end" wrap="wrap">
-        <DatePickerInput
-          type="range"
-          label="Dates"
-          valueFormat="D MMM YYYY"
-          allowSingleDateInRange
-          value={dates.draft}
-          onChange={dates.onRangeChange}
-          w={{ base: '100%', xs: 280 }}
-        />
-        <UpdatePicker
-          from={window.from}
-          to={window.to}
-          onChange={(range) => {
-            onSearchChange({ ...search, from: range.from, to: range.to });
-          }}
-        />
-        <SegmentedControl
-          aria-label="Event type"
-          data={EVENT_TYPES}
-          value={search.type ?? 'all'}
-          onChange={(value) => {
-            onSearchChange({
-              ...search,
-              type: value === 'singles' || value === 'teams' ? value : undefined,
-            });
-          }}
-        />
-      </Group>
-
-      {meta.isPending && <Skeleton height={240} />}
-      {meta.error && <ErrorState error={meta.error} onRetry={() => void meta.refetch()} />}
-      {meta.data &&
-        (meta.data.eventsInRange === 0 ? (
-          <Text size="sm" c="dimmed">
-            No big events in this range.
-          </Text>
-        ) : known.length === 0 ? (
-          <Text size="sm" c="dimmed">
-            No players with games yet.
-          </Text>
-        ) : (
-          <Stack
-            gap="lg"
-            style={{ opacity: meta.isPlaceholderData ? 0.6 : 1 }}
-            aria-busy={meta.isFetching}
-          >
-            <Podium rows={known} filters={filters} />
-            <Movement
-              rows={known}
-              filters={filters}
-              label={change?.label ?? 'Last 30 days vs the 30 before'}
+  const sidebar = (
+    <FilterToggle active={Number(query.trim() !== '') + Number(search.type !== undefined)}>
+      <Panel title="Filters">
+        <Stack gap="sm">
+          <TextInput
+            aria-label="Search factions"
+            placeholder="Search factions…"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.currentTarget.value);
+            }}
+          />
+          <UpdatePicker
+            from={window.from}
+            to={window.to}
+            w="100%"
+            onChange={(range) => {
+              onSearchChange({ ...search, from: range.from, to: range.to });
+            }}
+          />
+          <DatePickerInput
+            type="range"
+            label="Dates"
+            valueFormat="D MMM YYYY"
+            allowSingleDateInRange
+            value={dates.draft}
+            onChange={dates.onRangeChange}
+          />
+          <Input.Wrapper label="Event type">
+            <SegmentedControl
+              aria-label="Event type"
+              fullWidth
+              data={EVENT_TYPES}
+              value={search.type ?? 'all'}
+              onChange={(value) => {
+                onSearchChange({
+                  ...search,
+                  type: value === 'singles' || value === 'teams' ? value : undefined,
+                });
+              }}
             />
-            <Panel
-              title={`${plural(meta.data.totals.players, 'player')} · ${plural(meta.data.eventsLoaded, 'event')}`}
+          </Input.Wrapper>
+          <Input.Wrapper label="Layout">
+            <SegmentedControl
+              aria-label="Layout"
+              fullWidth
+              data={VIEWS}
+              value={layout ?? 'tiers'}
+              onChange={(value) => {
+                onSearchChange({ ...search, layout: value === 'flat' ? 'flat' : undefined });
+              }}
+            />
+          </Input.Wrapper>
+        </Stack>
+      </Panel>
+    </FilterToggle>
+  );
+
+  return (
+    <SidebarLayout sidebarLabel="Filters" sidebar={sidebar}>
+      <Stack gap="lg">
+        <div>
+          <Title order={1}>Factions</Title>
+          <Text c="dimmed" mt={4}>
+            Grouped by win rate at big events; each opens its archetypes on Meta
+          </Text>
+        </div>
+
+        {meta.isPending && <Skeleton height={240} />}
+        {meta.error && <ErrorState error={meta.error} onRetry={() => void meta.refetch()} />}
+        {meta.data &&
+          (meta.data.eventsInRange === 0 ? (
+            <Text size="sm" c="dimmed">
+              No big events in this range.
+            </Text>
+          ) : known.length === 0 ? (
+            <Text size="sm" c="dimmed">
+              No players with games yet.
+            </Text>
+          ) : (
+            <Stack
+              gap="lg"
+              style={{ opacity: meta.isPlaceholderData ? 0.6 : 1 }}
+              aria-busy={meta.isFetching}
             >
-              <Group gap="sm" mb="md" wrap="wrap">
-                <TextInput
-                  aria-label="Search factions"
-                  placeholder="Search factions…"
-                  value={query}
-                  onChange={(event) => {
-                    setQuery(event.currentTarget.value);
-                  }}
-                  w={{ base: '100%', xs: 240 }}
-                />
-                <SegmentedControl
-                  aria-label="Layout"
-                  data={VIEWS}
-                  value={layout ?? 'tiers'}
-                  onChange={(value) => {
-                    onSearchChange({ ...search, layout: value === 'flat' ? 'flat' : undefined });
-                  }}
-                  ml={{ xs: 'auto' }}
-                />
-              </Group>
-              {rows.length === 0 ? (
-                <Text size="sm" c="dimmed">
-                  No faction matches “{query.trim()}”.
-                </Text>
-              ) : (
-                // Keyed by layout: each starts from its own default sort.
-                <FactionsTable
-                  key={layout ?? 'tiers'}
-                  rows={rows}
-                  filters={filters}
-                  flat={layout === 'flat'}
-                />
-              )}
-            </Panel>
-          </Stack>
-        ))}
-    </Stack>
+              <Podium rows={known} filters={filters} />
+              <Movement
+                rows={known}
+                filters={filters}
+                label={change?.label ?? 'Last 30 days vs the 30 before'}
+              />
+              <Panel
+                title={`${plural(meta.data.totals.players, 'player')} · ${plural(meta.data.eventsLoaded, 'event')}`}
+              >
+                {rows.length === 0 ? (
+                  <Text size="sm" c="dimmed">
+                    No faction matches “{query.trim()}”.
+                  </Text>
+                ) : (
+                  // Keyed by layout: each starts from its own default sort.
+                  <FactionsTable
+                    key={layout ?? 'tiers'}
+                    rows={rows}
+                    filters={filters}
+                    flat={layout === 'flat'}
+                  />
+                )}
+              </Panel>
+            </Stack>
+          ))}
+      </Stack>
+    </SidebarLayout>
   );
 }
