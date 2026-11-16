@@ -16,7 +16,9 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { SearchSelect } from '../../components/SearchSelect';
 import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
+import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
+import { SidebarLayout } from '../../components/Scoreboard';
 import { ordinal, plural } from '../../lib/format';
 import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { rankingsPagesQuery } from './rankings-queries';
@@ -156,99 +158,120 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
       ? undefined
       : { ...first, players: rankings.data?.pages.flatMap((page) => page.players) ?? [] };
 
-  return (
-    <Stack gap="lg">
-      <Title order={1}>Players</Title>
-      <Text size="sm" c="dimmed">
-        Points: the 5 best results of the last 12 months at big events. 1st place at a 100-player
-        event scores 100; bigger events score more (400 players: 200), smaller ones less (20
-        players: 45). Stronger fields count more: an event whose players average 1550 wh40k-elo
-        scores ×1, and every 100 above adds 50% (up to ×1.5, down to ×0.75). wh40k-elo is an Elo
-        rating from all of BCP&apos;s games, imported daily. Overall ranks players by a score that
-        weighs their wh40k-elo percentile 60% and their points percentile 40% (points alone without
-        a wh40k-elo); hover a place for the score.
-      </Text>
-      <Group gap="md" align="flex-end" wrap="wrap">
-        <TextInput
-          label="Search players"
-          placeholder="Name"
-          maxLength={100}
-          value={search.q ?? ''}
-          onChange={(e) => {
-            onSearchChange({ ...search, q: e.currentTarget.value || undefined });
-          }}
-          w={{ base: '100%', xs: 240 }}
-        />
-        <SearchSelect
-          label="Faction"
-          renderOption={renderFactionOption}
-          leftSection={<FactionIcon faction={search.faction ?? null} size={18} />}
-          placeholder="Any"
-          clearable
-          data={data?.factionOptions ?? []}
-          value={search.faction ?? null}
-          onChange={(value) => {
-            onSearchChange({ ...search, faction: value ?? undefined });
-          }}
-          w={{ base: '100%', xs: 240 }}
-        />
-        <Input.Wrapper label="Order by">
-          <SegmentedControl
-            aria-label="Order by"
-            data={[
-              { value: 'points', label: 'Points' },
-              { value: 'overall', label: 'Overall' },
-              { value: 'wh40kElo', label: 'wh40k-elo' },
-            ]}
-            value={search.order ?? 'points'}
-            onChange={(value) => {
-              const order = value === 'overall' || value === 'wh40kElo' ? value : undefined;
-              const next: PlayersSearch = { ...search, order };
-              if (order === undefined) delete next.order;
-              onSearchChange(next);
-            }}
-            style={{ display: 'flex' }}
-          />
-        </Input.Wrapper>
-      </Group>
+  const sidebar = (
+    <>
+      <FilterToggle active={Number(Boolean(search.q)) + Number(Boolean(search.faction))}>
+        <Panel title="Filters">
+          <Stack gap="sm">
+            <TextInput
+              label="Search players"
+              placeholder="Name"
+              maxLength={100}
+              value={search.q ?? ''}
+              onChange={(e) => {
+                onSearchChange({ ...search, q: e.currentTarget.value || undefined });
+              }}
+            />
+            <SearchSelect
+              label="Faction"
+              renderOption={renderFactionOption}
+              leftSection={<FactionIcon faction={search.faction ?? null} size={18} />}
+              placeholder="Any"
+              clearable
+              data={data?.factionOptions ?? []}
+              value={search.faction ?? null}
+              onChange={(value) => {
+                onSearchChange({ ...search, faction: value ?? undefined });
+              }}
+            />
+            <Input.Wrapper label="Order by">
+              <SegmentedControl
+                fullWidth
+                aria-label="Order by"
+                data={[
+                  { value: 'points', label: 'Points' },
+                  { value: 'overall', label: 'Overall' },
+                  { value: 'wh40kElo', label: 'wh40k-elo' },
+                ]}
+                value={search.order ?? 'points'}
+                onChange={(value) => {
+                  const order = value === 'overall' || value === 'wh40kElo' ? value : undefined;
+                  const next: PlayersSearch = { ...search, order };
+                  if (order === undefined) delete next.order;
+                  onSearchChange(next);
+                }}
+                style={{ display: 'flex' }}
+              />
+            </Input.Wrapper>
+          </Stack>
+        </Panel>
+      </FilterToggle>
+      <Panel title="How points work">
+        <Text size="xs" c="dimmed">
+          Points: the 5 best results of the last 12 months at big events. 1st place at a 100-player
+          event scores 100; bigger events score more (400 players: 200), smaller ones less (20
+          players: 45). Stronger fields count more: an event whose players average 1550 wh40k-elo
+          scores ×1, and every 100 above adds 50% (up to ×1.5, down to ×0.75). wh40k-elo is an Elo
+          rating from all of BCP&apos;s games, imported daily. Overall ranks players by a score that
+          weighs their wh40k-elo percentile 60% and their points percentile 40% (points alone
+          without a wh40k-elo); hover a place for the score.
+        </Text>
+      </Panel>
+    </>
+  );
 
-      {rankings.isPending && <Skeleton height={240} />}
-      {rankings.error && (
-        <ErrorState error={rankings.error} onRetry={() => void rankings.refetch()} />
-      )}
-      {data &&
-        (data.ranked === 0 ? (
-          <Text size="sm" c="dimmed">
-            No ranked players yet: rankings need finished big events of the last 12 months.
+  return (
+    <SidebarLayout sidebarLabel="Filters" sidebar={sidebar}>
+      <Stack gap="lg">
+        <div>
+          <Title order={1}>Players</Title>
+          <Text c="dimmed" mt={4}>
+            Ranked by{' '}
+            {search.order === 'overall'
+              ? 'overall score'
+              : search.order === 'wh40kElo'
+                ? 'wh40k-elo'
+                : 'tournament points'}
           </Text>
-        ) : (
-          <Box style={{ opacity: rankings.isPlaceholderData ? 0.6 : 1 }}>
-            <Panel title={`${plural(data.total, 'player')} of ${String(data.ranked)} ranked`}>
-              {data.players.length === 0 ? (
-                <Text size="sm" c="dimmed">
-                  No ranked player matches.
-                </Text>
-              ) : (
-                <Stack gap="sm">
-                  <PlayersTable rows={data.players} />
-                  {rankings.hasNextPage && (
-                    <Group justify="center">
-                      <Button
-                        variant="light"
-                        loading={rankings.isFetchingNextPage}
-                        onClick={() => {
-                          void rankings.fetchNextPage();
-                        }}
-                      >
-                        Show more
-                      </Button>
-                    </Group>
-                  )}
-                </Stack>
-              )}
-            </Panel>
-          </Box>
-        ))}
-    </Stack>
+        </div>
+        {rankings.isPending && <Skeleton height={240} />}
+        {rankings.error && (
+          <ErrorState error={rankings.error} onRetry={() => void rankings.refetch()} />
+        )}
+        {data &&
+          (data.ranked === 0 ? (
+            <Text size="sm" c="dimmed">
+              No ranked players yet: rankings need finished big events of the last 12 months.
+            </Text>
+          ) : (
+            <Box style={{ opacity: rankings.isPlaceholderData ? 0.6 : 1 }}>
+              <Panel title={`${plural(data.total, 'player')} of ${String(data.ranked)} ranked`}>
+                {data.players.length === 0 ? (
+                  <Text size="sm" c="dimmed">
+                    No ranked player matches.
+                  </Text>
+                ) : (
+                  <Stack gap="sm">
+                    <PlayersTable rows={data.players} />
+                    {rankings.hasNextPage && (
+                      <Group justify="center">
+                        <Button
+                          variant="light"
+                          loading={rankings.isFetchingNextPage}
+                          onClick={() => {
+                            void rankings.fetchNextPage();
+                          }}
+                        >
+                          Show more
+                        </Button>
+                      </Group>
+                    )}
+                  </Stack>
+                )}
+              </Panel>
+            </Box>
+          ))}
+      </Stack>
+    </SidebarLayout>
   );
 }
