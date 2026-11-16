@@ -5,7 +5,8 @@ type FoundPlayer = PlayerSearchResponse['players'][number];
 
 /**
  * How a found player's columns sort (Top lists, Meta's players). The record sorts fewest losses
- * first (X-0, then X-1, like the record filter), then most wins, then most draws.
+ * first (X-0, then X-1, like the record filter), then most wins, then most draws. The sort is
+ * stable, so the same record keeps the API's order: higher wh40k-elo first.
  */
 export const FOUND_PLAYER_SORT = {
   player: (p) => p.name,

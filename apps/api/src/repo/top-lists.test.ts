@@ -100,6 +100,29 @@ describe('searchTopLists', () => {
     expect(keys).toEqual([...keys].sort((x, y) => y - x));
   });
 
+  it('puts the higher Elo first on the same record, and unrated players after', async () => {
+    for (const id of ['PL-ADA', 'PL-BEN', 'PL-CARA']) await record(id, 4, 1, 0);
+    await db.insert(wh40kElo).values(
+      [
+        ['US-ADA', 1500],
+        ['US-CARA', 1700],
+      ].map(([userId, elo]) => ({
+        userId: String(userId),
+        name: String(userId),
+        elo: Number(elo),
+        games: 50,
+        wins: 25,
+        losses: 25,
+        draws: 0,
+        importedAt: new Date(),
+      })),
+    );
+    const ids = (await searchTopLists(db, query({ maxLosses: 5 }), ALL_EVENTS, TODAY)).players
+      .map((p) => p.bcpId)
+      .filter((id) => ['PL-ADA', 'PL-BEN', 'PL-CARA'].includes(id));
+    expect(ids).toEqual(['PL-CARA', 'PL-ADA', 'PL-BEN']);
+  });
+
   it('filters by faction, including an army guessed from the list', async () => {
     await db.update(players).set({ faction: 'Chaos' }).where(eq(players.id, 'PL-ADA'));
     await record('PL-ADA', 3, 0, 0);

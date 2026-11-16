@@ -8,9 +8,9 @@ import {
   type PlayerSearchResponse,
   type TopListPlayer,
 } from '@bcp/shared';
-import { and, desc, gte, inArray, lt, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
-import { armyLists, events, players, teams } from '../db/schema';
+import { armyLists, events, players, teams, wh40kElo } from '../db/schema';
 import { latestQueueRowsByPlayer } from './fetch-queue';
 import { armyRules, foreignDetachmentCheck } from './detachment-links';
 import { fieldElos } from './field-elo';
@@ -140,6 +140,7 @@ export async function searchTopLists(
       .innerJoin(events, sql`${events.id} = ${players.eventId}`)
       .leftJoin(teams, sql`${teams.id} = ${players.teamId}`)
       .leftJoin(armyLists, storedCurrentList)
+      .leftJoin(wh40kElo, eq(wh40kElo.userId, players.bcpUserId))
       .where(
         and(
           inArray(players.eventId, ids),
@@ -148,11 +149,13 @@ export async function searchTopLists(
           gte(sql`${players.wins} + ${players.losses} + ${players.draws}`, query.minRounds ?? 1),
         ),
       )
-      // Best record first: fewest losses, then most wins, then most draws; then newest.
+      // Best record first: fewest losses, then most wins, then most draws; on the same record the
+      // higher wh40k-elo first (unrated last), then newest.
       .orderBy(
         players.losses,
         desc(players.wins),
         desc(players.draws),
+        sql`${wh40kElo.elo} desc nulls last`,
         desc(events.startDate),
         players.name,
       ),
