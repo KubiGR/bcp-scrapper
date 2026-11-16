@@ -7,7 +7,6 @@ import {
   SegmentedControl,
   Skeleton,
   Stack,
-  Table,
   Text,
   TextInput,
 } from '@mantine/core';
@@ -17,9 +16,16 @@ import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
-import { PageTitle, SidebarLayout } from '../../components/Scoreboard';
+import {
+  Card,
+  CardGroup,
+  PageTitle,
+  scoreboardClasses,
+  SidebarLayout,
+  Stat,
+} from '../../components/Scoreboard';
+import classes from './PlayersPage.module.css';
 import { ordinal, plural } from '../../lib/format';
-import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
 import { rankingsPagesQuery } from './rankings-queries';
 import { FactionIcon, renderFactionOption } from '../../components/FactionIcon';
 import { HoverHint } from '../../components/HoverHint';
@@ -36,16 +42,6 @@ interface PlayersPageProps {
   search: PlayersSearch;
   onSearchChange: (next: PlayersSearch) => void;
 }
-
-type Column = 'rank' | 'name' | 'points' | 'overall' | 'wh40kElo' | 'results';
-const VALUES: Record<Column, SortValue<RankedPlayerRow>> = {
-  rank: (row) => row.rank,
-  name: (row) => row.name,
-  points: (row) => row.points,
-  overall: (row) => row.overallRank,
-  wh40kElo: (row) => row.wh40kElo?.elo ?? null,
-  results: (row) => row.results,
-};
 
 /** An Elo rating, its games on hover; a dash when unrated. */
 export function EloCell({ figure }: { figure: EloFigure | null }) {
@@ -66,82 +62,94 @@ export function EloCell({ figure }: { figure: EloFigure | null }) {
 export const bestResult = (best: RankedPlayerRow['best']) =>
   `${ordinal(best.placing)} of ${String(best.field)}${best.isTeamEvent ? ' teams' : ''} · ${best.eventName}`;
 
-function PlayersTable({ rows }: { rows: RankedPlayerRow[] }) {
-  const { sorted, sort, toggle } = useTableSort<RankedPlayerRow, Column>(rows, VALUES, null, {
-    rank: 'asc',
-    overall: 'asc',
-  });
+/** The rank bands, as the rank badges: crowned top 10, silver top 50, bronze top 100, the rest. */
+function bandOf(rank: number): { key: string; label: string } {
+  if (rank <= 10) return { key: 'Top 10', label: 'crowned' };
+  if (rank <= 50) return { key: 'Top 50', label: 'silver star' };
+  if (rank <= 100) return { key: 'Top 100', label: 'bronze star' };
+  return { key: 'Ranked', label: 'the rest of the ranking' };
+}
+
+/** One ranked player: rank, name and factions, best result, and their figures. */
+function PlayerCard({ row }: { row: RankedPlayerRow }) {
   return (
-    <Table.ScrollContainer minWidth={780}>
-      <Table aria-label="Players" striped highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <SortableTh column="rank" sort={sort} onSort={toggle} ta="right">
-              #
-            </SortableTh>
-            <SortableTh column="name" sort={sort} onSort={toggle}>
-              Player
-            </SortableTh>
-            <SortableTh column="points" sort={sort} onSort={toggle} ta="right">
-              Points
-            </SortableTh>
-            <SortableTh column="overall" sort={sort} onSort={toggle} ta="right">
-              Overall
-            </SortableTh>
-            <SortableTh
-              column="wh40kElo"
-              sort={sort}
-              onSort={toggle}
-              ta="right"
-              style={{ whiteSpace: 'nowrap' }}
-            >
-              wh40k-elo
-            </SortableTh>
-            <SortableTh column="results" sort={sort} onSort={toggle} ta="right">
-              Events
-            </SortableTh>
-            <Table.Th>Best result</Table.Th>
-            <Table.Th>Factions</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {sorted.map((row) => (
-            <Table.Tr key={row.userId}>
-              <Table.Td ta="right" className="numeric">
-                {row.rank}
-              </Table.Td>
-              <Table.Td>
-                <AnchorLink to="/players/$userId" params={{ userId: row.userId }}>
-                  {row.name}
-                </AnchorLink>
-              </Table.Td>
-              <Table.Td ta="right" className="numeric">
-                {row.points.toFixed(1)}
-              </Table.Td>
-              <Table.Td ta="right" className="numeric">
-                <HoverHint hint={`Score ${String(Number(row.overall.toFixed(2)))} of 100`}>
-                  #{row.overallRank}
-                </HoverHint>
-              </Table.Td>
-              <Table.Td ta="right" className="numeric">
-                <EloCell figure={row.wh40kElo} />
-              </Table.Td>
-              <Table.Td ta="right" className="numeric">
-                {`${String(row.counted)} of ${String(row.results)}`}
-              </Table.Td>
-              <Table.Td>
-                <Text size="sm">{bestResult(row.best)}</Text>
-              </Table.Td>
-              <Table.Td>
-                <Text size="sm" c="dimmed">
-                  {row.factions.join(', ')}
-                </Text>
-              </Table.Td>
-            </Table.Tr>
+    <div role="listitem">
+      <Card dense>
+        <span className={classes.rank}>#{row.rank}</span>
+        <div className={classes.who}>
+          <Text size="sm" fw={600}>
+            <AnchorLink to="/players/$userId" params={{ userId: row.userId }}>
+              {row.name}
+            </AnchorLink>
+          </Text>
+          <Text size="xs" c="dimmed">
+            {row.factions.join(', ')}
+          </Text>
+        </div>
+        <div className={classes.best}>
+          <Text size="xs" c="dimmed">
+            Best result
+          </Text>
+          <Text size="sm" className={classes.bestText} title={bestResult(row.best)}>
+            {bestResult(row.best)}
+          </Text>
+        </div>
+        <Stat className={classes.figure} value={row.points.toFixed(1)} label="points" />
+        <Stat
+          className={classes.figure}
+          value={
+            <HoverHint hint={`Score ${String(Number(row.overall.toFixed(2)))} of 100`}>
+              #{row.overallRank}
+            </HoverHint>
+          }
+          label="overall"
+        />
+        <Stat
+          className={classes.figure}
+          value={<EloCell figure={row.wh40kElo} />}
+          label="wh40k-elo"
+        />
+        <Stat
+          className={classes.figure}
+          value={`${String(row.counted)} of ${String(row.results)}`}
+          label="events"
+        />
+      </Card>
+    </div>
+  );
+}
+
+/**
+ * The ranked players as cards, in the order asked for. By points, under their rank band (Top 10,
+ * Top 50, …); by another order, one list.
+ */
+function PlayerCards({ rows, byPoints }: { rows: RankedPlayerRow[]; byPoints: boolean }) {
+  if (!byPoints) {
+    return (
+      <div role="list" aria-label="Players" className={scoreboardClasses.group} data-dense>
+        {rows.map((row) => (
+          <PlayerCard key={row.userId} row={row} />
+        ))}
+      </div>
+    );
+  }
+  const bands: { key: string; label: string; rows: RankedPlayerRow[] }[] = [];
+  for (const row of rows) {
+    const band = bandOf(row.rank);
+    const last = bands.at(-1);
+    if (last?.key === band.key) last.rows.push(row);
+    else bands.push({ ...band, rows: [row] });
+  }
+  return (
+    <Stack gap="lg" role="list" aria-label="Players">
+      {bands.map((band) => (
+        <CardGroup key={band.key} dense label={band.key} description={band.label}>
+          {band.rows.map((row) => (
+            <PlayerCard key={row.userId} row={row} />
           ))}
-        </Table.Tbody>
-      </Table>
-    </Table.ScrollContainer>
+        </CardGroup>
+      ))}
+    </Stack>
   );
 }
 
@@ -251,7 +259,7 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
                   </Text>
                 ) : (
                   <Stack gap="sm">
-                    <PlayersTable rows={data.players} />
+                    <PlayerCards rows={data.players} byPoints={search.order === undefined} />
                     {rankings.hasNextPage && (
                       <Group justify="center">
                         <Button

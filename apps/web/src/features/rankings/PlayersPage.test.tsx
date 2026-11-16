@@ -55,8 +55,8 @@ describe('PlayersPage', () => {
       ]),
     });
     renderWithRouter(<PlayersPage search={{}} onSearchChange={vi.fn()} />);
-    const table = within(await screen.findByRole('table', { name: 'Players' }));
-    const [ada, ben] = table.getAllByRole('row').slice(1);
+    const table = within(await screen.findByRole('list', { name: 'Players' }));
+    const [ada, ben] = table.getAllByRole('listitem');
     if (ada === undefined || ben === undefined) throw new Error('missing rows');
     const row = within(ada);
     expect(row.getByRole('link', { name: 'Ada Archer' })).toHaveAttribute(
@@ -78,9 +78,9 @@ describe('PlayersPage', () => {
       ]),
     });
     renderWithRouter(<PlayersPage search={{}} onSearchChange={vi.fn()} />);
-    const table = within(await screen.findByRole('table', { name: 'Players' }));
-    expect(table.getByRole('columnheader', { name: /wh40k-elo/ })).toBeInTheDocument();
-    const [ada, ben] = table.getAllByRole('row').slice(1);
+    const table = within(await screen.findByRole('list', { name: 'Players' }));
+    expect(table.getAllByText('wh40k-elo').length).toBeGreaterThan(0);
+    const [ada, ben] = table.getAllByRole('listitem');
     if (ada === undefined || ben === undefined) throw new Error('missing rows');
     fireEvent.mouseEnter(within(ada).getByText('1888'));
     expect(await screen.findByRole('tooltip')).toHaveTextContent('140 games');
@@ -93,8 +93,8 @@ describe('PlayersPage', () => {
     });
     const onSearchChange = vi.fn();
     renderWithRouter(<PlayersPage search={{ order: 'overall' }} onSearchChange={onSearchChange} />);
-    const table = within(await screen.findByRole('table', { name: 'Players' }));
-    expect(table.getByRole('columnheader', { name: /Overall/ })).toBeInTheDocument();
+    const table = within(await screen.findByRole('list', { name: 'Players' }));
+    expect(table.getAllByText('overall').length).toBeGreaterThan(0);
     fireEvent.mouseEnter(table.getByText('#7'));
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Score 96.54 of 100');
     expect(JSON.stringify(fetchMock.mock.calls)).toContain('sort=overall');
@@ -108,7 +108,7 @@ describe('PlayersPage', () => {
     renderWithRouter(
       <PlayersPage search={{ order: 'wh40kElo' }} onSearchChange={onSearchChange} />,
     );
-    await screen.findByRole('table', { name: 'Players' });
+    await screen.findByRole('list', { name: 'Players' });
     expect(JSON.stringify(fetchMock.mock.calls)).toContain('sort=wh40kElo');
     fireEvent.click(screen.getByRole('radio', { name: 'Points' }));
     expect(onSearchChange).toHaveBeenLastCalledWith({});
@@ -118,7 +118,7 @@ describe('PlayersPage', () => {
     stubFetchRoutes({ 'GET /api/rankings': response([player()]) });
     const onSearchChange = vi.fn();
     renderWithRouter(<PlayersPage search={{}} onSearchChange={onSearchChange} />);
-    await screen.findByRole('table', { name: 'Players' });
+    await screen.findByRole('list', { name: 'Players' });
     fireEvent.change(screen.getByRole('textbox', { name: 'Search players' }), {
       target: { value: 'ada' },
     });
@@ -135,7 +135,7 @@ describe('PlayersPage', () => {
         ),
     });
     renderWithRouter(<PlayersPage search={{}} onSearchChange={vi.fn()} />);
-    await screen.findByRole('table', { name: 'Players' });
+    await screen.findByRole('list', { name: 'Players' });
     // Each click asks for the next page only, so it never runs into the API's page size cap.
     for (let page = 1; page <= 5; page += 1) {
       fireEvent.click(await screen.findByRole('button', { name: 'Show more' }));

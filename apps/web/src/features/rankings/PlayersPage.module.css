@@ -1,0 +1,28 @@
+/* A ranked player's card: rank, who, best result, then their figures. */
+.rank {
+  flex: 0 0 3.5rem;
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-lg);
+  font-weight: 600;
+}
+
+.who {
+  flex: 2 1 150px;
+  min-width: 0;
+}
+
+.best {
+  flex: 3 1 200px;
+  min-width: 0;
+}
+
+/* The best result on one line; the whole of it on hover. */
+.bestText {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.figure {
+  flex: 0 0 4rem;
+}
