@@ -1,6 +1,10 @@
 /* Looks like plain text; underline only appears on hover or keyboard focus. */
 .eventName {
-  font-size: var(--mantine-font-size-md);
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--mantine-font-size-sm);
   font-weight: 600;
   color: var(--mantine-color-text);
   text-decoration: none;
@@ -23,8 +27,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  overflow-wrap: anywhere;
+  gap: 0;
 }
 
 .when {

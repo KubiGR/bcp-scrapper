@@ -112,6 +112,7 @@ export function EventsTable({
       ) : sort === 'date' ? (
         byWeek(records).map((week) => (
           <CardGroup
+            dense
             key={week.key}
             label={week.label}
             description={plural(week.events.length, 'event')}
@@ -120,7 +121,9 @@ export function EventsTable({
           </CardGroup>
         ))
       ) : (
-        <div className={scoreboardClasses.group}>{records.map(card)}</div>
+        <div className={scoreboardClasses.group} data-dense>
+          {records.map(card)}
+        </div>
       )}
 
       {total > 0 && (
@@ -148,6 +151,7 @@ function EventCard({ event, onOpen }: { event: EventListItem; onOpen: (id: strin
   const place = placeOf(event);
   return (
     <Card
+      dense
       onOpen={() => {
         onOpen(event.bcpId);
       }}
@@ -158,17 +162,18 @@ function EventCard({ event, onOpen }: { event: EventListItem; onOpen: (id: strin
           component="a"
           href={eventPath(event.bcpId)}
           className={classes.eventName}
+          title={event.name}
           onClick={openHere(() => {
             onOpen(event.bcpId);
           })}
         >
           {event.name}
         </UnstyledButton>
-        <Text size="sm" c="dimmed" className={classes.when}>
+        <Text size="xs" c="dimmed" className={classes.when}>
           <span className="numeric">{formatEventDates(event.startDate, event.endDate)}</span>
           {place !== '' && ` · ${place}`}
+          <UpdateLabel startDate={event.startDate} prefix=" · " span inherit />
         </Text>
-        <UpdateLabel startDate={event.startDate} size="xs" c="dimmed" />
       </div>
       <Stat
         className={classes.size}

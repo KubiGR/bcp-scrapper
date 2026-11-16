@@ -35,8 +35,9 @@ describe('EventsTable', () => {
         }}
       />,
     );
-    expect(await screen.findByText('Jul 2026 · MFM')).toBeInTheDocument();
-    expect(screen.getByText('Before first update')).toBeInTheDocument();
+    // After the dates and place, on the same line.
+    expect(await screen.findByText(/Jul 2026 · MFM$/)).toBeInTheDocument();
+    expect(screen.getByText(/Before first update$/)).toBeInTheDocument();
   });
 
   it('colours the player count by the event’s size, without flames or a leaf', () => {

@@ -39,14 +39,17 @@ interface CardGroupProps {
   description?: ReactNode;
   /** Names the group for screen readers; defaults to the label when that's text. */
   ariaLabel?: string;
+  /** Cards closer together, for long lists. */
+  dense?: boolean;
   children: ReactNode;
 }
 
 /** A run of cards under a big heading. */
-export function CardGroup({ label, description, ariaLabel, children }: CardGroupProps) {
+export function CardGroup({ label, description, ariaLabel, dense, children }: CardGroupProps) {
   return (
     <section
       className={classes.group}
+      data-dense={dense === true ? true : undefined}
       aria-label={ariaLabel ?? (typeof label === 'string' ? label : undefined)}
     >
       <h2 className={classes.groupHeading}>
@@ -62,11 +65,13 @@ interface CardProps {
   /** Clicking anywhere on the card but its links and buttons; none, not clickable. */
   onOpen?: () => void;
   className?: string;
+  /** Less padding and smaller figures, for long lists. */
+  dense?: boolean;
   children: ReactNode;
 }
 
 /** One item's card; with `onOpen`, the whole card opens it. */
-export function Card({ onOpen, className, children }: CardProps) {
+export function Card({ onOpen, className, dense, children }: CardProps) {
   const open =
     onOpen === undefined
       ? undefined
@@ -79,6 +84,7 @@ export function Card({ onOpen, className, children }: CardProps) {
     <article
       className={className === undefined ? classes.card : `${classes.card} ${className}`}
       data-clickable={onOpen === undefined ? undefined : true}
+      data-dense={dense === true ? true : undefined}
       onClick={open}
     >
       {children}
