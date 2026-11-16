@@ -1,4 +1,4 @@
-import { Group, NumberInput, SegmentedControl, Stack, Text } from '@mantine/core';
+import { NumberInput, SegmentedControl, SimpleGrid, Stack, Text } from '@mantine/core';
 import {
   FinderSearchSchema,
   SIZE_PRESETS,
@@ -6,8 +6,12 @@ import {
   type OnFinderChange,
 } from './finder-search';
 
+// Short labels, to fit the sidebar: "All (20+)" is just 20+.
 const OPTIONS = [
-  ...SIZE_PRESETS.map((preset) => ({ label: preset.label, value: preset.value })),
+  ...SIZE_PRESETS.map((preset) => ({
+    label: preset.value === 'all' ? '20+' : preset.label,
+    value: preset.value,
+  })),
   { label: 'Custom', value: 'custom' },
 ];
 
@@ -28,17 +32,18 @@ export function SizeFilter({ search, onChange }: SizeFilterProps) {
       <SegmentedControl
         aria-label="Tournament size"
         data={OPTIONS}
+        fullWidth
+        size="xs"
         value={search.size}
         onChange={(value) => {
           onChange({ size: FinderSearchSchema.shape.size.parse(value) });
         }}
       />
       {search.size === 'custom' && (
-        <Group gap="sm">
+        <SimpleGrid cols={2} spacing="sm">
           <NumberInput
             label="Min players"
             min={0}
-            w={140}
             value={search.min ?? ''}
             onChange={(value) => {
               onChange({ min: countOrUndefined(value) }, { replace: true });
@@ -47,13 +52,12 @@ export function SizeFilter({ search, onChange }: SizeFilterProps) {
           <NumberInput
             label="Max players"
             min={0}
-            w={140}
             value={search.max ?? ''}
             onChange={(value) => {
               onChange({ max: countOrUndefined(value) }, { replace: true });
             }}
           />
-        </Group>
+        </SimpleGrid>
       )}
     </Stack>
   );

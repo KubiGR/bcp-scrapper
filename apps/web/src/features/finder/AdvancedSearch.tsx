@@ -1,14 +1,5 @@
 import type { DateRange } from '@bcp/shared';
-import {
-  Button,
-  Collapse,
-  Group,
-  Input,
-  SegmentedControl,
-  SimpleGrid,
-  Stack,
-  TextInput,
-} from '@mantine/core';
+import { Button, Collapse, Group, Input, SegmentedControl, Stack, TextInput } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useDebouncedCallback, useDisclosure } from '@mantine/hooks';
 import { useState } from 'react';
@@ -31,11 +22,6 @@ const TYPE_OPTIONS = [
   { label: 'Singles', value: 'singles' },
   { label: 'Teams', value: 'teams' },
 ];
-const SORT_OPTIONS = [
-  { label: 'Newest', value: 'date' },
-  { label: 'Biggest', value: 'players' },
-];
-
 const toParam = (text: string) => text.trim() || undefined;
 
 /**
@@ -114,7 +100,7 @@ export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps
         )}
       </Group>
       <Collapse expanded={opened}>
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+        <Stack gap="sm">
           <DatePickerInput
             type="range"
             label="Dates"
@@ -126,6 +112,7 @@ export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps
           <UpdatePicker
             from={window.from}
             to={window.to}
+            w="100%"
             onChange={(range) => {
               onChange(range);
             }}
@@ -156,17 +143,7 @@ export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps
               }}
             />
           </Input.Wrapper>
-          <Input.Wrapper label="Sort">
-            <SegmentedControl
-              fullWidth
-              data={SORT_OPTIONS}
-              value={search.sort}
-              onChange={(value) => {
-                onChange({ sort: FinderSearchSchema.shape.sort.parse(value) });
-              }}
-            />
-          </Input.Wrapper>
-        </SimpleGrid>
+        </Stack>
       </Collapse>
     </Stack>
   );
