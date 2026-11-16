@@ -36,6 +36,21 @@ const response = (overrides: Partial<PlayerSearchResponse> = {}): PlayerSearchRe
   ...overrides,
 });
 
+/** The players' names, in the order their cards show. */
+const names = () =>
+  screen.getAllByRole('article').map((card) => card.querySelector('p')?.textContent);
+const cardOf = (name: string) => {
+  const card = screen.getByText(name).closest('article');
+  if (card === null) throw new Error(`no card for ${name}`);
+  return card;
+};
+const pickSort = async (label: string) => {
+  const [input] = screen.getAllByLabelText('Sort by');
+  if (input === undefined) throw new Error('no Sort by input');
+  fireEvent.click(input);
+  fireEvent.click(await screen.findByRole('option', { name: label }));
+};
+
 describe('topListsParams', () => {
   it('sends only what is set', () => {
     expect(topListsParams({ factions: 'Orks,Necrons', maxLosses: 0 })).toBe(
@@ -63,9 +78,9 @@ describe('TopListsPage', () => {
       'GET /api/fetch-queue': {},
     });
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
-    const row = (await screen.findByText('Ada Archer')).closest('tr');
+    const row = (await screen.findByText('Ada Archer')).closest('article');
     if (row === null) throw new Error('no row');
-    expect(within(row).getByText('4-1-0')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^4-1-0/ })).toBeInTheDocument();
     expect(within(row).getByRole('link', { name: 'Sample Team Open' })).toHaveAttribute(
       'href',
       '/events/EVT1?tab=players',
@@ -78,7 +93,7 @@ describe('TopListsPage', () => {
     expect(await screen.findByText('Orks list text')).toBeInTheDocument();
   });
 
-  it('sorts the results on a column header', async () => {
+  it('sorts the results by the order picked', async () => {
     const zed = {
       ...aPlayer({ bcpId: 'PL-ZED', name: 'Zed Zulu', faction: 'Necrons', wins: 5, losses: 0 }),
       eventId: 'EVT2',
@@ -92,19 +107,16 @@ describe('TopListsPage', () => {
     stubFetchRoutes({ 'GET /api/players/search': { ...base, players: [zed, ...base.players] } });
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
     await screen.findByText('Zed Zulu');
-    const names = () =>
-      screen
-        .getAllByRole('row')
-        .slice(1)
-        .map((row) => row.querySelector('td p')?.textContent);
     expect(names()).toEqual(['Zed Zulu', 'Ada Archer']);
-    fireEvent.click(screen.getByRole('button', { name: 'Player' }));
+    await pickSort('Player');
     expect(names()).toEqual(['Ada Archer', 'Zed Zulu']);
-    fireEvent.click(screen.getByRole('button', { name: 'W-L-D' }));
+    // Out of record order, each card shows its own record.
+    expect(within(cardOf('Ada Archer')).getByText('4-1-0')).toBeInTheDocument();
+    await pickSort('Best record');
     expect(names()).toEqual(['Zed Zulu', 'Ada Archer']);
   });
 
-  it('starts sorted by W-L-D: fewest losses first, then most wins', async () => {
+  it('starts with the best record first, grouped under each record', async () => {
     const player = (bcpId: string, name: string, wins: number, losses: number) => ({
       ...aPlayer({ bcpId, name, wins, losses, draws: 0 }),
       eventId: 'EVT1',
@@ -126,21 +138,21 @@ describe('TopListsPage', () => {
     });
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
     await screen.findByText('Three Oh');
-    const names = () =>
-      screen
-        .getAllByRole('row')
-        .slice(1)
-        .map((row) => row.querySelector('td p')?.textContent);
     expect(names()).toEqual(['Five Oh', 'Three Oh', 'Four One', 'Three One']);
-    // A click flips it: worst record first.
-    fireEvent.click(screen.getByRole('button', { name: /^W-L-D/ }));
-    expect(names()).toEqual(['Three One', 'Four One', 'Three Oh', 'Five Oh']);
+    expect(
+      screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual([
+      '5-0-0Undefeated · 1 player',
+      '3-0-0Undefeated · 1 player',
+      '4-1-0One loss · 1 player',
+      '3-1-0One loss · 1 player',
+    ]);
   });
 
   it('shows each event’s size next to its date, standing out more the bigger it is', async () => {
     stubFetchRoutes({ 'GET /api/players/search': response() });
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
-    const row = (await screen.findByText('Ada Archer')).closest('tr');
+    const row = (await screen.findByText('Ada Archer')).closest('article');
     if (row === null) throw new Error('no row');
     expect(row.textContent).toMatch(/96 players · 12 teams/);
     expect(within(row).getByRole('img', { name: 'Medium event' })).toBeInTheDocument();
@@ -149,7 +161,7 @@ describe('TopListsPage', () => {
   it('shows each event’s field Elo next to its size, as the tournament list does', async () => {
     stubFetchRoutes({ 'GET /api/players/search': response() });
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
-    const row = (await screen.findByText('Ada Archer')).closest('tr');
+    const row = (await screen.findByText('Ada Archer')).closest('article');
     if (row === null) throw new Error('no row');
     expect(within(row).getByText('Elo 1712')).toBeInTheDocument();
   });
@@ -169,8 +181,8 @@ describe('TopListsPage', () => {
       },
     });
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
-    const newRow = (await screen.findByText('Nia New')).closest('tr');
-    const oldRow = screen.getByText('Ada Archer').closest('tr');
+    const newRow = (await screen.findByText('Nia New')).closest('article');
+    const oldRow = screen.getByText('Ada Archer').closest('article');
     if (newRow === null || oldRow === null) throw new Error('no row');
     expect(within(newRow).getByRole('img', { name: 'New this week' })).toBeInTheDocument();
     expect(within(oldRow).queryByRole('img', { name: 'New this week' })).toBeNull();
@@ -197,16 +209,16 @@ describe('TopListsPage', () => {
     stubFetchRoutes({ 'GET /api/players/search': { ...base, players: [...base.players, solo] } });
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
     // Beside the event, before its date.
-    const cell = async (event: string) => (await screen.findAllByText(event))[0]?.closest('td');
-    expect((await cell('Singles GT'))?.textContent).toMatch(/^Singles GT#3 · Mar 28, 2026/);
-    const teamCell = screen.getByText('Ada Archer').closest('tr')?.querySelectorAll('td')[1];
-    expect(teamCell?.textContent).toContain('Alpha Squad · #2 · ');
+    const eventText = async (event: string) =>
+      (await screen.findAllByText(event))[0]?.closest('div')?.textContent;
+    expect(await eventText('Singles GT')).toMatch(/^Singles GT#3 · Mar 28, 2026/);
+    expect(await eventText('Sample Team Open')).toContain('Alpha Squad · #2 · ');
   });
 
   it('makes each List a link, to open several in new tabs', async () => {
     stubFetchRoutes({ 'GET /api/players/search': response() });
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
-    const row = (await screen.findByText('Ada Archer')).closest('tr');
+    const row = (await screen.findByText('Ada Archer')).closest('article');
     if (row === null) throw new Error('no row');
     expect(within(row).getByRole('link', { name: 'List' })).toHaveAttribute(
       'href',
@@ -214,7 +226,7 @@ describe('TopListsPage', () => {
     );
   });
 
-  it('opens a list from anywhere on its row', async () => {
+  it('opens a list from anywhere on its card', async () => {
     stubFetchRoutes({
       'GET /api/players/search': response(),
       'GET /api/players/PL-ADA/list': {
@@ -228,7 +240,8 @@ describe('TopListsPage', () => {
       },
     });
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
-    fireEvent.click(await screen.findByText('4-1-0'));
+    await screen.findByText('Ada Archer');
+    fireEvent.click(cardOf('Ada Archer'));
     expect(await screen.findByText('Orks list text')).toBeInTheDocument();
   });
 
@@ -256,7 +269,7 @@ describe('TopListsPage', () => {
       'GET /api/fetch-queue': {},
     });
     renderWithRouter(<TopListsPage search={{}} onSearchChange={vi.fn()} />);
-    const row = (await screen.findByText('Ada Archer')).closest('tr');
+    const row = (await screen.findByText('Ada Archer')).closest('article');
     if (row === null) throw new Error('no row');
     fireEvent.click(within(row).getByRole('link', { name: 'List' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Fetch this list' }));
