@@ -1,7 +1,12 @@
 /* Round, result and score: as wide as their content, never squeezed (the opponent takes the rest). */
 .fit {
-  width: 1%;
+  flex: 0 0 auto;
   white-space: nowrap;
+}
+
+.opponent {
+  flex: 1 1 200px;
+  min-width: 0;
 }
 
 /* W / L / D / Bye: a small pill, green for a win, red for a loss. */
