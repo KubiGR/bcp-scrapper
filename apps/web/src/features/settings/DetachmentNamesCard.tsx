@@ -1,12 +1,13 @@
 import type { DetachmentNamesResponse } from '@bcp/shared';
-import { Alert, Badge, Button, Group, Skeleton, Stack, Table, Text } from '@mantine/core';
+import { Alert, Badge, Button, Group, Select, Skeleton, Stack, Text } from '@mantine/core';
 import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 import { SearchSelect } from '../../components/SearchSelect';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { plural } from '../../lib/format';
-import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
+import { sortRows, type SortDir, type SortValue } from '../../lib/table-sort';
+import { Card, scoreboardClasses } from '../../components/Scoreboard';
 import { meQuery } from '../auth/auth-queries';
 import { DetachmentListsButton } from './DetachmentLists';
 import classes from './DetachmentNamesCard.module.css';
@@ -149,25 +150,25 @@ function NameRow({
           : r.target === null && r.foreign === (to === 'foreign')),
     );
   return (
-    <Table.Tr>
-      <Table.Td>{entry.name}</Table.Td>
-      <Table.Td ta="right" className="numeric">
-        <Group gap={4} justify="flex-end" wrap="nowrap">
-          <span>{entry.lists}</span>
+    <Card dense>
+      <Text size="sm" fw={600} className={classes.name}>
+        {entry.name}
+      </Text>
+      <div className={`numeric ${classes.lists}`}>
+        <Group gap={4} wrap="nowrap">
+          <span>{plural(entry.lists, 'list')}</span>
           <DetachmentListsButton
             name={entry.name}
             faction={faction === ALL ? undefined : faction}
           />
         </Group>
-      </Table.Td>
+      </div>
       {faction === ALL && (
-        <Table.Td>
-          <Text size="sm" c="dimmed">
-            {entry.factions.join(', ')}
-          </Text>
-        </Table.Td>
+        <Text size="sm" c="dimmed" className={classes.factions}>
+          {entry.factions.join(', ')}
+        </Text>
       )}
-      <Table.Td>
+      <div className={classes.means}>
         <Group gap="xs">
           <SearchSelect
             aria-label={`Link ${entry.name} to`}
@@ -261,8 +262,8 @@ function NameRow({
             </>
           )}
         </Group>
-      </Table.Td>
-    </Table.Tr>
+      </div>
+    </Card>
   );
 }
 
@@ -272,44 +273,56 @@ const NAME_SORT = {
   factions: (entry) => entry.factions.join(', '),
 } satisfies Record<string, SortValue<Unsure>>;
 
-/** A table of names, each with its link controls. */
+/** The orders on offer: as the server lists them, by name, or most lists first. */
+const NAME_SORTS: { value: 'found' | keyof typeof NAME_SORT; label: string; dir: SortDir }[] = [
+  { value: 'found', label: 'As found', dir: 'asc' },
+  { value: 'name', label: 'Name A–Z', dir: 'asc' },
+  { value: 'lists', label: 'Most lists', dir: 'desc' },
+];
+
+/** Names as cards, each with its link controls, in the order picked. */
 function NamesTable({
   entries,
   foreign = false,
   ...rowProps
 }: RowProps & { entries: (Unsure | Foreign)[]; foreign?: boolean }) {
-  const { sorted, sort, toggle } = useTableSort(entries, NAME_SORT);
+  const [sortKey, setSortKey] = useState<(typeof NAME_SORTS)[number]['value']>('found');
+  const sorted =
+    sortKey === 'found'
+      ? entries
+      : sortRows(
+          entries,
+          NAME_SORT[sortKey],
+          NAME_SORTS.find((option) => option.value === sortKey)?.dir ?? 'asc',
+        );
   return (
-    <Table.ScrollContainer minWidth={rowProps.faction === ALL ? 640 : 480}>
-      <Table verticalSpacing="xs">
-        <Table.Thead>
-          <Table.Tr>
-            <SortableTh column="name" sort={sort} onSort={toggle}>
-              Name in lists
-            </SortableTh>
-            <SortableTh column="lists" sort={sort} onSort={toggle} ta="right">
-              Lists
-            </SortableTh>
-            {rowProps.faction === ALL && (
-              <SortableTh column="factions" sort={sort} onSort={toggle}>
-                Factions
-              </SortableTh>
-            )}
-            <Table.Th>Means</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {sorted.map((entry) => (
+    <Stack gap="xs">
+      <Group justify="flex-end">
+        <Select
+          aria-label="Sort names by"
+          data={NAME_SORTS.map(({ value, label }) => ({ value, label }))}
+          value={sortKey}
+          onChange={(value) => {
+            const next = NAME_SORTS.find((option) => option.value === value);
+            if (next) setSortKey(next.value);
+          }}
+          allowDeselect={false}
+          w={150}
+          size="xs"
+        />
+      </Group>
+      <div role="list" aria-label="Names" className={scoreboardClasses.group} data-dense>
+        {sorted.map((entry) => (
+          <div role="listitem" key={entry.name}>
             <NameRow
-              key={entry.name}
               entry={entry}
               foreign={foreign && 'marked' in entry ? entry : undefined}
               {...rowProps}
             />
-          ))}
-        </Table.Tbody>
-      </Table>
-    </Table.ScrollContainer>
+          </div>
+        ))}
+      </div>
+    </Stack>
   );
 }
 

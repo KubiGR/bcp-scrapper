@@ -1,6 +1,7 @@
 import type { DetachmentNamesResponse } from '@bcp/shared';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { pickOption } from '../../test/pick-option';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
 import { aUser, authOff, loggedIn } from '../auth/auth-test-utils';
 import { DetachmentNamesCard } from './DetachmentNamesCard';
@@ -33,8 +34,8 @@ const names = (overrides: Partial<DetachmentNamesResponse> = {}): DetachmentName
 });
 
 const rowOf = (name: string) => {
-  const row = screen.getByText(name).closest('tr');
-  if (row === null) throw new Error(`no row ${name}`);
+  const row = screen.getByText(name).closest('article');
+  if (row === null) throw new Error(`no card ${name}`);
   return row;
 };
 
@@ -204,7 +205,7 @@ describe('DetachmentNamesCard', () => {
     const row = within(
       rowOf(await screen.findByText('Cabalgata del Caos').then(() => 'Cabalgata del Caos')),
     );
-    expect(row.getByText('6')).toBeInTheDocument();
+    expect(row.getByText('6 lists')).toBeInTheDocument();
     expect(row.getByText('Chaos Daemons')).toBeInTheDocument();
   });
 
@@ -252,21 +253,21 @@ describe('DetachmentNamesCard', () => {
     ).toBeInTheDocument();
   });
 
-  it('sorts the names on a column header', async () => {
+  it('sorts the names by the order picked', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': names() });
     renderWithProviders(<DetachmentNamesCard />);
     await screen.findByText('Cabalgata del Caos');
-    const table = screen.getAllByRole('table')[0];
-    if (table === undefined) throw new Error('no table');
+    const list = screen.getAllByRole('list', { name: 'Names' })[0];
+    if (list === undefined) throw new Error('no names');
     const order = () =>
-      within(table)
-        .getAllByRole('row')
-        .slice(1)
-        .map((row) => row.querySelector('td')?.textContent);
+      within(list)
+        .getAllByRole('listitem')
+        .map((item) => item.querySelector('p')?.textContent);
     expect(order()).toEqual(['Cabalgata del Caos', 'Legion de Sangre']);
-    fireEvent.click(within(table).getByRole('button', { name: 'Name in lists' }));
-    fireEvent.click(within(table).getByRole('button', { name: /Name in lists/ }));
-    expect(order()).toEqual(['Legion de Sangre', 'Cabalgata del Caos']);
+    await pickOption('Sort names by', 'Name A–Z');
+    expect(order()).toEqual(['Cabalgata del Caos', 'Legion de Sangre']);
+    await pickOption('Sort names by', 'Most lists');
+    expect(order()[0]).toBeDefined();
   });
 
   it('switches faction, offering only that faction’s detachments and links', async () => {

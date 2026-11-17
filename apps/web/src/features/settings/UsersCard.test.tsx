@@ -17,7 +17,7 @@ function stubUsers(users: (User | ListedUser)[], extra: Record<string, unknown> 
 }
 
 function rowOf(name: string): HTMLElement {
-  const row = screen.getByText(name).closest('tr');
+  const row = screen.getByText(name).closest('article');
   if (row === null) throw new Error(`no row for ${name}`);
   return row;
 }

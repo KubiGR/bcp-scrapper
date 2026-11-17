@@ -1,0 +1,18 @@
+/* A user: who and when last seen, their role, their status, then the actions menu. */
+.who {
+  flex: 2 1 200px;
+  min-width: 0;
+}
+
+.role {
+  flex: 1 1 120px;
+}
+
+.status {
+  flex: 1 1 120px;
+}
+
+.actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+}

@@ -4,3 +4,25 @@
   padding: 0;
   list-style: none;
 }
+
+/* A name in the lists: the name, how many lists use it, its factions, and what it means. */
+.name {
+  flex: 1 1 160px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lists {
+  flex: 0 0 auto;
+  font-size: var(--mantine-font-size-sm);
+}
+
+.factions {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.means {
+  flex: 3 1 280px;
+  min-width: 0;
+}

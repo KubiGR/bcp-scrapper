@@ -1,0 +1,19 @@
+/* A game update: its name and what it touched, its start, how many events, and its actions. */
+.name {
+  flex: 2 1 200px;
+  min-width: 0;
+}
+
+.start {
+  flex: 0 0 auto;
+}
+
+.events {
+  flex: 0 0 5.5rem;
+}
+
+.actions {
+  flex: 1 1 220px;
+  display: flex;
+  justify-content: flex-end;
+}

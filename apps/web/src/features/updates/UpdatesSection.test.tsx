@@ -16,7 +16,7 @@ describe('UpdatesSection', () => {
   it('lists the updates with their start and events', async () => {
     stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/updates': twoUpdates() });
     renderWithProviders(<UpdatesSection />);
-    const row = within(await screen.findByRole('row', { name: /Jul 2026 · MFM/ }));
+    const row = within(await screen.findByRole('listitem', { name: /Jul 2026 · MFM/ }));
     expect(row.getByText('2 events')).toBeInTheDocument();
   });
 
