@@ -1,6 +1,7 @@
 import type { TeamMetaRow } from '@bcp/shared';
 import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { pickOption } from '../../test/pick-option';
 import { renderWithProviders } from '../../test/render';
 import { TeamMeta } from './TeamMeta';
 
@@ -24,7 +25,7 @@ describe('TeamMeta', () => {
     expect(cell).toHaveAttribute('data-tone', 'even');
   });
 
-  it('sorts factions on a column header, small ones staying last', () => {
+  it('sorts factions by the order picked, small ones staying last', async () => {
     renderWithProviders(
       <TeamMeta
         rows={[
@@ -37,13 +38,9 @@ describe('TeamMeta', () => {
       />,
     );
     const factions = () =>
-      screen
-        .getAllByRole('row')
-        .slice(1)
-        // The first cell also holds the expand arrow.
-        .map((r) => r.querySelector('td')?.textContent.replace(/^[▸▾]/, ''));
+      [...document.querySelectorAll('article')].map((card) => card.querySelector('p')?.textContent);
     expect(factions()).toEqual(['Orks', 'Necrons', 'Aeldari']);
-    fireEvent.click(screen.getByRole('button', { name: 'All teams' }));
+    await pickOption('Sort top teams by', 'All teams');
     expect(factions()).toEqual(['Necrons', 'Orks', 'Aeldari']);
   });
 
@@ -77,7 +74,13 @@ describe('TeamMeta', () => {
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Show Orks detachments in teams' }));
-    expect(screen.getByText('Kult of Speed').closest('tr')).toHaveAttribute('data-dimmed', 'true');
-    expect(screen.getByText('War Horde').closest('tr')).toHaveAttribute('data-dimmed', 'false');
+    expect(screen.getByText('Kult of Speed').closest('article')).toHaveAttribute(
+      'data-dimmed',
+      'true',
+    );
+    expect(screen.getByText('War Horde').closest('article')).toHaveAttribute(
+      'data-dimmed',
+      'false',
+    );
   });
 });

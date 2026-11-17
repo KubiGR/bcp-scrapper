@@ -12,7 +12,6 @@ import {
   Select,
   Skeleton,
   Stack,
-  Table,
   Text,
   TextInput,
 } from '@mantine/core';
@@ -20,6 +19,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type SyntheticEvent } from 'react';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
+import { Card, CardGroup } from '../../components/Scoreboard';
+import classes from './UsersCard.module.css';
 import {
   createUser,
   meQuery,
@@ -133,21 +134,23 @@ export function UsersCard() {
                 onRemove={setRemoving}
               />
             )}
-            <Table verticalSpacing="xs">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Username</Table.Th>
-                  <Table.Th visibleFrom="sm">Role</Table.Th>
-                  <Table.Th visibleFrom="sm">Status</Table.Th>
-                  <Table.Th aria-label="Actions" />
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {users.data.users
-                  .filter((user) => !access || !user.disabled)
-                  .map((user) => (
-                    <Table.Tr key={user.id}>
-                      <Table.Td>
+            {(['admin', 'member'] as const).map((role) => {
+              const these = users.data.users.filter(
+                (user) =>
+                  (!access || !user.disabled) && (user.role === 'admin') === (role === 'admin'),
+              );
+              if (these.length === 0) return null;
+              return (
+                <CardGroup
+                  dense
+                  key={role}
+                  label={String(these.length)}
+                  description={role === 'admin' ? 'Admins' : 'Members'}
+                  ariaLabel={role === 'admin' ? 'Admins' : 'Members'}
+                >
+                  {these.map((user) => (
+                    <Card dense key={user.id}>
+                      <div className={classes.who}>
                         <Group gap={6} wrap="nowrap">
                           <Text size="sm" style={{ overflowWrap: 'anywhere' }}>
                             {user.username}
@@ -165,8 +168,8 @@ export function UsersCard() {
                           } · ${statusOf(user, access)}`}
                         </Text>
                         <Seen user={user} />
-                      </Table.Td>
-                      <Table.Td visibleFrom="sm">
+                      </div>
+                      <div className={classes.role}>
                         <Group gap={6} wrap="nowrap">
                           {user.role === 'admin' ? (
                             <Badge variant="outline" color="neon" size="sm">
@@ -182,13 +185,13 @@ export function UsersCard() {
                             </Badge>
                           )}
                         </Group>
-                      </Table.Td>
-                      <Table.Td visibleFrom="sm">
+                      </div>
+                      <div className={classes.status}>
                         <Text size="sm" c={user.disabled ? 'red' : 'dimmed'}>
                           {statusOf(user, access)}
                         </Text>
-                      </Table.Td>
-                      <Table.Td ta="right">
+                      </div>
+                      <div className={classes.actions}>
                         {user.id !== self.id && (
                           <Menu position="bottom-end" withinPortal>
                             <Menu.Target>
@@ -249,11 +252,12 @@ export function UsersCard() {
                             </Menu.Dropdown>
                           </Menu>
                         )}
-                      </Table.Td>
-                    </Table.Tr>
+                      </div>
+                    </Card>
                   ))}
-              </Table.Tbody>
-            </Table>
+                </CardGroup>
+              );
+            })}
           </>
         )}
 
@@ -365,7 +369,7 @@ function WaitingList({
   const waiting = users.filter((u) => !u.ignored);
   const ignored = users.filter((u) => u.ignored);
   const row = (user: ListedUser) => (
-    <Group key={user.id} justify="space-between" gap="xs">
+    <Card dense key={user.id}>
       <Stack gap={0}>
         <Text size="sm" style={{ overflowWrap: 'anywhere' }}>
           {user.username}
@@ -406,14 +410,16 @@ function WaitingList({
           Remove
         </Button>
       </Group>
-    </Group>
+    </Card>
   );
   return (
     <Stack gap="xs">
-      <Stack component="section" aria-label="Waiting for approval" gap="xs">
-        <Text size="sm" fw={600}>
-          Waiting for approval
-        </Text>
+      <CardGroup
+        dense
+        label={String(waiting.length)}
+        description="Waiting for approval"
+        ariaLabel="Waiting for approval"
+      >
         {waiting.length === 0 ? (
           <Text size="sm" c="dimmed">
             Nobody is waiting. Friends sign in with Google at this site's address and show up here.
@@ -421,7 +427,7 @@ function WaitingList({
         ) : (
           waiting.map(row)
         )}
-      </Stack>
+      </CardGroup>
       {ignored.length > 0 && (
         <Stack gap="xs">
           <Button

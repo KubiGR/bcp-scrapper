@@ -192,16 +192,9 @@ describe('MetaPage', () => {
     expect(await screen.findByText('Ada Archer')).toBeInTheDocument();
     expect(screen.getByText('Alpha Squad · #2')).toBeInTheDocument();
     expect(screen.getByTitle('Medium event')).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'W-L-D' })).toHaveAttribute(
-      'aria-sort',
-      'none',
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'W-L-D' }));
-    expect(screen.getByRole('columnheader', { name: /W-L-D/ })).toHaveAttribute(
-      'aria-sort',
-      'descending',
-    );
-    // Anywhere on the player's row opens the list.
+    // By best record: the players under their record's heading.
+    expect(screen.getAllByRole('heading', { name: /^\d+-\d+-\d+/ }).length).toBeGreaterThan(0);
+    // Anywhere on the player's card opens the list.
     fireEvent.click(screen.getByText('Ada Archer'));
     expect(await screen.findByText('Orks list text')).toBeInTheDocument();
     const searchUrl = fetchMock.mock.calls

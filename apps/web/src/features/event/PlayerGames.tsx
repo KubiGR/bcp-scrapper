@@ -1,6 +1,7 @@
-import { Stack, Table, Text } from '@mantine/core';
+import { Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { PlayerLine } from '../../components/PlayerLine';
+import { Card, scoreboardClasses } from '../../components/Scoreboard';
 import { roundsQuery } from '../analysis/analysis-queries';
 import { formatPoints, outcomeLabel } from '../analysis/format';
 import classes from './PlayerGames.module.css';
@@ -29,53 +30,51 @@ export function PlayerGames({
       <Text size="sm" fw={600}>
         Games
       </Text>
-      <Table verticalSpacing={4} fz="sm">
-        <Table.Tbody>
-          {games.map((game) => (
-            <Table.Tr key={game.round}>
-              <Table.Td className={`numeric ${classes.fit}`} c="dimmed">
-                R{game.round}
-              </Table.Td>
-              <Table.Td className={classes.fit}>
-                {game.outcome && (
-                  <span className={classes.outcome} data-outcome={game.outcome}>
-                    {outcomeLabel(game.outcome)}
-                  </span>
-                )}
-              </Table.Td>
-              <Table.Td className={`numeric ${classes.fit}`}>
-                {game.opponent
-                  ? `${formatPoints(game.points[0])}–${formatPoints(game.points[1])}`
-                  : ''}
-              </Table.Td>
-              <Table.Td>
-                {game.opponent ? (
-                  <>
-                    <Text size="sm">
-                      <PlayerName name={game.opponent.name} userId={game.opponent.userId} />
-                      <RankBadge userId={game.opponent.userId ?? null} />
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      <PlayerLine
-                        {...game.opponent}
-                        extra={
-                          game.wentFirst === null
-                            ? null
-                            : `${game.wentFirst ? playerName : game.opponent.name} went first`
-                        }
-                      />
-                    </Text>
-                  </>
-                ) : (
-                  <Text size="sm" c="dimmed">
-                    Bye
+      <div className={scoreboardClasses.group} data-dense>
+        {games.map((game) => (
+          <Card dense key={game.round}>
+            <Text size="sm" c="dimmed" className={`numeric ${classes.fit}`}>
+              R{game.round}
+            </Text>
+            <span className={classes.fit}>
+              {game.outcome && (
+                <span className={classes.outcome} data-outcome={game.outcome}>
+                  {outcomeLabel(game.outcome)}
+                </span>
+              )}
+            </span>
+            <Text size="sm" fw={600} className={`numeric ${classes.fit}`}>
+              {game.opponent
+                ? `${formatPoints(game.points[0])}–${formatPoints(game.points[1])}`
+                : ''}
+            </Text>
+            <div className={classes.opponent}>
+              {game.opponent ? (
+                <>
+                  <Text size="sm">
+                    <PlayerName name={game.opponent.name} userId={game.opponent.userId} />
+                    <RankBadge userId={game.opponent.userId ?? null} />
                   </Text>
-                )}
-              </Table.Td>
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
+                  <Text size="xs" c="dimmed">
+                    <PlayerLine
+                      {...game.opponent}
+                      extra={
+                        game.wentFirst === null
+                          ? null
+                          : `${game.wentFirst ? playerName : game.opponent.name} went first`
+                      }
+                    />
+                  </Text>
+                </>
+              ) : (
+                <Text size="sm" c="dimmed">
+                  Bye
+                </Text>
+              )}
+            </div>
+          </Card>
+        ))}
+      </div>
     </Stack>
   );
 }

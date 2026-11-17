@@ -1,0 +1,31 @@
+/* A game in a matchup cell: where, the row side, the score, the column side mirrored. */
+.where {
+  flex: 0 0 7rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-dimmed);
+}
+
+.event {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.side {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.side[data-end] {
+  text-align: right;
+}
+
+.score {
+  flex: 0 0 4rem;
+  text-align: center;
+  font-family: var(--mantine-font-family-monospace);
+  font-weight: 600;
+}

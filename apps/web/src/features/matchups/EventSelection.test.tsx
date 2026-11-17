@@ -1,6 +1,7 @@
 import type { MatchupEvent } from '@bcp/shared';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { pickOption } from '../../test/pick-option';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { EventSelection } from './EventSelection';
 
@@ -43,7 +44,7 @@ describe('EventSelection', () => {
     expect(checkbox).toBeChecked();
   });
 
-  it('sorts the events on a column header', async () => {
+  it('sorts the events by the order picked', async () => {
     stubFetchRoutes({});
     renderWithRouter(
       <EventSelection
@@ -58,12 +59,10 @@ describe('EventSelection', () => {
     );
     await screen.findByRole('link', { name: 'Zeta Open' });
     const names = () => screen.getAllByRole('link').map((link) => link.textContent);
-    fireEvent.click(screen.getByRole('button', { name: 'Event' }));
+    await pickOption('Sort by', 'Name A–Z');
     expect(names()).toEqual(['Alpha Cup', 'Zeta Open']);
-    fireEvent.click(screen.getByRole('button', { name: 'Size' }));
+    await pickOption('Sort by', 'Biggest first');
     expect(names()).toEqual(['Alpha Cup', 'Zeta Open']);
-    fireEvent.click(screen.getByRole('button', { name: /Size/ }));
-    expect(names()).toEqual(['Zeta Open', 'Alpha Cup']);
   });
 
   it('shows the pairings state badge text for fetching, partial and no-pairings events', async () => {

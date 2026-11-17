@@ -1,8 +1,10 @@
 import type { GameUpdate, GameUpdatePatch } from '@bcp/shared';
-import { Badge, Button, Group, Skeleton, Stack, Table, Text, TextInput } from '@mantine/core';
+import { Badge, Button, Group, Skeleton, Stack, Text, TextInput } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
+import { Card, scoreboardClasses } from '../../components/Scoreboard';
+import classes from './UpdatesSection.module.css';
 import { Panel } from '../../components/Panel';
 import { formatIsoDay, plural } from '../../lib/format';
 import { meQuery } from '../auth/auth-queries';
@@ -110,116 +112,117 @@ export function UpdatesSection() {
           {list.length === 0 ? (
             <Text size="sm">No updates yet.</Text>
           ) : (
-            <Table.ScrollContainer minWidth={520}>
-              <Table aria-label="Game updates">
-                <Table.Tbody>
-                  {list.map((update) => (
-                    <Table.Tr key={update.id}>
-                      <Table.Td>
-                        <Text size="sm" c={update.merged || update.hidden ? 'dimmed' : undefined}>
-                          {update.name}
+            <div
+              role="list"
+              aria-label="Game updates"
+              className={scoreboardClasses.group}
+              data-dense
+            >
+              {list.map((update) => (
+                <div role="listitem" key={update.id} aria-label={update.name}>
+                  <Card dense>
+                    <div className={classes.name}>
+                      <Text size="sm" c={update.merged || update.hidden ? 'dimmed' : undefined}>
+                        {update.name}
+                      </Text>
+                      {update.summary !== '' && (
+                        <Text size="xs" c="dimmed">
+                          {update.summary}
                         </Text>
-                        {update.summary !== '' && (
-                          <Text size="xs" c="dimmed">
-                            {update.summary}
-                          </Text>
-                        )}
-                        {!update.added && update.name !== update.autoName && (
-                          <Text size="xs" c="dimmed">{`BSData: ${update.autoName}`}</Text>
-                        )}
-                        {update.added && (
-                          <Badge size="xs" variant="light" color="gray">
-                            Added by hand
-                          </Badge>
-                        )}
-                        {update.merged && (
-                          <Badge size="xs" variant="light" color="gray">
-                            Merged into the update before
-                          </Badge>
-                        )}
-                        {update.hidden && (
-                          <Badge size="xs" variant="light" color="gray">
-                            Hidden
-                          </Badge>
-                        )}
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm" className="numeric">
-                          {formatIsoDay(update.start)}
-                        </Text>
-                        {!update.added && update.start !== update.autoStart && (
-                          <Text
+                      )}
+                      {!update.added && update.name !== update.autoName && (
+                        <Text size="xs" c="dimmed">{`BSData: ${update.autoName}`}</Text>
+                      )}
+                      {update.added && (
+                        <Badge size="xs" variant="light" color="gray">
+                          Added by hand
+                        </Badge>
+                      )}
+                      {update.merged && (
+                        <Badge size="xs" variant="light" color="gray">
+                          Merged into the update before
+                        </Badge>
+                      )}
+                      {update.hidden && (
+                        <Badge size="xs" variant="light" color="gray">
+                          Hidden
+                        </Badge>
+                      )}
+                    </div>
+                    <div className={classes.start}>
+                      <Text size="sm" className="numeric">
+                        {formatIsoDay(update.start)}
+                      </Text>
+                      {!update.added && update.start !== update.autoStart && (
+                        <Text
+                          size="xs"
+                          c="dimmed"
+                        >{`BSData: ${formatIsoDay(update.autoStart)}`}</Text>
+                      )}
+                    </div>
+                    <Text size="sm" className={`numeric ${classes.events}`}>
+                      {plural(update.events, 'event')}
+                    </Text>
+                    <div className={classes.actions}>
+                      {editing?.id === update.id ? (
+                        <Group gap={4} wrap="nowrap">
+                          <TextInput
                             size="xs"
-                            c="dimmed"
-                          >{`BSData: ${formatIsoDay(update.autoStart)}`}</Text>
-                        )}
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm" className="numeric">
-                          {plural(update.events, 'event')}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        {editing?.id === update.id ? (
-                          <Group gap={4} wrap="nowrap">
-                            <TextInput
-                              size="xs"
-                              aria-label={editing.field === 'name' ? 'Name' : 'Start (YYYY-MM-DD)'}
-                              value={editing.value}
-                              onChange={(e) => {
-                                setEditing({ ...editing, value: e.currentTarget.value });
-                              }}
-                            />
-                            {editing.field === 'name' && update.suggestions.length > 1 && (
-                              <Button
-                                size="compact-xs"
-                                variant="light"
-                                onClick={() => {
-                                  // The next generated name after the one shown.
-                                  const at = update.suggestions.indexOf(editing.value);
-                                  const next =
-                                    update.suggestions[(at + 1) % update.suggestions.length];
-                                  if (next !== undefined) setEditing({ ...editing, value: next });
-                                }}
-                              >
-                                Suggest
-                              </Button>
-                            )}
+                            aria-label={editing.field === 'name' ? 'Name' : 'Start (YYYY-MM-DD)'}
+                            value={editing.value}
+                            onChange={(e) => {
+                              setEditing({ ...editing, value: e.currentTarget.value });
+                            }}
+                          />
+                          {editing.field === 'name' && update.suggestions.length > 1 && (
                             <Button
                               size="compact-xs"
-                              loading={save.isPending}
+                              variant="light"
                               onClick={() => {
-                                const value = editing.value.trim();
-                                save.mutate({
-                                  id: update.id,
-                                  patch:
-                                    editing.field === 'name'
-                                      ? { name: value === '' ? null : value }
-                                      : { start: value === '' ? null : value },
-                                });
+                                // The next generated name after the one shown.
+                                const at = update.suggestions.indexOf(editing.value);
+                                const next =
+                                  update.suggestions[(at + 1) % update.suggestions.length];
+                                if (next !== undefined) setEditing({ ...editing, value: next });
                               }}
                             >
-                              Save
+                              Suggest
                             </Button>
-                            <Button
-                              size="compact-xs"
-                              variant="subtle"
-                              onClick={() => {
-                                setEditing(null);
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                          </Group>
-                        ) : (
-                          actions(update)
-                        )}
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
+                          )}
+                          <Button
+                            size="compact-xs"
+                            loading={save.isPending}
+                            onClick={() => {
+                              const value = editing.value.trim();
+                              save.mutate({
+                                id: update.id,
+                                patch:
+                                  editing.field === 'name'
+                                    ? { name: value === '' ? null : value }
+                                    : { start: value === '' ? null : value },
+                              });
+                            }}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            size="compact-xs"
+                            variant="subtle"
+                            onClick={() => {
+                              setEditing(null);
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </Group>
+                      ) : (
+                        actions(update)
+                      )}
+                    </div>
+                  </Card>
+                </div>
+              ))}
+            </div>
           )}
           {!readOnly && (
             <Group gap="xs" align="flex-end" wrap="wrap">

@@ -88,7 +88,7 @@ describe('RoundsPanel', () => {
     expect(screen.getByText('Bye')).toBeInTheDocument();
     fireEvent.click(matchup);
     expect(await screen.findByText('Rhea Stone')).toBeInTheDocument();
-    expect(screen.getAllByText('–').length).toBeGreaterThanOrEqual(2); // VP A and B
+    expect(screen.getByText('VP –')).toBeInTheDocument(); // VP A and B unknown
     expect(screen.getByRole('radio', { name: 'Round 2 · Bracket' })).toBeInTheDocument();
     // Mantine's Accordion.Panel stays `display: none` until its collapse transition ends, which
     // jsdom never fires, so the link is present but not yet part of the accessibility tree —

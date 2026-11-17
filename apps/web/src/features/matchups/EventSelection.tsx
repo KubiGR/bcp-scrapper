@@ -1,12 +1,14 @@
 import type { MatchupEvent, PairingsState } from '@bcp/shared';
-import { Button, Checkbox, Group, Table, Text } from '@mantine/core';
+import { Button, Checkbox, Group, Select, Stack, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnchorLink } from '../../components/AnchorLink';
-import { Panel } from '../../components/Panel';
+import { Card, scoreboardClasses } from '../../components/Scoreboard';
+import { useState } from 'react';
+import classes from './EventSelection.module.css';
 import { formatDuration, formatEventSize, formatIsoDay, plural } from '../../lib/format';
 import { HotCount, NewLeaf, playedLately } from '../../components/EventSymbols';
-import { SortableTh, useTableSort, type SortValue } from '../../lib/table-sort';
+import { sortRows, type SortDir, type SortValue } from '../../lib/table-sort';
 import { fetchQueueQuery } from '../fetch-queue/fetch-queue-queries';
 import { queueManyPairingsChunked } from './matchups-queries';
 
@@ -26,6 +28,14 @@ const EVENT_SORT = {
   pairings: (event) => STATE_LABEL[event.pairings],
 } satisfies Record<string, SortValue<MatchupEvent>>;
 
+/** The orders on offer, each its natural way round; newest first. */
+const EVENT_SORTS: { value: keyof typeof EVENT_SORT; label: string; dir: SortDir }[] = [
+  { value: 'date', label: 'Newest first', dir: 'desc' },
+  { value: 'size', label: 'Biggest first', dir: 'desc' },
+  { value: 'name', label: 'Name A–Z', dir: 'asc' },
+  { value: 'pairings', label: 'Pairings', dir: 'asc' },
+];
+
 interface EventSelectionProps {
   events: MatchupEvent[];
   exclude: string[];
@@ -38,7 +48,12 @@ interface EventSelectionProps {
  * whose pairings are missing or partial. */
 export function EventSelection({ events, exclude, include, onChange }: EventSelectionProps) {
   const queryClient = useQueryClient();
-  const { sorted, sort, toggle: sortBy } = useTableSort(events, EVENT_SORT);
+  const [sortKey, setSortKey] = useState<keyof typeof EVENT_SORT>('date');
+  const sorted = sortRows(
+    events,
+    EVENT_SORT[sortKey],
+    EVENT_SORTS.find((option) => option.value === sortKey)?.dir ?? 'desc',
+  );
   const sync = useMutation({
     mutationFn: (eventIds: string[]) => queueManyPairingsChunked(eventIds),
     onSuccess: async (result) => {
@@ -104,10 +119,19 @@ export function EventSelection({ events, exclude, include, onChange }: EventSele
   }
 
   return (
-    <Group gap="sm" align="flex-start" wrap="wrap">
-      <div style={{ flex: '1 1 480px', minWidth: 0 }}>
-        {toSync.length > 0 && (
-          <Group mb="sm">
+    <Stack gap="md">
+      <Group justify="space-between" align="flex-end" wrap="wrap">
+        <Group gap="md" align="center">
+          <Checkbox
+            label="All"
+            aria-label="Select all events"
+            checked={allTicked}
+            indeterminate={tickedCount > 0 && !allTicked}
+            onChange={() => {
+              setAll(!allTicked);
+            }}
+          />
+          {toSync.length > 0 && (
             <Button
               size="xs"
               loading={sync.isPending}
@@ -117,80 +141,58 @@ export function EventSelection({ events, exclude, include, onChange }: EventSele
             >
               Sync pairings for {plural(toSync.length, 'event')}
             </Button>
-          </Group>
-        )}
-        <Panel p={0}>
-          <Table.ScrollContainer minWidth={480}>
-            <Table verticalSpacing="xs">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>
-                    <Checkbox
-                      aria-label="Select all events"
-                      checked={allTicked}
-                      indeterminate={tickedCount > 0 && !allTicked}
-                      onChange={() => {
-                        setAll(!allTicked);
-                      }}
-                    />
-                  </Table.Th>
-                  <SortableTh column="name" sort={sort} onSort={sortBy}>
-                    Event
-                  </SortableTh>
-                  <SortableTh column="date" sort={sort} onSort={sortBy}>
-                    Date
-                  </SortableTh>
-                  <SortableTh column="size" sort={sort} onSort={sortBy}>
-                    Size
-                  </SortableTh>
-                  <SortableTh column="pairings" sort={sort} onSort={sortBy}>
-                    Pairings
-                  </SortableTh>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {sorted.map((event) => (
-                  <Table.Tr key={event.id}>
-                    <Table.Td>
-                      <Checkbox
-                        aria-label={`Include ${event.name}`}
-                        checked={event.included}
-                        onChange={() => {
-                          toggle(event);
-                        }}
-                      />
-                    </Table.Td>
-                    <Table.Td>
-                      <AnchorLink
-                        to="/events/$eventId"
-                        params={{ eventId: event.id }}
-                        search={{ tab: 'matchups' }}
-                      >
-                        {event.name}
-                      </AnchorLink>
-                      {playedLately(event.startDate) && <NewLeaf />}
-                    </Table.Td>
-                    <Table.Td className="numeric">
-                      {formatIsoDay(event.startDate.slice(0, 10))}
-                    </Table.Td>
-                    <Table.Td className="numeric">
-                      <HotCount playerCount={event.playerCount}>{formatEventSize(event)}</HotCount>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text
-                        size="sm"
-                        c={DIMMED_STATES.includes(event.pairings) ? 'dimmed' : undefined}
-                      >
-                        {STATE_LABEL[event.pairings]}
-                      </Text>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-        </Panel>
+          )}
+        </Group>
+        <Select
+          label="Sort by"
+          data={EVENT_SORTS.map(({ value, label }) => ({ value, label }))}
+          value={sortKey}
+          onChange={(value) => {
+            const next = EVENT_SORTS.find((option) => option.value === value);
+            if (next) setSortKey(next.value);
+          }}
+          allowDeselect={false}
+          w={170}
+        />
+      </Group>
+      <div className={scoreboardClasses.group} data-dense>
+        {sorted.map((event) => (
+          <Card dense key={event.id}>
+            <Checkbox
+              aria-label={`Include ${event.name}`}
+              checked={event.included}
+              onChange={() => {
+                toggle(event);
+              }}
+            />
+            <div className={classes.name}>
+              <Text size="sm" fw={600}>
+                <AnchorLink
+                  to="/events/$eventId"
+                  params={{ eventId: event.id }}
+                  search={{ tab: 'matchups' }}
+                >
+                  {event.name}
+                </AnchorLink>
+                {playedLately(event.startDate) && <NewLeaf />}
+              </Text>
+              <Text size="xs" c="dimmed" className="numeric">
+                {formatIsoDay(event.startDate.slice(0, 10))}
+              </Text>
+            </div>
+            <Text size="sm" className={`numeric ${classes.size}`}>
+              <HotCount playerCount={event.playerCount}>{formatEventSize(event)}</HotCount>
+            </Text>
+            <Text
+              size="sm"
+              className={classes.state}
+              c={DIMMED_STATES.includes(event.pairings) ? 'dimmed' : undefined}
+            >
+              {STATE_LABEL[event.pairings]}
+            </Text>
+          </Card>
+        ))}
       </div>
-    </Group>
+    </Stack>
   );
 }

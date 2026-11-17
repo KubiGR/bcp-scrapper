@@ -1,7 +1,10 @@
 import type { CellGame } from '@bcp/shared';
-import { Drawer, Skeleton, Table, Text } from '@mantine/core';
+import { Drawer, Skeleton, Stack, Text } from '@mantine/core';
 import { PlayerLine } from '../../components/PlayerLine';
 import { ErrorState } from '../../components/ErrorState';
+import { Card, CardGroup } from '../../components/Scoreboard';
+import { plural } from '../../lib/format';
+import classes from './CellDrawer.module.css';
 import { formatPoints } from '../analysis/format';
 import { pickLabel, type MatrixPick } from './matrix-pick';
 
@@ -13,13 +16,19 @@ interface CellDrawerProps {
   onClose: () => void;
 }
 
-const outcomeLabel = (outcome: CellGame['outcome']) =>
-  outcome === 'win' ? 'W' : outcome === 'loss' ? 'L' : 'D';
+/** The row side's results, best first: each a group of games. */
+const OUTCOMES: { outcome: CellGame['outcome']; label: string }[] = [
+  { outcome: 'win', label: 'Won' },
+  { outcome: 'draw', label: 'Drawn' },
+  { outcome: 'loss', label: 'Lost' },
+];
 
-function PlayerCell({ side }: { side: CellGame['row'] }) {
+function PlayerCell({ side, end = false }: { side: CellGame['row']; end?: boolean }) {
   return (
-    <div>
-      <Text size="sm">{side.name}</Text>
+    <div className={classes.side} data-end={end || undefined}>
+      <Text size="sm" fw={600}>
+        {side.name}
+      </Text>
       <Text size="xs" c="dimmed">
         <PlayerLine {...side} extra={side.teamName} />
       </Text>
@@ -53,40 +62,36 @@ export function CellDrawer({ cell, games: all, loading, error, onClose }: CellDr
         </Text>
       )}
       {!loading && !error && games && games.length > 0 && (
-        <Table.ScrollContainer minWidth={480}>
-          <Table>
-            <Table.Thead>
-              <Table.Tr>
-                {crossEvent && <Table.Th>Event</Table.Th>}
-                <Table.Th>Round</Table.Th>
-                <Table.Th>Table</Table.Th>
-                <Table.Th>{cell?.row}</Table.Th>
-                <Table.Th>Result</Table.Th>
-                <Table.Th>Points</Table.Th>
-                <Table.Th>{cell?.col}</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {games.map((game) => (
-                <Table.Tr key={game.id}>
-                  {crossEvent && <Table.Td>{game.eventName}</Table.Td>}
-                  <Table.Td className="numeric">{game.round}</Table.Td>
-                  <Table.Td className="numeric">{game.tableNo ?? '–'}</Table.Td>
-                  <Table.Td>
+        <Stack gap="lg">
+          {OUTCOMES.map(({ outcome, label }) => {
+            const these = games.filter((game) => game.outcome === outcome);
+            if (these.length === 0) return null;
+            return (
+              <CardGroup
+                dense
+                key={outcome}
+                label={label}
+                description={`${plural(these.length, 'game')} for ${cell?.row ?? 'the row'}`}
+              >
+                {these.map((game) => (
+                  <Card dense key={game.id}>
+                    <span className={classes.where}>
+                      {crossEvent && <span className={classes.event}>{game.eventName}</span>}
+                      <span className="numeric">
+                        R{game.round} · T{game.tableNo ?? '–'}
+                      </span>
+                    </span>
                     <PlayerCell side={game.row} />
-                  </Table.Td>
-                  <Table.Td>{outcomeLabel(game.outcome)}</Table.Td>
-                  <Table.Td className="numeric">
-                    {formatPoints(game.rowPoints)}–{formatPoints(game.colPoints)}
-                  </Table.Td>
-                  <Table.Td>
-                    <PlayerCell side={game.col} />
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
+                    <span className={classes.score}>
+                      {formatPoints(game.rowPoints)}–{formatPoints(game.colPoints)}
+                    </span>
+                    <PlayerCell side={game.col} end />
+                  </Card>
+                ))}
+              </CardGroup>
+            );
+          })}
+        </Stack>
       )}
     </Drawer>
   );

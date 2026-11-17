@@ -1,6 +1,7 @@
 import type { StandingsResponse } from '@bcp/shared';
-import { fireEvent, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { pickOption } from '../../test/pick-option';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { anEventDetail } from '../../test/sample-data';
 import { StandingsPanel } from './StandingsPanel';
@@ -54,22 +55,22 @@ describe('StandingsPanel', () => {
     );
     const red = await screen.findByRole('link', { name: 'Red Legion' });
     expect(red.getAttribute('href')).toBe('/events/EVT1/teams/RED');
-    expect(screen.getByRole('columnheader', { name: 'R2 · Bracket' })).toBeInTheDocument();
+    expect(screen.getAllByText('R2 · Bracket').length).toBeGreaterThan(0);
     expect(screen.getByText('Bye 40')).toBeInTheDocument();
     expect(screen.getByText('W 30')).toBeInTheDocument();
     expect(screen.getAllByText('—')).toHaveLength(2); // Grey Watch's placing and its empty round
     expect(screen.getByText('2-0-0')).toBeInTheDocument();
   });
 
-  it('sorts on a column header', async () => {
+  it('sorts by the order picked', async () => {
     stubFetchRoutes({ 'GET /api/events/EVT1/standings': standings });
     renderWithRouter(<StandingsPanel event={anEventDetail()} />);
     await screen.findByRole('link', { name: 'Red Legion' });
     const teams = () => screen.getAllByRole('link').map((link) => link.textContent);
     expect(teams()).toEqual(['Red Legion', 'Grey Watch']);
-    fireEvent.click(screen.getByRole('button', { name: 'Team' }));
+    await pickOption('Sort by', 'Team A–Z');
     expect(teams()).toEqual(['Grey Watch', 'Red Legion']);
-    fireEvent.click(screen.getByRole('button', { name: 'Points' }));
+    await pickOption('Sort by', 'Points');
     expect(teams()).toEqual(['Red Legion', 'Grey Watch']);
   });
 });

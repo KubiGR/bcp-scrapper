@@ -1,0 +1,37 @@
+/* A team's standing: placing, name, a block per round, then its record and points. */
+.placing {
+  flex: 0 0 3rem;
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-lg);
+  font-weight: 600;
+}
+
+.team {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.rounds {
+  flex: 3 1 260px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.round {
+  display: flex;
+  flex-direction: column;
+  min-width: 3.5rem;
+  padding: 2px 6px;
+  border: 1px solid rgb(255 255 255 / 0.07);
+  border-radius: var(--mantine-radius-sm);
+}
+
+.roundLabel {
+  font-size: 10px;
+  color: var(--mantine-color-dimmed);
+}
+
+.figure {
+  flex: 0 0 4.5rem;
+}
