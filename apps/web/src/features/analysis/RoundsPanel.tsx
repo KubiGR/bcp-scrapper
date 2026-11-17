@@ -12,7 +12,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
-import { Panel } from '../../components/Panel';
 import { playersQuery } from '../event/event-queries';
 import { ListDrawer } from '../event/ListDrawer';
 import { roundsQuery } from './analysis-queries';
@@ -112,42 +111,39 @@ export function RoundsPanel({ event }: { event: EventDetail }) {
         </Text>
       )}
       {current.matchups.length > 0 && (
-        <Panel p={0}>
-          <Accordion
-            multiple
-            chevronPosition="left"
-            // Filtering opens every matchup that still has a matching game.
-            value={filtering ? current.matchups.map((m) => m.id) : opened}
-            onChange={setOpened}
-          >
-            {current.matchups.map((matchup) => (
-              <Accordion.Item key={matchup.id} value={matchup.id}>
-                <Accordion.Control>
-                  <MatchupControl matchup={matchup} />
-                </Accordion.Control>
-                <Accordion.Panel>
-                  <MatchupTeamLinks eventId={event.bcpId} matchup={matchup} />
-                  <GamesTable
-                    games={matchup.games}
-                    onShowList={setOpenPlayerId}
-                    eventId={event.bcpId}
-                    knownPlayerIds={knownPlayerIds}
-                  />
-                </Accordion.Panel>
-              </Accordion.Item>
-            ))}
-          </Accordion>
-        </Panel>
+        <Accordion
+          multiple
+          variant="separated"
+          chevronPosition="left"
+          // Filtering opens every matchup that still has a matching game.
+          value={filtering ? current.matchups.map((m) => m.id) : opened}
+          onChange={setOpened}
+        >
+          {current.matchups.map((matchup) => (
+            <Accordion.Item key={matchup.id} value={matchup.id}>
+              <Accordion.Control>
+                <MatchupControl matchup={matchup} />
+              </Accordion.Control>
+              <Accordion.Panel>
+                <MatchupTeamLinks eventId={event.bcpId} matchup={matchup} />
+                <GamesTable
+                  games={matchup.games}
+                  onShowList={setOpenPlayerId}
+                  eventId={event.bcpId}
+                  knownPlayerIds={knownPlayerIds}
+                />
+              </Accordion.Panel>
+            </Accordion.Item>
+          ))}
+        </Accordion>
       )}
       {current.games.length > 0 && (
-        <Panel>
-          <GamesTable
-            games={current.games}
-            onShowList={setOpenPlayerId}
-            eventId={event.bcpId}
-            knownPlayerIds={knownPlayerIds}
-          />
-        </Panel>
+        <GamesTable
+          games={current.games}
+          onShowList={setOpenPlayerId}
+          eventId={event.bcpId}
+          knownPlayerIds={knownPlayerIds}
+        />
       )}
       <ListDrawer
         eventId={event.bcpId}

@@ -1,6 +1,8 @@
 import type { GameView } from '@bcp/shared';
-import { Button, Group, Table, Text } from '@mantine/core';
+import { Button, Text } from '@mantine/core';
 import { PlayerLine } from '../../components/PlayerLine';
+import { Card, scoreboardClasses } from '../../components/Scoreboard';
+import classes from './GamesTable.module.css';
 import { listPath, openHere } from '../../lib/open-link';
 import { formatPoints } from './format';
 import { PlayerName } from '../rankings/PlayerName';
@@ -38,105 +40,59 @@ export function GamesTable({ games, onShowList, eventId, knownPlayerIds }: Games
   const showListButton = (playerId: string) =>
     onShowList !== undefined && (knownPlayerIds === undefined || knownPlayerIds.has(playerId));
 
+  const side = (player: GameView['playerA'], wentFirst: boolean, alignEnd = false) => (
+    <div className={classes.side} data-end={alignEnd || undefined}>
+      <div className={classes.who}>
+        <Text size="sm" fw={600}>
+          <PlayerName name={player.name} userId={player.userId} />
+          <RankBadge userId={player.userId ?? null} />
+        </Text>
+        <Text size="xs" c="dimmed">
+          <PlayerLine {...player} extra={wentFirst ? 'went first' : null} />
+        </Text>
+      </div>
+      {showListButton(player.id) && (
+        <Button
+          size="xs"
+          variant="light"
+          className={classes.list}
+          aria-label={`Show ${player.name}'s list`}
+          {...listProps(player.id)}
+        >
+          List
+        </Button>
+      )}
+    </div>
+  );
+
+  // One compact card per game: table, one side, the score (game points over VP), the other side.
   return (
-    <Table.ScrollContainer minWidth={560}>
-      <Table>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Table</Table.Th>
-            <Table.Th>Player</Table.Th>
-            <Table.Th ta="right">GP</Table.Th>
-            <Table.Th ta="right">VP</Table.Th>
-            <Table.Th ta="right">VP</Table.Th>
-            <Table.Th ta="right">GP</Table.Th>
-            <Table.Th>Opponent</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {games.map((game) => (
-            <Table.Tr key={game.id}>
-              <Table.Td className="numeric">{game.tableNo ?? '–'}</Table.Td>
-              <Table.Td>
-                <Group gap="xs" wrap="nowrap">
-                  <div>
-                    <Text size="sm">
-                      <PlayerName name={game.playerA.name} userId={game.playerA.userId} />
-                      <RankBadge userId={game.playerA.userId ?? null} />
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      <PlayerLine
-                        {...game.playerA}
-                        extra={game.firstTurn === 'a' ? 'went first' : null}
-                      />
-                    </Text>
-                  </div>
-                  {showListButton(game.playerA.id) && (
-                    <Button
-                      size="xs"
-                      variant="light"
-                      style={{ flexShrink: 0 }}
-                      aria-label={`Show ${game.playerA.name}'s list`}
-                      {...listProps(game.playerA.id)}
-                    >
-                      List
-                    </Button>
-                  )}
-                </Group>
-              </Table.Td>
-              <Table.Td ta="right" className="numeric">
-                {formatPoints(game.gamePointsA)}
-              </Table.Td>
-              <Table.Td ta="right" className="numeric">
-                {formatPoints(game.vpA)}
-              </Table.Td>
-              <Table.Td ta="right" className="numeric">
-                {formatPoints(game.vpB)}
-              </Table.Td>
-              <Table.Td ta="right" className="numeric">
-                {formatPoints(game.gamePointsB)}
-              </Table.Td>
-              <Table.Td>
-                {game.playerB ? (
-                  (() => {
-                    const playerB = game.playerB;
-                    return (
-                      <Group gap="xs" wrap="nowrap">
-                        <div>
-                          <Text size="sm">
-                            <PlayerName name={playerB.name} userId={playerB.userId} />
-                            <RankBadge userId={playerB.userId ?? null} />
-                          </Text>
-                          <Text size="xs" c="dimmed">
-                            <PlayerLine
-                              {...playerB}
-                              extra={game.firstTurn === 'b' ? 'went first' : null}
-                            />
-                          </Text>
-                        </div>
-                        {showListButton(playerB.id) && (
-                          <Button
-                            size="xs"
-                            variant="light"
-                            style={{ flexShrink: 0 }}
-                            aria-label={`Show ${playerB.name}'s list`}
-                            {...listProps(playerB.id)}
-                          >
-                            List
-                          </Button>
-                        )}
-                      </Group>
-                    );
-                  })()
-                ) : (
-                  <Text size="sm" c="dimmed">
-                    Bye
-                  </Text>
-                )}
-              </Table.Td>
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
-    </Table.ScrollContainer>
+    <div className={scoreboardClasses.group} data-dense>
+      {games.map((game) => (
+        <Card dense key={game.id}>
+          <span className={classes.table} title="Table">
+            T{game.tableNo ?? '–'}
+          </span>
+          {side(game.playerA, game.firstTurn === 'a')}
+          <div className={classes.score}>
+            <span className={classes.points}>
+              {formatPoints(game.gamePointsA)}–{formatPoints(game.gamePointsB)}
+            </span>
+            <span className={classes.vp}>
+              {game.vpA === null && game.vpB === null
+                ? 'VP –'
+                : `VP ${formatPoints(game.vpA)}–${formatPoints(game.vpB)}`}
+            </span>
+          </div>
+          {game.playerB ? (
+            side(game.playerB, game.firstTurn === 'b', true)
+          ) : (
+            <Text size="sm" c="dimmed" className={classes.side}>
+              Bye
+            </Text>
+          )}
+        </Card>
+      ))}
+    </div>
   );
 }
