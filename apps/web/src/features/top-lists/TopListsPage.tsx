@@ -1,35 +1,26 @@
-import { DETACHMENT_SEPARATOR, KNOWN_DISPOSITIONS, type PlayerSearchResponse } from '@bcp/shared';
-import { Alert, Box, Button, MultiSelect, Select, Skeleton, Stack, Text } from '@mantine/core';
+import { DETACHMENT_SEPARATOR, KNOWN_DISPOSITIONS } from '@bcp/shared';
+import { Alert, Box, MultiSelect, Select, Skeleton, Stack, Text } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { AnchorLink } from '../../components/AnchorLink';
-import { HotCount, NewLeaf, playedLately } from '../../components/EventSymbols';
 import { DispositionText } from '../../components/DispositionText';
 import { ErrorState } from '../../components/ErrorState';
-import { FieldElo } from '../../components/FieldElo';
 import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
-import {
-  Card,
-  CardGroup,
-  PageTitle,
-  scoreboardClasses,
-  SidebarLayout,
-} from '../../components/Scoreboard';
-import { PlayerLine } from '../../components/PlayerLine';
-import { formatIsoDay, plural } from '../../lib/format';
-import { listPath, openHere } from '../../lib/open-link';
-import { sortRows, type SortDir } from '../../lib/table-sort';
+import { PageTitle, SidebarLayout } from '../../components/Scoreboard';
+import { plural } from '../../lib/format';
 import { useDraftRange } from '../../lib/use-draft-range';
 import { ListDrawer } from '../event/ListDrawer';
-import { formatRecord, lossLabel } from '../event/players-filter';
-import { FOUND_PLAYER_SORT, placingLine } from './player-sort';
-import classes from './TopListsPage.module.css';
+import { lossLabel } from '../event/players-filter';
+import {
+  FoundPlayerCards,
+  FoundSortSelect,
+  sortFound,
+  type FoundPlayer,
+  type SortKey,
+} from './FoundPlayers';
 import { useDateWindow } from '../updates/updates-queries';
 import { topListsQuery, type TopListsSearch } from './top-lists-queries';
-import { PlayerName } from '../rankings/PlayerName';
-import { RankBadge } from '../rankings/RankBadge';
 import { UpdatePicker } from '../updates/UpdatePicker';
 import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
 
@@ -39,48 +30,11 @@ const ROUND_CHOICES = [1, 3, 4, 5, 6, 7, 8];
 const DEFAULT_MIN_ROUNDS = 4;
 const roundsLabel = (rounds: number) => (rounds === 1 ? 'Any' : `${rounds}+ rounds`);
 
-type SortKey = keyof typeof FOUND_PLAYER_SORT;
-/** The orders on offer, each its natural way round. Best record groups the players by record. */
-const SORTS: { value: SortKey; label: string; dir: SortDir }[] = [
-  { value: 'record', label: 'Best record', dir: 'desc' },
-  { value: 'event', label: 'Newest event', dir: 'desc' },
-  { value: 'player', label: 'Player', dir: 'asc' },
-  { value: 'army', label: 'Army', dir: 'asc' },
-];
-
 const split = (value: string | undefined, separator = ',') =>
   value?.split(separator).filter(Boolean) ?? [];
 const join = (values: string[], separator = ',') =>
   values.length === 0 ? undefined : values.join(separator);
 const uniqueSorted = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b));
-
-type FoundPlayer = PlayerSearchResponse['players'][number];
-
-/** A record group's heading after the record: "Undefeated · 1 player", "One loss, 2 draws · 6 players". */
-export function recordGroupLabel(record: { losses: number; draws: number }, players: number) {
-  const losses =
-    record.losses === 0
-      ? 'Undefeated'
-      : record.losses === 1
-        ? 'One loss'
-        : `${String(record.losses)} losses`;
-  const draws = record.draws === 0 ? '' : `, ${plural(record.draws, 'draw')}`;
-  return `${losses}${draws} · ${plural(players, 'player')}`;
-}
-
-/** Players in order, cut into runs of the same record. */
-function byRecord(players: FoundPlayer[]): FoundPlayer[][] {
-  const groups: FoundPlayer[][] = [];
-  for (const player of players) {
-    const last = groups.at(-1);
-    if (last?.[0] !== undefined && formatRecord(last[0]) === formatRecord(player)) {
-      last.push(player);
-    } else {
-      groups.push([player]);
-    }
-  }
-  return groups;
-}
 
 interface TopListsPageProps {
   search: TopListsSearch;
@@ -103,9 +57,8 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
   const dispositions = split(search.dispositions);
   const detachments = split(search.detachments, DETACHMENT_SEPARATOR);
   const found = results.data?.players ?? [];
-  const dir = SORTS.find((option) => option.value === sortKey)?.dir ?? 'desc';
   // Stable, so the same record keeps the API's order: higher Elo first.
-  const sorted = sortRows(found, FOUND_PLAYER_SORT[sortKey], dir);
+  const sorted = sortFound(found, sortKey);
   const open =
     openKey === null
       ? null
@@ -127,16 +80,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
         >
           <Panel title="Filters">
             <Stack gap="md">
-              <Select
-                label="Sort by"
-                data={SORTS.map(({ value, label }) => ({ value, label }))}
-                value={sortKey}
-                onChange={(value) => {
-                  const next = SORTS.find((option) => option.value === value);
-                  if (next) setSortKey(next.value);
-                }}
-                allowDeselect={false}
-              />
+              <FoundSortSelect value={sortKey} onChange={setSortKey} />
               <MultiSelect
                 label="Factions"
                 renderOption={renderFactionOption}
@@ -247,39 +191,8 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                 <Text size="sm" c="dimmed">
                   No players match. Try more losses, other factions or a wider range.
                 </Text>
-              ) : sortKey === 'record' ? (
-                byRecord(sorted).map((group) => {
-                  const [first] = group;
-                  if (first === undefined) return null;
-                  const record = formatRecord(first);
-                  return (
-                    <CardGroup
-                      dense
-                      key={record}
-                      label={record}
-                      description={recordGroupLabel(first, group.length)}
-                    >
-                      {group.map((player) => (
-                        <ResultCard
-                          key={`${player.eventId}:${player.bcpId}`}
-                          player={player}
-                          onOpen={openPlayer}
-                        />
-                      ))}
-                    </CardGroup>
-                  );
-                })
               ) : (
-                <div className={scoreboardClasses.group} data-dense>
-                  {sorted.map((player) => (
-                    <ResultCard
-                      key={`${player.eventId}:${player.bcpId}`}
-                      player={player}
-                      showRecord
-                      onOpen={openPlayer}
-                    />
-                  ))}
-                </div>
+                <FoundPlayerCards players={sorted} sortKey={sortKey} onOpen={openPlayer} />
               )}
             </Stack>
           </Box>
@@ -293,84 +206,5 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
         }}
       />
     </SidebarLayout>
-  );
-}
-
-interface ResultCardProps {
-  player: FoundPlayer;
-  /** The record on the card itself, when there's no record heading above it. */
-  showRecord?: boolean;
-  onOpen: (player: FoundPlayer) => void;
-}
-
-/** One player's result: who, where, what they brought, and their list; a click opens the list. */
-function ResultCard({ player, showRecord = false, onOpen }: ResultCardProps) {
-  const placing = placingLine(player);
-  return (
-    <Card
-      dense
-      onOpen={() => {
-        onOpen(player);
-      }}
-    >
-      {showRecord && <span className={classes.cardRecord}>{formatRecord(player)}</span>}
-      <div className={classes.cardPlayer}>
-        <Text fw={600} size="sm">
-          <PlayerName name={player.name} userId={player.bcpUserId} />
-        </Text>
-        <Text size="sm" c="dimmed" className={classes.badges}>
-          <RankBadge userId={player.bcpUserId} />
-        </Text>
-      </div>
-      <div className={classes.cardEvent}>
-        <Text size="sm" className={classes.eventName} title={player.eventName}>
-          <AnchorLink
-            to="/events/$eventId"
-            params={{ eventId: player.eventId }}
-            search={{ tab: 'players' }}
-          >
-            {player.eventName}
-          </AnchorLink>
-          {playedLately(player.eventStartDate) && <NewLeaf />}
-        </Text>
-        <Text size="xs" c="dimmed" className="numeric">
-          {placing !== null && (
-            <>
-              <span className={classes.placing}>{placing}</span>
-              {' · '}
-            </>
-          )}
-          <span className={classes.piece}>{formatIsoDay(player.eventStartDate.slice(0, 10))}</span>{' '}
-          ·{' '}
-          <span className={classes.piece}>
-            <HotCount playerCount={player.eventPlayerCount} />
-            {player.eventTeamCount !== null && ` · ${plural(player.eventTeamCount, 'team')}`}
-          </span>
-          {player.eventFieldElo !== null && (
-            <>
-              {' · '}
-              <span className={classes.piece}>
-                <FieldElo elo={player.eventFieldElo} />
-              </span>
-            </>
-          )}
-        </Text>
-      </div>
-      <Text size="sm" className={classes.cardArmy}>
-        <PlayerLine {...player} />
-      </Text>
-      <Button
-        component="a"
-        href={listPath(player.eventId, player.bcpId)}
-        variant="light"
-        size="xs"
-        className={classes.cardList}
-        onClick={openHere(() => {
-          onOpen(player);
-        })}
-      >
-        List
-      </Button>
-    </Card>
   );
 }

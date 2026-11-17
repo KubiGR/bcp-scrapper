@@ -1,24 +1,18 @@
 import { DETACHMENT_SEPARATOR, MAX_LOSSES_LIMIT, UNKNOWN_FILTER } from '@bcp/shared';
-import { Button, Drawer, Skeleton, Stack, Table, Text } from '@mantine/core';
+import { Drawer, Skeleton, Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { AnchorLink } from '../../components/AnchorLink';
-import rowClasses from '../../components/ClickableRow.module.css';
 import { ErrorState } from '../../components/ErrorState';
-import { PlayerLine } from '../../components/PlayerLine';
-import { HotCount, NewLeaf, playedLately } from '../../components/EventSymbols';
-import { FieldElo } from '../../components/FieldElo';
-import { listPath, openHere } from '../../lib/open-link';
-import { formatEventSize, formatIsoDay } from '../../lib/format';
-import { SortableTh, useTableSort } from '../../lib/table-sort';
-import { FOUND_PLAYER_SORT, placingLine } from '../top-lists/player-sort';
 import { ListDrawer } from '../event/ListDrawer';
-import { formatRecord } from '../event/players-filter';
+import {
+  FoundPlayerCards,
+  FoundSortSelect,
+  sortFound,
+  type SortKey,
+} from '../top-lists/FoundPlayers';
 import { topListsQuery } from '../top-lists/top-lists-queries';
 import { UNKNOWN_DETACHMENT, type PlayersFilter } from './FactionTable';
 import type { MetaSearch } from './meta-queries';
-import { PlayerName } from '../rankings/PlayerName';
-import { RankBadge } from '../rankings/RankBadge';
 
 interface MetaPlayersDrawerProps {
   filter: PlayersFilter | null;
@@ -63,7 +57,7 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
     enabled: filter !== null,
   });
   const found = players.data?.players ?? [];
-  const { sorted, sort, toggle } = useTableSort(found, FOUND_PLAYER_SORT);
+  const [sortKey, setSortKey] = useState<SortKey>('record');
   const open =
     openKey === null
       ? null
@@ -80,97 +74,20 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
       {players.isPending && <Skeleton height={200} />}
       {players.error && <ErrorState error={players.error} onRetry={() => void players.refetch()} />}
       {players.data && (
-        <Stack gap="xs">
+        <Stack gap="md">
           {players.data.truncated && (
             <Text size="sm" c="dimmed">
               Showing the first 500.
             </Text>
           )}
-          <Table verticalSpacing="xs">
-            <Table.Thead>
-              <Table.Tr>
-                <SortableTh column="player" sort={sort} onSort={toggle}>
-                  Player
-                </SortableTh>
-                <SortableTh column="event" sort={sort} onSort={toggle}>
-                  Event
-                </SortableTh>
-                <SortableTh column="record" sort={sort} onSort={toggle} ta="right">
-                  W-L-D
-                </SortableTh>
-                <Table.Th aria-label="List" />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {sorted.map((player) => (
-                <Table.Tr
-                  key={`${player.eventId}:${player.bcpId}`}
-                  className={rowClasses.row}
-                  onClick={(e) => {
-                    // Links and buttons in the row do their own thing.
-                    if (e.target instanceof Element && e.target.closest('a, button')) return;
-                    setOpenKey({ eventId: player.eventId, bcpId: player.bcpId });
-                  }}
-                >
-                  <Table.Td>
-                    <Text size="sm">
-                      <PlayerName name={player.name} userId={player.bcpUserId} />
-                      <RankBadge userId={player.bcpUserId} />
-                    </Text>
-                    {placingLine(player) !== null && (
-                      <Text size="xs" c="dimmed" className="numeric">
-                        {placingLine(player)}
-                      </Text>
-                    )}
-                    <Text size="xs" c="dimmed">
-                      <PlayerLine {...player} />
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <AnchorLink
-                      to="/events/$eventId"
-                      params={{ eventId: player.eventId }}
-                      search={{ tab: 'players' }}
-                    >
-                      {player.eventName}
-                    </AnchorLink>
-                    {playedLately(player.eventStartDate) && <NewLeaf />}
-                    <Text size="xs" c="dimmed" className="numeric">
-                      {formatIsoDay(player.eventStartDate.slice(0, 10))} ·{' '}
-                      <HotCount playerCount={player.eventPlayerCount}>
-                        {formatEventSize({
-                          playerCount: player.eventPlayerCount,
-                          teamCount: player.eventTeamCount,
-                        })}
-                      </HotCount>
-                      {player.eventFieldElo !== null && (
-                        <>
-                          {' · '}
-                          <FieldElo elo={player.eventFieldElo} />
-                        </>
-                      )}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td ta="right" className="numeric">
-                    {formatRecord(player)}
-                  </Table.Td>
-                  <Table.Td ta="right">
-                    <Button
-                      component="a"
-                      href={listPath(player.eventId, player.bcpId)}
-                      size="xs"
-                      variant="light"
-                      onClick={openHere(() => {
-                        setOpenKey({ eventId: player.eventId, bcpId: player.bcpId });
-                      })}
-                    >
-                      List
-                    </Button>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+          <FoundSortSelect value={sortKey} onChange={setSortKey} />
+          <FoundPlayerCards
+            players={sortFound(found, sortKey)}
+            sortKey={sortKey}
+            onOpen={(player) => {
+              setOpenKey({ eventId: player.eventId, bcpId: player.bcpId });
+            }}
+          />
         </Stack>
       )}
       <ListDrawer
