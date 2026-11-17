@@ -8,3 +8,24 @@
     padding-bottom: 140px;
   }
 }
+
+/* From tablet width up the steps are a list on the left; the step's panel fills the rest. */
+.steps {
+  flex: 0 0 auto;
+}
+
+.stepBody {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+@media (min-width: 48em) {
+  .steps {
+    width: 220px;
+    margin-right: var(--mantine-spacing-xl);
+  }
+}
+
+.steps .step {
+  justify-content: flex-start;
+}

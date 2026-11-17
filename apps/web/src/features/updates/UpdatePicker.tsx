@@ -1,5 +1,5 @@
 import { selectedUpdates, selectionRange, toIsoDate, updateOfDay } from '@bcp/shared';
-import { MultiSelect, Stack, Text } from '@mantine/core';
+import { MultiSelect, Stack, Text, type MultiSelectProps } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { formatEventDates, formatIsoDay } from '../../lib/format';
 import { updatesQuery, useUpdateSpans } from './updates-queries';
@@ -12,6 +12,8 @@ interface UpdatePickerProps {
    * current update (the page's default end is today, so saved links keep up with new events).
    */
   onChange: (range: { from: string; to: string | undefined }) => void;
+  /** Its width; full width on phones and 260px from then on unless given. */
+  w?: MultiSelectProps['w'];
 }
 
 /**
@@ -19,7 +21,7 @@ interface UpdatePickerProps {
  * picking some sets the dates to their days, updates between them included; dates that line up
  * with updates show those updates picked. Nothing without updates.
  */
-export function UpdatePicker({ from, to, onChange }: UpdatePickerProps) {
+export function UpdatePicker({ from, to, onChange, w }: UpdatePickerProps) {
   const spans = useUpdateSpans();
   const { data: updates } = useQuery(updatesQuery);
   if (spans.length === 0) return null;
@@ -77,7 +79,7 @@ export function UpdatePicker({ from, to, onChange }: UpdatePickerProps) {
           </Stack>
         );
       }}
-      w={{ base: '100%', xs: 260 }}
+      w={w ?? { base: '100%', xs: 260 }}
     />
   );
 }

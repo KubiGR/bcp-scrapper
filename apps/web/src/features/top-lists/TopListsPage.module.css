@@ -1,89 +1,64 @@
+.cardRecord {
+  flex: 0 0 4rem;
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-lg);
+  font-weight: 600;
+}
+
+.cardPlayer {
+  flex: 0 1 180px;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+}
+
+/* The event's name on one line; the whole name on hover. */
+.eventName {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Rank and Elo under the name, each a whole piece. */
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+}
+
+.badges > * {
+  margin-left: 0;
+}
+
+.cardEvent {
+  flex: 3 1 260px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The placing, date and size line wraps between its pieces instead of running into the army. */
+.cardEvent p {
+  white-space: normal;
+}
+
+.cardArmy {
+  flex: 2 1 240px;
+  min-width: 0;
+}
+
+.cardList {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
 /* Where the player placed, at the start of the event's line: brighter than the date after it. */
 .placing {
   color: var(--mantine-color-text);
 }
 
-/* When the event's line wraps, the date and the size (with its flames) each stay whole. */
+/* When the event's line wraps, the date and the size each stay whole. */
 .piece {
   white-space: nowrap;
-}
-
-/*
- * Below Mantine's `sm` breakpoint each result is a small card instead of a wide row:
- * record and player, then the army, then the event and List button. Columns never grow past the
- * screen, so long lines wrap instead of pushing the record and List button off it.
- */
-@media (max-width: 47.99em) {
-  .results thead {
-    display: none;
-  }
-
-  /* Blocks, not a table, so the hidden columns leave no width to scroll into. */
-  .results,
-  .results tbody {
-    display: block;
-  }
-
-  .results tr {
-    display: grid;
-    /* A fixed record column, so every name starts at the same place. */
-    grid-template-columns: 4rem minmax(0, 1fr) auto;
-    grid-template-areas:
-      'record player player'
-      'army army army'
-      'event event list';
-    column-gap: var(--mantine-spacing-sm);
-    padding: var(--mantine-spacing-xs) 0;
-    border-bottom: 1px solid var(--table-border-color);
-  }
-
-  .results td {
-    min-width: 0;
-    padding-top: 2px;
-    padding-bottom: 2px;
-    border: 0;
-    overflow-wrap: anywhere;
-  }
-
-  .results td:nth-child(1) {
-    grid-area: player;
-  }
-
-  /* Name, rank and Elo wrap as whole pieces, each wrapped line starting under the name. */
-  .results td:nth-child(1) p:first-child {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 2px 8px;
-  }
-
-  .results td:nth-child(1) p:first-child > * {
-    margin-left: 0;
-  }
-
-  .results td:nth-child(2) {
-    grid-area: event;
-  }
-
-  /* Placing, date and size wrap beside the List button. */
-  .results td:nth-child(2) p {
-    white-space: normal;
-  }
-
-  .results td:nth-child(3) {
-    grid-area: record;
-    /* As wide as the record, so it sits on the left whatever the cell's alignment. */
-    justify-self: start;
-    padding-right: 0;
-    font-weight: 600;
-  }
-
-  .results td:nth-child(4) {
-    grid-area: army;
-  }
-
-  .results td:nth-child(5) {
-    grid-area: list;
-    align-self: end;
-  }
 }

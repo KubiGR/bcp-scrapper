@@ -37,8 +37,7 @@ describe('EventSelection', () => {
     );
 
     expect(await screen.findByRole('link', { name: 'Sample Team Open' })).toBeInTheDocument();
-    expect(screen.getByText('96 players · 12 teams')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Medium event' })).toBeInTheDocument();
+    expect(screen.getByText('96 players · 12 teams')).toHaveAttribute('data-size', 'medium');
     expect(screen.getByText('Synced')).toBeInTheDocument();
     const checkbox = screen.getByRole('checkbox', { name: 'Include Sample Team Open' });
     expect(checkbox).toBeChecked();

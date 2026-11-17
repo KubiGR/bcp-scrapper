@@ -7,6 +7,7 @@ import {
   Group,
   MultiSelect,
   Select,
+  Skeleton,
   Stack,
   Text,
   TextInput,
@@ -14,21 +15,24 @@ import {
 } from '@mantine/core';
 import { useUncontrolled } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
-import type { MantineTheme } from '@mantine/core';
-import { DataTable, type DataTableColumn } from 'mantine-datatable';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
 import { DispositionText } from '../../components/DispositionText';
 import { ErrorState } from '../../components/ErrorState';
 import { FactionText } from '../../components/FactionText';
 import { FilterToggle } from '../../components/FilterToggle';
+import { HoverHint } from '../../components/HoverHint';
 import { Panel } from '../../components/Panel';
-import { useTableSort, type SortValue } from '../../lib/table-sort';
+import { Card, CardGroup, SidebarLayout, scoreboardClasses } from '../../components/Scoreboard';
+import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
+import { listPath, openHere } from '../../lib/open-link';
+import { sortRows, type SortDir, type SortValue } from '../../lib/table-sort';
+import { PlayerName } from '../rankings/PlayerName';
+import { RankBadge } from '../rankings/RankBadge';
 import { EventQueueLine } from './EventQueueLine';
 import { playersQuery } from './event-queries';
 import { ExportMenu } from './ExportMenu';
 import { FetchListsMenu } from './FetchListsMenu';
-import { listPath, openHere } from '../../lib/open-link';
 import { ListDrawer } from './ListDrawer';
 import { ListStatusBadge } from './ListStatusBadge';
 import {
@@ -41,50 +45,15 @@ import {
   lossLabel,
   lossOptions,
   missingListCountFor,
+  type PlayerGroup,
 } from './players-filter';
+import classes from './PlayersPanel.module.css';
 import { useQueueLists } from './use-queue-lists';
-import { PlayerName } from '../rankings/PlayerName';
-import { RankBadge } from '../rankings/RankBadge';
-import { HoverHint } from '../../components/HoverHint';
-import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
 
 function emptyText(loadingFromBcp: boolean, playerCount: number): string {
   if (loadingFromBcp) return 'Loading players from BCP…';
   if (playerCount === 0) return 'No players loaded yet. Use "Refresh from BCP".';
   return 'No players match the filter.';
-}
-
-interface PlayerColumnsOptions {
-  /** The event, for each list's own address. */
-  eventId: string;
-  showTeam: boolean;
-  onOpen: (bcpId: string) => void;
-}
-
-/** From tablet width up these get their own columns; on phones, a line under the player's name. */
-const wide = (theme: MantineTheme) => `(min-width: ${theme.breakpoints.sm})`;
-
-/** The phone line: team (when shown), faction, detachments, disposition and record. */
-function PhoneLine({ player, showTeam }: { player: EventPlayer; showTeam: boolean }) {
-  return (
-    <Text size="xs" c="dimmed" hiddenFrom="sm">
-      {showTeam && player.teamName !== null && `${player.teamName} · `}
-      {player.faction !== null && (
-        <>
-          <FactionText faction={player.faction} guessed={player.factionGuessed} />
-          {' · '}
-        </>
-      )}
-      {player.detachments.length > 0 && `${player.detachments.join(' + ')} · `}
-      {player.disposition !== null && (
-        <>
-          <DispositionText disposition={player.disposition} />
-          {' · '}
-        </>
-      )}
-      {formatRecord(player)}
-    </Text>
-  );
 }
 
 type Draw = 'tough-1' | 'tough-2' | 'tough-3' | 'easy' | 'even';
@@ -108,10 +77,9 @@ function DrawText({ draw, children }: { draw: Draw; children: string }) {
   return (
     <Text
       component="span"
-      size="sm"
       className="numeric"
       data-draw={draw}
-      fw={draw.startsWith('tough') ? 700 : undefined}
+      fw={draw.startsWith('tough') ? 700 : 600}
       c={DRAW_COLOR[draw]}
     >
       {children}
@@ -119,154 +87,11 @@ function DrawText({ draw, children }: { draw: Draw; children: string }) {
   );
 }
 
-function playerColumns({
-  eventId,
-  showTeam,
-  onOpen,
-}: PlayerColumnsOptions): DataTableColumn<EventPlayer>[] {
-  return [
-    {
-      accessor: 'placing',
-      sortable: true,
-      title: '#',
-      width: 56,
-      textAlign: 'right',
-      render: (p) => <span className="numeric">{p.placing ?? '—'}</span>,
-    },
-    {
-      accessor: 'name',
-      sortable: true,
-      title: 'Player',
-      render: (p) => (
-        <>
-          <Group gap="xs" wrap="nowrap">
-            <Text size="sm" component="span">
-              <PlayerName name={p.name} userId={p.bcpUserId} />
-            </Text>
-            <RankBadge userId={p.bcpUserId} />
-            {p.dropped && (
-              <Badge size="xs" color="gray" variant="outline">
-                Dropped
-              </Badge>
-            )}
-          </Group>
-          <PhoneLine player={p} showTeam={showTeam} />
-        </>
-      ),
-    },
-    {
-      accessor: 'teamName',
-      sortable: true,
-      visibleMediaQuery: wide,
-      title: 'Team',
-      hidden: !showTeam,
-      render: (p) => p.teamName ?? '—',
-    },
-    {
-      accessor: 'faction',
-      sortable: true,
-      visibleMediaQuery: wide,
-      title: 'Faction',
-      noWrap: true,
-      render: (p) =>
-        p.faction === null ? '—' : <FactionText faction={p.faction} guessed={p.factionGuessed} />,
-    },
-    {
-      accessor: 'detachments',
-      sortable: true,
-      visibleMediaQuery: wide,
-      title: 'Detachment',
-      render: (p) => (p.detachments.length > 0 ? p.detachments.join(' + ') : '—'),
-    },
-    {
-      accessor: 'disposition',
-      sortable: true,
-      visibleMediaQuery: wide,
-      title: 'Disposition',
-      render: (p) => (p.disposition ? <DispositionText disposition={p.disposition} /> : '—'),
-    },
-    {
-      accessor: 'wins',
-      sortable: true,
-      visibleMediaQuery: wide,
-      title: 'W-L-D',
-      textAlign: 'right',
-      render: (p) => <span className="numeric">{formatRecord(p)}</span>,
-    },
-    {
-      accessor: 'oppWinRate',
-      sortable: true,
-      visibleMediaQuery: wide,
-      title: 'Opp. win %',
-      textAlign: 'right',
-      render: (p) => {
-        const rate = p.opponents?.winRate ?? null;
-        return rate === null ? (
-          '—'
-        ) : (
-          <HoverHint
-            hint={`How their ${String(p.opponents?.games ?? 0)} opponents did at this event (a draw is half)`}
-          >
-            <DrawText
-              draw={drawOf(Math.round(rate * 100), 40, [60, 65, 70])}
-            >{`${String(Math.round(rate * 100))}%`}</DrawText>
-          </HoverHint>
-        );
-      },
-    },
-    {
-      accessor: 'oppElo',
-      sortable: true,
-      visibleMediaQuery: wide,
-      title: 'Opp. Elo',
-      textAlign: 'right',
-      render: (p) => {
-        const strength = p.opponents;
-        return strength?.elo === null || strength?.elo === undefined ? (
-          '—'
-        ) : (
-          <HoverHint
-            hint={`Average wh40k-elo of the ${String(strength.rated)} of ${String(strength.games)} opponents rated`}
-          >
-            <DrawText draw={drawOf(strength.elo, 1500, [1650, 1700, 1750])}>
-              {String(strength.elo)}
-            </DrawText>
-          </HoverHint>
-        );
-      },
-    },
-    {
-      accessor: 'listStatus',
-      sortable: true,
-      title: 'List',
-      noWrap: true,
-      // A fetched list keeps its own address, for a new tab; a plain click opens it here.
-      render: (p) =>
-        p.listStatus === 'fetched' ? (
-          <a
-            href={listPath(eventId, p.bcpId)}
-            aria-label="Fetched"
-            onClick={openHere(() => {
-              onOpen(p.bcpId);
-            })}
-          >
-            <ListStatusBadge status={p.listStatus} error={p.listError} />
-          </a>
-        ) : (
-          <ListStatusBadge status={p.listStatus} error={p.listError} />
-        ),
-    },
-  ];
-}
-
-/** How each column sorts; the record like standings: most wins, then draws, then fewest losses. */
+/** How each order sorts; the record like standings: most wins, then draws, then fewest losses. */
 const PLAYER_SORT = {
   placing: (p) => p.placing,
   name: (p) => p.name,
-  teamName: (p) => p.teamName,
   faction: (p) => p.faction,
-  detachments: (p) => (p.detachments.length > 0 ? p.detachments.join(' + ') : null),
-  disposition: (p) => p.disposition,
   // No games is no record: blank, so last either way.
   wins: (p) =>
     p.wins + p.losses + p.draws === 0 ? null : p.wins * 1_000_000 + p.draws * 1_000 - p.losses,
@@ -275,8 +100,48 @@ const PLAYER_SORT = {
   listStatus: (p) => p.listStatus,
 } satisfies Record<string, SortValue<EventPlayer>>;
 type PlayerSortKey = keyof typeof PLAYER_SORT;
-const isPlayerSortKey = (key: string): key is PlayerSortKey => key in PLAYER_SORT;
-const BY_PLACING = { key: 'placing', dir: 'asc' } as const;
+
+/** The orders on offer, each its natural way round. */
+const SORTS: { value: PlayerSortKey; label: string; dir: SortDir }[] = [
+  { value: 'placing', label: 'Placing', dir: 'asc' },
+  { value: 'wins', label: 'Record', dir: 'desc' },
+  { value: 'name', label: 'Player', dir: 'asc' },
+  { value: 'faction', label: 'Faction', dir: 'asc' },
+  { value: 'oppWinRate', label: 'Opp. win %', dir: 'desc' },
+  { value: 'oppElo', label: 'Opp. Elo', dir: 'desc' },
+  { value: 'listStatus', label: 'List', dir: 'asc' },
+];
+
+/** "Undefeated", "One loss", "3 losses", with draws: what a record group's heading says. */
+function recordMeaning(player: EventPlayer, count: number): string {
+  const played = player.wins + player.losses + player.draws;
+  const players = `${String(count)} ${count === 1 ? 'player' : 'players'}`;
+  if (played === 0) return players;
+  const losses =
+    player.losses === 0
+      ? 'Undefeated'
+      : player.losses === 1
+        ? 'One loss'
+        : `${String(player.losses)} losses`;
+  const draws =
+    player.draws === 0 ? '' : `, ${String(player.draws)} draw${player.draws === 1 ? '' : 's'}`;
+  return `${losses}${draws} · ${players}`;
+}
+
+/** Players by record, best record first; each group keeps the players' order. */
+function byRecord(players: EventPlayer[]): { record: string; players: EventPlayer[] }[] {
+  const groups = new Map<string, EventPlayer[]>();
+  const best = sortRows(players, PLAYER_SORT.wins, 'desc');
+  for (const player of best) {
+    const played = player.wins + player.losses + player.draws > 0;
+    groups.set(played ? formatRecord(player) : 'No games', []);
+  }
+  for (const player of players) {
+    const played = player.wins + player.losses + player.draws > 0;
+    groups.get(played ? formatRecord(player) : 'No games')?.push(player);
+  }
+  return [...groups].map(([record, members]) => ({ record, players: members }));
+}
 
 interface PlayersPanelProps {
   event: EventDetail;
@@ -299,6 +164,7 @@ export function PlayersPanel({
   const [dispositions, setDispositions] = useState<string[]>([]);
   const [detachments, setDetachments] = useState<string[]>([]);
   const [maxLosses, setMaxLosses] = useState<number | null>(null);
+  const [sortKey, setSortKey] = useState<PlayerSortKey>('placing');
   const [openPlayerId, setOpenPlayerId] = useUncontrolled<string | null>({
     value: openPlayerIdProp,
     defaultValue: null,
@@ -313,24 +179,9 @@ export function PlayersPanel({
   // The list the address opened the page on (a link opened in a new tab).
   const [listFromAddress] = useState(openPlayerIdProp ?? null);
   const filtered = filterPlayers(all, { query, factions, dispositions, detachments, maxLosses });
+  const dir = SORTS.find((option) => option.value === sortKey)?.dir ?? 'asc';
   // Sorted before grouping, so a team event sorts the players within each team.
-  const { sorted, sort, toggle } = useTableSort<EventPlayer, PlayerSortKey>(
-    filtered,
-    PLAYER_SORT,
-    BY_PLACING,
-    {
-      placing: 'asc',
-    },
-  );
-  const current = sort ?? BY_PLACING;
-  const sortProps = {
-    sortStatus: { columnAccessor: current.key, direction: current.dir },
-    onSortStatusChange: ({ columnAccessor }: { columnAccessor: string | number | symbol }) => {
-      if (typeof columnAccessor === 'string' && isPlayerSortKey(columnAccessor)) {
-        toggle(columnAccessor);
-      }
-    },
-  };
+  const sorted = sortRows(filtered, PLAYER_SORT[sortKey], dir);
 
   const toggleTeam = (teamId: string) => {
     setSelectedTeams((prev) => {
@@ -340,7 +191,6 @@ export function PlayersPanel({
       return next;
     });
   };
-
   const toggleGroup = (key: string) => {
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -349,223 +199,176 @@ export function PlayersPanel({
       return next;
     });
   };
+  const cardProps = { eventId: event.bcpId, onOpen: setOpenPlayerId };
 
-  const grouped = event.isTeamEvent;
-  const groups = grouped ? groupPlayersByTeam(sorted).filter((g) => g.players.length > 0) : [];
+  const content = () => {
+    if (players.error) {
+      return <ErrorState error={players.error} onRetry={() => void players.refetch()} />;
+    }
+    if (players.isPending) return <Skeleton height={220} />;
+    if (sorted.length === 0) {
+      return (
+        <Text c="dimmed" py="xl" ta="center">
+          {emptyText(loadingFromBcp, all.length)}
+        </Text>
+      );
+    }
+    if (event.isTeamEvent) {
+      return groupPlayersByTeam(sorted)
+        .filter((group) => group.players.length > 0)
+        .map((group) => {
+          const key = group.teamId ?? 'none';
+          return (
+            <TeamGroup
+              key={key}
+              eventId={event.bcpId}
+              group={group}
+              expanded={!collapsed.has(key)}
+              onToggle={() => {
+                toggleGroup(key);
+              }}
+              selected={group.teamId !== null && selectedTeams.has(group.teamId)}
+              onSelect={() => {
+                if (group.teamId !== null) toggleTeam(group.teamId);
+              }}
+              canFetch={
+                group.teamId !== null && missingListCountFor(all, new Set([group.teamId])) > 0
+              }
+              fetching={queueTeam.isPending && queueTeam.variables.teamIds?.[0] === group.teamId}
+              onFetch={() => {
+                if (group.teamId !== null) queueTeam.mutate({ teamIds: [group.teamId] });
+              }}
+            >
+              {group.players.map((player) => (
+                <PlayerCard key={player.bcpId} player={player} showRecord {...cardProps} />
+              ))}
+            </TeamGroup>
+          );
+        });
+    }
+    if (sortKey === 'placing' || sortKey === 'wins') {
+      return byRecord(sorted).map(({ record, players: members }) => {
+        const [first] = members;
+        return (
+          <CardGroup
+            dense
+            key={record}
+            label={record}
+            description={first === undefined ? undefined : recordMeaning(first, members.length)}
+          >
+            {members.map((player) => (
+              <PlayerCard key={player.bcpId} player={player} {...cardProps} />
+            ))}
+          </CardGroup>
+        );
+      });
+    }
+    return (
+      <div className={scoreboardClasses.group} data-dense>
+        {sorted.map((player) => (
+          <PlayerCard key={player.bcpId} player={player} showRecord {...cardProps} />
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <Stack gap="md">
-      <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
-        <FilterToggle
-          active={
-            [query !== '', factions.length > 0, dispositions.length > 0, detachments.length > 0]
-              .concat(maxLosses !== null)
-              .filter(Boolean).length
-          }
-        >
-          <Group gap="sm" wrap="wrap">
-            <TextInput
-              aria-label="Search players"
-              placeholder="Search player or team"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.currentTarget.value);
-              }}
-              w={{ base: '100%', xs: 240 }}
-            />
-            <MultiSelect
-              aria-label="Faction"
-              renderOption={renderFactionOption}
-              renderPill={renderFactionPill}
-              placeholder={factions.length === 0 ? 'All factions' : undefined}
-              data={factionsOf(all)}
-              value={factions}
-              onChange={setFactions}
-              clearable
-              searchable
-              w={{ base: '100%', xs: 240 }}
-            />
-            <MultiSelect
-              aria-label="Disposition"
-              placeholder={dispositions.length === 0 ? 'All dispositions' : undefined}
-              data={dispositionsOf(all)}
-              value={dispositions}
-              onChange={setDispositions}
-              renderOption={({ option }) => <DispositionText disposition={option.value} />}
-              clearable
-              w={{ base: '100%', xs: 240 }}
-            />
-            <MultiSelect
-              aria-label="Detachment"
-              placeholder={detachments.length === 0 ? 'All detachments' : undefined}
-              data={detachmentsOf(all, factions, detachments)}
-              value={detachments}
-              onChange={setDetachments}
-              clearable
-              searchable
-              w={{ base: '100%', xs: 240 }}
-            />
-            <Select
-              aria-label="Record"
-              placeholder="All results"
-              data={lossOptions(event.roundCount).map((n) => ({
-                value: String(n),
-                label: lossLabel(n),
-              }))}
-              value={maxLosses === null ? null : String(maxLosses)}
-              onChange={(value) => {
-                setMaxLosses(value === null ? null : Number(value));
-              }}
-              clearable
-              w={{ base: '100%', xs: 180 }}
-            />
-          </Group>
-        </FilterToggle>
-        <Group gap="sm" align="flex-start">
-          <FetchListsMenu event={event} players={all} selectedTeamIds={[...selectedTeams]} />
-          <ExportMenu event={event} />
-        </Group>
-      </Group>
-
-      <EventQueueLine event={event} />
-
-      {players.error ? (
-        <ErrorState error={players.error} onRetry={() => void players.refetch()} />
-      ) : grouped && groups.length === 0 ? (
-        <Panel p={0}>
-          <DataTable<EventPlayer>
-            {...sortProps}
-            records={[]}
-            idAccessor="bcpId"
-            fetching={players.isFetching || loadingFromBcp}
-            minHeight={220}
-            noRecordsText={emptyText(loadingFromBcp, all.length)}
-            columns={playerColumns({
-              eventId: event.bcpId,
-              showTeam: false,
-              onOpen: setOpenPlayerId,
-            })}
-          />
-        </Panel>
-      ) : grouped ? (
-        <Stack gap="sm">
-          {groups.map((group) => {
-            const key = group.teamId ?? 'none';
-            const expanded = !collapsed.has(key);
-            return (
-              <Panel key={key} p={0}>
-                <Group wrap="nowrap" gap={0}>
-                  {group.teamId !== null && (
-                    <Checkbox
-                      pl="sm"
-                      aria-label={`Select ${group.teamName}`}
-                      checked={selectedTeams.has(group.teamId)}
-                      onChange={() => {
-                        if (group.teamId !== null) toggleTeam(group.teamId);
-                      }}
-                    />
-                  )}
-                  <UnstyledButton
-                    aria-expanded={expanded}
-                    onClick={() => {
-                      toggleGroup(key);
-                    }}
-                    p="sm"
-                    style={{ flex: 1 }}
-                  >
-                    <Group justify="space-between">
-                      <Text fw={600}>
-                        {group.teamId !== null && (
-                          <>
-                            <span className="numeric">
-                              {group.teamPlacing !== null ? `#${group.teamPlacing}` : '—'}
-                            </span>{' '}
-                          </>
-                        )}
-                        {group.teamName}
-                        {group.teamRecord !== null &&
-                          group.teamRecord.wins + group.teamRecord.losses + group.teamRecord.draws >
-                            0 && (
-                            <Text span c="dimmed" fw={400} className="numeric">
-                              {' '}
-                              {formatRecord(group.teamRecord)}
-                            </Text>
-                          )}
-                      </Text>
-                      <span className="numeric">{group.players.length}</span>
-                    </Group>
-                  </UnstyledButton>
-                  {group.teamId !== null && (
-                    <Group px="sm" gap="sm" wrap="nowrap">
-                      <Button
-                        size="compact-xs"
-                        variant="subtle"
-                        aria-label={`Fetch ${group.teamName} lists`}
-                        disabled={missingListCountFor(all, new Set([group.teamId])) === 0}
-                        loading={
-                          queueTeam.isPending && queueTeam.variables.teamIds?.[0] === group.teamId
-                        }
-                        onClick={() => {
-                          if (group.teamId !== null) queueTeam.mutate({ teamIds: [group.teamId] });
-                        }}
-                      >
-                        Fetch team lists
-                      </Button>
-                      <AnchorLink
-                        to="/events/$eventId/teams/$teamId"
-                        params={{ eventId: event.bcpId, teamId: group.teamId }}
-                        aria-label={`${group.teamName} team page`}
-                      >
-                        <Text size="sm">Team page</Text>
-                      </AnchorLink>
-                    </Group>
-                  )}
-                </Group>
-                <Collapse expanded={expanded}>
-                  <DataTable<EventPlayer>
-                    {...sortProps}
-                    {...sortProps}
-                    records={group.players}
-                    idAccessor="bcpId"
-                    fetching={players.isFetching || loadingFromBcp}
-                    minHeight={120}
-                    highlightOnHover
-                    noRecordsText={emptyText(loadingFromBcp, all.length)}
-                    onRowClick={({ record }) => {
-                      setOpenPlayerId(record.bcpId);
-                    }}
-                    columns={playerColumns({
-                      eventId: event.bcpId,
-                      showTeam: false,
-                      onOpen: setOpenPlayerId,
-                    })}
-                  />
-                </Collapse>
-              </Panel>
-            );
-          })}
-        </Stack>
-      ) : (
-        <Panel p={0}>
-          <DataTable<EventPlayer>
-            {...sortProps}
-            records={sorted}
-            idAccessor="bcpId"
-            fetching={players.isFetching || loadingFromBcp}
-            minHeight={220}
-            highlightOnHover
-            noRecordsText={emptyText(loadingFromBcp, all.length)}
-            onRowClick={({ record }) => {
-              setOpenPlayerId(record.bcpId);
-            }}
-            columns={playerColumns({
-              eventId: event.bcpId,
-              showTeam: event.isTeamEvent,
-              onOpen: setOpenPlayerId,
-            })}
-          />
-        </Panel>
-      )}
+    <SidebarLayout
+      sidebarLabel="Filters"
+      sidebar={
+        <>
+          <FilterToggle
+            active={
+              [query !== '', factions.length > 0, dispositions.length > 0, detachments.length > 0]
+                .concat(maxLosses !== null)
+                .filter(Boolean).length
+            }
+          >
+            <Panel title="Filters">
+              <Stack gap="sm">
+                <Select
+                  label="Sort by"
+                  data={SORTS.map(({ value, label }) => ({ value, label }))}
+                  value={sortKey}
+                  onChange={(value) => {
+                    const next = SORTS.find((option) => option.value === value);
+                    if (next) setSortKey(next.value);
+                  }}
+                  allowDeselect={false}
+                />
+                <TextInput
+                  aria-label="Search players"
+                  placeholder="Search player or team"
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.currentTarget.value);
+                  }}
+                />
+                <MultiSelect
+                  aria-label="Faction"
+                  renderOption={renderFactionOption}
+                  renderPill={renderFactionPill}
+                  placeholder={factions.length === 0 ? 'All factions' : undefined}
+                  data={factionsOf(all)}
+                  value={factions}
+                  onChange={setFactions}
+                  clearable
+                  searchable
+                />
+                <Select
+                  aria-label="Record"
+                  placeholder="All results"
+                  data={lossOptions(event.roundCount).map((n) => ({
+                    value: String(n),
+                    label: lossLabel(n),
+                  }))}
+                  value={maxLosses === null ? null : String(maxLosses)}
+                  onChange={(value) => {
+                    setMaxLosses(value === null ? null : Number(value));
+                  }}
+                  clearable
+                />
+                <MultiSelect
+                  aria-label="Disposition"
+                  placeholder={dispositions.length === 0 ? 'All dispositions' : undefined}
+                  data={dispositionsOf(all)}
+                  value={dispositions}
+                  onChange={setDispositions}
+                  renderOption={({ option }) => <DispositionText disposition={option.value} />}
+                  clearable
+                />
+                <MultiSelect
+                  aria-label="Detachment"
+                  placeholder={detachments.length === 0 ? 'All detachments' : undefined}
+                  data={detachmentsOf(all, factions, detachments)}
+                  value={detachments}
+                  onChange={setDetachments}
+                  clearable
+                  searchable
+                />
+              </Stack>
+            </Panel>
+          </FilterToggle>
+          <Panel title="Lists">
+            <Stack gap="sm">
+              <Group gap="sm">
+                <FetchListsMenu event={event} players={all} selectedTeamIds={[...selectedTeams]} />
+                <ExportMenu event={event} />
+              </Group>
+              <EventQueueLine event={event} />
+            </Stack>
+          </Panel>
+        </>
+      }
+    >
+      <Stack gap="lg">
+        {players.data && (
+          <Text c="dimmed">
+            {`${String(sorted.length)} of ${String(all.length)} ${all.length === 1 ? 'player' : 'players'}`}
+          </Text>
+        )}
+        {content()}
+      </Stack>
 
       <ListDrawer
         eventId={event.bcpId}
@@ -575,6 +378,198 @@ export function PlayersPanel({
           setOpenPlayerId(null);
         }}
       />
-    </Stack>
+    </SidebarLayout>
+  );
+}
+
+interface TeamGroupProps {
+  eventId: string;
+  group: PlayerGroup;
+  expanded: boolean;
+  onToggle: () => void;
+  selected: boolean;
+  onSelect: () => void;
+  canFetch: boolean;
+  fetching: boolean;
+  onFetch: () => void;
+  children: ReactNode;
+}
+
+/** A team's players under its placing, name and record; ticked, collapsed or fetched as one. */
+function TeamGroup({
+  eventId,
+  group,
+  expanded,
+  onToggle,
+  selected,
+  onSelect,
+  canFetch,
+  fetching,
+  onFetch,
+  children,
+}: TeamGroupProps) {
+  const record = group.teamRecord;
+  const played = record !== null && record.wins + record.losses + record.draws > 0;
+  return (
+    <section className={scoreboardClasses.group} aria-label={group.teamName}>
+      <div className={classes.teamHeading}>
+        {group.teamId !== null && (
+          <Checkbox
+            aria-label={`Select ${group.teamName}`}
+            checked={selected}
+            onChange={onSelect}
+          />
+        )}
+        <UnstyledButton aria-expanded={expanded} onClick={onToggle} className={classes.teamToggle}>
+          {group.teamId !== null && (
+            <>
+              <span className={scoreboardClasses.groupKey}>
+                {group.teamPlacing !== null ? `#${String(group.teamPlacing)}` : '—'}
+              </span>{' '}
+            </>
+          )}
+          <span className={classes.teamName}>{group.teamName}</span>
+          {played && (
+            <span className={`${scoreboardClasses.groupLabel} numeric`}>
+              {' '}
+              {formatRecord(record)}
+            </span>
+          )}
+          <span className={scoreboardClasses.groupLabel}>
+            {' · '}
+            {group.players.length} {group.players.length === 1 ? 'player' : 'players'}
+          </span>
+        </UnstyledButton>
+        {group.teamId !== null && (
+          <Group gap="sm" wrap="nowrap">
+            <Button
+              size="compact-sm"
+              variant="subtle"
+              aria-label={`Fetch ${group.teamName} lists`}
+              disabled={!canFetch}
+              loading={fetching}
+              onClick={onFetch}
+            >
+              Fetch team lists
+            </Button>
+            <AnchorLink
+              to="/events/$eventId/teams/$teamId"
+              params={{ eventId, teamId: group.teamId }}
+              aria-label={`${group.teamName} team page`}
+            >
+              <Text size="sm">Team page</Text>
+            </AnchorLink>
+          </Group>
+        )}
+      </div>
+      <Collapse expanded={expanded}>
+        <div className={scoreboardClasses.group} data-dense>
+          {children}
+        </div>
+      </Collapse>
+    </section>
+  );
+}
+
+interface PlayerCardProps {
+  eventId: string;
+  player: EventPlayer;
+  /** The record on the card, when no record heading is above it. */
+  showRecord?: boolean;
+  onOpen: (bcpId: string) => void;
+}
+
+/** One player: placing, name, army, how tough their opponents were, and their list. */
+function PlayerCard({ eventId, player, showRecord = false, onOpen }: PlayerCardProps) {
+  const winRate = player.opponents?.winRate ?? null;
+  const strength = player.opponents;
+  return (
+    <Card
+      dense
+      onOpen={() => {
+        onOpen(player.bcpId);
+      }}
+    >
+      <span className={classes.placing}>
+        {player.placing === null ? '—' : `#${String(player.placing)}`}
+      </span>
+      <div className={classes.who}>
+        <Group gap="xs" wrap="wrap">
+          <Text fw={600} component="span">
+            <PlayerName name={player.name} userId={player.bcpUserId} />
+          </Text>
+          <RankBadge userId={player.bcpUserId} />
+          {player.dropped && (
+            <Badge size="xs" color="gray" variant="outline">
+              Dropped
+            </Badge>
+          )}
+        </Group>
+      </div>
+      <div className={classes.army}>
+        <Text size="sm">
+          {player.faction === null ? (
+            'No faction'
+          ) : (
+            <FactionText faction={player.faction} guessed={player.factionGuessed} />
+          )}
+          {player.detachments.length > 0 && ` · ${player.detachments.join(' + ')}`}
+        </Text>
+        {player.disposition !== null && (
+          <Text size="sm" fw={600}>
+            <DispositionText disposition={player.disposition} />
+          </Text>
+        )}
+      </div>
+      {showRecord && (
+        <span className={classes.record}>
+          {player.wins + player.losses + player.draws === 0 ? '—' : formatRecord(player)}
+        </span>
+      )}
+      <div className={classes.opp}>
+        {winRate === null ? (
+          <Text component="span">—</Text>
+        ) : (
+          <HoverHint
+            hint={`How their ${String(player.opponents?.games ?? 0)} opponents did at this event (a draw is half)`}
+          >
+            <DrawText
+              draw={drawOf(Math.round(winRate * 100), 40, [60, 65, 70])}
+            >{`${String(Math.round(winRate * 100))}%`}</DrawText>
+          </HoverHint>
+        )}
+        <span className={scoreboardClasses.statLabel}>Opp. win %</span>
+      </div>
+      <div className={classes.opp}>
+        {strength?.elo === null || strength?.elo === undefined ? (
+          <Text component="span">—</Text>
+        ) : (
+          <HoverHint
+            hint={`Average wh40k-elo of the ${String(strength.rated)} of ${String(strength.games)} opponents rated`}
+          >
+            <DrawText draw={drawOf(strength.elo, 1500, [1650, 1700, 1750])}>
+              {String(strength.elo)}
+            </DrawText>
+          </HoverHint>
+        )}
+        <span className={scoreboardClasses.statLabel}>Opp. Elo</span>
+      </div>
+      <div className={classes.list}>
+        {/* A fetched list keeps its own address, for a new tab; a plain click opens it here. */}
+        {player.listStatus === 'fetched' ? (
+          <a
+            href={listPath(eventId, player.bcpId)}
+            aria-label="Fetched"
+            onClick={openHere(() => {
+              onOpen(player.bcpId);
+            })}
+          >
+            <ListStatusBadge status={player.listStatus} error={player.listError} />
+          </a>
+        ) : (
+          <ListStatusBadge status={player.listStatus} error={player.listError} />
+        )}
+      </div>
+    </Card>
   );
 }

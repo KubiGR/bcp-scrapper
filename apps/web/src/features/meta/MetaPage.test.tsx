@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { pickOption } from '../../test/pick-option';
 import { renderWithRouter, stubFetchRoutes } from '../../test/render';
 import { aPlayer } from '../../test/sample-data';
 import { MetaPage } from './MetaPage';
@@ -46,7 +47,10 @@ describe('MetaPage', () => {
         'recentFrom=2026-09-30&recentTo=2026-10-03&priorFrom=2026-07-22&priorTo=2026-09-29',
       );
     });
-    expect(await screen.findByTitle('MFM 1.5 vs Summer 2026 Faction Packs')).toBeInTheDocument();
+    // The hint on each card's change.
+    expect(
+      (await screen.findAllByTitle('MFM 1.5 vs Summer 2026 Faction Packs')).length,
+    ).toBeGreaterThan(0);
   });
 
   it('offers the game updates next to the dates', async () => {
@@ -123,14 +127,11 @@ describe('MetaPage', () => {
     expect(await screen.findByText('No big events in this range.')).toBeInTheDocument();
   });
 
-  it('sorts by the reliable win rate unless another column is chosen', async () => {
+  it('sorts by the reliable win rate unless another order is chosen', async () => {
     stubFetchRoutes({ 'GET /api/meta': metaResponse() });
     renderWithRouter(<MetaPage search={{ view: 'armies' }} onSearchChange={vi.fn()} />);
     await screen.findByText('Orks');
-    expect(screen.getByRole('columnheader', { name: /Reliable/ })).toHaveAttribute(
-      'aria-sort',
-      'descending',
-    );
+    expect(screen.getAllByLabelText('Sort by')[0]).toHaveValue('Reliable win rate');
   });
 
   it('keeps sort and expanded factions in the search', async () => {
@@ -140,7 +141,7 @@ describe('MetaPage', () => {
       <MetaPage search={{ type: 'teams', view: 'armies' }} onSearchChange={onSearchChange} />,
     );
     await screen.findByText('Orks');
-    fireEvent.click(screen.getByRole('button', { name: 'Players' }));
+    await pickOption('Sort by', 'Players');
     expect(onSearchChange).toHaveBeenCalledWith({
       type: 'teams',
       view: 'armies',
@@ -190,7 +191,7 @@ describe('MetaPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: '20 Orks players' }));
     expect(await screen.findByText('Ada Archer')).toBeInTheDocument();
     expect(screen.getByText('Alpha Squad · #2')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Medium event' })).toBeInTheDocument();
+    expect(screen.getByTitle('Medium event')).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'W-L-D' })).toHaveAttribute(
       'aria-sort',
       'none',

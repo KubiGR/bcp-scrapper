@@ -1,23 +1,32 @@
 import { addDays, updateOfDay, type EffectiveUpdate } from '@bcp/shared';
 import {
   Box,
-  Group,
+  Input,
+  MultiSelect,
   NumberInput,
   SegmentedControl,
   Skeleton,
   Stack,
   Text,
-  Title,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
+import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
+import { PageTitle, SidebarLayout } from '../../components/Scoreboard';
 import { plural } from '../../lib/format';
 import { useDraftRange } from '../../lib/use-draft-range';
 import { ArchetypeTable } from './ArchetypeTable';
-import { FactionTable, type PlayersFilter } from './FactionTable';
+import {
+  factionKey,
+  factionName,
+  FactionTable,
+  MetaSortSelect,
+  type PlayersFilter,
+} from './FactionTable';
+import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
 import {
   DEFAULT_MIN_PLAYERS,
   metaQuery,
@@ -91,144 +100,196 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
   };
   const notLoaded = meta.data ? meta.data.eventsInRange - meta.data.eventsLoaded : 0;
 
-  return (
-    <Stack gap="lg">
-      <Title order={1}>Meta</Title>
-      <Group gap="md" align="flex-end" wrap="wrap">
-        <SegmentedControl
-          aria-label="View"
-          data={VIEWS}
-          value={view}
-          onChange={(value) => {
-            onSearchChange({ ...search, view: value === 'armies' ? 'armies' : undefined });
-          }}
-        />
-        <DatePickerInput
-          type="range"
-          label="Dates"
-          valueFormat="D MMM YYYY"
-          allowSingleDateInRange
-          value={dates.draft}
-          onChange={dates.onRangeChange}
-          w={{ base: '100%', xs: 280 }}
-        />
-        <UpdatePicker
-          from={window.from}
-          to={window.to}
-          onChange={(range) => {
-            onSearchChange({ ...search, from: range.from, to: range.to });
-          }}
-        />
-        <SegmentedControl
-          aria-label="Event type"
-          data={EVENT_TYPES}
-          value={search.type ?? 'all'}
-          onChange={(value) => {
-            onSearchChange({
-              ...search,
-              type: value === 'singles' || value === 'teams' ? value : undefined,
-            });
-          }}
-        />
-        <NumberInput
-          label="Min players"
-          min={1}
-          max={50}
-          w={110}
-          value={minPlayers}
-          onChange={(value) => {
-            // Only whole numbers 1–50: a half-typed 0 would otherwise reset to the default.
-            if (typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 50) {
-              onSearchChange({ ...search, minPlayers: value });
-            }
-          }}
-        />
-      </Group>
+  const sidebar = (
+    <FilterToggle
+      active={Number(search.type !== undefined) + Number(minPlayers !== DEFAULT_MIN_PLAYERS)}
+    >
+      <Panel title="Filters">
+        <Stack gap="sm">
+          <MetaSortSelect sort={sort} onSortChange={onSortChange} />
+          <Input.Wrapper label="View">
+            <SegmentedControl
+              aria-label="View"
+              fullWidth
+              data={VIEWS}
+              value={view}
+              onChange={(value) => {
+                onSearchChange({ ...search, view: value === 'armies' ? 'armies' : undefined });
+              }}
+            />
+          </Input.Wrapper>
+          {view === 'archetypes' && (
+            <MultiSelect
+              label="Factions"
+              renderOption={renderFactionOption}
+              renderPill={renderFactionPill}
+              placeholder={factions.length === 0 ? 'All factions' : undefined}
+              // The chosen ones too, so they show while the data loads.
+              data={[
+                ...(meta.data?.factions ?? []).map((row) => ({
+                  value: factionKey(row.faction),
+                  label: factionName(row.faction),
+                })),
+                ...factions
+                  .filter(
+                    (key) =>
+                      !(meta.data?.factions ?? []).some((row) => factionKey(row.faction) === key),
+                  )
+                  .map((key) => ({ value: key, label: key })),
+              ]}
+              value={factions}
+              onChange={(next) => {
+                onSearchChange({
+                  ...search,
+                  factions: next.length > 0 ? next.join('|') : undefined,
+                });
+              }}
+              searchable
+              clearable
+            />
+          )}
+          <UpdatePicker
+            from={window.from}
+            to={window.to}
+            w="100%"
+            onChange={(range) => {
+              onSearchChange({ ...search, from: range.from, to: range.to });
+            }}
+          />
+          <DatePickerInput
+            type="range"
+            label="Dates"
+            valueFormat="D MMM YYYY"
+            allowSingleDateInRange
+            value={dates.draft}
+            onChange={dates.onRangeChange}
+          />
+          <Input.Wrapper label="Event type">
+            <SegmentedControl
+              aria-label="Event type"
+              fullWidth
+              data={EVENT_TYPES}
+              value={search.type ?? 'all'}
+              onChange={(value) => {
+                onSearchChange({
+                  ...search,
+                  type: value === 'singles' || value === 'teams' ? value : undefined,
+                });
+              }}
+            />
+          </Input.Wrapper>
+          <NumberInput
+            label="Min players"
+            min={1}
+            max={50}
+            value={minPlayers}
+            onChange={(value) => {
+              // Only whole numbers 1–50: a half-typed 0 would otherwise reset to the default.
+              if (
+                typeof value === 'number' &&
+                Number.isInteger(value) &&
+                value >= 1 &&
+                value <= 50
+              ) {
+                onSearchChange({ ...search, minPlayers: value });
+              }
+            }}
+          />
+        </Stack>
+      </Panel>
+    </FilterToggle>
+  );
 
-      {meta.isPending && <Skeleton height={240} />}
-      {meta.error && <ErrorState error={meta.error} onRetry={() => void meta.refetch()} />}
-      {meta.data && (
-        <Box style={{ opacity: meta.isPlaceholderData ? 0.6 : 1 }} aria-busy={meta.isFetching}>
-          <Stack gap="lg">
-            {notLoaded > 0 && (
-              <Text size="sm" c="dimmed">
-                {plural(notLoaded, 'big event')} in this range{' '}
-                {notLoaded === 1 ? 'isn’t' : 'aren’t'} loaded yet, so their players aren’t counted.
-              </Text>
-            )}
-            {meta.data.eventsInRange === 0 ? (
-              <Text size="sm" c="dimmed">
-                No big events in this range.
-              </Text>
-            ) : meta.data.factions.length === 0 ? (
-              <Text size="sm" c="dimmed">
-                No players with games yet.
-              </Text>
-            ) : (
-              <Panel
-                title={`${plural(meta.data.totals.players, 'player')} · ${plural(meta.data.totals.games, 'game')}`}
-              >
-                {view === 'archetypes' ? (
-                  <ArchetypeTable
-                    changeLabel={change?.label}
-                    rows={meta.data.factions}
-                    weeks={meta.data.weeks}
+  return (
+    <SidebarLayout sidebarLabel="Filters" sidebar={sidebar}>
+      <Stack gap="lg">
+        <div>
+          <PageTitle>Meta</PageTitle>
+          <Text c="dimmed" mt={4}>
+            Popular {view === 'armies' ? 'factions' : 'archetypes'}, how they do, and what top teams
+            bring
+          </Text>
+        </div>
+
+        {meta.isPending && <Skeleton height={240} />}
+        {meta.error && <ErrorState error={meta.error} onRetry={() => void meta.refetch()} />}
+        {meta.data && (
+          <Box style={{ opacity: meta.isPlaceholderData ? 0.6 : 1 }} aria-busy={meta.isFetching}>
+            <Stack gap="lg">
+              {notLoaded > 0 && (
+                <Text size="sm" c="dimmed">
+                  {plural(notLoaded, 'big event')} in this range{' '}
+                  {notLoaded === 1 ? 'isn’t' : 'aren’t'} loaded yet, so their players aren’t
+                  counted.
+                </Text>
+              )}
+              {meta.data.eventsInRange === 0 ? (
+                <Text size="sm" c="dimmed">
+                  No big events in this range.
+                </Text>
+              ) : meta.data.factions.length === 0 ? (
+                <Text size="sm" c="dimmed">
+                  No players with games yet.
+                </Text>
+              ) : (
+                <Stack gap="sm">
+                  <Text size="xs" c="dimmed" ff="monospace" tt="uppercase" className="numeric">
+                    {`${plural(meta.data.totals.players, 'player')} · ${plural(meta.data.totals.games, 'game')}`}
+                  </Text>
+                  {view === 'archetypes' ? (
+                    <ArchetypeTable
+                      changeLabel={change?.label}
+                      rows={meta.data.factions}
+                      weeks={meta.data.weeks}
+                      minPlayers={minPlayers}
+                      sort={sort}
+                      dir={dir}
+                      factions={factions}
+                      onOpenPlayers={setPlayers}
+                    />
+                  ) : (
+                    <FactionTable
+                      changeLabel={change?.label}
+                      rows={meta.data.factions}
+                      weeks={meta.data.weeks}
+                      minPlayers={minPlayers}
+                      sort={sort}
+                      dir={dir}
+                      expanded={expanded}
+                      onToggle={(key) => {
+                        const next = expanded.includes(key)
+                          ? expanded.filter((k) => k !== key)
+                          : [...expanded, key];
+                        onSearchChange({
+                          ...search,
+                          expanded: next.length > 0 ? next.join('|') : undefined,
+                        });
+                      }}
+                      onOpenPlayers={setPlayers}
+                    />
+                  )}
+                </Stack>
+              )}
+              {meta.data.teams !== null && (
+                <Panel title="What top teams bring">
+                  <TeamMeta
+                    rows={meta.data.teams}
+                    eventsCounted={meta.data.teamEventsCounted}
                     minPlayers={minPlayers}
-                    sort={sort}
-                    dir={dir}
-                    factions={factions}
-                    onSortChange={onSortChange}
-                    onFactionsChange={(next) => {
-                      onSearchChange({
-                        ...search,
-                        factions: next.length > 0 ? next.join('|') : undefined,
-                      });
-                    }}
-                    onOpenPlayers={setPlayers}
                   />
-                ) : (
-                  <FactionTable
-                    changeLabel={change?.label}
-                    rows={meta.data.factions}
-                    weeks={meta.data.weeks}
-                    minPlayers={minPlayers}
-                    sort={sort}
-                    dir={dir}
-                    expanded={expanded}
-                    onSortChange={onSortChange}
-                    onToggle={(key) => {
-                      const next = expanded.includes(key)
-                        ? expanded.filter((k) => k !== key)
-                        : [...expanded, key];
-                      onSearchChange({
-                        ...search,
-                        expanded: next.length > 0 ? next.join('|') : undefined,
-                      });
-                    }}
-                    onOpenPlayers={setPlayers}
-                  />
-                )}
-              </Panel>
-            )}
-            {meta.data.teams !== null && (
-              <Panel title="What top teams bring">
-                <TeamMeta
-                  rows={meta.data.teams}
-                  eventsCounted={meta.data.teamEventsCounted}
-                  minPlayers={minPlayers}
-                />
-              </Panel>
-            )}
-          </Stack>
-        </Box>
-      )}
-      <MetaPlayersDrawer
-        filter={players}
-        search={search}
-        onClose={() => {
-          setPlayers(null);
-        }}
-      />
-    </Stack>
+                </Panel>
+              )}
+            </Stack>
+          </Box>
+        )}
+        <MetaPlayersDrawer
+          filter={players}
+          search={search}
+          onClose={() => {
+            setPlayers(null);
+          }}
+        />
+      </Stack>
+    </SidebarLayout>
   );
 }

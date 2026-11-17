@@ -84,12 +84,11 @@ describe('PlayerPage', () => {
     expect(await screen.findByText(line('wh40k-elo –'))).toBeInTheDocument();
   });
 
-  it('lists every event, marking the counted ones and linking lists', async () => {
+  it('lists every event, the counted ones first, linking lists', async () => {
     stubFetchRoutes({ 'GET /api/rankings/US-ADA': ranking() });
     renderWithRouter(<PlayerPage userId="US-ADA" />);
-    const rows = within(await screen.findByRole('table', { name: 'History' }))
-      .getAllByRole('row')
-      .slice(1);
+    await screen.findByRole('region', { name: 'History' });
+    const rows = [...document.querySelectorAll<HTMLElement>('[data-counted]')];
     const [counted, other] = rows;
     if (counted === undefined || other === undefined) throw new Error('missing rows');
     const first = within(counted);

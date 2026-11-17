@@ -1,0 +1,14 @@
+/* A job card: its kind, then what and which event, then a note on the right. */
+.kind {
+  flex: 0 0 5.5rem;
+}
+
+.what {
+  flex: 2 1 220px;
+  min-width: 0;
+}
+
+.note {
+  flex: 1 1 200px;
+  text-align: right;
+}

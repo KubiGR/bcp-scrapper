@@ -1,0 +1,52 @@
+/* A ranked player's card: rank, who, best result, then their figures. */
+.rank {
+  flex: 0 0 3.5rem;
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-lg);
+  font-weight: 600;
+}
+
+.who {
+  flex: 2 1 150px;
+  min-width: 0;
+}
+
+.best {
+  flex: 3 1 200px;
+  min-width: 0;
+}
+
+/* The best result on one line; the whole of it on hover. */
+.bestText {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.figure {
+  flex: 0 0 4rem;
+}
+
+/* How points work: short labelled parts, the point's two factors as a tight list. */
+.facts {
+  margin: 4px 0 0;
+  padding-left: 1.1em;
+}
+
+.facts li + li {
+  margin-top: 2px;
+}
+
+/* The fold's toggle looks like a panel title, with an arrow. */
+.explainerToggle {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 32px;
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mantine-color-dimmed);
+}

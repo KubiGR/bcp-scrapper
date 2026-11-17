@@ -1,7 +1,16 @@
 import type { QueueDetails } from '@bcp/shared';
-import { Accordion, Button, Card, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Accordion, Badge, Button, Group, Stack, Text } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnchorLink } from '../../components/AnchorLink';
+import { Panel } from '../../components/Panel';
+import {
+  Card,
+  CardGroup,
+  PageTitle,
+  scoreboardClasses,
+  SidebarLayout,
+} from '../../components/Scoreboard';
+import classes from './QueuePage.module.css';
 import { formatDateTime } from '../../lib/format';
 import { failureReason } from './failure-reasons';
 import { fetchQueueQuery, queueDetailsQuery, retryFailed } from './fetch-queue-queries';
@@ -20,6 +29,44 @@ function whatOf(job: Pick<Job, 'kind' | 'playerName' | 'round'>): string {
     case 'event':
       return 'Event load';
   }
+}
+
+const KIND_LABEL: Record<Job['kind'], string> = {
+  list: 'List',
+  'pairings-round': 'Pairings',
+  event: 'Event',
+};
+
+/** One job as a compact card: its kind, what and for which event, and a note on the right. */
+function JobCard({
+  job,
+  note,
+  noteColor,
+}: {
+  job: Pick<Job, 'kind' | 'playerName' | 'round' | 'eventId' | 'eventName'>;
+  note: string;
+  noteColor?: string;
+}) {
+  return (
+    <div role="listitem">
+      <Card dense>
+        <Badge variant="outline" color="gray" className={classes.kind}>
+          {KIND_LABEL[job.kind]}
+        </Badge>
+        <div className={classes.what}>
+          <Text size="sm" fw={600}>
+            {whatOf(job)}
+          </Text>
+          <Text size="xs">
+            <EventLink job={job} />
+          </Text>
+        </div>
+        <Text size="xs" c={noteColor ?? 'dimmed'} className={classes.note}>
+          {note}
+        </Text>
+      </Card>
+    </div>
+  );
 }
 
 function EventLink({ job }: { job: Pick<Job, 'eventId' | 'eventName'> }) {
@@ -70,32 +117,22 @@ function FailureGroup({ failure }: { failure: Failure }) {
         </Text>
       )}
       <Accordion.Panel>
-        <Table.ScrollContainer minWidth={560}>
-          <Table aria-label={label} striped>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Event</Table.Th>
-                <Table.Th>What</Table.Th>
-                <Table.Th>Error</Table.Th>
-                <Table.Th>Tries</Table.Th>
-                <Table.Th>When</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {failure.jobs.map((job) => (
-                <Table.Tr key={job.id}>
-                  <Table.Td>
-                    <EventLink job={job} />
-                  </Table.Td>
-                  <Table.Td>{whatOf(job)}</Table.Td>
-                  <Table.Td>{job.error ?? '–'}</Table.Td>
-                  <Table.Td className="numeric">{job.attempts}</Table.Td>
-                  <Table.Td>{job.failedAt ? formatDateTime(job.failedAt) : '–'}</Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
+        <div role="list" aria-label={label} className={scoreboardClasses.group} data-dense>
+          {failure.jobs.map((job) => (
+            <JobCard
+              key={job.id}
+              job={job}
+              note={[
+                job.error ?? 'No error given',
+                `${String(job.attempts)} ${job.attempts === 1 ? 'try' : 'tries'}`,
+                job.failedAt ? formatDateTime(job.failedAt) : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+              noteColor="red.3"
+            />
+          ))}
+        </div>
         {failure.count > failure.jobs.length && (
           <Text size="sm" c="dimmed" mt="xs">
             The latest {failure.jobs.length} of {failure.count}.
@@ -110,62 +147,56 @@ function FailureGroup({ failure }: { failure: Failure }) {
 export function QueuePage() {
   const { data: state } = useQuery(fetchQueueQuery);
   const { data: details, error } = useQuery(queueDetailsQuery);
+  const failed = details?.failures.reduce((sum, failure) => sum + failure.count, 0) ?? 0;
   return (
-    <Stack gap="lg">
-      <Title order={1}>Queue</Title>
-      {state && (
-        <Card withBorder>
-          <QueueControls state={state} />
-        </Card>
-      )}
-      {error && <Text c="red">{error.message}</Text>}
-      {details && (
-        <>
-          <Stack gap="xs">
-            <Title order={2}>Failures</Title>
-            {details.failures.length === 0 ? (
-              <Text c="dimmed">Nothing has failed.</Text>
-            ) : (
-              <Accordion variant="separated" multiple>
-                {details.failures.map((failure) => (
-                  <FailureGroup key={failure.code} failure={failure} />
-                ))}
-              </Accordion>
-            )}
-          </Stack>
-          <Stack gap="xs">
-            <Title order={2}>Up next</Title>
-            {details.next.length === 0 ? (
-              <Text c="dimmed">Nothing is waiting.</Text>
-            ) : (
-              <Table.ScrollContainer minWidth={480}>
-                <Table aria-label="Up next" striped>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>Status</Table.Th>
-                      <Table.Th>For</Table.Th>
-                      <Table.Th>Event</Table.Th>
-                      <Table.Th>What</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {details.next.map((job) => (
-                      <Table.Tr key={job.id}>
-                        <Table.Td>{job.status === 'fetching' ? 'Fetching' : 'Queued'}</Table.Td>
-                        <Table.Td>{job.origin === 'user' ? 'You' : 'Background'}</Table.Td>
-                        <Table.Td>
-                          <EventLink job={job} />
-                        </Table.Td>
-                        <Table.Td>{whatOf(job)}</Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Table.ScrollContainer>
-            )}
-          </Stack>
-        </>
-      )}
-    </Stack>
+    <SidebarLayout
+      sidebarLabel="Queue controls"
+      sidebar={state && <Panel title="Queue">{<QueueControls state={state} />}</Panel>}
+    >
+      <Stack gap="xl">
+        <PageTitle>Queue</PageTitle>
+        {error && <Text c="red">{error.message}</Text>}
+        {details && (
+          <>
+            <CardGroup label={String(failed)} description="Failures" ariaLabel="Failures">
+              {details.failures.length === 0 ? (
+                <Text c="dimmed">Nothing has failed.</Text>
+              ) : (
+                <Accordion variant="separated" multiple>
+                  {details.failures.map((failure) => (
+                    <FailureGroup key={failure.code} failure={failure} />
+                  ))}
+                </Accordion>
+              )}
+            </CardGroup>
+            <CardGroup
+              label={String(details.next.length)}
+              description="Up next"
+              ariaLabel="Up next jobs"
+            >
+              {details.next.length === 0 ? (
+                <Text c="dimmed">Nothing is waiting.</Text>
+              ) : (
+                <div
+                  role="list"
+                  aria-label="Up next"
+                  className={scoreboardClasses.group}
+                  data-dense
+                >
+                  {details.next.map((job) => (
+                    <JobCard
+                      key={job.id}
+                      job={job}
+                      note={`${job.status === 'fetching' ? 'Fetching' : 'Queued'} · ${job.origin === 'user' ? 'You' : 'Background'}`}
+                      noteColor={job.status === 'fetching' ? 'neon.4' : undefined}
+                    />
+                  ))}
+                </div>
+              )}
+            </CardGroup>
+          </>
+        )}
+      </Stack>
+    </SidebarLayout>
   );
 }

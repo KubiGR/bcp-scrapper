@@ -1,0 +1,41 @@
+/* The team's name on the left, its match record big on the right. */
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--mantine-spacing-md);
+}
+
+.record {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 2.75rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--mantine-primary-color-filled);
+}
+
+/* A player card: who and their totals, then a block per round under them. */
+.who {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.totals {
+  flex: 0 0 auto;
+  text-align: right;
+  font-weight: 600;
+}
+
+.rounds {
+  flex: 1 1 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--mantine-spacing-sm);
+}
+
+.round {
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border: 1px solid rgb(255 255 255 / 0.07);
+  border-radius: var(--mantine-radius-sm);
+}

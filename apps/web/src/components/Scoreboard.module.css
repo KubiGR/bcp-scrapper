@@ -1,0 +1,136 @@
+/* The Scoreboard layout: filters in a sidebar beside the content; on phones, a row above it. */
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-xl);
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  flex: 1 1 240px;
+  max-width: 300px;
+}
+
+@media (max-width: 47.99em) {
+  .sidebar {
+    max-width: none;
+  }
+}
+
+.main {
+  flex: 999 1 560px;
+  min-width: 0;
+}
+
+/* A page's title row: the title (and a line under it) on the left, its controls on the right. */
+.pageHeading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--mantine-spacing-sm);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+}
+
+/* A group's heading: its key, big ("4-1-0", "Nov 14", "Tier 1"), then what it means. */
+.groupHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--mantine-spacing-md);
+  margin: 0;
+  padding-bottom: var(--mantine-spacing-xs);
+  border-bottom: 1px solid rgb(255 255 255 / 0.07);
+  font-weight: inherit;
+  font-size: inherit;
+}
+
+.groupKey {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--mantine-primary-color-filled);
+}
+
+.groupLabel {
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mantine-color-dimmed);
+}
+
+/*
+ * One item: its pieces side by side, each wrapping under the one before when the card gets
+ * narrow. A card with a click handler opens wherever it's clicked.
+ */
+.card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mantine-spacing-sm) var(--mantine-spacing-lg);
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
+  background: var(--mantine-color-dark-7);
+  border: 1px solid rgb(255 255 255 / 0.07);
+  border-radius: var(--mantine-radius-md);
+}
+
+.card[data-clickable] {
+  cursor: pointer;
+}
+
+.card[data-clickable]:hover {
+  border-color: rgb(255 255 255 / 0.16);
+}
+
+/* A figure with its label under it: "1543 / field Elo". */
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statValue {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-xl);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.statLabel {
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-dimmed);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: var(--mantine-spacing-sm);
+}
+
+.tile {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  background: var(--mantine-color-dark-7);
+  border: 1px solid rgb(255 255 255 / 0.07);
+  border-radius: var(--mantine-radius-md);
+}
+
+/* Dense: for long lists, cards closer together, slimmer, with smaller figures. */
+.group[data-dense] {
+  gap: 6px;
+}
+
+.card[data-dense] {
+  padding: 6px var(--mantine-spacing-md);
+  row-gap: 4px;
+  column-gap: var(--mantine-spacing-md);
+}
+
+.card[data-dense] .statValue {
+  font-size: var(--mantine-font-size-md);
+}

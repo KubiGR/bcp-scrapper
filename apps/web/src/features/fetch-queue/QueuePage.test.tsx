@@ -86,7 +86,7 @@ describe('QueuePage', () => {
     const group = await screen.findByRole('button', { name: /BCP unavailable · 2/ });
     expect(screen.getByText(/BCP didn’t answer, or answered with an error/)).toBeInTheDocument();
     fireEvent.click(group);
-    const failures = within(await screen.findByRole('table', { name: 'BCP unavailable' }));
+    const failures = within(await screen.findByRole('list', { name: 'BCP unavailable' }));
     expect(failures.getByText('Ada Archer')).toBeInTheDocument();
     expect(failures.getByText('Round 4')).toBeInTheDocument();
     expect(failures.getAllByRole('link', { name: 'Sample Team Open' })[0]).toHaveAttribute(
@@ -111,8 +111,8 @@ describe('QueuePage', () => {
   it('lists what runs next, the one being fetched first', async () => {
     stubFetchRoutes(routes());
     renderWithRouter(<QueuePage />);
-    const next = within(await screen.findByRole('table', { name: 'Up next' }));
-    const rows = next.getAllByRole('row').slice(1);
+    const next = within(await screen.findByRole('list', { name: 'Up next' }));
+    const rows = next.getAllByRole('listitem');
     expect(rows[0]?.textContent).toContain('Cara Cole');
     expect(rows[0]?.textContent).toContain('Fetching');
     expect(rows[1]?.textContent).toContain('Background');

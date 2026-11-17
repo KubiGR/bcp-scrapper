@@ -1,7 +1,9 @@
 import { MIN_CHANGE_GAMES, type MetaRow } from '@bcp/shared';
-import { ActionIcon, Table, Text, UnstyledButton, useMatches } from '@mantine/core';
-import { Fragment } from 'react';
-import { SortableTh, type SortDir } from '../../lib/table-sort';
+import { ActionIcon, Select, Text, UnstyledButton } from '@mantine/core';
+import type { ReactNode } from 'react';
+import { Card, scoreboardClasses } from '../../components/Scoreboard';
+import { type SortDir } from '../../lib/table-sort';
+import classes from './MetaCards.module.css';
 import { FactionIcon } from '../../components/FactionIcon';
 import { DispositionBreakdown } from './DispositionBreakdown';
 import { Sparkline } from './Sparkline';
@@ -40,8 +42,6 @@ interface FactionTableProps {
   sort: MetaSort;
   dir: SortDir;
   expanded: string[];
-  /** The next sort; null = back to the default. */
-  onSortChange: (next: { sort: MetaSort; dir: SortDir } | null) => void;
   onToggle: (key: string) => void;
   onOpenPlayers: (filter: PlayersFilter) => void;
 }
@@ -111,10 +111,40 @@ export function OverrepText({ overrep }: { overrep: number | null }) {
 export const OVERREP_TITLE =
   'Over-representation: its share of the X-1-or-better players over its share of all players. 1.00× is as many as its numbers suggest; 1.40× is 40% more.';
 
+/** A figure on a card, its label under it; the label explains itself on hover when given a hint. */
+function Figure({
+  label,
+  hint,
+  wide = false,
+  hideOnPhone = false,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  wide?: boolean;
+  hideOnPhone?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={classes.figure}
+      data-wide={wide || undefined}
+      data-phone-hidden={hideOnPhone || undefined}
+    >
+      <span className={classes.figureValue}>{children}</span>
+      <span className={classes.figureLabel} title={hint}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+/** A row's figures as a strip of labelled values; the players open the drill-down. */
 export function Figures({
   row,
   weeks,
   label,
+  changeLabel = DEFAULT_CHANGE_LABEL,
   onOpen,
 }: {
   row: Pick<
@@ -133,11 +163,13 @@ export function Figures({
   /** The weeks `row.trend` follows. */
   weeks: string[];
   label: string;
+  /** What Change compares. */
+  changeLabel?: string;
   onOpen: () => void;
 }) {
   return (
-    <>
-      <Table.Td ta="right">
+    <div className={classes.figures}>
+      <Figure label="players">
         <UnstyledButton
           className="numeric"
           onClick={onOpen}
@@ -147,29 +179,66 @@ export function Figures({
             {row.players}
           </Text>
         </UnstyledButton>
-      </Table.Td>
-      <Table.Td ta="right" className="numeric" visibleFrom="sm">
-        {sharePercent(row.share)}
-      </Table.Td>
-      <Table.Td visibleFrom="sm">
+      </Figure>
+      <Figure label="share" hideOnPhone>
+        <span className="numeric">{sharePercent(row.share)}</span>
+      </Figure>
+      <Figure label="trend" wide hideOnPhone>
         <Sparkline values={row.trend} weeks={weeks} />
-      </Table.Td>
-      <Table.Td ta="right">
+      </Figure>
+      <Figure label="win rate">
         <WinRateText rate={row.winRate} />
-      </Table.Td>
-      <Table.Td ta="right">
+      </Figure>
+      <Figure
+        label="reliable"
+        hint="The win rate allowing for how many games there are: the low end of its 95% range. Few games pull it down."
+      >
         <ReliableText row={row} />
-      </Table.Td>
-      <Table.Td ta="right" visibleFrom="sm">
+      </Figure>
+      <Figure label="change" hint={changeLabel} hideOnPhone>
         <ChangeText change={changeOf(row)} />
-      </Table.Td>
-      <Table.Td ta="right" className="numeric" visibleFrom="sm">
-        {`${row.x1} · ${percent(row.x1Share)}`}
-      </Table.Td>
-      <Table.Td ta="right" visibleFrom="sm">
+      </Figure>
+      <Figure label="X-1 or better" hideOnPhone>
+        <span className="numeric">{`${row.x1} · ${percent(row.x1Share)}`}</span>
+      </Figure>
+      <Figure label="overrep" hint={OVERREP_TITLE} hideOnPhone>
         <OverrepText overrep={row.overrep} />
-      </Table.Td>
-    </>
+      </Figure>
+    </div>
+  );
+}
+
+/** The orders Meta offers, each its natural way round; the reliable win rate is the default. */
+export const META_SORTS: { value: MetaSort; label: string; dir: SortDir }[] = [
+  { value: 'reliable', label: 'Reliable win rate', dir: 'desc' },
+  { value: 'winRate', label: 'Win rate', dir: 'desc' },
+  { value: 'players', label: 'Players', dir: 'desc' },
+  { value: 'change', label: 'Change', dir: 'desc' },
+  { value: 'x1', label: 'X-1 or better', dir: 'desc' },
+  { value: 'overrep', label: 'Overrep', dir: 'desc' },
+  { value: 'faction', label: 'Name A–Z', dir: 'asc' },
+];
+
+/** Meta's order, for the sidebar; picking the default clears it from the address. */
+export function MetaSortSelect({
+  sort,
+  onSortChange,
+}: {
+  sort: MetaSort;
+  onSortChange: (next: { sort: MetaSort; dir: SortDir } | null) => void;
+}) {
+  return (
+    <Select
+      label="Sort by"
+      data={META_SORTS.map(({ value, label }) => ({ value, label }))}
+      value={sort}
+      onChange={(value) => {
+        const next = META_SORTS.find((option) => option.value === value);
+        if (next === undefined) return;
+        onSortChange(next.value === 'reliable' ? null : { sort: next.value, dir: next.dir });
+      }}
+      allowDeselect={false}
+    />
   );
 }
 
@@ -185,12 +254,9 @@ export function FactionTable({
   sort,
   dir,
   expanded,
-  onSortChange,
   onToggle,
   onOpenPlayers,
 }: FactionTableProps) {
-  // Phones drop Share and X-1 (see the cells), so the rest fits without scrolling.
-  const tableMinWidth = useMatches({ base: 0, sm: 560 });
   const sign = dir === 'asc' ? 1 : -1;
   const dimmed = (row: MetaRow) => row.faction === null || row.players < minPlayers;
   type Measured = Pick<
@@ -238,138 +304,83 @@ export function FactionTable({
         b.players - a.players
       );
     });
-  // First click: numbers high to low, names A→Z; second flips; third goes back to the default.
-  const onSort = (key: MetaSort) => {
-    const first: SortDir = key === 'faction' ? 'asc' : 'desc';
-    if (key !== sort) onSortChange({ sort: key, dir: first });
-    else if (dir === first) onSortChange({ sort: key, dir: first === 'asc' ? 'desc' : 'asc' });
-    else onSortChange(null);
-  };
-  const state = { key: sort, dir };
-
   return (
-    <Table.ScrollContainer minWidth={tableMinWidth}>
-      <Table verticalSpacing="xs">
-        <Table.Thead>
-          <Table.Tr>
-            <SortableTh column="faction" sort={state} onSort={onSort}>
-              Faction
-            </SortableTh>
-            <SortableTh column="players" sort={state} onSort={onSort} ta="right">
-              Players
-            </SortableTh>
-            <Table.Th ta="right" visibleFrom="sm">
-              Share
-            </Table.Th>
-            <Table.Th ta="right" visibleFrom="sm">
-              Trend
-            </Table.Th>
-            <SortableTh column="winRate" sort={state} onSort={onSort} ta="right">
-              Win rate
-            </SortableTh>
-            <SortableTh
-              column="reliable"
-              sort={state}
-              onSort={onSort}
-              ta="right"
-              title="The win rate allowing for how many games there are: the low end of its 95% range. Few games pull it down."
-            >
-              Reliable
-            </SortableTh>
-            <SortableTh
-              column="change"
-              sort={state}
-              onSort={onSort}
-              ta="right"
-              visibleFrom="sm"
-              title={changeLabel}
-            >
-              Change
-            </SortableTh>
-            <SortableTh column="x1" sort={state} onSort={onSort} ta="right" visibleFrom="sm">
-              X-1 or better
-            </SortableTh>
-            <SortableTh
-              column="overrep"
-              sort={state}
-              onSort={onSort}
-              ta="right"
-              visibleFrom="sm"
-              title={OVERREP_TITLE}
-            >
-              Overrep
-            </SortableTh>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {sorted.map((row) => {
-            const key = factionKey(row.faction);
-            const name = factionName(row.faction);
-            const open = expanded.includes(key);
-            return (
-              <Fragment key={key}>
-                <Table.Tr data-dimmed={dimmed(row)} style={{ opacity: dimmed(row) ? 0.55 : 1 }}>
-                  <Table.Td>
-                    <ActionIcon
-                      variant="subtle"
-                      color="gray"
-                      size="sm"
-                      mr={6}
-                      aria-label={`Show ${name} detachments`}
-                      aria-expanded={open}
-                      onClick={() => {
-                        onToggle(key);
-                      }}
+    <div role="list" aria-label="Factions" className={scoreboardClasses.group} data-dense>
+      {sorted.map((row) => {
+        const key = factionKey(row.faction);
+        const name = factionName(row.faction);
+        const open = expanded.includes(key);
+        return (
+          <div role="listitem" key={key}>
+            <Card dense data={{ dimmed: dimmed(row) }} className={classes.card}>
+              <div className={classes.name}>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="sm"
+                  aria-label={`Show ${name} detachments`}
+                  aria-expanded={open}
+                  onClick={() => {
+                    onToggle(key);
+                  }}
+                >
+                  {open ? '▾' : '▸'}
+                </ActionIcon>
+                <FactionIcon faction={row.faction} size={28} />
+                <Text size="sm" fw={600}>
+                  {name}
+                </Text>
+              </div>
+              <Figures
+                weeks={weeks}
+                row={row}
+                label={name}
+                changeLabel={changeLabel}
+                onOpen={() => {
+                  onOpenPlayers({ faction: row.faction });
+                }}
+              />
+            </Card>
+            {open && (
+              <div className={classes.nested} data-dense>
+                {sortArchetypes(row.archetypes).map((archetype) => {
+                  const label = archetypeName(archetype.detachments);
+                  const small = archetype.players < minPlayers;
+                  return (
+                    <Card
+                      dense
+                      key={`${key}:${label}`}
+                      data={{ dimmed: small }}
+                      className={classes.card}
                     >
-                      {open ? '▾' : '▸'}
-                    </ActionIcon>
-                    <FactionIcon faction={row.faction} size={28} />
-                    {name}
-                  </Table.Td>
-                  <Figures
-                    weeks={weeks}
-                    row={row}
-                    label={name}
-                    onOpen={() => {
-                      onOpenPlayers({ faction: row.faction });
-                    }}
-                  />
-                </Table.Tr>
-                {open &&
-                  sortArchetypes(row.archetypes).map((archetype) => {
-                    const label = archetypeName(archetype.detachments);
-                    const small = archetype.players < minPlayers;
-                    return (
-                      <Table.Tr
-                        key={`${key}:${label}`}
-                        data-dimmed={small}
-                        style={{ opacity: small ? 0.55 : 1 }}
-                      >
-                        <Table.Td pl={40}>
-                          <Text size="sm" c="dimmed" component="span">
+                      <div className={classes.name}>
+                        <div>
+                          <Text size="sm" c="dimmed">
                             {label}
                           </Text>
                           <DispositionBreakdown archetype={archetype} />
-                        </Table.Td>
-                        <Figures
-                          weeks={weeks}
-                          row={archetype}
-                          label={`${name} · ${label}`}
-                          onOpen={() => {
-                            onOpenPlayers({
-                              faction: row.faction,
-                              detachments: archetype.detachments,
-                            });
-                          }}
-                        />
-                      </Table.Tr>
-                    );
-                  })}
-              </Fragment>
-            );
-          })}
-        </Table.Tbody>
-      </Table>
-    </Table.ScrollContainer>
+                        </div>
+                      </div>
+                      <Figures
+                        weeks={weeks}
+                        row={archetype}
+                        label={`${name} · ${label}`}
+                        changeLabel={changeLabel}
+                        onOpen={() => {
+                          onOpenPlayers({
+                            faction: row.faction,
+                            detachments: archetype.detachments,
+                          });
+                        }}
+                      />
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }

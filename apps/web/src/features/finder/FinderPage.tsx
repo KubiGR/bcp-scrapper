@@ -1,12 +1,14 @@
-import { Group, Stack, Title } from '@mantine/core';
+import { Stack } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { ErrorState } from '../../components/ErrorState';
+import { FilterToggle } from '../../components/FilterToggle';
 import { Panel } from '../../components/Panel';
+import { PageTitle, SidebarLayout } from '../../components/Scoreboard';
 import { AdvancedSearch } from './AdvancedSearch';
 import { CatalogStatus } from './CatalogStatus';
 import { CoverageNotice } from './CoverageNotice';
-import { EventsTable } from './EventsTable';
+import { EventsSort, EventsTable } from './EventsTable';
 import { eventsQuery } from './finder-queries';
 import {
   finderWindow,
@@ -41,47 +43,56 @@ export function FinderPage() {
   };
 
   return (
-    <Stack gap="lg">
-      <Group justify="space-between" align="flex-end" wrap="wrap">
-        <Title order={1}>Tournaments</Title>
-        <CatalogStatus />
-      </Group>
-      <Panel title="Filters">
-        <Stack gap="md">
-          <SizeFilter search={search} onChange={update} />
-          <AdvancedSearch search={search} window={window} onChange={update} />
-        </Stack>
-      </Panel>
-      {!isLatestView(search) && <CoverageNotice window={window} />}
-      {events.error ? (
-        <ErrorState error={events.error} onRetry={() => void events.refetch()} />
-      ) : (
-        <EventsTable
-          sort={search.sort}
-          dir={search.dir}
-          onSortChange={(next) => {
-            update({ sort: next?.sort ?? 'date', dir: next?.dir ?? 'desc', page: 1 });
-          }}
-          response={events.data}
-          fetching={events.isFetching}
-          page={search.page}
-          onPageChange={(page) => {
-            update({ page });
-          }}
-          perPage={search.per}
-          onPerPageChange={(per) => {
-            update({ per, page: 1 });
-          }}
-          onOpen={(eventId) => {
-            void navigate({
-              to: '/events/$eventId',
-              params: { eventId },
-              search: { tab: 'players' },
-            });
-          }}
-          emptyText={isLatestView(search) ? LATEST_EMPTY : SEARCH_EMPTY}
-        />
-      )}
-    </Stack>
+    <SidebarLayout
+      sidebarLabel="Filters"
+      sidebar={
+        <FilterToggle active={isLatestView(search) ? 0 : 1}>
+          <Panel title="Filters">
+            <Stack gap="md">
+              <SizeFilter search={search} onChange={update} />
+              <EventsSort
+                sort={search.sort}
+                dir={search.dir}
+                onSortChange={(next) => {
+                  update({ sort: next?.sort ?? 'date', dir: next?.dir ?? 'desc', page: 1 });
+                }}
+              />
+              <AdvancedSearch search={search} window={window} onChange={update} />
+              <CatalogStatus />
+            </Stack>
+          </Panel>
+        </FilterToggle>
+      }
+    >
+      <Stack gap="lg">
+        <PageTitle>Tournaments</PageTitle>
+        {!isLatestView(search) && <CoverageNotice window={window} />}
+        {events.error ? (
+          <ErrorState error={events.error} onRetry={() => void events.refetch()} />
+        ) : (
+          <EventsTable
+            sort={search.sort}
+            response={events.data}
+            fetching={events.isFetching}
+            page={search.page}
+            onPageChange={(page) => {
+              update({ page });
+            }}
+            perPage={search.per}
+            onPerPageChange={(per) => {
+              update({ per, page: 1 });
+            }}
+            onOpen={(eventId) => {
+              void navigate({
+                to: '/events/$eventId',
+                params: { eventId },
+                search: { tab: 'players' },
+              });
+            }}
+            emptyText={isLatestView(search) ? LATEST_EMPTY : SEARCH_EMPTY}
+          />
+        )}
+      </Stack>
+    </SidebarLayout>
   );
 }

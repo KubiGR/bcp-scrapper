@@ -28,7 +28,7 @@ describe('EventHeader', () => {
     expect(link.getAttribute('rel')).toContain('noreferrer');
   });
 
-  it('shows flames for a big event, and a leaf for one that started this week', () => {
+  it('colours a big event’s player count, and shows a leaf for one that started this week', () => {
     renderWithProviders(
       <EventHeader
         event={anEventDetail({
@@ -39,35 +39,36 @@ describe('EventHeader', () => {
         onRefresh={vi.fn()}
       />,
     );
-    expect(screen.getByRole('img', { name: 'Major event' })).toBeInTheDocument();
+    expect(screen.getByText('432')).toHaveAttribute('data-size', 'major');
     expect(screen.getByRole('img', { name: 'New this week' })).toBeInTheDocument();
   });
 
-  it('shows the round count after the size line', () => {
+  it('shows the size as tiles: players, teams, rounds and field Elo', () => {
     renderWithProviders(
       <EventHeader
-        event={anEventDetail({ playerCount: 432, teamCount: 108, roundCount: 5 })}
+        event={anEventDetail({ playerCount: 432, teamCount: 108, roundCount: 5, fieldElo: 1620 })}
         syncing={false}
         onRefresh={vi.fn()}
       />,
     );
-    expect(
-      screen.getByText(
-        (_, el) => el?.tagName === 'P' && el.textContent === '432 players · 108 teams · 5 rounds',
-      ),
-    ).toBeInTheDocument();
+    const tile = (label: string) => screen.getByText(label).parentElement?.textContent;
+    expect(tile('players')).toBe('432players');
+    expect(tile('teams')).toBe('108teams');
+    expect(tile('rounds')).toBe('5rounds');
+    expect(tile('field Elo')).toContain('1620');
   });
 
-  it('omits the round count when it is 0', () => {
+  it('leaves out the tiles it has no figure for', () => {
     renderWithProviders(
       <EventHeader
-        event={anEventDetail({ playerCount: 10, teamCount: null, roundCount: 0 })}
+        event={anEventDetail({ playerCount: 10, teamCount: null, roundCount: 0, fieldElo: null })}
         syncing={false}
         onRefresh={vi.fn()}
       />,
     );
-    expect(
-      screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === '10 players'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('players')).toBeInTheDocument();
+    expect(screen.queryByText('teams')).not.toBeInTheDocument();
+    expect(screen.queryByText('rounds')).not.toBeInTheDocument();
+    expect(screen.queryByText('field Elo')).not.toBeInTheDocument();
   });
 });

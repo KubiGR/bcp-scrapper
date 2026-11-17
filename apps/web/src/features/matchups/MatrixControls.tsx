@@ -23,6 +23,8 @@ interface MatrixControlsProps {
   detachmentFactions?: Record<string, string[]>;
   /** The matrix's factions, to show only some as rows. */
   factions?: string[];
+  /** One under another, full width: for a sidebar. */
+  stacked?: boolean;
 }
 
 export function MatrixControls({
@@ -32,7 +34,10 @@ export function MatrixControls({
   detachments = [],
   detachmentFactions = {},
   factions = [],
+  stacked = false,
 }: MatrixControlsProps) {
+  const Row = stacked ? Stack : Group;
+  const width = (wide: number) => (stacked ? undefined : { base: '100%', xs: wide });
   const factionOptions = [...new Set([...factions, ...settings.factions])].sort((a, b) =>
     a.localeCompare(b),
   );
@@ -47,8 +52,9 @@ export function MatrixControls({
 
   return (
     <Stack gap="sm">
-      <Group gap="md" wrap="wrap" align="flex-end">
+      <Row gap={stacked ? 'sm' : 'md'} wrap="wrap" align={stacked ? 'stretch' : 'flex-end'}>
         <SegmentedControl
+          fullWidth={stacked}
           aria-label="Order"
           value={settings.order}
           onChange={(value) => {
@@ -64,7 +70,7 @@ export function MatrixControls({
           value={settings.minGames}
           min={1}
           max={50}
-          w={110}
+          w={stacked ? undefined : 110}
           onChange={(value) => {
             if (typeof value === 'number') onChange({ ...settings, minGames: value });
           }}
@@ -76,7 +82,7 @@ export function MatrixControls({
           placeholder={settings.factions.length === 0 ? 'All factions' : undefined}
           clearable
           searchable
-          w={{ base: '100%', xs: 260 }}
+          w={width(260)}
           data={factionOptions}
           value={settings.factions}
           onChange={(value) => {
@@ -87,7 +93,7 @@ export function MatrixControls({
           label="Disposition"
           placeholder={settings.dispositions.length === 0 ? 'All dispositions' : undefined}
           clearable
-          w={{ base: '100%', xs: 260 }}
+          w={width(260)}
           data={dispositionOptions}
           value={settings.dispositions}
           onChange={(value) => {
@@ -100,7 +106,7 @@ export function MatrixControls({
           placeholder={settings.detachments.length === 0 ? 'All detachments' : undefined}
           clearable
           searchable
-          w={{ base: '100%', xs: 260 }}
+          w={width(260)}
           data={detachmentOptions}
           value={settings.detachments}
           onChange={(value) => {
@@ -120,7 +126,7 @@ export function MatrixControls({
             ]}
           />
         )}
-      </Group>
+      </Row>
     </Stack>
   );
 }

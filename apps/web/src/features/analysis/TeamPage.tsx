@@ -1,11 +1,13 @@
 import type { PlayerRound, RoundView } from '@bcp/shared';
-import { Accordion, Group, Skeleton, Stack, Table, Text, Title } from '@mantine/core';
+import { Accordion, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
 import { PlayerLine } from '../../components/PlayerLine';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
+import { Card, CardGroup, StatTiles } from '../../components/Scoreboard';
+import classes from './TeamPage.module.css';
 import { eventQuery, playersQuery } from '../event/event-queries';
 import { ListDrawer } from '../event/ListDrawer';
 import { roundsQuery, teamQuery } from './analysis-queries';
@@ -103,8 +105,7 @@ function TeamMatches({
   const openPlayer = players.data?.items.find((p) => p.bcpId === openPlayerId) ?? null;
 
   return (
-    <Stack gap="sm">
-      <Title order={3}>Matches</Title>
+    <CardGroup label="Matches" description="round by round; open one for its games">
       {teamRounds.length === 0 ? (
         <Text c="dimmed">No matches stored yet.</Text>
       ) : (
@@ -135,7 +136,7 @@ function TeamMatches({
           setOpenPlayerId(null);
         }}
       />
-    </Stack>
+    </CardGroup>
   );
 }
 
@@ -152,67 +153,65 @@ export function TeamPage({ eventId, teamId }: { eventId: string; teamId: string 
   const { rounds, players, totals } = team.data;
 
   return (
-    <Stack gap="lg">
-      <Stack gap={4}>
-        <AnchorLink to="/events/$eventId" params={{ eventId }} search={{ tab: 'standings' }}>
-          <Text size="sm">← {event.data?.name ?? 'Event'}</Text>
-        </AnchorLink>
-        <Title order={2}>{team.data.team.name}</Title>
-        <Group gap="md">
-          <Text size="sm" c="dimmed">
-            Placing <span className="numeric">{team.data.team.placing ?? '—'}</span>
-          </Text>
-          <Text size="sm" c="dimmed">
-            <span className="numeric">{formatTotals(totals)}</span> ·{' '}
-            <span className="numeric">{totals.points}</span> game points
-          </Text>
-        </Group>
-      </Stack>
+    <Stack gap="xl">
+      <div className={classes.heading}>
+        <Stack gap={4}>
+          <AnchorLink to="/events/$eventId" params={{ eventId }} search={{ tab: 'standings' }}>
+            <Text size="sm">← {event.data?.name ?? 'Event'}</Text>
+          </AnchorLink>
+          <Title order={1}>{team.data.team.name}</Title>
+        </Stack>
+        <span className={classes.record}>{formatTotals(totals)}</span>
+      </div>
+      <StatTiles
+        items={[
+          {
+            value: team.data.team.placing === null ? '—' : `#${String(team.data.team.placing)}`,
+            label: 'placing',
+          },
+          { value: totals.points, label: 'game points' },
+          { value: players.length, label: players.length === 1 ? 'player' : 'players' },
+        ]}
+      />
+      <CardGroup dense label="Players" description="and their game each round">
+        {players.map((row) => (
+          <Card dense key={row.player.id}>
+            <div className={classes.who}>
+              <Text fw={600}>
+                <PlayerName name={row.player.name} userId={row.player.userId} />
+                <RankBadge userId={row.player.userId ?? null} />
+              </Text>
+              <Text size="sm" c="dimmed">
+                <PlayerLine {...row.player} />
+              </Text>
+            </div>
+            <div className={classes.totals}>
+              <span className="numeric">{formatTotals(row.totals)}</span>
+              <Text size="xs" c="dimmed">
+                <span className="numeric">{row.totals.points}</span> GP
+              </Text>
+            </div>
+            <div className={classes.rounds}>
+              {row.perRound.map((cell, index) => {
+                const round = rounds[index];
+                return (
+                  <div key={round?.round ?? index} className={classes.round}>
+                    <Text size="xs" c="dimmed" className="numeric">
+                      {round === undefined
+                        ? ''
+                        : round.bracket
+                          ? `R${String(round.round)} · Bracket`
+                          : `R${String(round.round)}`}
+                    </Text>
+                    <RoundCell cell={cell} />
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        ))}
+      </CardGroup>
       <TeamMatches eventId={eventId} teamId={teamId} live={live} />
-      <Panel p={0}>
-        <Table.ScrollContainer minWidth={320 + rounds.length * 150}>
-          <Table striped>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Player</Table.Th>
-                {rounds.map((round) => (
-                  <Table.Th key={round.round}>
-                    {round.bracket ? `R${round.round} · Bracket` : `R${round.round}`}
-                  </Table.Th>
-                ))}
-                <Table.Th ta="right">W-L-D</Table.Th>
-                <Table.Th ta="right">GP</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {players.map((row) => (
-                <Table.Tr key={row.player.id}>
-                  <Table.Td>
-                    <Text size="sm">
-                      <PlayerName name={row.player.name} userId={row.player.userId} />
-                      <RankBadge userId={row.player.userId ?? null} />
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      <PlayerLine {...row.player} />
-                    </Text>
-                  </Table.Td>
-                  {row.perRound.map((cell, index) => (
-                    <Table.Td key={rounds[index]?.round ?? index}>
-                      <RoundCell cell={cell} />
-                    </Table.Td>
-                  ))}
-                  <Table.Td ta="right" className="numeric">
-                    {formatTotals(row.totals)}
-                  </Table.Td>
-                  <Table.Td ta="right" className="numeric">
-                    {row.totals.points}
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      </Panel>
     </Stack>
   );
 }

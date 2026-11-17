@@ -1,6 +1,11 @@
 /* Looks like plain text; underline only appears on hover or keyboard focus. */
 .eventName {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
   color: var(--mantine-color-text);
   text-decoration: none;
   border-radius: 2px;
@@ -16,23 +21,30 @@
   outline-offset: 2px;
 }
 
-/* By date: a heading row names each week; every other week is shaded, so the weeks read as
-   groups. */
-.weekRow > td {
-  padding: 10px var(--mantine-spacing-sm) 6px !important;
-  border-top: 2px solid var(--mantine-color-neon-7) !important;
-  background: var(--mantine-color-dark-8);
+/* An event card's pieces, left to right; each wraps under the one before on a narrow card. */
+.name {
+  flex: 3 1 260px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
-.week {
-  font-family: var(--mantine-font-family-monospace);
-  font-size: var(--mantine-font-size-xs);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--mantine-color-neon-3);
+.when {
+  white-space: normal;
 }
 
-tr[data-week-shade='odd'] > td {
-  background: rgb(255 255 255 / 0.035);
+.size {
+  flex: 1 1 130px;
+}
+
+.figure {
+  flex: 0 0 5rem;
+}
+
+/* A fixed width, so the figures line up whether or not an event has badges. */
+.status {
+  flex: 0 0 6rem;
+  display: flex;
+  justify-content: flex-start;
 }

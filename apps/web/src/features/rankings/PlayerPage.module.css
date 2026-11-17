@@ -1,0 +1,61 @@
+/* The player's name and figures on the left, their rank big on the right. */
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--mantine-spacing-md);
+}
+
+.rank {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 2.75rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--mantine-primary-color-filled);
+}
+
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xl);
+}
+
+/* The card's own layout is its inner row, which carries whether the result counts. */
+.entry {
+  display: block;
+}
+
+.entryInner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mantine-spacing-sm) var(--mantine-spacing-lg);
+}
+
+.placing {
+  flex: 0 0 7rem;
+  font-weight: 600;
+}
+
+.event {
+  flex: 3 1 240px;
+  min-width: 0;
+}
+
+.army {
+  flex: 2 1 180px;
+  min-width: 0;
+}
+
+.figure {
+  flex: 0 0 4.5rem;
+}
+
+.marks {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+  gap: var(--mantine-spacing-md);
+  align-items: center;
+}

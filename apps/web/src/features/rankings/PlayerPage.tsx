@@ -1,11 +1,12 @@
 import { strengthFactor, type EloFigure, type PlayerHistoryEntry } from '@bcp/shared';
-import { Anchor, Skeleton, Stack, Table, Text, Title } from '@mantine/core';
+import { Anchor, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '../../api/client';
 import { AnchorLink } from '../../components/AnchorLink';
 import { ErrorState } from '../../components/ErrorState';
 import { NewLeaf, playedLately } from '../../components/EventSymbols';
-import { Panel } from '../../components/Panel';
+import { Card, CardGroup, Stat } from '../../components/Scoreboard';
+import classes from './PlayerPage.module.css';
 import { formatIsoDay, ordinal } from '../../lib/format';
 import { playerRankingQuery } from './rankings-queries';
 import { FactionIcon } from '../../components/FactionIcon';
@@ -39,71 +40,64 @@ const placingText = (entry: PlayerHistoryEntry) =>
     ? '–'
     : `${ordinal(entry.placing)} of ${String(entry.field)}${entry.isTeamEvent ? ' teams' : ''}`;
 
-function HistoryRow({ entry }: { entry: PlayerHistoryEntry }) {
+/** One event the player played: placing, event, army, field, score; the counted ones bright. */
+function HistoryCard({ entry }: { entry: PlayerHistoryEntry }) {
   const dim = entry.score === null ? 'dimmed' : undefined;
   const army = [entry.faction, entry.detachments.join(' + ')].filter(Boolean).join(' · ');
   return (
-    <Table.Tr data-counted={entry.score !== null}>
-      <Table.Td>
-        <Text size="sm" c={dim} className="numeric">
-          {formatIsoDay(entry.eventStart)}
+    <Card dense className={classes.entry}>
+      <div data-counted={entry.score !== null} className={classes.entryInner}>
+        <Text c={dim} className={`numeric ${classes.placing}`}>
+          {placingText(entry)}
         </Text>
-      </Table.Td>
-      <Table.Td>
-        <AnchorLink
-          to="/events/$eventId"
-          params={{ eventId: entry.eventId }}
-          search={{ tab: 'players' }}
-        >
-          {entry.eventName}
-        </AnchorLink>
-        {playedLately(entry.eventStart) && <NewLeaf />}
-        {entry.teamName !== null && (
-          <Text size="xs" c="dimmed">
-            {entry.teamName}
+        <div className={classes.event}>
+          <Text>
+            <AnchorLink
+              to="/events/$eventId"
+              params={{ eventId: entry.eventId }}
+              search={{ tab: 'players' }}
+            >
+              {entry.eventName}
+            </AnchorLink>
+            {playedLately(entry.eventStart) && <NewLeaf />}
           </Text>
-        )}
-      </Table.Td>
-      <Table.Td>
-        <Text size="sm" c={dim}>
+          <Text size="xs" c="dimmed" className="numeric">
+            {formatIsoDay(entry.eventStart)}
+            {entry.teamName !== null && ` · ${entry.teamName}`}
+          </Text>
+        </div>
+        <Text size="sm" c={dim} className={classes.army}>
           <FactionIcon faction={entry.faction} size={20} />
           {army || '–'}
         </Text>
-      </Table.Td>
-      <Table.Td>
-        <Text size="sm" c={dim} className="numeric">
-          {placingText(entry)}
-        </Text>
-      </Table.Td>
-      <Table.Td ta="right">
-        <Text size="sm" c={dim} className="numeric">
-          <FieldStrength fieldElo={entry.fieldElo} />
-        </Text>
-      </Table.Td>
-      <Table.Td ta="right">
-        <Text size="sm" c={dim} className="numeric">
-          {entry.score === null ? '–' : entry.score.toFixed(1)}
-        </Text>
-      </Table.Td>
-      <Table.Td ta="center">
-        {entry.counts && (
-          <Text span c="neon.4" aria-label="Counts" title="One of the 5 best: counts">
-            ✓
-          </Text>
-        )}
-      </Table.Td>
-      <Table.Td>
-        {entry.hasList && (
-          <AnchorLink
-            to="/events/$eventId"
-            params={{ eventId: entry.eventId }}
-            search={{ tab: 'players', list: entry.playerId }}
-          >
-            List
-          </AnchorLink>
-        )}
-      </Table.Td>
-    </Table.Tr>
+        <Stat
+          className={classes.figure}
+          value={<FieldStrength fieldElo={entry.fieldElo} />}
+          label="field"
+        />
+        <Stat
+          className={classes.figure}
+          value={entry.score === null ? '–' : entry.score.toFixed(1)}
+          label="score"
+        />
+        <div className={classes.marks}>
+          {entry.counts && (
+            <Text span c="neon.4" aria-label="Counts" title="One of the 5 best: counts">
+              ✓
+            </Text>
+          )}
+          {entry.hasList && (
+            <AnchorLink
+              to="/events/$eventId"
+              params={{ eventId: entry.eventId }}
+              search={{ tab: 'players', list: entry.playerId }}
+            >
+              List
+            </AnchorLink>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -120,50 +114,48 @@ export function PlayerPage({ userId }: { userId: string }) {
     );
   }
   const { data } = player;
+  const counted = data.history.filter((entry) => entry.counts);
+  const others = data.history.filter((entry) => !entry.counts);
   return (
-    <Stack gap="lg">
-      <Stack gap={4}>
-        <Title order={1}>{data.name}</Title>
-        <Text className="numeric">
-          {data.rank === null
-            ? 'Not ranked: no counted results in the last 12 months.'
-            : `#${String(data.rank)} of ${data.ranked.toLocaleString('en-GB')} · ${data.points.toFixed(1)} points`}
-        </Text>
-        <Text size="sm" className="numeric">
-          <Anchor href={WH40K_ELO_SITE} target="_blank" rel="noreferrer" inherit>
-            wh40k-elo
-          </Anchor>{' '}
-          {eloText(data.wh40kElo)}
-        </Text>
-        {data.dropsOn !== null && (
-          <Text size="sm" c="dimmed">
-            Oldest counted result drops out on {formatIsoDay(data.dropsOn)}
+    <Stack gap="xl">
+      <div className={classes.heading}>
+        <Stack gap={4}>
+          <Title order={1}>{data.name}</Title>
+          <Text className="numeric">
+            {data.rank === null
+              ? 'Not ranked: no counted results in the last 12 months.'
+              : `#${String(data.rank)} of ${data.ranked.toLocaleString('en-GB')} · ${data.points.toFixed(1)} points`}
           </Text>
+          <Text size="sm" className="numeric">
+            <Anchor href={WH40K_ELO_SITE} target="_blank" rel="noreferrer" inherit>
+              wh40k-elo
+            </Anchor>{' '}
+            {eloText(data.wh40kElo)}
+          </Text>
+          {data.dropsOn !== null && (
+            <Text size="sm" c="dimmed">
+              Oldest counted result drops out on {formatIsoDay(data.dropsOn)}
+            </Text>
+          )}
+        </Stack>
+        {data.rank !== null && <span className={classes.rank}>#{data.rank}</span>}
+      </div>
+      <section aria-label="History" className={classes.history}>
+        {counted.length > 0 && (
+          <CardGroup dense label="Counts" description="the 5 best results, which make the points">
+            {counted.map((entry) => (
+              <HistoryCard key={entry.playerId} entry={entry} />
+            ))}
+          </CardGroup>
         )}
-      </Stack>
-      <Panel title="History">
-        <Table.ScrollContainer minWidth={780}>
-          <Table aria-label="History" striped>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Date</Table.Th>
-                <Table.Th>Event</Table.Th>
-                <Table.Th>Army</Table.Th>
-                <Table.Th>Placing</Table.Th>
-                <Table.Th ta="right">Field</Table.Th>
-                <Table.Th ta="right">Score</Table.Th>
-                <Table.Th ta="center">Counts</Table.Th>
-                <Table.Th>List</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {data.history.map((entry) => (
-                <HistoryRow key={entry.playerId} entry={entry} />
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      </Panel>
+        {others.length > 0 && (
+          <CardGroup dense label="Other" description="results that don’t count now">
+            {others.map((entry) => (
+              <HistoryCard key={entry.playerId} entry={entry} />
+            ))}
+          </CardGroup>
+        )}
+      </section>
     </Stack>
   );
 }

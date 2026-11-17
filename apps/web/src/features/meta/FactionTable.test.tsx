@@ -1,7 +1,8 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/render';
-import { FactionTable } from './FactionTable';
+import { pickOption } from '../../test/pick-option';
+import { FactionTable, MetaSortSelect } from './FactionTable';
 import { necrons, orks, tiny, unknown } from './meta-test-data';
 
 const props = {
@@ -11,13 +12,15 @@ const props = {
   sort: 'players' as const,
   dir: 'desc' as const,
   expanded: [] as string[],
-  onSortChange: vi.fn(),
   onToggle: vi.fn(),
   onOpenPlayers: vi.fn(),
 };
+/** The cards' first lines (faction or detachment names), in order. */
+const cardNames = () =>
+  [...document.querySelectorAll('article')].map((card) => card.querySelector('p')?.textContent);
 const rowOf = (name: string) => {
-  const row = screen.getByText(name).closest('tr');
-  if (row === null) throw new Error(`no row ${name}`);
+  const row = screen.getByText(name).closest('article');
+  if (row === null) throw new Error(`no card ${name}`);
   return row;
 };
 
@@ -29,26 +32,20 @@ describe('FactionTable', () => {
     expect(row.getByText('20%')).toBeInTheDocument();
     expect(row.getByText('58%')).toBeInTheDocument();
     expect(row.getByText('6 · 30%')).toBeInTheDocument();
-    const names = screen
-      .getAllByRole('row')
-      .slice(1)
-      .map((r) => r.textContent);
-    expect(names.at(-1)).toContain('Unknown faction');
+    expect(cardNames().at(-1)).toBe('Unknown faction');
   });
 
-  it('shows over-representation among X-1 players, blue over, orange under, and sorts on it', () => {
-    const onSortChange = vi.fn();
+  it('shows over-representation among X-1 players, blue over, orange under, and sorts by it', () => {
     renderWithProviders(
       <FactionTable
         {...props}
         rows={[{ ...orks, overrep: 1.4 }, { ...necrons, overrep: 0.62 }, tiny, unknown]}
-        onSortChange={onSortChange}
+        sort="overrep"
       />,
     );
     expect(within(rowOf('Orks')).getByText('1.40×')).toHaveAttribute('data-tone', 'good');
     expect(within(rowOf('Necrons')).getByText('0.62×')).toHaveAttribute('data-tone', 'bad');
-    fireEvent.click(screen.getByRole('button', { name: /Overrep/ }));
-    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'overrep', dir: 'desc' });
+    expect(cardNames().slice(0, 2)).toEqual(['Orks', 'Necrons']);
   });
 
   it('puts a bigger icon by each faction’s name', () => {
@@ -61,10 +58,7 @@ describe('FactionTable', () => {
   it('dims factions below the minimum and sorts them after the rest', () => {
     renderWithProviders(<FactionTable {...props} sort="winRate" />);
     expect(rowOf('Grey Knights')).toHaveAttribute('data-dimmed', 'true');
-    const order = screen
-      .getAllByRole('row')
-      .slice(1)
-      .map((r) => r.textContent);
+    const order = cardNames().map((name) => name ?? '');
     expect(order.findIndex((t) => t.includes('Orks'))).toBeLessThan(
       order.findIndex((t) => t.includes('Grey Knights')),
     );
@@ -73,36 +67,12 @@ describe('FactionTable', () => {
     );
   });
 
-  it('flips a sorted column on a second click and turns it off on a third', () => {
-    const onSortChange = vi.fn();
-    const { rerender } = renderWithProviders(
-      <FactionTable {...props} onSortChange={onSortChange} />,
-    );
-    fireEvent.click(screen.getByRole('button', { name: /Players/ }));
-    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'players', dir: 'asc' });
-    rerender(<FactionTable {...props} dir="asc" onSortChange={onSortChange} />);
-    expect(screen.getByRole('columnheader', { name: /Players/ })).toHaveAttribute(
-      'aria-sort',
-      'ascending',
-    );
-    fireEvent.click(screen.getByRole('button', { name: /Players/ }));
-    expect(onSortChange).toHaveBeenLastCalledWith(null);
-  });
-
-  it('sorts low to high, and by faction name A→Z first', () => {
-    const onSortChange = vi.fn();
-    renderWithProviders(
-      <FactionTable {...props} sort="winRate" dir="asc" onSortChange={onSortChange} />,
-    );
-    const order = screen
-      .getAllByRole('row')
-      .slice(1)
-      .map((r) => r.textContent);
+  it('sorts low to high when asked', () => {
+    renderWithProviders(<FactionTable {...props} sort="winRate" dir="asc" />);
+    const order = cardNames().map((name) => name ?? '');
     expect(order.findIndex((t) => t.includes('Necrons'))).toBeLessThan(
       order.findIndex((t) => t.includes('Orks')),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Faction' }));
-    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'faction', dir: 'asc' });
   });
 
   it('shows the weekly trend and the change in win rate over the last 30 days', () => {
@@ -136,14 +106,9 @@ describe('FactionTable', () => {
     expect(within(rowOf('Necrons')).getByText('32%')).toHaveAttribute('data-tone', 'bad');
   });
 
-  it('sorts on a column header and expands a faction into its archetypes', () => {
-    const onSortChange = vi.fn();
+  it('expands a faction into its archetypes', () => {
     const onToggle = vi.fn();
-    const { rerender } = renderWithProviders(
-      <FactionTable {...props} onSortChange={onSortChange} onToggle={onToggle} />,
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Win rate' }));
-    expect(onSortChange).toHaveBeenCalledWith({ sort: 'winRate', dir: 'desc' });
+    const { rerender } = renderWithProviders(<FactionTable {...props} onToggle={onToggle} />);
     const toggle = within(rowOf('Orks')).getByRole('button', { name: 'Show Orks detachments' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(toggle);
@@ -248,23 +213,21 @@ describe('FactionTable', () => {
         minPlayers={10}
       />,
     );
-    const names = screen
-      .getAllByRole('row')
-      .slice(2)
-      .map((r) => r.querySelector('td')?.textContent);
-    expect(names).toEqual(['B', 'A', 'C', 'Detachment unknown or not in English']);
+    expect(cardNames().slice(1)).toEqual(['B', 'A', 'C', 'Detachment unknown or not in English']);
     expect(rowOf('C')).toHaveAttribute('data-dimmed', 'true');
   });
 
-  it('tells screen readers which column is sorted', () => {
-    renderWithProviders(<FactionTable {...props} sort="winRate" />);
-    expect(screen.getByRole('columnheader', { name: 'Win rate' })).toHaveAttribute(
-      'aria-sort',
-      'descending',
+  it('offers the orders in a menu; the default clears the sort from the address', async () => {
+    const onSortChange = vi.fn();
+    const { rerender } = renderWithProviders(
+      <MetaSortSelect sort="reliable" onSortChange={onSortChange} />,
     );
-    expect(screen.getByRole('columnheader', { name: 'Players' })).toHaveAttribute(
-      'aria-sort',
-      'none',
-    );
+    await pickOption('Sort by', 'Players');
+    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'players', dir: 'desc' });
+    await pickOption('Sort by', 'Name A–Z');
+    expect(onSortChange).toHaveBeenLastCalledWith({ sort: 'faction', dir: 'asc' });
+    rerender(<MetaSortSelect sort="players" onSortChange={onSortChange} />);
+    await pickOption('Sort by', 'Reliable win rate');
+    expect(onSortChange).toHaveBeenLastCalledWith(null);
   });
 });

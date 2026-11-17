@@ -5,7 +5,8 @@ import {
   type PairingRating,
   type PairingRosterPlayer,
 } from '@bcp/shared';
-import { Button, Container, Group, Modal, Stack, Text, Title } from '@mantine/core';
+import { Button, Container, Group, Modal, Stack, Text } from '@mantine/core';
+import { PageTitle } from '../../components/Scoreboard';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { SearchSelect } from '../../components/SearchSelect';
@@ -52,7 +53,7 @@ export function PairingsPage() {
     return (
       <Column>
         <Stack gap="lg">
-          <Title order={2}>Pairings</Title>
+          <PageTitle order={2}>Pairings</PageTitle>
           <Panel title="From the tournament">
             <TeamPicker
               onUse={(next) => {
@@ -151,7 +152,7 @@ function Planner({ plan, use }: { plan: SheetPlan; use: (next: SheetPlan) => voi
   return (
     <Stack gap="lg">
       <Column>
-        <Title order={2}>Pairings</Title>
+        <PageTitle order={2}>Pairings</PageTitle>
         {source && (
           <Text c="dimmed" size="sm">
             {pairingName(plan)}

@@ -1,16 +1,7 @@
 import type { DateRange } from '@bcp/shared';
-import {
-  Button,
-  Collapse,
-  Group,
-  Input,
-  SegmentedControl,
-  SimpleGrid,
-  Stack,
-  TextInput,
-} from '@mantine/core';
+import { Button, Group, Input, SegmentedControl, Stack, TextInput } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
-import { useDebouncedCallback, useDisclosure } from '@mantine/hooks';
+import { useDebouncedCallback } from '@mantine/hooks';
 import { useState } from 'react';
 import {
   FinderSearchSchema,
@@ -31,11 +22,6 @@ const TYPE_OPTIONS = [
   { label: 'Singles', value: 'singles' },
   { label: 'Teams', value: 'teams' },
 ];
-const SORT_OPTIONS = [
-  { label: 'Newest', value: 'date' },
-  { label: 'Biggest', value: 'players' },
-];
-
 const toParam = (text: string) => text.trim() || undefined;
 
 /**
@@ -81,7 +67,6 @@ function useDraftRange(window: DateRange, write: (range: DateRange) => void) {
 }
 
 export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps) {
-  const [opened, { toggle }] = useDisclosure(!isLatestView(search));
   const name = useUrlText(search.q, (q) => {
     onChange({ q }, { replace: true });
   });
@@ -94,11 +79,9 @@ export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps
 
   return (
     <Stack gap="sm">
-      <Group gap="sm">
-        <Button variant="subtle" size="compact-sm" onClick={toggle} aria-expanded={opened}>
-          {opened ? 'Hide advanced search' : 'Advanced search'}
-        </Button>
-        {!isLatestView(search) && (
+      {/* Always open: the sidebar has the room. */}
+      {!isLatestView(search) && (
+        <Group gap="sm">
           <Button
             variant="subtle"
             size="compact-sm"
@@ -111,63 +94,52 @@ export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps
           >
             Back to latest
           </Button>
-        )}
-      </Group>
-      <Collapse expanded={opened}>
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
-          <DatePickerInput
-            type="range"
-            label="Dates"
-            valueFormat="D MMM YYYY"
-            allowSingleDateInRange
-            value={dates.draft}
-            onChange={dates.onRangeChange}
-          />
-          <UpdatePicker
-            from={window.from}
-            to={window.to}
-            onChange={(range) => {
-              onChange(range);
+        </Group>
+      )}
+      <Stack gap="sm">
+        <DatePickerInput
+          type="range"
+          label="Dates"
+          valueFormat="D MMM YYYY"
+          allowSingleDateInRange
+          value={dates.draft}
+          onChange={dates.onRangeChange}
+        />
+        <UpdatePicker
+          from={window.from}
+          to={window.to}
+          w="100%"
+          onChange={(range) => {
+            onChange(range);
+          }}
+        />
+        <TextInput
+          label="Name"
+          placeholder="e.g. Open, GT, Teams"
+          value={name.text}
+          onChange={(e) => {
+            name.onTextChange(e.currentTarget.value);
+          }}
+        />
+        <TextInput
+          label="Country"
+          placeholder="e.g. Germany"
+          value={country.text}
+          onChange={(e) => {
+            country.onTextChange(e.currentTarget.value);
+          }}
+        />
+        <Input.Wrapper label="Type">
+          <SegmentedControl
+            fullWidth
+            data={TYPE_OPTIONS}
+            value={search.type}
+            onChange={(value) => {
+              onChange({ type: FinderSearchSchema.shape.type.parse(value) });
             }}
           />
-          <TextInput
-            label="Name"
-            placeholder="e.g. Open, GT, Teams"
-            value={name.text}
-            onChange={(e) => {
-              name.onTextChange(e.currentTarget.value);
-            }}
-          />
-          <TextInput
-            label="Country"
-            placeholder="e.g. Germany"
-            value={country.text}
-            onChange={(e) => {
-              country.onTextChange(e.currentTarget.value);
-            }}
-          />
-          <Input.Wrapper label="Type">
-            <SegmentedControl
-              fullWidth
-              data={TYPE_OPTIONS}
-              value={search.type}
-              onChange={(value) => {
-                onChange({ type: FinderSearchSchema.shape.type.parse(value) });
-              }}
-            />
-          </Input.Wrapper>
-          <Input.Wrapper label="Sort">
-            <SegmentedControl
-              fullWidth
-              data={SORT_OPTIONS}
-              value={search.sort}
-              onChange={(value) => {
-                onChange({ sort: FinderSearchSchema.shape.sort.parse(value) });
-              }}
-            />
-          </Input.Wrapper>
-        </SimpleGrid>
-      </Collapse>
+        </Input.Wrapper>
+      </Stack>
     </Stack>
   );
 }
