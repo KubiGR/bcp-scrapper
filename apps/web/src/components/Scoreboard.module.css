@@ -1,5 +1,10 @@
-/* The Scoreboard layout: filters in a sidebar beside the content; on phones, a row above it. */
+/*
+ * The Scoreboard layout: filters in a sidebar beside the content. Too narrow for both (under the
+ * sidebar's 240px, the content's 560px and the gap), the sidebar moves above the content, full
+ * width, its filters laid out in columns instead of one long stack.
+ */
 .layout {
+  container: scoreboard / inline-size;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
@@ -14,9 +19,23 @@
   max-width: 300px;
 }
 
-@media (max-width: 47.99em) {
+@container scoreboard (max-width: 831px) {
   .sidebar {
+    flex-basis: 100%;
     max-width: none;
+  }
+
+  /* A panel's fields side by side, as many columns as fit. */
+  .sidebar :global(.mantine-Paper-root) > :global(.mantine-Stack-root) {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+    align-items: end;
+  }
+
+  /* A group of fields (the advanced search) joins its panel's columns. */
+  .sidebar [data-filter-group] {
+    display: contents;
   }
 }
 

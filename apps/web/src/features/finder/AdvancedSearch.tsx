@@ -78,7 +78,7 @@ export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps
   });
 
   return (
-    <Stack gap="sm">
+    <Stack gap="sm" data-filter-group>
       {/* Always open: the sidebar has the room. */}
       {!isLatestView(search) && (
         <Group gap="sm">
@@ -96,7 +96,7 @@ export function AdvancedSearch({ search, window, onChange }: AdvancedSearchProps
           </Button>
         </Group>
       )}
-      <Stack gap="sm">
+      <Stack gap="sm" data-filter-group>
         <DatePickerInput
           type="range"
           label="Dates"
