@@ -49,6 +49,7 @@ import {
 } from './players-filter';
 import classes from './PlayersPanel.module.css';
 import { useQueueLists } from './use-queue-lists';
+import { useTypeToSearch } from '../../lib/use-type-to-search';
 
 function emptyText(loadingFromBcp: boolean, playerCount: number): string {
   if (loadingFromBcp) return 'Loading players from BCP…';
@@ -159,6 +160,7 @@ export function PlayersPanel({
   onOpenPlayer,
 }: PlayersPanelProps) {
   const players = useQuery(playersQuery(event.bcpId));
+  const typeToSearch = useTypeToSearch();
   const [query, setQuery] = useState('');
   const [factions, setFactions] = useState<string[]>([]);
   const [dispositions, setDispositions] = useState<string[]>([]);
@@ -313,7 +315,7 @@ export function PlayersPanel({
                   value={factions}
                   onChange={setFactions}
                   clearable
-                  searchable
+                  searchable={typeToSearch}
                 />
                 <Select
                   aria-label="Record"
@@ -344,7 +346,7 @@ export function PlayersPanel({
                   value={detachments}
                   onChange={setDetachments}
                   clearable
-                  searchable
+                  searchable={typeToSearch}
                 />
               </Stack>
             </Panel>

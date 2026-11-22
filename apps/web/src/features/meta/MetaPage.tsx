@@ -38,6 +38,7 @@ import { MetaPlayersDrawer } from './MetaPlayersDrawer';
 import { TeamMeta } from './TeamMeta';
 import { UpdatePicker } from '../updates/UpdatePicker';
 import { effectiveOf, updatesQuery, useDateWindow } from '../updates/updates-queries';
+import { useTypeToSearch } from '../../lib/use-type-to-search';
 
 interface MetaPageProps {
   search: MetaSearch;
@@ -81,6 +82,7 @@ export function changeSpans(
 export function MetaPage({ search, onSearchChange }: MetaPageProps) {
   // Change compares the latest game update in range with the one before it, when updates are known.
   const updates = useQuery(updatesQuery);
+  const typeToSearch = useTypeToSearch();
   const window = useDateWindow(search);
   const change = changeSpans(effectiveOf(updates.data), window.to);
   const meta = useQuery(metaQuery(search, change?.spans));
@@ -144,7 +146,7 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
                   factions: next.length > 0 ? next.join('|') : undefined,
                 });
               }}
-              searchable
+              searchable={typeToSearch}
               clearable
             />
           )}
