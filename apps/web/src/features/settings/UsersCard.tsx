@@ -46,6 +46,10 @@ function Seen({ user }: { user: ListedUser }) {
   );
 }
 
+/** The most recently seen first, those never seen last. */
+const byLastSeen = (a: ListedUser, b: ListedUser) =>
+  (b.lastSeenAt ?? '').localeCompare(a.lastSeenAt ?? '');
+
 interface OneTimePassword {
   username: string;
   password: string;
@@ -105,6 +109,7 @@ export function UsersCard() {
     },
   });
   const actionError = reset.error ?? update.error ?? remove.error;
+  const listed = users.data?.users.toSorted(byLastSeen) ?? [];
 
   if (!isAdmin) return null;
 
@@ -123,7 +128,7 @@ export function UsersCard() {
           <>
             {access && (
               <WaitingList
-                users={users.data.users.filter((u) => u.disabled)}
+                users={listed.filter((u) => u.disabled)}
                 pending={update.isPending}
                 onApprove={(user) => {
                   update.mutate({ user, change: { disabled: false, ignored: false } });
@@ -135,7 +140,7 @@ export function UsersCard() {
               />
             )}
             {(['admin', 'member'] as const).map((role) => {
-              const these = users.data.users.filter(
+              const these = listed.filter(
                 (user) =>
                   (!access || !user.disabled) && (user.role === 'admin') === (role === 'admin'),
               );
