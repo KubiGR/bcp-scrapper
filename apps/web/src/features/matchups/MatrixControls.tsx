@@ -2,6 +2,7 @@ import { Group, MultiSelect, NumberInput, SegmentedControl, Stack } from '@manti
 import { DispositionText } from '../../components/DispositionText';
 import { hasSideFilter, type MatrixSettings } from './matrix-view';
 import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
+import { useTypeToSearch } from '../../lib/use-type-to-search';
 
 /** BCP's five known dispositions (subFactions), shown even when the loaded event has no games in
  * them yet. Anything else the data brings is appended. */
@@ -37,6 +38,7 @@ export function MatrixControls({
   stacked = false,
 }: MatrixControlsProps) {
   const Row = stacked ? Stack : Group;
+  const typeToSearch = useTypeToSearch();
   const width = (wide: number) => (stacked ? undefined : { base: '100%', xs: wide });
   const factionOptions = [...new Set([...factions, ...settings.factions])].sort((a, b) =>
     a.localeCompare(b),
@@ -81,7 +83,7 @@ export function MatrixControls({
           renderPill={renderFactionPill}
           placeholder={settings.factions.length === 0 ? 'All factions' : undefined}
           clearable
-          searchable
+          searchable={typeToSearch}
           w={width(260)}
           data={factionOptions}
           value={settings.factions}
@@ -105,7 +107,7 @@ export function MatrixControls({
           label="Detachment"
           placeholder={settings.detachments.length === 0 ? 'All detachments' : undefined}
           clearable
-          searchable
+          searchable={typeToSearch}
           w={width(260)}
           data={detachmentOptions}
           value={settings.detachments}

@@ -23,6 +23,7 @@ import { useDateWindow } from '../updates/updates-queries';
 import { topListsQuery, type TopListsSearch } from './top-lists-queries';
 import { UpdatePicker } from '../updates/UpdatePicker';
 import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
+import { useTypeToSearch } from '../../lib/use-type-to-search';
 
 const LOSS_CHOICES = [0, 1, 2, 3, 4, 5];
 /** 1 is any big event; the default 4 keeps X-1 at 3-1 or better. */
@@ -45,6 +46,7 @@ interface TopListsPageProps {
 export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
   const minRounds = search.minRounds ?? DEFAULT_MIN_ROUNDS;
   const results = useQuery(topListsQuery({ ...search, minRounds }));
+  const typeToSearch = useTypeToSearch();
   // The open result, by key: the drawer follows the refreshed results (e.g. after "Fetch this list").
   const [openKey, setOpenKey] = useState<{ eventId: string; bcpId: string } | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('record');
@@ -91,7 +93,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                 onChange={(value) => {
                   onSearchChange({ ...search, factions: join(value) });
                 }}
-                searchable
+                searchable={typeToSearch}
                 clearable
               />
               <Select
@@ -147,7 +149,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
                 onChange={(value) => {
                   onSearchChange({ ...search, detachments: join(value, DETACHMENT_SEPARATOR) });
                 }}
-                searchable
+                searchable={typeToSearch}
                 clearable
               />
             </Stack>

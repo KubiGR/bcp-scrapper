@@ -47,4 +47,20 @@ describe('SearchSelect', () => {
     fireEvent.click(await screen.findByRole('option', { name: 'Grey Knights' }));
     expect(input.value).toBe('Grey Knights');
   });
+
+  it('on a touch screen, is a list to tap: no typing, so no keyboard', async () => {
+    const matchMedia = window.matchMedia;
+    window.matchMedia = (query: string) =>
+      Object.assign(matchMedia(query), { matches: query === '(pointer: coarse)' });
+    try {
+      renderWithProviders(<Picker />);
+      const input = screen.getByRole<HTMLInputElement>('combobox', { name: 'Army' });
+      expect(input).toHaveAttribute('readonly');
+      fireEvent.click(input);
+      fireEvent.click(await screen.findByRole('option', { name: 'Grey Knights' }));
+      expect(input.value).toBe('Grey Knights');
+    } finally {
+      window.matchMedia = matchMedia;
+    }
+  });
 });
