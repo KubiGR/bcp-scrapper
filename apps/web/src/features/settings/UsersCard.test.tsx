@@ -64,6 +64,31 @@ describe('UsersCard', () => {
     expect(within(rowOf('ana')).getByText('Never seen')).toBeInTheDocument();
   });
 
+  it('lists the most recently seen first, those never seen last', async () => {
+    const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+    stubFetchRoutes({
+      'GET /api/auth/me': viaAccess(me),
+      'GET /api/users': {
+        users: [
+          { ...me, lastSeenAt: ago(60) },
+          { ...ana, username: 'old@example.com', lastSeenAt: ago(3000) },
+          { ...ana, id: 3, username: 'never@example.com', lastSeenAt: null },
+          { ...ana, id: 4, username: 'new@example.com', lastSeenAt: ago(5) },
+          { ...ana, id: 5, username: 'w-old@example.com', disabled: true, lastSeenAt: ago(90) },
+          { ...ana, id: 6, username: 'w-new@example.com', disabled: true, lastSeenAt: ago(2) },
+        ],
+      },
+    });
+    renderWithProviders(<UsersCard />);
+    const names = (region: string) =>
+      within(screen.getByRole('region', { name: region }))
+        .getAllByText(/@example\.com$/)
+        .map((name) => name.textContent);
+    await screen.findByText('new@example.com');
+    expect(names('Members')).toEqual(['new@example.com', 'old@example.com', 'never@example.com']);
+    expect(names('Waiting for approval')).toEqual(['w-new@example.com', 'w-old@example.com']);
+  });
+
   it('through Access: says when someone waiting was last seen', async () => {
     stubFetchRoutes({
       'GET /api/auth/me': viaAccess(me),
