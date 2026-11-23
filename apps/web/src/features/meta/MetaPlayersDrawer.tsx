@@ -1,5 +1,5 @@
 import { DETACHMENT_SEPARATOR, MAX_LOSSES_LIMIT, UNKNOWN_FILTER } from '@bcp/shared';
-import { Drawer, Skeleton, Stack, Text } from '@mantine/core';
+import { Drawer, Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
@@ -13,6 +13,7 @@ import {
 import { topListsQuery } from '../top-lists/top-lists-queries';
 import { UNKNOWN_DETACHMENT, type PlayersFilter } from './FactionTable';
 import type { MetaSearch } from './meta-queries';
+import { CardsSkeleton } from '../../components/Skeletons';
 
 interface MetaPlayersDrawerProps {
   filter: PlayersFilter | null;
@@ -71,7 +72,7 @@ export function MetaPlayersDrawer({ filter, search, onClose }: MetaPlayersDrawer
       size="xl"
       title={filter === null ? '' : titleOf(filter)}
     >
-      {players.isPending && <Skeleton height={200} />}
+      {players.isPending && <CardsSkeleton label="Loading players" cards={4} dense />}
       {players.error && <ErrorState error={players.error} onRetry={() => void players.refetch()} />}
       {players.data && (
         <Stack gap="md">

@@ -1,5 +1,5 @@
 import type { BcpStatus } from '@bcp/shared';
-import { Badge, Group, Skeleton, Stack, Text } from '@mantine/core';
+import { Badge, Group, Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import type { CSSProperties } from 'react';
 import { ErrorState } from '../../components/ErrorState';
@@ -7,6 +7,7 @@ import { Panel } from '../../components/Panel';
 import { formatDateTime } from '../../lib/format';
 import { bcpStatusQuery } from './bcp-status-query';
 import classes from './BcpStatusCard.module.css';
+import { PanelSkeleton } from '../../components/Skeletons';
 
 const PANEL_TITLE = 'BCP uplink';
 
@@ -56,7 +57,7 @@ export function BcpStatusCard() {
   if (isPending) {
     return (
       <Panel title={PANEL_TITLE}>
-        <Skeleton height={56} />
+        <PanelSkeleton label="Loading BCP status" lines={2} />
       </Panel>
     );
   }

@@ -1,5 +1,5 @@
 import { DETACHMENT_SEPARATOR, KNOWN_DISPOSITIONS } from '@bcp/shared';
-import { Alert, Box, MultiSelect, Select, Skeleton, Stack, Text } from '@mantine/core';
+import { Alert, Box, MultiSelect, Select, Stack, Text } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -24,6 +24,7 @@ import { topListsQuery, type TopListsSearch } from './top-lists-queries';
 import { UpdatePicker } from '../updates/UpdatePicker';
 import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
 import { useTypeToSearch } from '../../lib/use-type-to-search';
+import { CardsSkeleton } from '../../components/Skeletons';
 
 const LOSS_CHOICES = [0, 1, 2, 3, 4, 5];
 /** 1 is any big event; the default 4 keeps X-1 at 3-1 or better. */
@@ -167,7 +168,7 @@ export function TopListsPage({ search, onSearchChange }: TopListsPageProps) {
           </Text>
         )}
 
-        {results.isPending && <Skeleton height={200} />}
+        {results.isPending && <CardsSkeleton label="Loading lists" />}
         {results.error && (
           <ErrorState error={results.error} onRetry={() => void results.refetch()} />
         )}

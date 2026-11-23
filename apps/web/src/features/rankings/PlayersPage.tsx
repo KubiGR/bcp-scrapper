@@ -5,7 +5,6 @@ import {
   Group,
   Input,
   SegmentedControl,
-  Skeleton,
   Stack,
   Text,
   TextInput,
@@ -32,6 +31,7 @@ import { ordinal, plural } from '../../lib/format';
 import { rankingsPagesQuery } from './rankings-queries';
 import { FactionIcon, renderFactionOption } from '../../components/FactionIcon';
 import { HoverHint } from '../../components/HoverHint';
+import { CardsSkeleton } from '../../components/Skeletons';
 
 /** The Players page's URL search. */
 export interface PlayersSearch {
@@ -287,7 +287,7 @@ export function PlayersPage({ search, onSearchChange }: PlayersPageProps) {
                 : 'tournament points'}
           </Text>
         </div>
-        {rankings.isPending && <Skeleton height={240} />}
+        {rankings.isPending && <CardsSkeleton label="Loading players" cards={5} dense />}
         {rankings.error && (
           <ErrorState error={rankings.error} onRetry={() => void rankings.refetch()} />
         )}

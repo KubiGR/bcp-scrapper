@@ -1,5 +1,5 @@
 import type { DetachmentListsResponse } from '@bcp/shared';
-import { Accordion, Anchor, Button, Code, Drawer, Skeleton, Stack, Text } from '@mantine/core';
+import { Accordion, Anchor, Button, Code, Drawer, Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
@@ -7,6 +7,7 @@ import { formatIsoDay } from '../../lib/format';
 import { playerListQuery } from '../event/event-queries';
 import { listLink } from '../event/ListDrawer';
 import { detachmentListsQuery } from './detachment-names-queries';
+import { PanelSkeleton } from '../../components/Skeletons';
 
 type Found = DetachmentListsResponse['lists'][number];
 
@@ -15,7 +16,7 @@ function ListText({ list }: { list: Found }) {
   const text = useQuery(playerListQuery(list.playerId));
   return (
     <Stack gap="xs">
-      {text.isPending && <Skeleton height={120} />}
+      {text.isPending && <PanelSkeleton label="Loading the list" lines={6} />}
       {text.error && <ErrorState error={text.error} onRetry={() => void text.refetch()} />}
       {text.data && (
         <Code block style={{ whiteSpace: 'pre-wrap', maxHeight: 360, overflow: 'auto' }}>
@@ -31,7 +32,7 @@ function ListText({ list }: { list: Found }) {
 
 function Lists({ name, faction }: { name: string; faction?: string }) {
   const found = useQuery(detachmentListsQuery(name, faction));
-  if (found.isPending) return <Skeleton height={160} />;
+  if (found.isPending) return <PanelSkeleton label="Loading lists" lines={6} />;
   if (found.error) return <ErrorState error={found.error} onRetry={() => void found.refetch()} />;
   const { lists, total } = found.data;
   if (lists.length === 0) return <Text c="dimmed">No stored list uses it any more.</Text>;

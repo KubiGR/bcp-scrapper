@@ -1,5 +1,5 @@
 import type { DetachmentNamesResponse } from '@bcp/shared';
-import { Alert, Badge, Button, Group, Select, Skeleton, Stack, Text } from '@mantine/core';
+import { Alert, Badge, Button, Group, Select, Stack, Text } from '@mantine/core';
 import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 import { SearchSelect } from '../../components/SearchSelect';
@@ -20,6 +20,7 @@ import {
   unlinkDetachment,
 } from './detachment-names-queries';
 import { FactionIcon, renderFactionOption } from '../../components/FactionIcon';
+import { CardsSkeleton } from '../../components/Skeletons';
 
 type Unsure = DetachmentNamesResponse['unsure'][number];
 type Foreign = DetachmentNamesResponse['foreign'][number];
@@ -444,7 +445,9 @@ export function DetachmentNamesCard({
 
   return (
     <Panel title="Detachment names">
-      {names.isPending && <Skeleton height={80} />}
+      {names.isPending && (
+        <CardsSkeleton label="Loading detachment names" groups={0} cards={3} dense />
+      )}
       {names.error && <ErrorState error={names.error} onRetry={() => void names.refetch()} />}
       {names.data && (
         <Stack gap="md">

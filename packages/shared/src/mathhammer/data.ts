@@ -64,6 +64,14 @@ export const UnitDatasheetSchema = z.object({
   /** Wargear that isn't a weapon (Relic Shield, Vexilla): known, never "couldn't read". */
   wargear: z.array(z.string()),
   fnp: z.number().int().nullable(),
+  /**
+   * Feel No Pain against psychic attacks only, and whether it covers the whole unit (a leader's
+   * "models in that unit") or only this model. Data read before this was known has none.
+   */
+  fnpPsychic: z
+    .object({ value: z.number().int(), wholeUnit: z.boolean() })
+    .nullable()
+    .default(null),
   stealth: z.boolean(),
   /** An ability subtracting from (or halving) the Damage of attacks allocated to its models. */
   damageReduction: z

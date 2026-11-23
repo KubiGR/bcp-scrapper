@@ -1,5 +1,5 @@
 import { strengthFactor, type EloFigure, type PlayerHistoryEntry } from '@bcp/shared';
-import { Anchor, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Stack, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '../../api/client';
 import { AnchorLink } from '../../components/AnchorLink';
@@ -12,6 +12,7 @@ import { playerRankingQuery } from './rankings-queries';
 import { FactionIcon } from '../../components/FactionIcon';
 import { HoverHint } from '../../components/HoverHint';
 import { usePageTitle } from '../../lib/page-title';
+import { PageSkeleton, TilesSkeleton, TitleSkeleton } from '../../components/Skeletons';
 
 /** wh40k-elo's site (it has no page per player). */
 const WH40K_ELO_SITE = 'https://wh40k-elo.duckdns.org/';
@@ -105,7 +106,19 @@ function HistoryCard({ entry }: { entry: PlayerHistoryEntry }) {
 export function PlayerPage({ userId }: { userId: string }) {
   const player = useQuery(playerRankingQuery(userId));
   usePageTitle(player.data?.name ?? 'Player');
-  if (player.isPending) return <Skeleton height={240} />;
+  if (player.isPending) {
+    return (
+      <PageSkeleton
+        label="Loading the player"
+        header={
+          <>
+            <TitleSkeleton />
+            <TilesSkeleton />
+          </>
+        }
+      />
+    );
+  }
   if (player.error) {
     return player.error instanceof ApiError && player.error.status === 404 ? (
       <Text c="dimmed">No player with that account.</Text>

@@ -1,5 +1,5 @@
 import type { EventDetail, StandingCell, StandingRow } from '@bcp/shared';
-import { Group, Select, Skeleton, Stack, Text } from '@mantine/core';
+import { Group, Select, Stack, Text } from '@mantine/core';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AnchorLink } from '../../components/AnchorLink';
@@ -9,6 +9,7 @@ import { sortRows, type SortDir, type SortValue } from '../../lib/table-sort';
 import classes from './StandingsPanel.module.css';
 import { standingsQuery } from './analysis-queries';
 import { formatPoints, formatTotals, outcomeLabel } from './format';
+import { CardsSkeleton } from '../../components/Skeletons';
 
 function Cell({ cell }: { cell: StandingCell | null }) {
   if (!cell) return <Text c="dimmed">—</Text>;
@@ -40,7 +41,7 @@ const SORTS: { value: keyof typeof STANDING_SORT; label: string; dir: SortDir }[
 export function StandingsPanel({ event }: { event: EventDetail }) {
   const standings = useQuery(standingsQuery(event.bcpId, event.pairings.queued > 0));
   const [sortKey, setSortKey] = useState<keyof typeof STANDING_SORT>('placing');
-  if (standings.isPending) return <Skeleton height={200} />;
+  if (standings.isPending) return <CardsSkeleton label="Loading standings" cards={4} />;
   if (standings.error) {
     return <ErrorState error={standings.error} onRetry={() => void standings.refetch()} />;
   }

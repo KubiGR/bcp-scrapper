@@ -48,6 +48,7 @@ describe('readKeywords', () => {
       cleave: 2,
       melta: 4,
     });
+    expect(readKeywords(['PSYCHIC'], [])).toMatchObject({ psychic: true });
     expect(readKeywords(['Sustained Hits D3', 'Blast 3'], [])).toMatchObject({
       sustainedHits: 'D3',
       blast: 3,

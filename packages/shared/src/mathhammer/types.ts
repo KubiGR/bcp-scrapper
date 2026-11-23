@@ -15,6 +15,8 @@ export interface DefenderGroup {
   invulnAgainst: InvulnAgainst;
   wounds: number;
   fnp: number | null;
+  /** Feel No Pain against psychic attacks only (Psychic Hood); the better of the two counts. */
+  fnpPsychic: number | null;
   character: boolean;
 }
 
@@ -90,6 +92,8 @@ export interface Weapon {
   lance: boolean;
   precision: boolean;
   indirectFire: boolean;
+  /** Psychic: its attacks are psychic attacks and ignore modifiers that worsen BS/WS or the hit roll. */
+  psychic: boolean;
   anti: { keyword: string; value: number }[];
   rapidFire: string | null;
   blast: number | null;

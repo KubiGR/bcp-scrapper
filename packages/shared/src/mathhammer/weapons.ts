@@ -13,6 +13,7 @@ export interface WeaponKeywords {
   ignoresCover: boolean;
   precision: boolean;
   indirectFire: boolean;
+  psychic: boolean;
   anti: { keyword: string; value: number }[];
   rapidFire: string | null;
   blast: number | null;
@@ -43,6 +44,7 @@ export const NO_KEYWORDS: WeaponKeywords = {
   ignoresCover: false,
   precision: false,
   indirectFire: false,
+  psychic: false,
   anti: [],
   rapidFire: null,
   blast: null,
@@ -66,6 +68,7 @@ export function buildWeapon(
     lance: keywords.lance,
     precision: keywords.precision,
     indirectFire: keywords.indirectFire,
+    psychic: keywords.psychic,
     anti: keywords.anti,
     rapidFire: keywords.rapidFire,
     blast: keywords.blast,

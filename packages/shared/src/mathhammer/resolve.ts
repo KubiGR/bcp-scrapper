@@ -82,7 +82,9 @@ export function hitStep(
     } else if (hurts !== null && !hurts.has(g)) {
       outcomes = [{ to: id, p: 1, wasted: 0 }];
     } else {
-      outcomes = losses(damage, group.fnp, state[last] === 1).map((loss) => {
+      // Feel No Pain as this weapon meets it (the allocation's groups; psychic-only counted).
+      const fnp = (allocation.groups[g] ?? group).fnp;
+      outcomes = losses(damage, fnp, state[last] === 1).map((loss) => {
         const { next, wasted } = lose(state, space.groups, g, loss.lost);
         if (loss.usedReroll) next[last] = 0;
         return { to: space.id(next), p: loss.p, wasted };

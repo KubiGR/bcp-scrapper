@@ -1,5 +1,5 @@
 import type { EventDetail } from '@bcp/shared';
-import { Box, Button, Group, Skeleton, Stack, Text } from '@mantine/core';
+import { Box, Button, Group, Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
@@ -15,6 +15,7 @@ import {
 } from './matchups-queries';
 import type { MatrixPick } from './matrix-pick';
 import { EVENT_MATRIX_SETTINGS, hasSideFilter, type MatrixSettings } from './matrix-view';
+import { MatrixSkeleton } from '../../components/Skeletons';
 
 /** The event's Matchups tab: controls, a one-line summary, the heatmap, and a drill-down drawer
  * on each cell. */
@@ -30,7 +31,7 @@ export function MatchupsPanel({ event }: { event: EventDetail }) {
     enabled: cell !== null,
   });
 
-  if (matchups.isPending) return <Skeleton height={200} />;
+  if (matchups.isPending) return <MatrixSkeleton label="Loading matchups" />;
   if (matchups.error) {
     return <ErrorState error={matchups.error} onRetry={() => void matchups.refetch()} />;
   }

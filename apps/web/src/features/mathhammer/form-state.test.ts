@@ -25,6 +25,7 @@ describe('toCalculation', () => {
       invulnAgainst: 'all',
       wounds: 1,
       fnp: null,
+      fnpPsychic: null,
       character: false,
     });
   });

@@ -173,6 +173,41 @@ describe('extractUnits', () => {
     expect(sheet('Intercessor Squad')?.damageReduction).toBeNull();
   });
 
+  it('reads Feel No Pain against psychic attacks, for the whole unit or this model only', () => {
+    const psychicOf = (rules: string) => {
+      const tables = sampleTables();
+      (tables.datasheet_ability as Record<string, unknown>[]).push({
+        id: 'ab-hood',
+        abilityType: 'datasheet',
+        localisations: { en: { name: 'Psychic Hood', rules } },
+      });
+      (tables.datasheet_datasheet_ability as Record<string, unknown>[]).push({
+        datasheetId: 'ds-cap',
+        datasheetAbilityId: 'ab-hood',
+        displayOrder: 2,
+      });
+      return extractUnits(tables).datasheets.find((d) => d.name === 'Captain')?.fnpPsychic;
+    };
+    expect(sheet('Captain')?.fnpPsychic).toBeNull();
+    expect(
+      psychicOf(
+        'While this model is leading a unit, models in that unit have the Feel No Pain 4+ ability against Psychic Attacks.',
+      ),
+    ).toEqual({ value: 4, wholeUnit: true });
+    expect(
+      psychicOf(
+        'This unit has <b>Feel No Pain 4+</b> against <b>mortal wounds</b> and Psychic attacks.',
+      ),
+    ).toEqual({ value: 4, wholeUnit: true });
+    expect(
+      psychicOf('This model has the Feel No Pain 2+ ability against Psychic Attacks.'),
+    ).toEqual({ value: 2, wholeUnit: false });
+    // Against mortal wounds alone it isn't psychic.
+    expect(
+      psychicOf('This model has the Feel No Pain 5+ ability against mortal wounds.'),
+    ).toBeNull();
+  });
+
   it('keeps the names of wargear that isn’t a weapon', () => {
     expect(sheet('Captain')?.wargear).toEqual(['Relic Shield']);
     expect(sheet('Intercessor Squad')?.wargear).toEqual([]);

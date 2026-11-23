@@ -1,4 +1,4 @@
-import { Skeleton, Stack, Switch, Text } from '@mantine/core';
+import { Stack, Switch, Text } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
@@ -6,6 +6,7 @@ import { formatDateTime, plural } from '../../lib/format';
 import { meQuery } from '../auth/auth-queries';
 import { fetchQueueQuery } from '../fetch-queue/fetch-queue-queries';
 import { autoFetchQuery, setAutoFetch } from './auto-fetch-queries';
+import { PanelSkeleton } from '../../components/Skeletons';
 
 /** The automatic fetching switch, and how much it still has to do. */
 export function AutoFetchCard() {
@@ -23,7 +24,7 @@ export function AutoFetchCard() {
 
   return (
     <Panel title="Automatic fetching">
-      {auto.isPending && <Skeleton height={56} />}
+      {auto.isPending && <PanelSkeleton label="Loading automatic fetching" lines={2} />}
       {auto.error && <ErrorState error={auto.error} onRetry={() => void auto.refetch()} />}
       {auto.data && (
         <Stack gap="xs">

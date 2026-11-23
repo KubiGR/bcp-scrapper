@@ -1,5 +1,5 @@
 import type { MetaRow } from '@bcp/shared';
-import { Input, SegmentedControl, Skeleton, Stack, Select, Text, TextInput } from '@mantine/core';
+import { Input, SegmentedControl, Stack, Select, Text, TextInput } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -27,6 +27,7 @@ import { Movement, Podium } from './FactionsOverview';
 import { DEFAULT_MIN_PLAYERS, metaQuery, sharePercent, type MetaSearch } from './meta-queries';
 import { UpdatePicker } from '../updates/UpdatePicker';
 import { effectiveOf, updatesQuery, useDateWindow } from '../updates/updates-queries';
+import { CardsSkeleton } from '../../components/Skeletons';
 
 /** The Factions page's URL search: the Meta API's filters, and the table's layout. */
 export type FactionsSearch = Pick<MetaSearch, 'from' | 'to' | 'type'> & {
@@ -315,7 +316,7 @@ export function FactionsPage({ search, onSearchChange }: FactionsPageProps) {
           </Text>
         </div>
 
-        {meta.isPending && <Skeleton height={240} />}
+        {meta.isPending && <CardsSkeleton label="Loading factions" cards={4} dense />}
         {meta.error && <ErrorState error={meta.error} onRetry={() => void meta.refetch()} />}
         {meta.data &&
           (meta.data.eventsInRange === 0 ? (

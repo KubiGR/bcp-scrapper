@@ -1,5 +1,5 @@
 import type { FactionMatrix as FactionMatrixData, MatrixCell } from '@bcp/shared';
-import { Group, Stack, Table, Text, UnstyledButton } from '@mantine/core';
+import { Group, Skeleton, Stack, Table, Text, UnstyledButton } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import {
   Fragment,
@@ -10,6 +10,7 @@ import {
   type SyntheticEvent,
 } from 'react';
 import { FactionIcon, hasFactionIcon } from '../../components/FactionIcon';
+import { Loading } from '../../components/Skeletons';
 import { shortArmy } from '../pairings/army-name';
 import { CellTip, type CellTipHandle } from './CellTip';
 import classes from './FactionMatrix.module.css';
@@ -59,9 +60,18 @@ function DetachmentRows({
     return (
       <Table.Tr>
         <Table.Td colSpan={columns.length + 3} className={classes.detachmentNote}>
-          <Text size="xs" c="dimmed">
-            {rows.error ? `Couldn’t load ${faction}’s detachments.` : 'Loading detachments…'}
-          </Text>
+          {rows.error ? (
+            <Text size="xs" c="dimmed">
+              Couldn’t load {faction}’s detachments.
+            </Text>
+          ) : (
+            <Loading label={`Loading ${faction}’s detachments`}>
+              <Stack gap={4}>
+                <Skeleton height={20} />
+                <Skeleton height={20} />
+              </Stack>
+            </Loading>
+          )}
         </Table.Td>
       </Table.Tr>
     );

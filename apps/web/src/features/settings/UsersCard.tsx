@@ -10,7 +10,6 @@ import {
   Menu,
   Modal,
   Select,
-  Skeleton,
   Stack,
   Text,
   TextInput,
@@ -30,6 +29,7 @@ import {
   usersQuery,
 } from '../auth/auth-queries';
 import { lastSeen } from './last-seen';
+import { CardsSkeleton } from '../../components/Skeletons';
 
 const PANEL_TITLE = 'Users';
 
@@ -117,7 +117,7 @@ export function UsersCard() {
     <Panel title={PANEL_TITLE}>
       <Stack gap="md">
         {users.isPending ? (
-          <Skeleton height={80} />
+          <CardsSkeleton label="Loading users" groups={1} cards={3} dense />
         ) : users.error ? (
           <ErrorState
             title="Users unavailable"

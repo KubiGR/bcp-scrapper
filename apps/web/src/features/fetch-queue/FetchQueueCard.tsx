@@ -1,15 +1,16 @@
-import { Skeleton, Text } from '@mantine/core';
+import { Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { fetchQueueQuery } from './fetch-queue-queries';
 import { QueueControls } from './QueueControls';
+import { PanelSkeleton } from '../../components/Skeletons';
 
 export function FetchQueueCard() {
   const queue = useQuery(fetchQueueQuery);
   return (
     <Panel title="Fetch queue">
-      {queue.isPending && <Skeleton height={56} />}
+      {queue.isPending && <PanelSkeleton label="Loading the queue" lines={2} />}
       {queue.error && <ErrorState error={queue.error} onRetry={() => void queue.refetch()} />}
       {queue.data && (
         <>
