@@ -1,4 +1,4 @@
-import { Button, Center, Group, Loader, Stack, Text, Title } from '@mantine/core';
+import { Box, Button, Center, Group, Stack, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { Navigate, useRouterState } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
@@ -7,6 +7,7 @@ import { Panel } from '../../components/Panel';
 import { meQuery } from './auth-queries';
 import { ChangePasswordForm } from './ChangePasswordForm';
 import { useLogout } from './use-logout';
+import { PageSkeleton } from '../../components/Skeletons';
 
 /**
  * Lets the app render only for a logged-in user when logins are on: others go to /login (and
@@ -19,9 +20,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (me.isPending) {
     return (
-      <Center mih="100vh">
-        <Loader aria-label="Loading" />
-      </Center>
+      <Box p={{ base: 'md', sm: 'xl' }}>
+        <PageSkeleton label="Loading" />
+      </Box>
     );
   }
   if (me.error) {

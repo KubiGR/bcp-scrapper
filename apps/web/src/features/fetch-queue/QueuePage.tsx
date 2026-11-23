@@ -3,6 +3,7 @@ import { Accordion, Badge, Button, Group, Stack, Text } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnchorLink } from '../../components/AnchorLink';
 import { Panel } from '../../components/Panel';
+import { CardsSkeleton, PanelSkeleton } from '../../components/Skeletons';
 import {
   Card,
   CardGroup,
@@ -151,11 +152,20 @@ export function QueuePage() {
   return (
     <SidebarLayout
       sidebarLabel="Queue controls"
-      sidebar={state && <Panel title="Queue">{<QueueControls state={state} />}</Panel>}
+      sidebar={
+        <Panel title="Queue">
+          {state ? (
+            <QueueControls state={state} />
+          ) : (
+            <PanelSkeleton label="Loading the queue" lines={4} />
+          )}
+        </Panel>
+      }
     >
       <Stack gap="xl">
         <PageTitle>Queue</PageTitle>
         {error && <Text c="red">{error.message}</Text>}
+        {!details && !error && <CardsSkeleton label="Loading jobs" cards={4} dense />}
         {details && (
           <>
             <CardGroup label={String(failed)} description="Failures" ariaLabel="Failures">

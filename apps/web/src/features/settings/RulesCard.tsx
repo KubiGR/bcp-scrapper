@@ -1,10 +1,11 @@
-import { Anchor, Button, Group, Skeleton, Stack, Text } from '@mantine/core';
+import { Anchor, Button, Group, Stack, Text } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { formatDateTime, plural } from '../../lib/format';
 import { meQuery } from '../auth/auth-queries';
 import { refreshRules, rulesQuery } from './rules-queries';
+import { PanelSkeleton } from '../../components/Skeletons';
 
 /**
  * Mathhammer's unit data and each faction's detachments from 39k.pro: what was read, when, and
@@ -29,7 +30,7 @@ export function RulesCard() {
 
   return (
     <Panel title="Rules data">
-      {status.isPending && <Skeleton height={56} />}
+      {status.isPending && <PanelSkeleton label="Loading the rules status" lines={2} />}
       {status.error && <ErrorState error={status.error} onRetry={() => void status.refetch()} />}
       {data && (
         <Stack gap="xs">

@@ -1,5 +1,5 @@
 import type { PlayerRound, RoundView } from '@bcp/shared';
-import { Accordion, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Accordion, Stack, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
@@ -18,6 +18,13 @@ import { useRefreshWhenPairingsSettle } from './useRefreshWhenPairingsSettle';
 import { PlayerName } from '../rankings/PlayerName';
 import { RankBadge } from '../rankings/RankBadge';
 import { usePageTitle } from '../../lib/page-title';
+import {
+  CardGroupsSkeleton,
+  CardsSkeleton,
+  Loading,
+  TilesSkeleton,
+  TitleSkeleton,
+} from '../../components/Skeletons';
 
 function RoundCell({ cell }: { cell: PlayerRound | null }) {
   if (!cell) return <Text c="dimmed">—</Text>;
@@ -89,7 +96,7 @@ function TeamMatches({
   const players = useQuery(playersQuery(eventId));
   const [openPlayerId, setOpenPlayerId] = useState<string | null>(null);
 
-  if (rounds.isPending) return <Skeleton height={120} />;
+  if (rounds.isPending) return <CardsSkeleton label="Loading rounds" groups={0} cards={3} dense />;
   if (rounds.error)
     return <ErrorState error={rounds.error} onRetry={() => void rounds.refetch()} />;
 
@@ -148,7 +155,17 @@ export function TeamPage({ eventId, teamId }: { eventId: string; teamId: string 
   const team = useQuery(teamQuery(eventId, teamId, live));
   usePageTitle(team.data?.team.name ?? 'Team', event.data?.name);
 
-  if (team.isPending) return <Skeleton height={240} />;
+  if (team.isPending) {
+    return (
+      <Loading label="Loading the team">
+        <Stack gap="lg">
+          <TitleSkeleton />
+          <TilesSkeleton />
+          <CardGroupsSkeleton />
+        </Stack>
+      </Loading>
+    );
+  }
   if (team.error) return <ErrorState error={team.error} onRetry={() => void team.refetch()} />;
   const { rounds, players, totals } = team.data;
 

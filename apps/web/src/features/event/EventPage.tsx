@@ -1,4 +1,4 @@
-import { Button, Skeleton, Stack, Tabs, Text } from '@mantine/core';
+import { Button, Stack, Tabs, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { ApiError } from '../../api/client';
@@ -14,6 +14,7 @@ import { EventHeader } from './EventHeader';
 import { eventQuery } from './event-queries';
 import { PlayersPanel } from './PlayersPanel';
 import { usePageTitle } from '../../lib/page-title';
+import { PageSkeleton, TilesSkeleton, TitleSkeleton } from '../../components/Skeletons';
 
 /** The event page's tabs, in order; the selected one lives in the URL (`?tab=`). */
 export const EVENT_TABS = [
@@ -66,7 +67,19 @@ export function EventPage({ eventId, tab, onTabChange, openListId, onOpenList }:
     if (activeRun) follow(activeRun);
   }, [activeRun, follow]);
 
-  if (event.isPending) return <Skeleton height={160} />;
+  if (event.isPending) {
+    return (
+      <PageSkeleton
+        label="Loading the event"
+        header={
+          <>
+            <TitleSkeleton />
+            <TilesSkeleton />
+          </>
+        }
+      />
+    );
+  }
 
   if (event.error) {
     if (event.error instanceof ApiError && event.error.code === 'NOT_FOUND') {

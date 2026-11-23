@@ -1,13 +1,5 @@
 import type { EventDetail, MatchupView } from '@bcp/shared';
-import {
-  Accordion,
-  Group,
-  SegmentedControl,
-  Skeleton,
-  Stack,
-  Text,
-  TextInput,
-} from '@mantine/core';
+import { Accordion, Group, SegmentedControl, Stack, Text, TextInput } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AnchorLink } from '../../components/AnchorLink';
@@ -18,6 +10,7 @@ import { roundsQuery } from './analysis-queries';
 import { GamesTable } from './GamesTable';
 import { formatPoints, outcomeLabel } from './format';
 import { filterRound } from './round-filter';
+import { CardsSkeleton } from '../../components/Skeletons';
 
 function MatchupTeamLinks({ eventId, matchup }: { eventId: string; matchup: MatchupView }) {
   return (
@@ -72,7 +65,7 @@ export function RoundsPanel({ event }: { event: EventDetail }) {
   const [query, setQuery] = useState('');
   const [opened, setOpened] = useState<string[]>([]);
 
-  if (rounds.isPending) return <Skeleton height={200} />;
+  if (rounds.isPending) return <CardsSkeleton label="Loading rounds" cards={4} />;
   if (rounds.error)
     return <ErrorState error={rounds.error} onRetry={() => void rounds.refetch()} />;
   const all = rounds.data.rounds;

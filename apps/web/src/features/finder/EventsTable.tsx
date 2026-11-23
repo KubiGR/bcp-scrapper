@@ -1,17 +1,10 @@
 import type { EventListItem, EventListResponse } from '@bcp/shared';
-import {
-  Group,
-  LoadingOverlay,
-  Pagination,
-  Select,
-  Stack,
-  Text,
-  UnstyledButton,
-} from '@mantine/core';
+import { Group, Pagination, Select, Stack, Text, UnstyledButton } from '@mantine/core';
 import { EventStatusBadges } from '../../components/EventStatusBadges';
 import { HotCount } from '../../components/EventSymbols';
 import { FieldElo } from '../../components/FieldElo';
 import { Card, CardGroup, Stat, scoreboardClasses } from '../../components/Scoreboard';
+import { CardsSkeleton } from '../../components/Skeletons';
 import { formatEventDates, plural } from '../../lib/format';
 import { eventPath, openHere } from '../../lib/open-link';
 import { UpdateLabel } from '../updates/UpdateLabel';
@@ -102,11 +95,11 @@ export function EventsTable({
 
   return (
     <Stack gap="lg" pos="relative">
-      <LoadingOverlay visible={fetching && response === undefined} />
-
-      {records.length === 0 ? (
+      {response === undefined ? (
+        fetching && <CardsSkeleton label="Loading tournaments" cards={4} dense />
+      ) : records.length === 0 ? (
         <Text c="dimmed" py="xl" ta="center">
-          {response === undefined ? '' : emptyText}
+          {emptyText}
         </Text>
       ) : sort === 'date' ? (
         byWeek(records).map((week) => (

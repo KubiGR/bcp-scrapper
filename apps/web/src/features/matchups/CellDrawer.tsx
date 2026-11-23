@@ -1,5 +1,5 @@
 import type { CellGame } from '@bcp/shared';
-import { Drawer, Skeleton, Stack, Text } from '@mantine/core';
+import { Drawer, Stack, Text } from '@mantine/core';
 import { PlayerLine } from '../../components/PlayerLine';
 import { ErrorState } from '../../components/ErrorState';
 import { Card, CardGroup } from '../../components/Scoreboard';
@@ -7,6 +7,7 @@ import { plural } from '../../lib/format';
 import classes from './CellDrawer.module.css';
 import { formatPoints } from '../analysis/format';
 import { pickLabel, type MatrixPick } from './matrix-pick';
+import { CardsSkeleton } from '../../components/Skeletons';
 
 interface CellDrawerProps {
   cell: MatrixPick | null;
@@ -54,7 +55,7 @@ export function CellDrawer({ cell, games: all, loading, error, onClose }: CellDr
       size="lg"
       title={cell ? `${pickLabel(cell)} vs ${cell.col}` : undefined}
     >
-      {loading && <Skeleton height={160} />}
+      {loading && <CardsSkeleton label="Loading games" groups={1} cards={4} dense />}
       {!loading && error && <ErrorState error={error} />}
       {!loading && !error && games?.length === 0 && (
         <Text size="sm" c="dimmed">

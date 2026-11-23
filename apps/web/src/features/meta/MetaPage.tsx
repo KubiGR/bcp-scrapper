@@ -1,14 +1,5 @@
 import { addDays, updateOfDay, type EffectiveUpdate } from '@bcp/shared';
-import {
-  Box,
-  Input,
-  MultiSelect,
-  NumberInput,
-  SegmentedControl,
-  Skeleton,
-  Stack,
-  Text,
-} from '@mantine/core';
+import { Box, Input, MultiSelect, NumberInput, SegmentedControl, Stack, Text } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -39,6 +30,7 @@ import { TeamMeta } from './TeamMeta';
 import { UpdatePicker } from '../updates/UpdatePicker';
 import { effectiveOf, updatesQuery, useDateWindow } from '../updates/updates-queries';
 import { useTypeToSearch } from '../../lib/use-type-to-search';
+import { CardGroupsSkeleton, Loading, TilesSkeleton } from '../../components/Skeletons';
 
 interface MetaPageProps {
   search: MetaSearch;
@@ -213,7 +205,14 @@ export function MetaPage({ search, onSearchChange }: MetaPageProps) {
           </Text>
         </div>
 
-        {meta.isPending && <Skeleton height={240} />}
+        {meta.isPending && (
+          <Loading label="Loading the meta">
+            <Stack gap="lg">
+              <TilesSkeleton />
+              <CardGroupsSkeleton />
+            </Stack>
+          </Loading>
+        )}
         {meta.error && <ErrorState error={meta.error} onRetry={() => void meta.refetch()} />}
         {meta.data && (
           <Box style={{ opacity: meta.isPlaceholderData ? 0.6 : 1 }} aria-busy={meta.isFetching}>

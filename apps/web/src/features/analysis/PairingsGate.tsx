@@ -1,5 +1,5 @@
 import type { EventDetail } from '@bcp/shared';
-import { Button, Group, Skeleton, Stack, Text } from '@mantine/core';
+import { Button, Group, Stack, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
@@ -8,6 +8,7 @@ import { formatDuration } from '../../lib/format';
 import { fetchQueueQuery, retryFailed } from '../fetch-queue/fetch-queue-queries';
 import { queuePairings } from './analysis-queries';
 import { useRefreshWhenPairingsSettle } from './useRefreshWhenPairingsSettle';
+import { CardsSkeleton } from '../../components/Skeletons';
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
@@ -130,7 +131,7 @@ export function PairingsGate({ event, children }: { event: EventDetail; children
           )}
         </>
       ) : fetching ? (
-        <Skeleton height={160} />
+        <CardsSkeleton label="Loading pairings" cards={4} />
       ) : (
         <Panel title="No pairings yet">
           <Stack gap="sm" align="flex-start">

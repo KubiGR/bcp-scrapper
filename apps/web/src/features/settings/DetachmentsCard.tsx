@@ -1,9 +1,10 @@
-import { Anchor, Skeleton, Stack, Text } from '@mantine/core';
+import { Anchor, Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
 import { plural } from '../../lib/format';
 import { knownDetachmentsQuery } from './known-detachments-queries';
+import { PanelSkeleton } from '../../components/Skeletons';
 
 /** Each faction's detachments, read from 39k.pro with the unit data: how many, and who has none. */
 export function DetachmentsCard() {
@@ -13,7 +14,7 @@ export function DetachmentsCard() {
 
   return (
     <Panel title="Detachments">
-      {status.isPending && <Skeleton height={56} />}
+      {status.isPending && <PanelSkeleton label="Loading detachments" lines={2} />}
       {status.error && <ErrorState error={status.error} onRetry={() => void status.refetch()} />}
       {data && (
         <Stack gap="xs">

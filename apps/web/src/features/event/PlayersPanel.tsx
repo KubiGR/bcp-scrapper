@@ -7,7 +7,6 @@ import {
   Group,
   MultiSelect,
   Select,
-  Skeleton,
   Stack,
   Text,
   TextInput,
@@ -50,6 +49,7 @@ import {
 import classes from './PlayersPanel.module.css';
 import { useQueueLists } from './use-queue-lists';
 import { useTypeToSearch } from '../../lib/use-type-to-search';
+import { CardsSkeleton } from '../../components/Skeletons';
 
 function emptyText(loadingFromBcp: boolean, playerCount: number): string {
   if (loadingFromBcp) return 'Loading players from BCP…';
@@ -207,7 +207,7 @@ export function PlayersPanel({
     if (players.error) {
       return <ErrorState error={players.error} onRetry={() => void players.refetch()} />;
     }
-    if (players.isPending) return <Skeleton height={220} />;
+    if (players.isPending) return <CardsSkeleton label="Loading players" cards={4} dense />;
     if (sorted.length === 0) {
       return (
         <Text c="dimmed" py="xl" ta="center">

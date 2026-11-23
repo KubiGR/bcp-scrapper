@@ -1,0 +1,16 @@
+.grow {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+/* The matchups matrix's placeholder: a header row and a column of names around the cells. */
+.matrix {
+  display: grid;
+  gap: 4px;
+  overflow: hidden;
+}
+
+/* Cells fainter than the names around them, so the grid doesn't read as one solid block. */
+.cell {
+  opacity: 0.45;
+}

@@ -1,5 +1,5 @@
 import type { GameUpdate, GameUpdatePatch } from '@bcp/shared';
-import { Badge, Button, Group, Skeleton, Stack, Text, TextInput } from '@mantine/core';
+import { Badge, Button, Group, Stack, Text, TextInput } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
@@ -9,6 +9,7 @@ import { Panel } from '../../components/Panel';
 import { formatIsoDay, plural } from '../../lib/format';
 import { meQuery } from '../auth/auth-queries';
 import { addGameUpdate, deleteGameUpdate, patchGameUpdate, updatesQuery } from './updates-queries';
+import { PanelSkeleton } from '../../components/Skeletons';
 
 type Editing = { id: string; field: 'name' | 'start'; value: string } | null;
 
@@ -100,7 +101,7 @@ export function UpdatesSection() {
 
   return (
     <Panel title="Game updates">
-      {updates.isPending && <Skeleton height={56} />}
+      {updates.isPending && <PanelSkeleton label="Loading game updates" lines={2} />}
       {updates.error && <ErrorState error={updates.error} onRetry={() => void updates.refetch()} />}
       {updates.data && (
         <Stack gap="xs">

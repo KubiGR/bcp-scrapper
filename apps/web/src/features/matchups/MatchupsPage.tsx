@@ -1,5 +1,5 @@
 import { DETACHMENT_SEPARATOR } from '@bcp/shared';
-import { Box, Button, Drawer, Group, Skeleton, Stack, Text } from '@mantine/core';
+import { Box, Button, Drawer, Group, Stack, Text } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -23,6 +23,7 @@ import type { MatrixPick } from './matrix-pick';
 import { DEFAULT_MATRIX_SETTINGS, hasSideFilter, type MatrixSettings } from './matrix-view';
 import { UpdatePicker } from '../updates/UpdatePicker';
 import { useDateWindow } from '../updates/updates-queries';
+import { MatrixSkeleton } from '../../components/Skeletons';
 
 const splitIds = (value: string | undefined): string[] =>
   value === undefined ? [] : value.split(',').filter(Boolean);
@@ -150,7 +151,7 @@ export function MatchupsPage({ search, onSearchChange }: MatchupsPageProps) {
     <SidebarLayout sidebarLabel="Filters" sidebar={sidebar}>
       <Stack gap="lg">
         <PageTitle>Faction matchups</PageTitle>
-        {matchups.isPending && <Skeleton height={160} />}
+        {matchups.isPending && <MatrixSkeleton label="Loading matchups" />}
         {matchups.error && (
           <ErrorState error={matchups.error} onRetry={() => void matchups.refetch()} />
         )}
