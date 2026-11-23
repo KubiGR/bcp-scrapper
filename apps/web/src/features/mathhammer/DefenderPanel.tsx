@@ -125,6 +125,18 @@ function GroupEditor({
             onChange({ fnp: v });
           }}
         />
+        <Num
+          original={groupOriginalText(g, 'fnpPsychic')}
+          label="FNP psy"
+          value={g.fnpPsychic}
+          min={2}
+          max={6}
+          w={60}
+          nullable
+          onChange={(v) => {
+            onChange({ fnpPsychic: v });
+          }}
+        />
         <Check
           original={groupOriginalText(g, 'character')}
           label="Character"

@@ -37,6 +37,7 @@ export const weapon = (
   lance: false,
   precision: false,
   indirectFire: false,
+  psychic: false,
   anti: [],
   rapidFire: null,
   blast: null,
@@ -55,6 +56,7 @@ export const group = (g: Partial<DefenderGroup> = {}): DefenderGroup => ({
   invulnAgainst: 'all',
   wounds: 1,
   fnp: null,
+  fnpPsychic: null,
   character: false,
   ...g,
 });

@@ -280,6 +280,26 @@ const SCENARIOS: [string, Calculation][] = [
     }),
   ],
   [
+    'Feel No Pain against psychic attacks, met by a psychic and a plain weapon, in cover',
+    calc({
+      weapons: [
+        weapon({
+          models: 5,
+          attacks: '2',
+          ap: -1,
+          damage: '2',
+          psychic: true,
+          mods: { hitModifier: -1 },
+        }),
+        weapon({ models: 5, attacks: '2', ap: -1, damage: '2', mods: { hitModifier: -1 } }),
+      ],
+      defender: defender({
+        groups: [group({ models: 10, save: 4, wounds: 2, fnp: 6, fnpPsychic: 4 })],
+      }),
+      situation: { ...S, cover: true },
+    }),
+  ],
+  [
     'an invulnerable save against ranged attacks only, met by guns and blades',
     calc({
       weapons: [

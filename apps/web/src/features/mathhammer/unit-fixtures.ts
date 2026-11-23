@@ -22,6 +22,7 @@ const sheet = (s: Partial<UnitDatasheet> & Pick<UnitDatasheet, 'id' | 'name'>): 
   weapons: [],
   wargear: [],
   fnp: null,
+  fnpPsychic: null,
   stealth: false,
   damaged: null,
   damageReduction: null,

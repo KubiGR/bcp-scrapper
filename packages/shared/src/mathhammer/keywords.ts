@@ -53,6 +53,7 @@ export function readKeywords(names: string[], targetKeywords: string[]): WeaponK
     else if (lower === 'ignores cover') out.ignoresCover = true;
     else if (lower === 'precision') out.precision = true;
     else if (lower === 'indirect fire') out.indirectFire = true;
+    else if (lower === 'psychic') out.psychic = true;
     else if (/^rapid fire( \S+)?$/.test(lower))
       out.rapidFire = (value(/^rapid fire (\S+)$/) ?? '1').toUpperCase();
     else if (/^blast( \d+)?$/.test(lower)) out.blast = Number(value(/^blast (\d+)$/) ?? 1);

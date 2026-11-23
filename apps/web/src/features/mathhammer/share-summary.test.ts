@@ -16,6 +16,7 @@ const weapon = {
   lance: false,
   precision: false,
   indirectFire: false,
+  psychic: false,
   anti: [{ keyword: 'MONSTER', value: 3 }],
   rapidFire: null,
   blast: null,
@@ -47,6 +48,12 @@ describe('share summary', () => {
     expect(weaponSummary(torrent).tags).toEqual(['Rapid Fire 1', 'Melta 2', 'Torrent']);
   });
 
+  it('says a weapon is psychic', () => {
+    expect(weaponSummary({ ...weapon, anti: [], mods: DEFAULT_MODS, psychic: true }).tags).toEqual([
+      'Psychic',
+    ]);
+  });
+
   it('writes the defender’s models and what protects them', () => {
     const summary = defenderSummary({
       groups: [
@@ -59,6 +66,7 @@ describe('share summary', () => {
           invulnAgainst: 'all',
           wounds: 16,
           fnp: 5,
+          fnpPsychic: 4,
           character: true,
         },
         {
@@ -70,6 +78,7 @@ describe('share summary', () => {
           invulnAgainst: 'ranged',
           wounds: 26,
           fnp: null,
+          fnpPsychic: null,
           character: false,
         },
       ],
@@ -83,7 +92,7 @@ describe('share summary', () => {
       savePenaltiesIgnored: false,
     });
     expect(summary.models).toEqual([
-      '1× C’tan (Character) · T 11 · Sv 3+ · 4++ · W 16 · FNP 5+',
+      '1× C’tan (Character) · T 11 · Sv 3+ · 4++ · W 16 · FNP 5+ · FNP 4+ vs psychic',
       '1× Knight Despoiler · T 11 · Sv 3+ · 5++ vs ranged · W 26',
     ]);
     expect(summary.tags).toEqual(['Stealth', '-1 to be hit', 'Damage −1', 'MONSTER']);

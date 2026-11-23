@@ -44,6 +44,7 @@ export interface WeaponRow {
   ignoresCover: boolean;
   precision: boolean;
   indirectFire: boolean;
+  psychic: boolean;
   /** Rapid Fire X ("" = none). */
   rapidFire: string;
   blast: number | null;
@@ -78,6 +79,8 @@ export interface GroupRow {
   invulnAgainst: InvulnAgainst;
   wounds: number;
   fnp: number | null;
+  /** Feel No Pain against psychic attacks only. */
+  fnpPsychic: number | null;
   character: boolean;
   /** What the datasheet (or the starting setup) filled in; null for a row added by hand. */
   original: GroupOriginal | null;
@@ -158,6 +161,7 @@ export const newWeapon = (): WeaponRow => ({
   ignoresCover: false,
   precision: false,
   indirectFire: false,
+  psychic: false,
   rapidFire: '',
   blast: null,
   cleave: null,
@@ -182,6 +186,7 @@ export const newGroup = (): GroupRow => ({
   invulnAgainst: 'all',
   wounds: 1,
   fnp: null,
+  fnpPsychic: null,
   character: false,
   original: null,
 });
@@ -207,6 +212,7 @@ const WEAPON_FIELDS = [
   'ignoresCover',
   'precision',
   'indirectFire',
+  'psychic',
   'rapidFire',
   'blast',
   'cleave',
@@ -225,6 +231,7 @@ const GROUP_FIELDS = [
   'invulnAgainst',
   'wounds',
   'fnp',
+  'fnpPsychic',
   'character',
 ] as const;
 export type GroupField = (typeof GROUP_FIELDS)[number];
@@ -428,6 +435,7 @@ const merge = (typed: WeaponKeywords, read: WeaponKeywords): WeaponKeywords => (
   ignoresCover: typed.ignoresCover || read.ignoresCover,
   precision: typed.precision || read.precision,
   indirectFire: typed.indirectFire || read.indirectFire,
+  psychic: typed.psychic || read.psychic,
   anti: [...typed.anti, ...read.anti],
   rapidFire: typed.rapidFire ?? read.rapidFire,
   blast: typed.blast ?? read.blast,
@@ -452,6 +460,7 @@ export function keywordBoxes(names: string[]): Partial<WeaponRow> {
     ignoresCover: k.ignoresCover,
     precision: k.precision,
     indirectFire: k.indirectFire,
+    psychic: k.psychic,
     rapidFire: k.rapidFire ?? '',
     blast: k.blast,
     cleave: k.cleave,
@@ -516,6 +525,7 @@ export function toCalculation(
             ignoresCover: row.ignoresCover,
             precision: row.precision,
             indirectFire: row.indirectFire,
+            psychic: row.psychic,
             anti: anti ?? [],
             rapidFire: optional(row.rapidFire),
             blast: row.blast,

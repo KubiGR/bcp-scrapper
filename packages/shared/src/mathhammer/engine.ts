@@ -103,12 +103,14 @@ function setUp(
   const snap = ranged && situation.snapShooting;
   const indirect = ranged && weapon.indirectFire && situation.indirectShooting;
   const cover = ranged && !m.ignoresCover && (situation.cover || defender.stealth || indirect);
+  // Psychic attacks ignore what worsens BS/WS or the hit roll.
+  const skillModifier = weapon.psychic ? Math.max(0, m.skillModifier) : m.skillModifier;
   const skill = Math.min(
     6,
     Math.max(
       2,
-      (weapon.skill === null ? 6 : Math.min(6, Math.max(2, weapon.skill - m.skillModifier))) +
-        (cover ? 1 : 0) -
+      (weapon.skill === null ? 6 : Math.min(6, Math.max(2, weapon.skill - skillModifier))) +
+        (cover && !weapon.psychic ? 1 : 0) -
         (ranged && situation.plungingFire ? 1 : 0),
     ),
   );
@@ -119,7 +121,7 @@ function setUp(
       situation.attackerDamaged ? -1 : 0,
       defender.hitModifier,
     ],
-    m.hitIgnorePenalties,
+    m.hitIgnorePenalties || weapon.psychic,
   );
   const failUpTo = indirect ? (situation.indirectStationaryVisible ? 3 : 5) : 0;
   const classifyHit: Classify = (face) => {
@@ -441,7 +443,9 @@ function allocationOrders(groups: DefenderGroup[]): number[][] {
         const g = groups[i];
         return g === undefined
           ? ''
-          : [g.toughness, g.save, g.invuln, g.invulnAgainst, g.wounds, g.fnp].join('/');
+          : [g.toughness, g.save, g.invuln, g.invulnAgainst, g.wounds, g.fnp, g.fnpPsychic].join(
+              '/',
+            );
       })
       .join('|');
   const distinct = (orders: number[][]) => {

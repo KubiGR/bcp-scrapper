@@ -32,6 +32,7 @@ const KEYWORD_FIELDS = new Set<string>([
   'ignoresCover',
   'precision',
   'indirectFire',
+  'psychic',
   'sustainedHits',
   'rapidFire',
   'blast',
@@ -387,6 +388,14 @@ export function WeaponEditor({
                 checked={w.indirectFire}
                 onChange={(v) => {
                   onChange({ indirectFire: v });
+                }}
+              />
+              <Check
+                original={originalText(w, 'psychic')}
+                label="Psychic"
+                checked={w.psychic}
+                onChange={(v) => {
+                  onChange({ psychic: v });
                 }}
               />
             </CheckGrid>

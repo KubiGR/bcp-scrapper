@@ -1,4 +1,4 @@
-import { invulnAgainst } from './allocate';
+import { fnpAgainst, invulnAgainst } from './allocate';
 import type { Calculation, Weapon } from './types';
 
 /** A small seeded random generator (mulberry32), so simulations repeat exactly. */
@@ -78,12 +78,13 @@ export function simulate(
       if (others.length > 0) return choose(others) ?? -1;
       return choose(chars) ?? -1;
     };
-    const lose = (g: number, points: number) => {
+    const lose = (g: number, points: number, psychic: boolean) => {
       const group = groups[g];
       if (group === undefined) return;
+      const fnp = fnpAgainst(group, { psychic });
       let lost = 0;
       for (let i = 0; i < points; i += 1) {
-        if (group.fnp === null || d6() < group.fnp) lost += 1;
+        if (fnp === null || d6() < fnp) lost += 1;
       }
       const room = group.wounds - (taken[g] ?? 0);
       const applied = Math.min(lost, room);
@@ -150,12 +151,13 @@ export function simulate(
         const indirect = ranged && weapon.indirectFire && situation.indirectShooting;
         const cover =
           ranged && !m.ignoresCover && (situation.cover || defender.stealth || indirect);
+        const skillModifier = weapon.psychic ? Math.max(0, m.skillModifier) : m.skillModifier;
         const skill = Math.min(
           6,
           Math.max(
             2,
-            (weapon.skill === null ? 6 : Math.min(6, Math.max(2, weapon.skill - m.skillModifier))) +
-              (cover ? 1 : 0) -
+            (weapon.skill === null ? 6 : Math.min(6, Math.max(2, weapon.skill - skillModifier))) +
+              (cover && !weapon.psychic ? 1 : 0) -
               (ranged && situation.plungingFire ? 1 : 0),
           ),
         );
@@ -166,7 +168,7 @@ export function simulate(
             situation.attackerDamaged ? -1 : 0,
             defender.hitModifier,
           ],
-          m.hitIgnorePenalties,
+          m.hitIgnorePenalties || weapon.psychic,
         );
         const failUpTo = indirect ? (situation.indirectStationaryVisible ? 3 : 5) : 0;
         const hitResult = (f: number): number => {
@@ -276,7 +278,7 @@ export function simulate(
               f !== 1 && ((invuln !== null && f >= invuln) || f + ap - saveMod >= group.save);
             if (ok) continue;
             if (g < 0) wasted += damageRoll(weapon, extraDamage, false);
-            else lose(g, damageRoll(weapon, extraDamage, false));
+            else lose(g, damageRoll(weapon, extraDamage, false), weapon.psychic);
           }
         };
         if (special && !m.devastatingWounds) savePool(crits, apOf(m.critAp), m.critDamage);
@@ -285,7 +287,7 @@ export function simulate(
           for (let i = 0; i < crits; i += 1) {
             const g = pick(priority, false);
             if (g < 0) wasted += damageRoll(weapon, m.critDamage, true);
-            else lose(g, damageRoll(weapon, m.critDamage, true));
+            else lose(g, damageRoll(weapon, m.critDamage, true), weapon.psychic);
           }
         }
       });
@@ -296,7 +298,7 @@ export function simulate(
       for (let i = 0; i < count; i += 1) {
         const g = pick(priority, false);
         if (g < 0) wasted += 1;
-        else lose(g, 1);
+        else lose(g, 1, false);
       }
     }
 

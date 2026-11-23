@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { calculate, DiceError } from './engine';
 import { SITUATION, calc, crowd, defender, group, weapon } from './test-helpers';
-import type { Situation } from './types';
+import type { Situation, Weapon } from './types';
 
 /** Average wounds of a calculation (into `crowd`: hits × wound chance, nothing saved). */
 const wounds = (c: Parameters<typeof calc>[0]) =>
@@ -169,6 +169,27 @@ describe('calculate', () => {
         calc({ weapons: [melta], defender: { ...big, halveDamage: true, damageReduction: 1 } }),
       ).averages.woundsDealt,
     ).toBeCloseTo(5 / 6);
+  });
+
+  it('Psychic: ignores what worsens the hit, meets Feel No Pain against psychic attacks', () => {
+    const hitsOf = (w: Weapon, situation = at({})) =>
+      calculate(calc({ weapons: [w], defender: crowd, situation })).averages.woundsDealt;
+    // S4 into T4: half the hits wound, no save.
+    const gun = weapon({ models: 6, mods: { hitModifier: -1, skillModifier: -1 } });
+    expect(hitsOf(gun, at({ cover: true }))).toBeCloseTo(6 * (1 / 6) * (1 / 2));
+    expect(hitsOf({ ...gun, psychic: true }, at({ cover: true }))).toBeCloseTo(
+      6 * (4 / 6) * (1 / 2),
+    );
+    // What improves the hit still counts.
+    const better = weapon({ models: 6, mods: { hitModifier: 1 }, psychic: true });
+    expect(hitsOf(better)).toBeCloseTo(6 * (5 / 6) * (1 / 2));
+
+    const sure = weapon({ models: 6, skill: null, strength: 8, mods: { torrent: true } });
+    const hooded = defender({ groups: [group({ models: 100, save: 7, fnp: 6, fnpPsychic: 4 })] });
+    const dealt = (psychic: boolean) =>
+      calculate(calc({ weapons: [{ ...sure, psychic }], defender: hooded })).averages.woundsDealt;
+    expect(dealt(false)).toBeCloseTo(6 * (5 / 6) * (5 / 6));
+    expect(dealt(true)).toBeCloseTo(6 * (5 / 6) * (3 / 6));
   });
 
   it('Devastating Wounds: mortal wounds after normal damage, one model per critical wound', () => {

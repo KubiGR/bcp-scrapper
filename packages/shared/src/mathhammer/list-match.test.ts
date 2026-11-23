@@ -25,6 +25,7 @@ const sheet = (
   weapons: [],
   wargear: [],
   fnp: null,
+  fnpPsychic: null,
   stealth: false,
   damaged: null,
   damageReduction: null,

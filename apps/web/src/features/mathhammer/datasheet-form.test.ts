@@ -1,4 +1,4 @@
-import type { MathhammerList } from '@bcp/shared';
+import type { MathhammerList, UnitDatasheet } from '@bcp/shared';
 import { describe, expect, it } from 'vitest';
 import {
   attackerRows,
@@ -86,6 +86,32 @@ describe('defenderFrom', () => {
       damageReduction: 0,
       damageNote: null,
     });
+  });
+
+  it('gives Feel No Pain against psychic attacks to the models it covers', () => {
+    const psychicOf = (unit: UnitDatasheet, leader: UnitDatasheet) =>
+      defenderFrom(unit, 0, [leader], defaultForm().defender).groups.map((g) => [
+        g.name,
+        g.fnpPsychic,
+      ]);
+    // A leader's "models in that unit": all of them.
+    const hooded = { ...CAPTAIN, fnpPsychic: { value: 4, wholeUnit: true } };
+    expect(psychicOf(INTERCESSORS, hooded)).toEqual([
+      ['Intercessor / Intercessor Sergeant', 4],
+      ['Captain', 4],
+    ]);
+    // "This model has": the leader alone.
+    const helm = { ...CAPTAIN, fnpPsychic: { value: 3, wholeUnit: false } };
+    expect(psychicOf(INTERCESSORS, helm)).toEqual([
+      ['Intercessor / Intercessor Sergeant', null],
+      ['Captain', 3],
+    ]);
+    // The bodyguard's own covers the leader too; the better of the two counts.
+    const squad = { ...INTERCESSORS, fnpPsychic: { value: 5, wholeUnit: true } };
+    expect(psychicOf(squad, hooded)).toEqual([
+      ['Intercessor / Intercessor Sergeant', 4],
+      ['Captain', 4],
+    ]);
   });
 
   it('ticks the unit’s own damage reduction and says which ability it is', () => {

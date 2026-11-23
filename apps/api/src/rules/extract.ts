@@ -11,7 +11,7 @@ import {
 import { readJsLiteral } from './js-literal';
 
 /** Bump when the extraction changes: a site holding data read the old way reads it again. */
-export const RULES_FORMAT = 6;
+export const RULES_FORMAT = 7;
 
 /** 39k.pro's data wasn't where or what it should be: the site changed. */
 export class RulesShapeError extends Error {
@@ -459,6 +459,7 @@ export function extractUnits(tables: Record<string, unknown>): UnitData {
       weapons,
       wargear,
       fnp: fnps.length > 0 ? Math.min(...fnps) : null,
+      fnpPsychic: fnpPsychicOf(linked.map((row) => enText(row, 'rules'))),
       stealth: coreNames.some((name) => /^Stealth$/i.test(name)),
       damaged: damagedCore[0] ?? damagedText[0] ?? null,
       damageReduction: damageReductionOf(
@@ -475,6 +476,28 @@ export function extractUnits(tables: Record<string, unknown>): UnitData {
   });
 
   return { factions, datasheets: datasheets.filter((d) => d.models.length > 0) };
+}
+
+/**
+ * The best Feel No Pain against psychic attacks the abilities give ("Feel No Pain 4+ ability
+ * against Psychic Attacks and mortal wounds"), and whether it covers the model's whole unit (a
+ * leader's "models in that unit", "this unit") or only "this model".
+ */
+function fnpPsychicOf(texts: string[]): { value: number; wholeUnit: boolean } | null {
+  let best: { value: number; wholeUnit: boolean } | null = null;
+  for (const text of texts) {
+    const match = /Feel No Pain (\d)\+(?: ability)? against ([^.]*)/i.exec(text);
+    if (match === null || !/psychic attack/i.test(match[2] ?? '')) continue;
+    const found = { value: Number(match[1]), wholeUnit: !/^this model has/i.test(text) };
+    if (
+      best === null ||
+      found.value < best.value ||
+      (found.value === best.value && found.wholeUnit)
+    ) {
+      best = found;
+    }
+  }
+  return best;
 }
 
 /**

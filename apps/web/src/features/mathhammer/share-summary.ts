@@ -72,6 +72,7 @@ export function weaponSummary(w: Weapon): { name: string; stats: string; tags: s
     ...(w.lance ? ['Lance'] : []),
     ...(w.precision ? ['Precision'] : []),
     ...(w.indirectFire ? ['Indirect Fire'] : []),
+    ...(w.psychic ? ['Psychic'] : []),
     ...modLabels(w.mods),
   ];
   return {
@@ -94,6 +95,7 @@ export function defenderSummary(d: Defender): { models: string[]; tags: string[]
           : [`${String(g.invuln)}++${g.invulnAgainst === 'all' ? '' : ` vs ${g.invulnAgainst}`}`]),
         `W ${String(g.wounds)}`,
         ...(g.fnp === null ? [] : [`FNP ${String(g.fnp)}+`]),
+        ...(g.fnpPsychic === null ? [] : [`FNP ${String(g.fnpPsychic)}+ vs psychic`]),
       ].join(' · '),
     ),
     tags: [
@@ -148,6 +150,7 @@ const FIELD_LABELS: Record<string, string> = {
   ignoresCover: 'Ignores Cover',
   precision: 'Precision',
   indirectFire: 'Indirect Fire',
+  psychic: 'Psychic',
   rapidFire: 'Rapid Fire',
   blast: 'Blast',
   cleave: 'Cleave',
@@ -159,6 +162,7 @@ const FIELD_LABELS: Record<string, string> = {
   invulnAgainst: 'InSv vs',
   wounds: 'W',
   fnp: 'FNP',
+  fnpPsychic: 'FNP vs psychic',
   character: 'Character',
   keywords: 'Keywords',
   attached: 'Attached unit',

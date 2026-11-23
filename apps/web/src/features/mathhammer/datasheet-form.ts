@@ -184,12 +184,23 @@ export function attackerRows(
   ];
 }
 
-/** Model rows of a unit: kinds with the same profile are one row (one allocation group). */
+/** The best of these Feel No Pain values; null when none. */
+const bestFnp = (values: (number | null | undefined)[]) => {
+  const known = values.filter((v): v is number => typeof v === 'number');
+  return known.length === 0 ? null : Math.min(...known);
+};
+
+/**
+ * Model rows of a unit: kinds with the same profile are one row (one allocation group). `shared`
+ * is a Feel No Pain against psychic attacks another part of the attached unit gives all of it.
+ */
 function groupsOf(
   unit: UnitDatasheet,
   howMany: Map<string, number>,
   character: boolean,
+  shared: number | null = null,
 ): GroupRow[] {
+  const fnpPsychic = bestFnp([unit.fnpPsychic?.value, shared]);
   const rows: GroupRow[] = [];
   for (const model of unit.models) {
     const models = howMany.get(model.id) ?? 0;
@@ -217,6 +228,7 @@ function groupsOf(
       invulnAgainst: model.invulnAgainst,
       wounds: model.wounds,
       fnp: unit.fnp,
+      fnpPsychic,
       character,
     });
   }
@@ -264,12 +276,21 @@ export function defenderFrom(
   previous: DefenderForm,
 ): DefenderForm {
   const all = [sheet, ...attached];
+  // A leader's "models in that unit have Feel No Pain 4+ against psychic attacks" covers them all.
+  const sharedBy = (except: UnitDatasheet) =>
+    bestFnp(
+      all.map((unit) =>
+        unit !== except && unit.fnpPsychic?.wholeUnit ? unit.fnpPsychic.value : null,
+      ),
+    );
   return withDefenderOriginal({
     ...previous,
     source: [sheet.name, ...attached.map((a) => a.name)].join(' + '),
     groups: [
-      ...groupsOf(sheet, counts(sheet, sizeIndex), false),
-      ...attached.flatMap((character) => groupsOf(character, counts(character, 0), true)),
+      ...groupsOf(sheet, counts(sheet, sizeIndex), false, sharedBy(sheet)),
+      ...attached.flatMap((character) =>
+        groupsOf(character, counts(character, 0), true, sharedBy(character)),
+      ),
     ],
     keywords: [...new Set(all.flatMap((unit) => unit.keywords))].join(', '),
     attached: attached.length > 0,

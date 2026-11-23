@@ -145,10 +145,19 @@ export function invulnAgainst(group: DefenderGroup, weapon: { melee: boolean }):
   return group.invuln;
 }
 
-/** The defender as this weapon meets it: invulnerable saves that don't work against it dropped. */
+/** The group's Feel No Pain against this weapon: its psychic-only one counts against psychic attacks. */
+export function fnpAgainst(group: DefenderGroup, weapon: { psychic: boolean }): number | null {
+  if (!weapon.psychic || group.fnpPsychic === null) return group.fnp;
+  return group.fnp === null ? group.fnpPsychic : Math.min(group.fnp, group.fnpPsychic);
+}
+
+/**
+ * The defender as this weapon meets it: invulnerable saves that don't work against it dropped,
+ * Feel No Pain against psychic attacks added for a psychic weapon.
+ */
 export function defenderFacing<D extends { groups: DefenderGroup[] }>(
   defender: D,
-  weapon: { melee: boolean },
+  weapon: { melee: boolean; psychic: boolean },
 ): D {
   return {
     ...defender,
@@ -156,6 +165,8 @@ export function defenderFacing<D extends { groups: DefenderGroup[] }>(
       ...g,
       invuln: invulnAgainst(g, weapon),
       invulnAgainst: 'all',
+      fnp: fnpAgainst(g, weapon),
+      fnpPsychic: null,
     })),
   };
 }
