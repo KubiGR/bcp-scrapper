@@ -147,3 +147,7 @@ fixtures/bcp    BCP-shaped JSON: sample/ (committed), recorded/ (git-ignored)
 docs/superpowers Design spec and implementation plans
 deploy          Portainer stack (Postgres, app, Cloudflare Tunnel); Dockerfile at the root
 ```
+
+## License
+
+[MIT](LICENSE)
