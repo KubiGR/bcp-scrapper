@@ -1,5 +1,12 @@
-import { eventFinishedBy, eventPhase, isBigEvent, type EventSizeRule } from '@bcp/shared';
-import { and, desc, gte, lte } from 'drizzle-orm';
+import {
+  addDays,
+  eventFinishedBy,
+  eventPhase,
+  isBigEvent,
+  latestWindow,
+  type EventSizeRule,
+} from '@bcp/shared';
+import { and, desc, gte, lt } from 'drizzle-orm';
 import { refreshLatest } from '../catalog';
 import type { Db } from '../db/client';
 import { events } from '../db/schema';
@@ -13,7 +20,9 @@ import {
   eventPairingsJobs,
   failedTargets,
   markPairingsSyncedIfComplete,
+  promoteStartedAutoJobs,
   roundFetchIsFinal,
+  UPCOMING_AUTO_PRIORITY,
 } from '../repo/fetch-queue';
 import { storedPairingRounds } from '../repo/pairings';
 import { findPlayersMissingLists, tidyDetachments } from '../repo/lists';
@@ -28,7 +37,7 @@ export interface AutoFetchPlannerOptions {
   runner: SyncRunner;
   logger: Logger;
   eventRule: EventSizeRule;
-  /** Only events that started within this many days are planned. */
+  /** How far back the planner looks for events that have started. */
   days: number;
   intervalMs: number;
   catalogIntervalMs: number;
@@ -38,11 +47,9 @@ export interface AutoFetchPlannerOptions {
 }
 
 /**
- * Keeps big events of the last `days` loaded (running ones: players and lists; finished ones: also
- * their pairings): every `intervalMs` it queues, at the
- * lowest priority and marked automatic, whatever an event is missing (the event itself, its
- * pairings, its lists), newest event first. It only queues work; the fetch queue does it at its
- * usual pace. Failed work is left for the user's Retry, and fetched rounds aren't fetched again.
+ * Queues missing work for big events in the recent past and the latest catalogue's lookahead.
+ * Upcoming events use a lower priority for roster and list jobs. Pairings are queued when an
+ * event finishes. The fetch worker handles requests at its usual pace.
  */
 export class AutoFetchPlanner {
   readonly #options: AutoFetchPlannerOptions;
@@ -51,7 +58,7 @@ export class AutoFetchPlanner {
   #running: Promise<unknown> = Promise.resolve();
   lastPlannedAt: Date | null = null;
 
-  /** Only events that started within this many days are planned. */
+  /** How far back the planner looks for events that have started. */
   get days(): number {
     return this.#options.days;
   }
@@ -115,13 +122,15 @@ export class AutoFetchPlanner {
     // Lists fetched since the last pass teach new detachment names: split and respell with them.
     await tidyDetachments(db);
     const now = this.#now();
+    const lookaheadEnd = new Date(`${addDays(latestWindow(now).to, 1)}T00:00:00Z`);
+    await promoteStartedAutoJobs(db, now);
     const candidates = await db
       .select()
       .from(events)
       .where(
         and(
           gte(events.startDate, new Date(now.getTime() - days * DAY_MS)),
-          lte(events.startDate, now),
+          lt(events.startDate, lookaheadEnd),
         ),
       )
       .orderBy(desc(events.startDate), events.id);
@@ -129,16 +138,18 @@ export class AutoFetchPlanner {
     let planned = 0;
     let jobs = 0;
     for (const event of candidates) {
-      const phase = eventPhase(event, now);
-      if (!isBigEvent(event, eventRule) || phase === 'upcoming') continue;
+      if (!isBigEvent(event, eventRule)) continue;
       // BCP answered 404 for it: every job would fail. Refresh still tries, by hand.
       if (event.removedFromBcpAt !== null) continue;
       // An admin blocked it: Logis doesn't ask BCP for it at all.
       if (event.blockedAt !== null) continue;
       // Switched off mid-pass: stop adding work.
       if (!(await getAutoFetchEnabled(db))) break;
+      const upcoming = event.startDate > now;
       const queued =
-        phase === 'running' ? await this.#planRunning(event, now) : await this.#planEvent(event);
+        !upcoming && eventPhase(event, now) === 'finished'
+          ? await this.#planEvent(event)
+          : await this.#planLists(event, now, upcoming);
       if (queued > 0) planned += 1;
       jobs += queued;
     }
@@ -149,35 +160,37 @@ export class AutoFetchPlanner {
   }
 
   /**
-   * A running event: its players and their lists, from the start (lists are up by then), loading
-   * it again hourly for lists added or changed since; its pairings wait until it's over.
+   * Load the roster and check hourly for lists added or changed since. BCP sometimes exposes
+   * list IDs before an event starts, so those can be queued at the upcoming-event priority.
    */
-  async #planRunning(event: typeof events.$inferSelect, now: Date): Promise<number> {
+  async #planLists(
+    event: typeof events.$inferSelect,
+    now: Date,
+    upcoming: boolean,
+  ): Promise<number> {
     const { db } = this.#options;
-    const failed = await failedTargets(db, event.id);
+    const priority = upcoming ? UPCOMING_AUTO_PRIORITY : AUTO_PRIORITY;
+    const failed = await failedTargets(db, event.id, upcoming ? undefined : event.startDate);
     // A load that failed waits for the user's Retry, as for finished events.
     if (failed.event) return 0;
     let queued = 0;
     const stale =
       event.lastSyncedAt === null || now.getTime() - event.lastSyncedAt.getTime() >= HOUR_MS;
-    if (
-      stale &&
-      (await enqueueEventLoad(db, event.id, { priority: AUTO_PRIORITY, origin: 'auto' }))
-    ) {
+    if (stale && (await enqueueEventLoad(db, event.id, { priority, origin: 'auto' }))) {
       queued += 1;
     }
-    if (event.lastSyncedAt !== null) {
+    if (event.lastSyncedAt !== null && !(upcoming && event.hideLists)) {
       const missing = (await findPlayersMissingLists(db, event.id)).filter(
         (item) => !failed.players.has(item.playerId),
       );
-      queued += await enqueueLists(db, event.id, missing, AUTO_PRIORITY, 'auto');
+      queued += await enqueueLists(db, event.id, missing, priority, 'auto');
     }
     return queued;
   }
 
   async #planEvent(event: typeof events.$inferSelect): Promise<number> {
     const { db } = this.#options;
-    const failed = await failedTargets(db, event.id);
+    const failed = await failedTargets(db, event.id, event.startDate);
     if (event.lastSyncedAt === null) {
       // Already being loaded (or it failed and waits for Retry): nothing to add.
       if (failed.event || (await eventPairingsJobs(db, event.id)).queued > 0) return 0;

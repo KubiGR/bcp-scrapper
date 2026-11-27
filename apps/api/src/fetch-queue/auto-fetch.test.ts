@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, assert, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '../db/client';
 import { events, fetchQueue } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
@@ -232,6 +232,61 @@ describe('AutoFetchPlanner', () => {
       await planner().planOnce();
       const loads = (await team()).filter((j) => j.kind === 'event');
       expect(loads.map((j) => j.followUp)).toEqual([null]);
+    });
+  });
+
+  describe('an upcoming event', () => {
+    const id = 'EVTTEAM0001';
+    const startDate = new Date('2026-04-27T20:00:00Z');
+    const eventJobs = async () => (await jobs()).filter((job) => job.eventId === id);
+    const reschedule = () =>
+      db
+        .update(events)
+        .set({ startDate, endDate: new Date('2026-04-29T21:00:00Z'), ended: false })
+        .where(eq(events.id, id));
+
+    it('discovers the roster within the catalogue lookahead at the upcoming priority', async () => {
+      await reschedule();
+      await planner().planOnce();
+      expect(await eventJobs()).toMatchObject([
+        { kind: 'event', followUp: null, priority: -20, origin: 'auto' },
+      ]);
+    });
+
+    it('queues exposed lists at lower priority and raises them when the event starts', async () => {
+      await syncEvent({ db, source }, id);
+      await reschedule();
+      await db.update(events).set({ lastSyncedAt: now }).where(eq(events.id, id));
+      const auto = planner();
+      await auto.planOnce();
+      const early = await eventJobs();
+      expect(early).toHaveLength(7);
+      expect(early.every((job) => job.kind === 'list' && job.priority === -20)).toBe(true);
+
+      const [attempt] = early;
+      assert(attempt);
+      await db
+        .update(fetchQueue)
+        .set({ status: 'failed', errorCode: 'NO_LIST', finishedAt: now })
+        .where(eq(fetchQueue.id, attempt.id));
+      await auto.planOnce();
+      expect(await eventJobs()).toHaveLength(7);
+
+      now = startDate;
+      await auto.planOnce();
+      const current = (await eventJobs()).filter((job) => job.status === 'queued');
+      expect(current.filter((job) => job.kind === 'list')).toHaveLength(7);
+      expect(current.every((job) => job.priority === -10 && job.kind !== 'pairings-round')).toBe(
+        true,
+      );
+    });
+
+    it('leaves hidden lists alone before the event starts', async () => {
+      await syncEvent({ db, source }, id);
+      await reschedule();
+      await db.update(events).set({ lastSyncedAt: now, hideLists: true }).where(eq(events.id, id));
+      await planner().planOnce();
+      expect(await eventJobs()).toEqual([]);
     });
   });
 

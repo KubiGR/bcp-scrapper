@@ -37,8 +37,8 @@ export function AutoFetchCard() {
             }}
           />
           <Text size="sm" c="dimmed">
-            Lists as soon as an event starts, pairings once it's over. Everything is queued behind
-            anything you ask for, and fetched at the queue's usual pace.
+            Available lists for upcoming events have lower priority than work for events that have
+            started. Pairings are fetched once an event is over. Your requests come first.
           </Text>
           {auto.data.enabled && (
             <Text size="sm" c="dimmed">

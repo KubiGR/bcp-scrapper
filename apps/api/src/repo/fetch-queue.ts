@@ -9,6 +9,7 @@ import {
   gt,
   inArray,
   isNull,
+  lte,
   ne,
   notExists,
   or,
@@ -32,6 +33,8 @@ export const NO_LIST_CODE = 'NO_LIST';
 
 /** Jobs the automatic planner queues sit below everything a person asked for. */
 export const AUTO_PRIORITY = -10;
+/** Upcoming events use any capacity left after work for events that have started. */
+export const UPCOMING_AUTO_PRIORITY = -20;
 
 /** Who asked: a person ('user') or the automatic planner ('auto'). */
 export type JobOrigin = 'user' | 'auto';
@@ -442,6 +445,8 @@ function newestJobPerTarget(db: Db, where?: SQL) {
         playerId: fetchQueue.playerId,
         round: fetchQueue.round,
         status: fetchQueue.status,
+        priority: fetchQueue.priority,
+        origin: fetchQueue.origin,
         error: fetchQueue.error,
         errorCode: fetchQueue.errorCode,
         finishedAt: fetchQueue.finishedAt,
@@ -659,13 +664,32 @@ export async function autoJobSummary(db: Db): Promise<{ jobs: number; events: nu
   return { jobs: row?.jobs ?? 0, events: row?.events ?? 0 };
 }
 
+/** Raises pending automatic work once the event reaches its start time. */
+export async function promoteStartedAutoJobs(db: Db, now: Date): Promise<void> {
+  await db
+    .update(fetchQueue)
+    .set({ priority: AUTO_PRIORITY })
+    .where(
+      and(
+        eq(fetchQueue.origin, 'auto'),
+        eq(fetchQueue.priority, UPCOMING_AUTO_PRIORITY),
+        eq(fetchQueue.status, 'queued'),
+        inArray(
+          fetchQueue.eventId,
+          db.select({ id: events.id }).from(events).where(lte(events.startDate, now)),
+        ),
+      ),
+    );
+}
+
 /**
  * Targets whose newest job failed (any failure, "no list" included): the planner leaves them
- * for the user's Retry instead of queueing them again every pass.
+ * for the user's Retry, except for early automatic list attempts once the event starts.
  */
 export async function failedTargets(
   db: Db,
   eventId: string,
+  startedAt?: Date,
 ): Promise<{
   players: Set<string>;
   event: boolean;
@@ -674,9 +698,18 @@ export async function failedTargets(
 }> {
   const rows = await newestJobPerTarget(db, eq(fetchQueue.eventId, eventId));
   const failed = rows.filter((row) => row.status === 'failed');
+  const failedList = (row: (typeof failed)[number]) =>
+    row.kind === 'list' &&
+    !(
+      startedAt &&
+      row.origin === 'auto' &&
+      row.priority === UPCOMING_AUTO_PRIORITY &&
+      row.finishedAt &&
+      row.finishedAt < startedAt
+    );
   return {
     players: new Set(
-      failed.flatMap((row) => (row.kind === 'list' && row.playerId !== null ? [row.playerId] : [])),
+      failed.flatMap((row) => (failedList(row) && row.playerId !== null ? [row.playerId] : [])),
     ),
     event: failed.some((row) => row.kind === 'event'),
     pairings: failed.some((row) => row.kind === 'pairings-round'),

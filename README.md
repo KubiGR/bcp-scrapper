@@ -119,12 +119,13 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
 gentle. The older `LIST_QUEUE_INTERVAL_MS` name still works.
 
 **Automatic fetching** (Settings → Automatic fetching, on by default): every 10 minutes the API
-queues whatever big events of the last 60 days are missing (lists from the start of a running
-event, its pairings once it's over) (the event itself, its
-pairings, every army list), newest first, below anything you ask for (priority −10), at the
-queue's usual pace. The header shows it apart from your own jobs ("auto: 42 events left").
-Turning it off drops its queued jobs. Failed jobs wait for your Retry instead of being queued
-again. The latest-window catalogue is refreshed every hour while it's on. Variables:
+queues missing rosters and army lists for big events of the last 60 days, and pairings once an
+event is over. Big events in the next 7 days also get roster and available list jobs, at a lower
+priority until they start. Your requests come first and all jobs use the queue's usual pace. The
+header counts automatic jobs separately ("auto: 42 events left"). Turning automatic fetching off
+drops its queued jobs. Failed jobs wait for Retry, with one new attempt at the start for lists
+that were unavailable during an early automatic fetch. The catalogue refreshes hourly while
+automatic fetching is on. Variables:
 `AUTO_FETCH_ENABLED` (`false` turns it off completely), `AUTO_FETCH_INTERVAL_MS` (600000),
 `AUTO_FETCH_DAYS` (60), `AUTO_CATALOG_INTERVAL_MS` (21600000).
 
