@@ -1,4 +1,4 @@
-import type { EventListItem } from '@bcp/shared';
+import type { EventListItem, EventListProgress } from '@bcp/shared';
 import { eventPhase } from '@bcp/shared';
 import { Badge, Group } from '@mantine/core';
 import classes from './EventStatusBadges.module.css';
@@ -14,14 +14,34 @@ type BadgeFields = Pick<
   | 'lastSyncedAt'
   | 'removedFromBcpAt'
   | 'blockedAt'
+  | 'listProgress'
 >;
+
+type ListCounts = Pick<EventListProgress, 'listsAvailable' | 'listsFetched'>;
+const percentFormat = new Intl.NumberFormat(undefined, {
+  style: 'percent',
+  maximumFractionDigits: 1,
+});
 
 /**
  * Small state tags, shared by the finder table and the event header.
  * They wrap onto a new line rather than shrink: a squeezed Mantine badge clips its label.
  */
-export function EventStatusBadges({ event }: { event: BadgeFields }) {
+export function EventStatusBadges({
+  event,
+  listProgress = event.listProgress,
+}: {
+  event: BadgeFields;
+  listProgress?: ListCounts;
+}) {
   const phase = eventPhase(event, new Date());
+  const available = listProgress?.listsAvailable ?? 0;
+  const pending = Math.max(0, available - (listProgress?.listsFetched ?? 0));
+  const fraction = available > 0 ? pending / available : 0;
+  const percent =
+    fraction > 0 && fraction < 0.001
+      ? `<${percentFormat.format(0.001)}`
+      : percentFormat.format(fraction);
   return (
     <Group gap={4} wrap="wrap" className={classes.badges}>
       {event.isTeamEvent && (
@@ -60,8 +80,13 @@ export function EventStatusBadges({ event }: { event: BadgeFields }) {
         </Badge>
       )}
       {event.lastSyncedAt !== null && (
-        <Badge size="xs" variant="outline" color="gray">
-          Synced
+        <Badge
+          size="xs"
+          variant="outline"
+          color="gray"
+          title={available > 0 ? `${pending} of ${available} available lists pending` : undefined}
+        >
+          Synced{available > 0 && ` · ${percent} lists pending`}
         </Badge>
       )}
     </Group>

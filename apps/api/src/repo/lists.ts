@@ -10,15 +10,16 @@ import {
   matchDetachment,
   splitDetachments,
   type ArmyList,
+  type EventListProgress,
   type PlayerList,
 } from '@bcp/shared';
-import { and, eq, isNotNull, isNull, lt, sql } from 'drizzle-orm';
+import { and, count, eq, inArray, isNotNull, isNull, lt, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { armyRules } from './detachment-links';
 import type { Logger } from '../logger';
-import { armyLists, detachmentLinks, players, teams } from '../db/schema';
+import { armyLists, detachmentLinks, fetchQueue, players, teams } from '../db/schema';
 import { detachmentsByFaction } from './faction-detachments';
 
 /** Joins a player's stored list only while it is their current BCP list. */
@@ -32,6 +33,35 @@ export const storedCurrentList = and(
  * a different list (the stored one has another list id).
  */
 export const isMissingList = and(isNotNull(players.listId), isNull(armyLists.playerId));
+
+/** Count current lists for all events on a finder page in one query. */
+export async function listProgressByEvent(
+  db: Db,
+  eventIds: string[],
+): Promise<Map<string, EventListProgress>> {
+  if (eventIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      eventId: players.eventId,
+      listsAvailable: count(),
+      listsFetched: count(armyLists.playerId),
+      listsQueued: count(fetchQueue.id),
+    })
+    .from(players)
+    .leftJoin(armyLists, storedCurrentList)
+    .leftJoin(
+      fetchQueue,
+      and(
+        eq(fetchQueue.playerId, players.id),
+        eq(fetchQueue.listId, players.listId),
+        eq(fetchQueue.kind, 'list'),
+        inArray(fetchQueue.status, ['queued', 'fetching']),
+      ),
+    )
+    .where(and(inArray(players.eventId, eventIds), isNotNull(players.listId)))
+    .groupBy(players.eventId);
+  return new Map(rows.map(({ eventId, ...progress }) => [eventId, progress]));
+}
 
 export async function findPlayersMissingLists(
   db: Db,

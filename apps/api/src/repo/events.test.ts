@@ -14,6 +14,8 @@ import {
   upsertEventDetail,
   upsertEventSummaries,
 } from './events';
+import { enqueueLists } from './fetch-queue';
+import { saveArmyList } from './lists';
 
 let db: Db;
 let close: () => Promise<void>;
@@ -154,6 +156,25 @@ describe('searchEvents', () => {
     const page2 = await searchEvents(db, query({ page: '2', pageSize: '2' }), ALL_EVENTS);
     expect(page2.items.map((e) => e.bcpId)).toEqual(['EVTTEAM0001']);
     expect(page2.total).toBe(3);
+  });
+
+  it('reports available, stored and queued lists for each event on the page', async () => {
+    const eventId = 'EVTTEAM0001';
+    await syncEvent({ db, source }, eventId);
+    const list = await source.getList('LS-ADA');
+    if (list === null) throw new Error('Missing sample list');
+    await saveArmyList(db, 'PL-ADA', list, 'LS-ADA');
+    await enqueueLists(db, eventId, [{ playerId: 'PL-BEN', listId: 'LS-BEN' }], 0);
+
+    const result = await searchEvents(db, query({}), ALL_EVENTS);
+    expect(result.items.find((event) => event.bcpId === eventId)?.listProgress).toEqual({
+      listsAvailable: 7,
+      listsFetched: 1,
+      listsQueued: 1,
+    });
+    expect(
+      result.items.find((event) => event.bcpId === 'EVTSINGLE01')?.listProgress,
+    ).toBeUndefined();
   });
 
   it('gives each event its field’s average wh40k-elo, once at least half its players are rated', async () => {

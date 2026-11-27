@@ -8,6 +8,10 @@ export const eventsQuery = (queryString: string) =>
     queryKey: ['events', queryString],
     queryFn: () => apiGet(`/api/events?${queryString}`, EventListResponseSchema),
     placeholderData: keepPreviousData,
+    refetchInterval: (query) =>
+      query.state.data?.items.some((event) => (event.listProgress?.listsQueued ?? 0) > 0)
+        ? 5000
+        : false,
   });
 
 export const coverageQuery = queryOptions({

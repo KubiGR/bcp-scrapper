@@ -34,6 +34,18 @@ describe('EventStatusBadges', () => {
     expect(screen.queryByText(/Teams|Online|Running|Lists hidden|Synced/)).toBeNull();
   });
 
+  it('shows the share of available lists still pending next to Synced', () => {
+    const event = anEvent({
+      playerCount: 55,
+      listProgress: { listsAvailable: 50, listsFetched: 38, listsQueued: 5 },
+    });
+    renderWithProviders(<EventStatusBadges event={event} />);
+    expect(screen.getByText('Synced · 24% lists pending').closest('[title]')).toHaveAttribute(
+      'title',
+      '12 of 50 available lists pending',
+    );
+  });
+
   it('shows an Upcoming badge before the event starts', () => {
     vi.setSystemTime(new Date('2026-03-27T12:00:00.000Z'));
     renderWithProviders(<EventStatusBadges event={anEvent({ ended: false })} />);

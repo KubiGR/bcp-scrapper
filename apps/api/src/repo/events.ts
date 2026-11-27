@@ -1,5 +1,6 @@
 import type {
   EventListItem,
+  EventListProgress,
   EventListQuery,
   EventListResponse,
   EventSizeRule,
@@ -10,6 +11,7 @@ import type { Fetched } from '../bcp/source';
 import type { Db } from '../db/client';
 import { events } from '../db/schema';
 import { fieldElos } from './field-elo';
+import { listProgressByEvent } from './lists';
 import { excludedColumns } from './upsert';
 
 export type EventRow = typeof events.$inferSelect;
@@ -130,7 +132,11 @@ export async function deleteSmallEvents(db: Db, rule: EventSizeRule): Promise<nu
 }
 
 /** An event for the API; `fieldElo` is its field strength (see `fieldElos`), unrounded. */
-export function toEventListItem(row: EventRow, fieldElo: number | undefined): EventListItem {
+export function toEventListItem(
+  row: EventRow,
+  fieldElo: number | undefined,
+  listProgress?: EventListProgress,
+): EventListItem {
   return {
     bcpId: row.id,
     name: row.name,
@@ -149,6 +155,7 @@ export function toEventListItem(row: EventRow, fieldElo: number | undefined): Ev
     removedFromBcpAt: row.removedFromBcpAt?.toISOString() ?? null,
     blockedAt: row.blockedAt?.toISOString() ?? null,
     fieldElo: fieldElo === undefined ? null : Math.round(fieldElo),
+    ...(listProgress && { listProgress }),
   };
 }
 
@@ -199,12 +206,13 @@ export async function searchEvents(
       .offset((query.page - 1) * query.pageSize),
     db.$count(events, where),
   ]);
-  const strength = await fieldElos(
-    db,
-    rows.map((row) => row.id),
-  );
+  const ids = rows.map((row) => row.id);
+  const [strength, progress] = await Promise.all([
+    fieldElos(db, ids),
+    listProgressByEvent(db, ids),
+  ]);
   return {
-    items: rows.map((row) => toEventListItem(row, strength.get(row.id))),
+    items: rows.map((row) => toEventListItem(row, strength.get(row.id), progress.get(row.id))),
     total,
     page: query.page,
     pageSize: query.pageSize,

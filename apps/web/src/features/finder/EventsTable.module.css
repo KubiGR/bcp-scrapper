@@ -44,7 +44,7 @@
 
 /* A fixed width, so the figures line up whether or not an event has badges. */
 .status {
-  flex: 0 0 6rem;
+  flex: 0 0 10rem;
   display: flex;
   justify-content: flex-start;
 }

@@ -70,7 +70,7 @@ export function EventHeader({ event, syncing, onRefresh }: EventHeaderProps) {
           </Text>
         )}
         <UpdateLabel startDate={event.startDate} prefix="Update: " size="sm" c="dimmed" />
-        <EventStatusBadges event={event} />
+        <EventStatusBadges event={event} listProgress={event.counts} />
       </Group>
       <StatTiles items={sizeTiles(event)} />
       {event.lastSyncedAt !== null && (
