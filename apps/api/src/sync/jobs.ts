@@ -1,5 +1,5 @@
 import { isBigEvent, type EventSizeRule, type SyncRequest } from '@bcp/shared';
-import { PageCursors, type TournamentSource } from '../bcp/source';
+import { PageCursors, type FetchedEvent, type TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import { EventBlockedError, NotFoundError } from '../errors';
 import type { Logger } from '../logger';
@@ -46,11 +46,31 @@ async function syncCatalog(ctx: JobContext, { from, to }: RequestOf<'catalog'>):
   let cursor: string | null = null;
   do {
     const page = await ctx.source.listEvents({ from, to }, cursor);
-    const big = page.items.filter((event) => isBigEvent(event, ctx.eventRule));
+    const big: FetchedEvent[] = [];
+    for (const event of page.items) {
+      if (event.roundCount < ctx.eventRule.minRounds) continue;
+      const counted = await withCataloguePlayerCount(ctx, event);
+      if (isBigEvent(counted, ctx.eventRule)) big.push(counted);
+    }
     await upsertEventSummaries(ctx.db, big);
     await ctx.progress.succeeded(big.length);
     cursor = seen.next(page.nextCursor);
   } while (cursor !== null);
+}
+
+async function withCataloguePlayerCount(
+  ctx: JobContext,
+  event: FetchedEvent,
+): Promise<FetchedEvent> {
+  if (!event.playerCountMissing || (await isEventBlocked(ctx.db, event.bcpId))) return event;
+  try {
+    const roster = await ctx.source.getPlayers(event.bcpId, { withPlacings: false });
+    return { ...event, playerCount: roster.length };
+  } catch (error) {
+    // BCP can leave a search entry for an event whose roster is no longer available.
+    if (error instanceof NotFoundError) return event;
+    throw error;
+  }
 }
 
 /**
@@ -73,11 +93,17 @@ export async function syncEvent(
     await markEventRemovedFromBcp(deps.db, eventId, at);
     return { ...stored, removedFromBcpAt: at };
   }
-  await upsertEventDetail(deps.db, event);
+  const roster = event.playerCountMissing ? await deps.source.getPlayers(eventId) : undefined;
+  let playerCount = event.playerCount;
+  if (roster) {
+    // An empty response also leaves previously synced participants in place.
+    playerCount = roster.length || ((await findEvent(deps.db, eventId))?.playerCount ?? 0);
+  }
+  await upsertEventDetail(deps.db, { ...event, playerCount });
   if (event.isTeamEvent) {
     await replaceEventTeams(deps.db, eventId, await deps.source.getTeams(eventId));
   }
-  await replaceEventPlayers(deps.db, eventId, await deps.source.getPlayers(eventId));
+  await replaceEventPlayers(deps.db, eventId, roster ?? (await deps.source.getPlayers(eventId)));
   await markEventSynced(deps.db, eventId);
 
   const row = await findEvent(deps.db, eventId);

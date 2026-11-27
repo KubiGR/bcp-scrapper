@@ -35,6 +35,9 @@ const GAME_PAGE_SIZE = 500;
 /** A mapped domain object plus the untouched BCP JSON it came from (stored in `raw` columns). */
 export type Fetched<T> = T & { raw: unknown };
 
+/** A missing BCP count maps to zero in the summary until the roster can supply it. */
+export type FetchedEvent = Fetched<EventSummary> & { playerCountMissing?: boolean };
+
 export interface Page<T> {
   items: T[];
   nextCursor: string | null;
@@ -47,9 +50,9 @@ export interface DateRange {
 }
 
 export interface TournamentSource {
-  listEvents(range: DateRange, cursor: string | null): Promise<Page<Fetched<EventSummary>>>;
-  getEvent(eventId: string): Promise<Fetched<EventSummary>>;
-  getPlayers(eventId: string): Promise<Fetched<Player>[]>;
+  listEvents(range: DateRange, cursor: string | null): Promise<Page<FetchedEvent>>;
+  getEvent(eventId: string): Promise<FetchedEvent>;
+  getPlayers(eventId: string, options?: { withPlacings: boolean }): Promise<Fetched<Player>[]>;
   getTeams(eventId: string): Promise<Fetched<Team>[]>;
   getTeamMatchups(eventId: string, round: number): Promise<Fetched<TeamMatchup>[]>;
   getGames(eventId: string, round: number): Promise<Fetched<Game>[]>;
@@ -90,7 +93,7 @@ export class BcpSource implements TournamentSource {
     this.#transport = transport;
   }
 
-  async listEvents(range: DateRange, cursor: string | null): Promise<Page<Fetched<EventSummary>>> {
+  async listEvents(range: DateRange, cursor: string | null): Promise<Page<FetchedEvent>> {
     const path = '/v1/events';
     const body = parseBcp(
       RawPageEnvelope,
@@ -110,16 +113,23 @@ export class BcpSource implements TournamentSource {
     );
     const items = parseItems(RawEventSearchItem, body.data, path).map(({ parsed, raw }) => ({
       ...mapEventSearchItem(parsed),
+      playerCountMissing: parsed.totalPlayers === undefined || parsed.totalPlayers === null,
       raw,
     }));
     // BCP returns a nextKey even on the last page; an empty page is the real end.
     return { items, nextCursor: items.length > 0 ? (body.nextKey ?? null) : null };
   }
 
-  async getEvent(eventId: string): Promise<Fetched<EventSummary>> {
+  async getEvent(eventId: string): Promise<FetchedEvent> {
     const path = `/v2/events/${encodeURIComponent(eventId)}`;
     const raw = await this.#transport.get({ path });
-    return { ...mapEventDetail(parseBcp(RawEventDetail, raw, path)), raw };
+    const parsed = parseBcp(RawEventDetail, raw, path);
+    const playerCount = parsed.playerCounts?.total;
+    return {
+      ...mapEventDetail(parsed),
+      playerCountMissing: playerCount === undefined || playerCount === null,
+      raw,
+    };
   }
 
   /**
@@ -127,19 +137,25 @@ export class BcpSource implements TournamentSource {
    * BCP answers the placings request with an empty list (seen live: the London GT, 1059 players),
    * so an empty answer is asked again without placings.
    */
-  async #participants(path: string): Promise<unknown[]> {
-    const withPlacings = parseBcp(
-      RawListEnvelope,
-      await this.#transport.get({ path, query: { placings: 'true' } }),
-      path,
-    );
-    if (withPlacings.active.length > 0) return withPlacings.active;
+  async #participants(path: string, withPlacings = true): Promise<unknown[]> {
+    if (withPlacings) {
+      const placed = parseBcp(
+        RawListEnvelope,
+        await this.#transport.get({ path, query: { placings: 'true' } }),
+        path,
+      );
+      if (placed.active.length > 0) return placed.active;
+    }
     return parseBcp(RawListEnvelope, await this.#transport.get({ path }), path).active;
   }
 
-  async getPlayers(eventId: string): Promise<Fetched<Player>[]> {
+  async getPlayers(
+    eventId: string,
+    { withPlacings }: { withPlacings: boolean } = { withPlacings: true },
+  ): Promise<Fetched<Player>[]> {
     const path = `/v1/events/${encodeURIComponent(eventId)}/players`;
-    return parseItems(RawPlayer, await this.#participants(path), path).map(({ parsed, raw }) => ({
+    const roster = await this.#participants(path, withPlacings);
+    return parseItems(RawPlayer, roster, path).map(({ parsed, raw }) => ({
       ...mapPlayer(parsed, eventId),
       raw,
     }));

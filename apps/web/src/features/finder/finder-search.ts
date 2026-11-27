@@ -1,4 +1,4 @@
-import { addDays, toIsoDate, type DateRange } from '@bcp/shared';
+import { addDays, LATEST_DAYS_BACK, latestWindow, toIsoDate, type DateRange } from '@bcp/shared';
 import { z } from 'zod';
 
 // Every stored event has 20+ players (the finder only shows big events), so "All" means 20+.
@@ -14,9 +14,6 @@ export const FINDER_PAGE_SIZES = [25, 50, 100] as const;
 export type FinderPageSize = (typeof FINDER_PAGE_SIZES)[number];
 const isPageSize = (n: number): n is FinderPageSize =>
   (FINDER_PAGE_SIZES as readonly number[]).includes(n);
-/** The "Latest" view: events that started in the last 30 days (spec §10). */
-export const LATEST_VIEW_DAYS = 30;
-
 const optionalCount = z.coerce.number().int().nonnegative().optional().catch(undefined);
 const optionalDay = z.iso.date().optional().catch(undefined);
 const optionalText = z.string().trim().min(1).optional().catch(undefined);
@@ -68,10 +65,9 @@ export function sizeBounds(search: Pick<FinderSearch, 'size' | 'min' | 'max'>): 
 
 /** The date window the finder shows: the "Latest" default, or the advanced range (open ends filled in). */
 export function finderWindow(search: Pick<FinderSearch, 'from' | 'to'>, now: Date): DateRange {
-  const today = toIsoDate(now);
-  if (isLatestView(search)) return { from: addDays(today, -LATEST_VIEW_DAYS), to: today };
-  const to = search.to ?? today;
-  const from = search.from ?? addDays(to, -LATEST_VIEW_DAYS);
+  if (isLatestView(search)) return latestWindow(now);
+  const to = search.to ?? toIsoDate(now);
+  const from = search.from ?? addDays(to, -LATEST_DAYS_BACK);
   return from <= to ? { from, to } : { from: to, to: from };
 }
 

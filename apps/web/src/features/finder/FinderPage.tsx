@@ -23,7 +23,7 @@ import { usePageTitle } from '../../lib/page-title';
 const route = getRouteApi('/');
 
 const LATEST_EMPTY =
-  'No tournaments of this size in the last 30 days. Try a smaller size or the advanced search.';
+  'No tournaments of this size in the current date range. Try a smaller size or the advanced search.';
 const SEARCH_EMPTY =
   'No tournaments match. Try a smaller size, a wider date range, or fetching missing dates above.';
 

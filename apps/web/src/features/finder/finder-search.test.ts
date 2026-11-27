@@ -75,8 +75,8 @@ describe('sizeBounds', () => {
 });
 
 describe('finderWindow', () => {
-  it('is the last 30 days in the latest view', () => {
-    expect(finderWindow(defaults, now)).toEqual({ from: '2026-08-24', to: '2026-09-23' });
+  it('includes the last 30 days and the next 7 days in the latest view', () => {
+    expect(finderWindow(defaults, now)).toEqual({ from: '2026-08-24', to: '2026-09-30' });
   });
 
   it('fills an open end and swaps a reversed range', () => {
@@ -98,7 +98,7 @@ describe('toEventsQueryString', () => {
     );
     expect(Object.fromEntries(query)).toEqual({
       from: '2026-08-24',
-      to: '2026-09-23',
+      to: '2026-09-30',
       minPlayers: '40',
       type: 'all',
       sort: 'players',

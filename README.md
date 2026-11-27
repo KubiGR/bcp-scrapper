@@ -50,8 +50,9 @@ The API refreshes access tokens itself and stores the session in Postgres. Setti
 
 ## Using it
 
-- **Tournaments** (the start page) shows the biggest events of the last 30 days. Only big events
-  (4+ rounds, 20+ players) are kept — RTTs and other small events aren't stored. Pick a size
+- **Tournaments** (the start page) shows the biggest events from the last 30 days through the next
+  7 days. Only big events (4+ rounds, 20+ players) are kept. When BCP omits the player count,
+  Logis counts the active roster. Pick a size
   (All (20+) · 40+ · 100+ · 200+, or Custom min/max). **Advanced search** adds a date range, name,
   country, singles/teams and newest/biggest sorting. When a date range hasn't been fetched from BCP
   yet, the page says so and offers **Fetch** (with the approximate number of requests).

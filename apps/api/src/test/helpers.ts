@@ -32,7 +32,7 @@ export function sourceWith(
   return {
     listEvents: (range, cursor) => inner.listEvents(range, cursor),
     getEvent: (id) => inner.getEvent(id),
-    getPlayers: (id) => inner.getPlayers(id),
+    getPlayers: (id, options) => inner.getPlayers(id, options),
     getTeams: (id) => inner.getTeams(id),
     getTeamMatchups: (id, round) => inner.getTeamMatchups(id, round),
     getGames: (id, round) => inner.getGames(id, round),

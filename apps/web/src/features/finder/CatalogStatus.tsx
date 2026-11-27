@@ -41,7 +41,7 @@ export function CatalogStatus() {
   const { track } = sync;
   const activeRun = coverage.data?.activeRun ?? null;
 
-  // Once per visit. The API skips it when the last 30 days were synced under 50 minutes ago.
+  // Once per visit. The API skips it when the current window was synced under 50 minutes ago.
   useEffect(() => {
     track((onProgress, options) => refreshLatest(queryClient, onProgress, options));
   }, [track, queryClient]);

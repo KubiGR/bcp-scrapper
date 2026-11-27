@@ -1,13 +1,13 @@
-import { BIG_EVENTS } from '@bcp/shared';
+import { BIG_EVENTS, EventListQuerySchema, latestWindow } from '@bcp/shared';
 import { count } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import type { BcpSource, TournamentSource } from '../bcp/source';
+import { BcpSource, type TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
 import { events, players, teams } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { NotFoundError } from '../errors';
-import { findEvent, setEventBlocked } from '../repo/events';
+import { findEvent, searchEvents, setEventBlocked } from '../repo/events';
 import { getSyncRun } from '../repo/sync-runs';
 import { ALL_EVENTS, sampleSource, silentLogger, sourceWith } from '../test/helpers';
 import { SyncRunner } from './runner';
@@ -73,6 +73,60 @@ describe('SyncRunner', () => {
     expect(run).toMatchObject({ status: 'succeeded', done: 1 });
     expect(await rowCount(events)).toBe(1);
     expect(await findEvent(db, 'EVTSINGLE01')).toBeDefined();
+  });
+
+  it('uses the active roster to qualify events with missing counts and keeps the count after detail sync', async () => {
+    const start = '2026-12-03T07:00:00Z';
+    const rosterCalls: (string | undefined)[] = [];
+    const source = new BcpSource({
+      get({ path, query }) {
+        if (path === '/v1/events') {
+          const summary = { eventDate: start, numberOfRounds: 8 };
+          return Promise.resolve({
+            data: [
+              { ...summary, id: 'large', name: 'Championship' },
+              { ...summary, id: 'small', name: 'Small', totalPlayers: null },
+              { ...summary, id: 'empty', name: 'Empty', totalPlayers: 0 },
+              { ...summary, id: 'short', name: 'Short', numberOfRounds: 3 },
+            ],
+          });
+        }
+        if (path === '/v2/events/large') {
+          return Promise.resolve({
+            id: 'large',
+            name: 'Championship',
+            dates: { start },
+            status: { numberOfRounds: 8 },
+          });
+        }
+        if (path === '/v1/events/large/players' || path === '/v1/events/small/players') {
+          rosterCalls.push(query?.placings?.toString());
+          const length = path.includes('/small/') ? 19 : 42;
+          const active = query?.placings
+            ? []
+            : Array.from({ length }, (_, id) => ({ id: `p${id}` }));
+          return Promise.resolve({ active });
+        }
+        throw new Error(`Unexpected BCP request: ${path}`);
+      },
+    });
+    const runner = new SyncRunner({ db, source, logger: silentLogger, eventRule: BIG_EVENTS });
+    const window = latestWindow(new Date('2026-11-27T12:00:00Z'));
+    const run = await runToCompletion(runner, { kind: 'catalog', ...window });
+    expect(run).toMatchObject({ status: 'succeeded', done: 1 });
+    expect(rosterCalls).toEqual([undefined, undefined]);
+    expect(await rowCount(players)).toBe(0);
+
+    const query = EventListQuerySchema.parse({ ...window, minPlayers: 40 });
+    expect((await searchEvents(db, query, BIG_EVENTS)).items).toMatchObject([
+      { bcpId: 'large', playerCount: 42 },
+    ]);
+
+    const detail = await runToCompletion(runner, { kind: 'event', eventId: 'large' });
+    expect(detail).toMatchObject({ status: 'succeeded' });
+    expect(await findEvent(db, 'large')).toMatchObject({ playerCount: 42 });
+    expect(await rowCount(players)).toBe(42);
+    expect(rosterCalls.slice(2)).toEqual(['true', undefined]);
   });
 
   it('event: stores detail, teams and players', async () => {
