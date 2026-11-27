@@ -50,7 +50,7 @@ export function EventStatusBadges({
         </Badge>
       )}
       {event.isOnline && (
-        <Badge size="xs" variant="outline" color="gray">
+        <Badge size="xs" variant="outline" color="gray" className={classes.neutralOutline}>
           Online
         </Badge>
       )}
@@ -60,7 +60,7 @@ export function EventStatusBadges({
         </Badge>
       )}
       {phase === 'upcoming' && (
-        <Badge size="xs" variant="outline" color="gray">
+        <Badge size="xs" variant="outline" color="gray" className={classes.neutralOutline}>
           Upcoming
         </Badge>
       )}
@@ -84,6 +84,7 @@ export function EventStatusBadges({
           size="xs"
           variant="outline"
           color="gray"
+          className={classes.neutralOutline}
           title={available > 0 ? `${pending} of ${available} available lists pending` : undefined}
         >
           Synced{available > 0 && ` · ${percent} lists pending`}
