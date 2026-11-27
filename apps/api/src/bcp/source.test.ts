@@ -43,6 +43,28 @@ describe('BcpSource over the sample fixtures', () => {
     });
   });
 
+  it('loads a roster even when BCP leaves team names missing or blank', async () => {
+    const unnamed = {
+      id: 'T1',
+      placing: 2,
+      total_games: [{ gameNum: 1, gameResult: 2, gamePoints: 25 }],
+    };
+    const bcp = new BcpSource({
+      get: () =>
+        Promise.resolve({
+          active: [unnamed, { id: 'T2', name: '  ' }, { id: 'T3', name: ' Team Three ' }],
+        }),
+    });
+
+    const teams = await bcp.getTeams(EVENT);
+    expect(teams.map(({ bcpId, name }) => [bcpId, name])).toEqual([
+      ['T1', 'Unknown team'],
+      ['T2', 'Unknown team'],
+      ['T3', 'Team Three'],
+    ]);
+    expect(teams[0]).toMatchObject({ placing: 2, wins: 1, roundPoints: [25], raw: unnamed });
+  });
+
   it('loads team matchups and all pages of games for a round', async () => {
     const matchups = await source.getTeamMatchups(EVENT, 1);
     expect(matchups.map((m) => [m.teamABcpId, m.pointsA, m.teamBBcpId, m.pointsB])).toEqual([

@@ -100,13 +100,14 @@ export function mapPlayer(raw: RawPlayer, eventId: string): Player {
 const stageOf = (game: RawGameSummary) => (game.pod ? 1 : 0);
 
 export function mapTeam(raw: RawTeam, eventId: string): Team {
+  const name = raw.name?.trim() ?? '';
   const games = [...(raw.total_games ?? [])].sort(
     (a, b) => stageOf(a) - stageOf(b) || a.gameNum - b.gameNum,
   );
   return {
     bcpId: raw.id,
     eventBcpId: eventId,
-    name: raw.name.trim(),
+    name: name === '' ? 'Unknown team' : name,
     placing: raw.placing ?? null,
     ...tallyRecord(raw.total_games),
     roundPoints: games.map((game) => game.gamePoints ?? 0),

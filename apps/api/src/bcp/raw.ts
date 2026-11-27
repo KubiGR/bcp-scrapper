@@ -100,7 +100,7 @@ export type RawPlayer = z.output<typeof RawPlayer>;
 
 export const RawTeam = z.object({
   id: z.string(),
-  name: z.string(),
+  name: z.string().nullish(),
   placing: z.number().nullish(),
   total_games: z.array(RawGameSummary).nullish(),
 });
