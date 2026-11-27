@@ -7,12 +7,7 @@ import { BcpAuthError, ForbiddenError } from '../errors';
 import { queueEventLists } from '../fetch-queue/queue-lists';
 import { queueEventPairings } from '../fetch-queue/queue-pairings';
 import type { FetchQueueWorker } from '../fetch-queue/worker';
-import {
-  cancelQueuedLists,
-  queueDetails,
-  retryFailedJobs,
-  USER_WAITING_PRIORITY,
-} from '../repo/fetch-queue';
+import { cancelQueuedLists, queueDetails, USER_WAITING_PRIORITY } from '../repo/fetch-queue';
 import type { SyncRunner } from '../sync/runner';
 import { parseInput } from '../validation';
 import { requireEvent } from './require-event';
@@ -70,7 +65,7 @@ export function fetchQueueRoutes(deps: {
           await c.req.json<unknown>().catch(() => null),
         );
         if (eventId === undefined) adminOnly(c.get('user'));
-        return c.json({ requeued: await retryFailedJobs(db, eventId, only, code) });
+        return c.json({ requeued: await fetchQueue.retryFailed(eventId, only, code) });
       })
       .get('/fetch-queue', async (c) => c.json(await fetchQueue.state()))
       .get('/fetch-queue/details', async (c) => c.json(await queueDetails(db)))

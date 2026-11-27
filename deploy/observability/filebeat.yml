@@ -1,0 +1,39 @@
+filebeat.inputs:
+  - type: journald
+    id: logis-fetch-queue
+    paths: [/var/log/journal]
+    seek: head
+    include_matches.match: ['CONTAINER_TAG=logis-app']
+    parsers:
+      - ndjson:
+          target: logis
+          document_id: logEventId
+    processors:
+      - drop_event:
+          when.not:
+            and:
+              - equals.logis.msg: Fetch queue job
+              - has_fields: [logis.jobId, logis.status, logis.occurredAt]
+      - timestamp:
+          field: logis.occurredAt
+          layouts: [UNIX_MS]
+      - include_fields:
+          fields:
+            [
+              '@timestamp',
+              'logis.jobId',
+              'logis.attempt',
+              'logis.status',
+              'logis.kind',
+              'logis.durationMs',
+              'logis.reason',
+              'logis.order',
+            ]
+
+setup.ilm.enabled: false
+setup.template.enabled: false
+output.elasticsearch:
+  hosts: ['http://elasticsearch:9200']
+  username: logis_writer
+  password: ${LOGIS_WRITER_PASSWORD}
+  index: logis-fetch-live

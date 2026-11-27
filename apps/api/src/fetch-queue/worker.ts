@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { FetchQueuePauseReason, FetchQueueState } from '@bcp/shared';
 import type { TournamentSource } from '../bcp/source';
 import type { Db } from '../db/client';
@@ -18,6 +19,7 @@ import {
   releaseJob,
   requeueInterrupted,
   retryJobLater,
+  retryFailedJobs,
   type ClaimedJob,
   jobPriorityAndOrigin,
 } from '../repo/fetch-queue';
@@ -50,6 +52,18 @@ export interface FetchQueueWorkerOptions {
 interface Pause {
   reason: FetchQueuePauseReason;
   until: Date | null;
+}
+
+const eventOrder = () => Math.floor((performance.timeOrigin + performance.now()) * 1000);
+
+function queueEvent(job: Pick<ClaimedJob, 'id' | 'kind'>, order: number) {
+  return {
+    logEventId: randomUUID(),
+    jobId: job.id,
+    kind: job.kind,
+    occurredAt: Math.floor(order / 1000),
+    order,
+  };
 }
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -105,6 +119,19 @@ export class FetchQueueWorker {
 
   resume(): void {
     this.#pause = null;
+  }
+
+  async retryFailed(eventId?: string, only?: 'pairings', code?: string): Promise<number> {
+    // Order the requeue before any outcome from a worker that claims the newly available job.
+    const order = eventOrder();
+    const rows = await retryFailedJobs(this.#options.db, eventId, only, code);
+    for (const job of rows) {
+      this.#options.logger.info(
+        { ...queueEvent(job, order), attempt: 0, status: 'requeued' },
+        'Fetch queue job',
+      );
+    }
+    return rows.length;
   }
 
   /** Claims and runs at most one job. */
@@ -193,7 +220,8 @@ export class FetchQueueWorker {
     ) => {
       logger[level](
         {
-          kind: claimed.kind,
+          ...queueEvent(claimed, eventOrder()),
+          attempt: claimed.attempts,
           eventId: claimed.eventId,
           ...(claimed.playerId === null ? {} : { playerId: claimed.playerId }),
           ...(claimed.round === null ? {} : { round: claimed.round }),

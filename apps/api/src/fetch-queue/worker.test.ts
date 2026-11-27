@@ -5,6 +5,7 @@ import type { Db } from '../db/client';
 import { events, fetchQueue, games } from '../db/schema';
 import { createTestDb, resetDb } from '../db/test-db';
 import { BcpAuthError, BcpRateLimitedError, BcpUnavailableError } from '../errors';
+import { createLogger } from '../logger';
 import { upsertEventDetail, upsertEventSummaries } from '../repo/events';
 import * as fetchQueueRepo from '../repo/fetch-queue';
 import {
@@ -124,6 +125,55 @@ describe('FetchQueueWorker', () => {
     clock = new Date(clock.getTime() + 5 * 60_000 + 1000);
     expect(await w.tick()).toBe('failed');
     expect(await queueTotals(db)).toMatchObject({ queued: 0, fetching: 0, failed: 1 });
+  });
+
+  it('reports that a failed job is requeued and correlates its eventual success', async () => {
+    let clock = new Date('2030-01-01T00:00:00Z');
+    let available = false;
+    const lines: string[] = [];
+    const w = new FetchQueueWorker({
+      db,
+      source: withGetList(async (id) => {
+        if (!available) throw new BcpUnavailableError('BCP down');
+        return source.getList(id);
+      }),
+      logger: createLogger('info', false, { write: (line: string) => lines.push(line) }),
+      now: () => clock,
+      intervalMs: 5000,
+    });
+    await enqueueLists(db, EVENT, [ada], 0);
+    expect(await w.tick()).toBe('retry');
+    clock = new Date(clock.getTime() + 61_000);
+    expect(await w.tick()).toBe('retry');
+    clock = new Date(clock.getTime() + 301_000);
+    expect(await w.tick()).toBe('failed');
+    expect(await w.retryFailed(EVENT)).toBe(1);
+    expect(await w.retryFailed(EVENT)).toBe(0);
+    expect(await queueTotals(db)).toMatchObject({ queued: 1, failed: 0 });
+    available = true;
+    expect(await w.tick()).toBe('fetched');
+
+    const records = lines.map(
+      (line) =>
+        JSON.parse(line) as {
+          jobId: number;
+          status: string;
+          attempt: number;
+          logEventId: string;
+          order: number;
+        },
+    );
+    expect(records.map(({ status, attempt }) => [status, attempt])).toEqual([
+      ['retry', 1],
+      ['retry', 2],
+      ['failed', 3],
+      ['requeued', 0],
+      ['fetched', 1],
+    ]);
+    expect(new Set(records.map((record) => record.jobId)).size).toBe(1);
+    expect(new Set(records.map((record) => record.logEventId)).size).toBe(5);
+    const order = records.map((record) => record.order);
+    expect(order).toEqual([...new Set(order)].sort((a, b) => a - b));
   });
 
   it('pauses on a rejected login, keeps the row queued, and sends nothing more', async () => {

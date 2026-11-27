@@ -93,7 +93,7 @@ describe('fetch queue repository', () => {
     });
 
     it('counts a failure only while it is the newest try, and retries one reason at a time', async () => {
-      expect(await retryFailedJobs(db, undefined, undefined, 'BCP_UNAVAILABLE')).toBe(1);
+      expect(await retryFailedJobs(db, undefined, undefined, 'BCP_UNAVAILABLE')).toHaveLength(1);
       const details = await queueDetails(db);
       expect(details.failures.map((f) => f.code)).toEqual([NO_LIST_CODE]);
     });
@@ -102,7 +102,7 @@ describe('fetch queue repository', () => {
       await setEventBlocked(db, EVENT, new Date());
       expect((await queueDetails(db)).failures).toEqual([]);
       expect((await queueTotals(db)).failed).toBe(0);
-      expect(await retryFailedJobs(db)).toBe(0);
+      expect(await retryFailedJobs(db)).toHaveLength(0);
 
       await setEventBlocked(db, EVENT, null);
       expect((await queueTotals(db)).failed).toBe(1);
@@ -178,7 +178,7 @@ describe('fetch queue repository', () => {
     await markJobFailed(db, second.id, 'No list on BCP', NO_LIST_CODE);
 
     expect(await cancelQueuedLists(db, EVENT)).toBe(1);
-    expect(await retryFailedJobs(db, EVENT)).toBe(1);
+    expect(await retryFailedJobs(db, EVENT)).toHaveLength(1);
     // "No list on BCP" is final: it isn't counted as a failure waiting for a retry.
     expect(await queueTotals(db)).toMatchObject({ queued: 1, fetching: 0, failed: 0 });
   });
@@ -217,7 +217,7 @@ describe('fetch queue repository', () => {
 
     it('requeues a retryable failure with a fresh attempt count', async () => {
       await failAll(EVENT, [ada]);
-      expect(await retryFailedJobs(db, EVENT)).toBe(1);
+      expect(await retryFailedJobs(db, EVENT)).toHaveLength(1);
       const [row] = await rowsOf('PL-ADA');
       expect(row).toMatchObject({ status: 'queued', attempts: 0, error: null, errorCode: null });
     });
@@ -225,7 +225,7 @@ describe('fetch queue repository', () => {
     it('leaves a failure alone when the player has a newer open row', async () => {
       await failAll(EVENT, [ada]);
       await enqueueLists(db, EVENT, [ada], 0);
-      expect(await retryFailedJobs(db, EVENT)).toBe(0);
+      expect(await retryFailedJobs(db, EVENT)).toHaveLength(0);
       expect((await rowsOf('PL-ADA')).map((row) => row.status)).toEqual(['failed', 'queued']);
     });
 
@@ -235,7 +235,7 @@ describe('fetch queue repository', () => {
       const claimed = await claimNextJob(db, soon());
       if (!claimed) throw new Error('nothing claimed');
       await markJobDone(db, claimed.id);
-      expect(await retryFailedJobs(db)).toBe(0);
+      expect(await retryFailedJobs(db)).toHaveLength(0);
       expect((await rowsOf('PL-ADA')).map((row) => row.status)).toEqual(['failed', 'done']);
     });
 
@@ -252,7 +252,7 @@ describe('fetch queue repository', () => {
       await failAll(other, [{ playerId: 'PL-OTHER', listId: 'LS-OTHER' }]);
       await failAll(EVENT, [ben], NO_LIST_CODE);
 
-      expect(await retryFailedJobs(db)).toBe(2);
+      expect(await retryFailedJobs(db)).toHaveLength(2);
       expect(await queueTotals(db)).toMatchObject({ queued: 2 });
     });
   });
@@ -316,7 +316,7 @@ describe('automatic jobs', () => {
     const [row] = await rowsOf();
     if (row === undefined) throw new Error('no row');
     await markJobFailed(db, row.id, 'boom', 'BCP_UNAVAILABLE');
-    expect(await retryFailedJobs(db, EVENT)).toBe(1);
+    expect(await retryFailedJobs(db, EVENT)).toHaveLength(1);
     const retried = (await rowsOf()).find((r) => r.status === 'queued');
     expect(retried).toMatchObject({ origin: 'user', priority: 0 });
   });
@@ -389,10 +389,10 @@ describe('pairings jobs', () => {
     const first = await claim();
     await markJobFailed(db, first.id, 'BCP down', 'BCP_UNAVAILABLE');
     await enqueueEventPairings(db, EVENT, { rounds: [1], priority: 0 });
-    expect(await retryFailedJobs(db, EVENT)).toBe(0); // a newer round-1 job is open
+    expect(await retryFailedJobs(db, EVENT)).toHaveLength(0); // a newer round-1 job is open
     const second = await claim();
     await markJobFailed(db, second.id, 'BCP down', 'BCP_UNAVAILABLE');
-    expect(await retryFailedJobs(db, EVENT)).toBe(1);
+    expect(await retryFailedJobs(db, EVENT)).toHaveLength(1);
   });
 
   it('counts totals by kind and an event’s pairings jobs', async () => {
@@ -509,7 +509,7 @@ describe('pairings jobs', () => {
       failedRounds: [],
       loadFailed: true,
     });
-    expect(await retryFailedJobs(db, EVENT)).toBe(1);
+    expect(await retryFailedJobs(db, EVENT)).toHaveLength(1);
     expect(await eventPairingsJobs(db, EVENT)).toEqual({
       queued: 1,
       queuedRounds: 0,
@@ -524,7 +524,7 @@ describe('pairings jobs', () => {
     await enqueueEventPairings(db, EVENT, { rounds: [1], priority: 0 });
     await markJobFailed(db, (await claim()).id, 'x', 'INTERNAL');
     await markJobFailed(db, (await claim()).id, 'x', 'INTERNAL');
-    expect(await retryFailedJobs(db, EVENT, 'pairings')).toBe(1);
+    expect(await retryFailedJobs(db, EVENT, 'pairings')).toHaveLength(1);
     expect(await kinds()).toEqual(
       expect.arrayContaining([
         ['list', null, 0, 'failed'],

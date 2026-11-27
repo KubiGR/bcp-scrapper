@@ -1,0 +1,3 @@
+FROM logis-fetch-demo
+| STATS outcome = LAST(status, @timestamp) BY jobId
+| SORT jobId

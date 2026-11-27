@@ -324,37 +324,33 @@ function isNewestTry(db: Db) {
  * event's; `only: 'pairings'`: just its pairings, leaving its failed lists; `code`: just the
  * failures with that error code.
  */
-export async function retryFailedJobs(
-  db: Db,
-  eventId?: string,
-  only?: 'pairings',
-  code?: string,
-): Promise<number> {
-  const rows = await db
-    .update(fetchQueue)
-    // A retry is the user asking: an automatic job becomes theirs (see claimForUser).
-    .set({
-      status: 'queued',
-      attempts: 0,
-      notBefore: new Date(),
-      error: null,
-      errorCode: null,
-      origin: 'user',
-      priority: sql`greatest(${fetchQueue.priority}, 0)`,
-    })
-    .where(
-      and(
-        eq(fetchQueue.status, 'failed'),
-        or(isNull(fetchQueue.errorCode), ne(fetchQueue.errorCode, NO_LIST_CODE)),
-        eventId === undefined ? undefined : eq(fetchQueue.eventId, eventId),
-        only === 'pairings' ? inArray(fetchQueue.kind, [...PAIRINGS_KINDS]) : undefined,
-        code === undefined ? undefined : eq(fetchQueue.errorCode, code),
-        eventNotBlocked,
-        isNewestTry(db),
-      ),
-    )
-    .returning({ id: fetchQueue.id });
-  return rows.length;
+export async function retryFailedJobs(db: Db, eventId?: string, only?: 'pairings', code?: string) {
+  return (
+    db
+      .update(fetchQueue)
+      // A retry is the user asking: an automatic job becomes theirs (see claimForUser).
+      .set({
+        status: 'queued',
+        attempts: 0,
+        notBefore: new Date(),
+        error: null,
+        errorCode: null,
+        origin: 'user',
+        priority: sql`greatest(${fetchQueue.priority}, 0)`,
+      })
+      .where(
+        and(
+          eq(fetchQueue.status, 'failed'),
+          or(isNull(fetchQueue.errorCode), ne(fetchQueue.errorCode, NO_LIST_CODE)),
+          eventId === undefined ? undefined : eq(fetchQueue.eventId, eventId),
+          only === 'pairings' ? inArray(fetchQueue.kind, [...PAIRINGS_KINDS]) : undefined,
+          code === undefined ? undefined : eq(fetchQueue.errorCode, code),
+          eventNotBlocked,
+          isNewestTry(db),
+        ),
+      )
+      .returning({ id: fetchQueue.id, kind: fetchQueue.kind })
+  );
 }
 
 /** What a job is about, for the Queue page. */

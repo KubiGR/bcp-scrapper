@@ -1,0 +1,6 @@
+FROM logis-fetch-live
+| STATS outcome = LAST(logis.status, logis.order) BY logis.jobId
+| WHERE outcome IN ("fetched", "failed")
+| STATS finished = COUNT(*), failed = COUNT(*) WHERE outcome == "failed"
+| EVAL failureRate = CASE(finished > 0, TO_DOUBLE(failed) / finished, null)
+| KEEP failed, finished, failureRate
