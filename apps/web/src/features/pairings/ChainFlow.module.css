@@ -33,3 +33,19 @@
 .arrow:hover text {
   fill: var(--mantine-color-text);
 }
+
+.canvas {
+  height: clamp(26rem, 65vh, 48rem);
+  overflow: hidden;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-sm);
+}
+
+.canvas :global(.react-flow__node) {
+  display: grid;
+  place-items: center;
+  padding: 5px 8px;
+  font-size: 12px;
+  line-height: 1.25;
+  white-space: pre-line;
+}

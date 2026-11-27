@@ -1,7 +1,6 @@
 import {
   CHAIN_MIN_SHARE,
   pairingChain,
-  type ChainLeaf,
   type PairingAnalysis,
   type PairingChip,
   type PairingRating,
@@ -9,7 +8,7 @@ import {
 } from '@bcp/shared';
 import { Button, Group, NativeSelect, Paper, Stack, Switch, Table, Text } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import classes from './ChainFlow.module.css';
 import {
   LINE,
@@ -24,6 +23,9 @@ import { chipStyle } from './chip-style';
 import { bestAgainst, breakEven, nextTip, safest } from './tips';
 import { usedPlayers } from './used-players';
 import { armyLabel, fullArmy } from './army-name';
+import { resolveLineup, visibleLineups, type LineupSelection } from './chain-selection';
+
+const PairingCanvas = lazy(() => import('./PairingCanvas'));
 
 const army = armyLabel;
 /** A score difference as "+0.8", "−1.2" or "0.0". */
@@ -91,6 +93,7 @@ export function ChainFlow({
   // On a phone the diagram is far wider than the screen: it waits behind a button.
   const phone = useMediaQuery('(max-width: 48em)', false, { getInitialValueInEffect: false });
   const [diagramOpen, setDiagramOpen] = useState(false);
+  const [useReactFlow, setUseReactFlow] = useState(false);
   const ALL = [0, 1, 2, 3, 4];
   const theirSend = full.sends.find((x) => x.theirs.join() === follow.theirSend)?.theirs;
   const followOptions = (players: PairingRosterPlayer[], indexes: readonly number[]) => [
@@ -146,9 +149,17 @@ export function ChainFlow({
     );
   const pickNumber = (value: string) => (value === '' ? undefined : Number(value));
   const layout = layoutChain(chain);
-  // The open line-up is remembered by its place in the chain, so it follows rating changes.
-  const [pickedId, setPickedId] = useState<string | null>(null);
-  const picked: ChainLeaf | null = layout.nodes.find((n) => n.id === pickedId)?.leaf ?? null;
+  const lineups = visibleLineups(layout, chain, ours, theirs);
+  const [selection, setSelection] = useState<LineupSelection | null>(null);
+  const selected = resolveLineup(lineups, selection);
+  const pickedId = selected?.nodeId;
+  const picked = selected?.leaf;
+  // Clear the stored choice as soon as the lineup is gone so undo does not reselect it.
+  if (selection && !selected) setSelection(null);
+  const selectLineup = (id: string) => {
+    const option = lineups.find((lineup) => lineup.nodeId === id);
+    if (option) setSelection({ lineupKey: option.lineupKey, pathKey: option.pathKey });
+  };
   const ratingOf = new Map(ratings.map((r) => [`${r.playerId}|${r.opponentPlayerId}`, r]));
   const rating = ([a, b]: [number, number]): PairingRating | undefined =>
     ratingOf.get(`${ours[a]?.id ?? ''}|${theirs[b]?.id ?? ''}`);
@@ -370,7 +381,6 @@ export function ChainFlow({
             setSendKey(ev.currentTarget.value);
             // What follows our send starts over; the defenders stay chosen.
             setFollow({ ourDefender: follow.ourDefender, theirDefender: follow.theirDefender });
-            setPickedId(null);
           }}
           data={options.map((o) => ({
             value: o.pair.join(),
@@ -491,7 +501,7 @@ export function ChainFlow({
             // The whole pairing starts over: our best send, nothing followed, no unlikely
             // choices shown, and (from the page) the suggested defenders.
             setSendKey(null);
-            setPickedId(null);
+            setSelection(null);
             setFollow({});
             setShown({ ours: false, theirs: false });
             onClear?.();
@@ -637,6 +647,33 @@ export function ChainFlow({
         </Button>
       )}
       {(!phone || diagramOpen) && (
+        <Switch
+          label="React Flow preview"
+          checked={useReactFlow}
+          onChange={(event) => {
+            setUseReactFlow(event.currentTarget.checked);
+          }}
+        />
+      )}
+      {(!phone || diagramOpen) && useReactFlow && (
+        <Suspense fallback={<Text size="sm">Loading diagram…</Text>}>
+          <PairingCanvas
+            layout={layout}
+            label={(box) =>
+              label(box)
+                .map((line) =>
+                  typeof line === 'string'
+                    ? line
+                    : `${army(ours[line.game[0]])} v ${army(theirs[line.game[1]])}`,
+                )
+                .join('\n')
+            }
+            selectedId={pickedId}
+            onSelect={selectLineup}
+          />
+        </Suspense>
+      )}
+      {(!phone || diagramOpen) && !useReactFlow && (
         <div style={{ overflowX: 'auto' }}>
           <svg
             ref={svgRef}
@@ -700,12 +737,12 @@ export function ChainFlow({
                   aria-label={`Final line-up, total ${box.value.toFixed(1)}`}
                   aria-pressed={box.id === pickedId}
                   onClick={() => {
-                    setPickedId(box.id);
+                    selectLineup(box.id);
                   }}
                   onKeyDown={(ev) => {
                     if (ev.key === 'Enter' || ev.key === ' ') {
                       ev.preventDefault();
-                      setPickedId(box.id);
+                      selectLineup(box.id);
                     }
                   }}
                 >

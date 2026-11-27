@@ -87,43 +87,36 @@ describe('ChainFlow', () => {
     expect(screen.getByText(/^Line-up · Total/)).toBeInTheDocument();
   });
 
-  it('the open line-up follows a rating change', () => {
-    const { rerender } = renderWithProviders(
+  it('updates the same line-up when scores change and clears it when all matching paths disappear', () => {
+    const tree = (matrix: number[][]) => (
       <ChainFlow
-        analysis={analysePairing(R1)}
+        analysis={analysePairing(matrix)}
         ours={ours}
         theirs={theirs}
         ratings={[]}
         d={3}
         e={4}
-      />,
+      />
     );
+    const { rerender } = renderWithProviders(tree(R1));
     const fifties = screen.getAllByRole('button', { name: 'Final line-up, total 50.0' });
     fireEvent.click(fifties.at(-1) as Element);
-    // World Eaters v Death Guard goes from Y (10) to G (13).
-    const changed = R1.map((row, i) => row.map((v, j) => (i === 3 && j === 1 ? 13 : v)));
-    rerender(
-      <ChainFlow
-        analysis={analysePairing(changed)}
-        ours={ours}
-        theirs={theirs}
-        ratings={[]}
-        d={3}
-        e={4}
-      />,
-    );
     const panel = within(screen.getByRole('region', { name: 'Line-up' }));
-    const heading = panel.getByText(/^Line-up · Total/).textContent;
-    const shown = Number(/Total ([\d.]+)/.exec(heading)?.[1]);
-    const games = panel
-      .getAllByText(/ v /)
-      .map((el) => Number(/([\d.]+)$/.exec(el.textContent)?.[1]));
-    expect(games).toHaveLength(5);
-    expect(shown).toBeCloseTo(
-      games.reduce((s, v) => s + v, 0),
-      9,
-    );
-    expect(shown).not.toBeCloseTo(50, 9);
+    const matchups = () =>
+      panel.getAllByText(/ v /).map((game) => game.textContent.replace(/ [\d.]+$/, ''));
+    const clickedGames = matchups();
+    expect(clickedGames).toHaveLength(5);
+
+    // Every lineup gains three points from the World Eaters player, so the choices stay equivalent.
+    rerender(tree(R1.map((row, i) => row.map((v) => (i === 3 ? v + 3 : v)))));
+    expect(panel.getByText('Line-up · Total 53.0')).toBeInTheDocument();
+    expect(matchups()).toEqual(clickedGames);
+
+    // Improving only the World Eaters v Death Guard game takes this lineup off the visible tree.
+    rerender(tree(R1.map((row, i) => row.map((v, j) => (i === 3 && j === 1 ? 13 : v)))));
+    expect(screen.queryByRole('region', { name: 'Line-up' })).not.toBeInTheDocument();
+    rerender(tree(R1));
+    expect(screen.queryByRole('region', { name: 'Line-up' })).not.toBeInTheDocument();
   });
 
   it('each box lists the games formed at that step with their chips', () => {
