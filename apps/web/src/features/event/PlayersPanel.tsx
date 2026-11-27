@@ -28,6 +28,7 @@ import { listPath, openHere } from '../../lib/open-link';
 import { sortRows, type SortDir, type SortValue } from '../../lib/table-sort';
 import { PlayerName } from '../rankings/PlayerName';
 import { RankBadge } from '../rankings/RankBadge';
+import { topRanksQuery } from '../rankings/rankings-queries';
 import { EventQueueLine } from './EventQueueLine';
 import { playersQuery } from './event-queries';
 import { ExportMenu } from './ExportMenu';
@@ -100,12 +101,13 @@ const PLAYER_SORT = {
   oppElo: (p) => p.opponents?.elo ?? null,
   listStatus: (p) => p.listStatus,
 } satisfies Record<string, SortValue<EventPlayer>>;
-type PlayerSortKey = keyof typeof PLAYER_SORT;
+type PlayerSortKey = keyof typeof PLAYER_SORT | 'elo';
 
 /** The orders on offer, each its natural way round. */
 const SORTS: { value: PlayerSortKey; label: string; dir: SortDir }[] = [
   { value: 'placing', label: 'Placing', dir: 'asc' },
   { value: 'wins', label: 'Record', dir: 'desc' },
+  { value: 'elo', label: 'Elo', dir: 'desc' },
   { value: 'name', label: 'Player', dir: 'asc' },
   { value: 'faction', label: 'Faction', dir: 'asc' },
   { value: 'oppWinRate', label: 'Opp. win %', dir: 'desc' },
@@ -166,7 +168,7 @@ export function PlayersPanel({
   const [dispositions, setDispositions] = useState<string[]>([]);
   const [detachments, setDetachments] = useState<string[]>([]);
   const [maxLosses, setMaxLosses] = useState<number | null>(null);
-  const [sortKey, setSortKey] = useState<PlayerSortKey>('placing');
+  const [chosenSort, setChosenSort] = useState<PlayerSortKey | null>(null);
   const [openPlayerId, setOpenPlayerId] = useUncontrolled<string | null>({
     value: openPlayerIdProp,
     defaultValue: null,
@@ -177,13 +179,30 @@ export function PlayersPanel({
   const [selectedTeams, setSelectedTeams] = useState<Set<string>>(new Set());
   const queueTeam = useQueueLists(event);
   const all = players.data?.items ?? [];
+  const hasResults =
+    event.ended ||
+    all.some(
+      (player) =>
+        player.placing !== null ||
+        PLAYER_SORT.wins(player) !== null ||
+        (player.opponents?.games ?? 0) > 0,
+    );
+  const sortKey = chosenSort ?? (hasResults ? 'placing' : 'elo');
+  const { data: ratings } = useQuery({
+    ...topRanksQuery,
+    enabled: sortKey === 'elo' && all.some((player) => player.bcpUserId !== null),
+  });
   const openPlayer = all.find((p) => p.bcpId === openPlayerId) ?? null;
   // The list the address opened the page on (a link opened in a new tab).
   const [listFromAddress] = useState(openPlayerIdProp ?? null);
   const filtered = filterPlayers(all, { query, factions, dispositions, detachments, maxLosses });
   const dir = SORTS.find((option) => option.value === sortKey)?.dir ?? 'asc';
+  const sortValue: SortValue<EventPlayer> =
+    sortKey === 'elo'
+      ? (player) => (player.bcpUserId === null ? null : (ratings?.elo[player.bcpUserId] ?? null))
+      : PLAYER_SORT[sortKey];
   // Sorted before grouping, so a team event sorts the players within each team.
-  const sorted = sortRows(filtered, PLAYER_SORT[sortKey], dir);
+  const sorted = sortRows(filtered, sortValue, dir);
 
   const toggleTeam = (teamId: string) => {
     setSelectedTeams((prev) => {
@@ -248,7 +267,7 @@ export function PlayersPanel({
           );
         });
     }
-    if (sortKey === 'placing' || sortKey === 'wins') {
+    if (sortKey === 'placing' || sortKey === 'wins' || (sortKey === 'elo' && !hasResults)) {
       return byRecord(sorted).map(({ record, players: members }) => {
         const [first] = members;
         return (
@@ -294,7 +313,7 @@ export function PlayersPanel({
                   value={sortKey}
                   onChange={(value) => {
                     const next = SORTS.find((option) => option.value === value);
-                    if (next) setSortKey(next.value);
+                    if (next) setChosenSort(next.value);
                   }}
                   allowDeselect={false}
                 />

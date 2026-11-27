@@ -95,6 +95,7 @@ describe('PlayersPanel', () => {
           aPlayer({ bcpId: 'P2', name: 'Ada Archer', placing: 2, faction: 'Necrons' }),
         ],
       },
+      'GET /api/rankings/top': { ranks: {}, elo: { 'US-P1': 1480, 'US-P2': 1920 } },
     });
     renderWithRouter(
       <PlayersPanel event={anEventDetail({ isTeamEvent: false })} loadingFromBcp={false} />,
@@ -110,6 +111,34 @@ describe('PlayersPanel', () => {
     expect(names()).toEqual(['Ada Archer', 'Zed Zulu']);
     await pickSort('Placing');
     expect(names()).toEqual(['Zed Zulu', 'Ada Archer']);
+    await pickSort('Elo');
+    expect(names()).toEqual(['Ada Archer', 'Zed Zulu']);
+  });
+
+  it('defaults to highest Elo first for a roster with no results, with unrated players last', async () => {
+    const noResults = { placing: null, wins: 0, draws: 0, losses: 0 };
+    stubFetchRoutes({
+      'GET /api/events/EVT1/players': {
+        items: [
+          aPlayer({ ...noResults, bcpId: 'P1', name: 'Alex Unrated' }),
+          aPlayer({ ...noResults, bcpId: 'P2', name: 'Blair Rated' }),
+          aPlayer({ ...noResults, bcpId: 'P3', name: 'Casey Rated' }),
+        ],
+      },
+      'GET /api/rankings/top': { ranks: {}, elo: { 'US-P2': 1480, 'US-P3': 1920 } },
+    });
+    renderWithRouter(
+      <PlayersPanel
+        event={anEventDetail({ isTeamEvent: false, ended: false })}
+        loadingFromBcp={false}
+      />,
+    );
+    await screen.findByRole('link', { name: 'wh40k-elo 1920' });
+    expect(screen.getAllByLabelText('Sort by')[0]).toHaveValue('Elo');
+    expect(screen.getByText('No games')).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('link', { name: /Unrated|Rated/ }).map((link) => link.textContent),
+    ).toEqual(['Casey Rated', 'Blair Rated', 'Alex Unrated']);
   });
 
   it('groups by record like standings: most wins, then draws, then fewest losses', async () => {
