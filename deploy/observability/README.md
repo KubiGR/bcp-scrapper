@@ -2,7 +2,9 @@
 
 The home server runs this Compose project separately from Logis. Elasticsearch uses the Docker
 network, and Kibana is published on the host loopback. Filebeat reads the persistent systemd journal
-with the Logis container tag and retains its input cursor in a Docker volume.
+with the Logis container tag and retains its input cursor in a Docker volume. Filebeat uses the
+journal timestamp for the dashboard time window and preserves the worker’s ordering field to
+resolve the latest state of a job.
 
 Use the SSH alias for the home server to open the dashboard from a workstation.
 

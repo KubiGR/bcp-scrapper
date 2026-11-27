@@ -126,6 +126,7 @@ def provision():
     request(f"{KIBANA}/api/dashboards/{DASHBOARD}", "PUT", {
         "title": "Logis fetch queue",
         "description": "Latest observed outcome per job in the selected window.",
+        "refresh_interval": {"pause": False, "value": 15000},
         "time_range": {"from": "now-24h", "to": "now"},
         "panels": panels,
     })
