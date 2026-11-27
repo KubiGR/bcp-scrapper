@@ -161,8 +161,16 @@ describe('FetchQueueWorker', () => {
           attempt: number;
           logEventId: string;
           order: number;
+          errorCode?: string;
+          errorMessage?: string;
         },
     );
+    for (const record of records.slice(0, 3)) {
+      expect(record).toMatchObject({
+        errorCode: 'BCP_UNAVAILABLE',
+        errorMessage: 'BCP could not be reached or returned an error',
+      });
+    }
     expect(records.map(({ status, attempt }) => [status, attempt])).toEqual([
       ['retry', 1],
       ['retry', 2],
@@ -174,6 +182,34 @@ describe('FetchQueueWorker', () => {
     expect(new Set(records.map((record) => record.logEventId)).size).toBe(5);
     const order = records.map((record) => record.order);
     expect(order).toEqual([...new Set(order)].sort((a, b) => a - b));
+  });
+
+  it('samples queued jobs and the worker pause state even without a fetch attempt', async () => {
+    await enqueueLists(db, EVENT, [ada], 0, 'auto');
+    await db
+      .update(fetchQueue)
+      .set({ queuedAt: new Date('2030-01-01T00:00:00Z') })
+      .where(eq(fetchQueue.playerId, ada.playerId));
+    const lines: string[] = [];
+    const w = new FetchQueueWorker({
+      db,
+      source,
+      logger: createLogger('info', false, { write: (line: string) => lines.push(line) }),
+      intervalMs: 5000,
+      now: () => new Date('2030-01-01T00:02:00Z'),
+    });
+    w.pause('user');
+    await w.start();
+    await w.stop();
+    expect(lines.map((line) => JSON.parse(line) as unknown)).toEqual([
+      expect.objectContaining({
+        msg: 'Fetch queue health',
+        waiting: 1,
+        oldestWaitSeconds: 120,
+        workerState: 'paused',
+        reason: 'user',
+      }),
+    ]);
   });
 
   it('pauses on a rejected login, keeps the row queued, and sends nothing more', async () => {

@@ -14,6 +14,7 @@ import {
   markJobFailed,
   markPairingsSyncedIfComplete,
   NO_LIST_CODE,
+  queueBacklog,
   queuedInOrder,
   queueTotals,
   releaseJob,
@@ -30,6 +31,7 @@ import { syncRoundPairings } from '../sync/round-pairings';
 /** Waits after the 1st and 2nd failed attempt; the 3rd failure is final. */
 const BACKOFF_MS = [60_000, 5 * 60_000, 15 * 60_000] as const;
 const MAX_ATTEMPTS = 3;
+const HEALTH_INTERVAL_MS = 60_000;
 
 export type TickOutcome = 'idle' | 'busy' | 'paused' | 'fetched' | 'failed' | 'retry';
 
@@ -54,16 +56,37 @@ interface Pause {
   until: Date | null;
 }
 
+interface JobFailure {
+  code: string;
+  message: string;
+}
+
+/** Keep external payloads and unexpected exception text out of the observability index. */
+function failureSummary(code: string): string {
+  switch (code) {
+    case 'BCP_AUTH':
+      return 'BCP refused access to the requested data';
+    case 'BCP_UNAVAILABLE':
+      return 'BCP could not be reached or returned an error';
+    case 'BCP_SCHEMA_MISMATCH':
+      return 'BCP returned data in an unexpected format';
+    case 'NOT_FOUND':
+      return 'The requested data was missing';
+    case 'EVENT_BLOCKED':
+      return 'The event is blocked in Logis';
+    default:
+      return 'The fetch job encountered an error';
+  }
+}
+
 const eventOrder = () => Math.floor((performance.timeOrigin + performance.now()) * 1000);
 
+function eventMetadata(order: number) {
+  return { logEventId: randomUUID(), occurredAt: Math.floor(order / 1000), order };
+}
+
 function queueEvent(job: Pick<ClaimedJob, 'id' | 'kind'>, order: number) {
-  return {
-    logEventId: randomUUID(),
-    jobId: job.id,
-    kind: job.kind,
-    occurredAt: Math.floor(order / 1000),
-    order,
-  };
+  return { ...eventMetadata(order), jobId: job.id, kind: job.kind };
 }
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -80,6 +103,8 @@ export class FetchQueueWorker {
   #timer: ReturnType<typeof setInterval> | null = null;
   /** The tick in flight, if any; stop() waits for it. */
   #inFlight: Promise<TickOutcome> | null = null;
+  #healthTimer: ReturnType<typeof setInterval> | null = null;
+  #healthInFlight: Promise<void> | null = null;
   #pause: Pause | null = null;
 
   constructor(options: FetchQueueWorkerOptions) {
@@ -104,13 +129,19 @@ export class FetchQueueWorker {
         this.#options.logger.error({ err: error }, 'Fetch queue tick failed');
       });
     }, this.intervalMs);
+    this.#recordHealth();
+    this.#healthTimer = setInterval(() => {
+      this.#recordHealth();
+    }, HEALTH_INTERVAL_MS);
   }
 
   /** Stops ticking; resolves once a tick in flight has finished (so the database can close). */
   async stop(): Promise<void> {
     if (this.#timer) clearInterval(this.#timer);
     this.#timer = null;
-    await this.#inFlight?.catch(() => undefined);
+    if (this.#healthTimer) clearInterval(this.#healthTimer);
+    this.#healthTimer = null;
+    await Promise.all([this.#inFlight?.catch(() => undefined), this.#healthInFlight]);
   }
 
   pause(reason: FetchQueuePauseReason = 'user', until: Date | null = null): void {
@@ -185,6 +216,37 @@ export class FetchQueueWorker {
     return Math.ceil(((last + rounds) * this.intervalMs) / 1000);
   }
 
+  #recordHealth(): void {
+    if (this.#healthInFlight) return;
+    this.#healthInFlight = queueBacklog(this.#options.db)
+      .then(({ waiting, oldestQueuedAt }) => {
+        const pause = this.#isPaused() ? this.#pause : null;
+        this.#options.logger.info(
+          {
+            ...eventMetadata(eventOrder()),
+            waiting,
+            oldestWaitSeconds:
+              oldestQueuedAt === null
+                ? null
+                : Math.max(
+                    0,
+                    Math.floor((this.#now().getTime() - oldestQueuedAt.getTime()) / 1000),
+                  ),
+            workerState: pause ? 'paused' : 'running',
+            reason: pause?.reason,
+            until: pause?.until?.toISOString(),
+          },
+          'Fetch queue health',
+        );
+      })
+      .catch((error: unknown) => {
+        this.#options.logger.warn({ err: error }, 'Could not sample fetch queue health');
+      })
+      .finally(() => {
+        this.#healthInFlight = null;
+      });
+  }
+
   #isPaused(): boolean {
     if (!this.#pause) return false;
     const { until } = this.#pause;
@@ -235,14 +297,10 @@ export class FetchQueueWorker {
     };
 
     try {
-      switch (claimed.kind) {
-        case 'list':
-          return log(await this.#fetchList(claimed));
-        case 'event':
-          return log(await this.#fetchEvent(claimed));
-        case 'pairings-round':
-          return log(await this.#fetchRound(claimed));
-      }
+      const failure = await this.#runJob(claimed);
+      if (!failure) return log('fetched');
+      await markJobFailed(db, claimed.id, failure.message, failure.code);
+      return log('failed', 'info', { errorCode: failure.code, errorMessage: failure.message });
     } catch (error) {
       if (error instanceof BcpAuthError && (await this.#isLoginRejected())) {
         await releaseJob(db, claimed.id);
@@ -255,6 +313,8 @@ export class FetchQueueWorker {
         this.pause('rate-limited', until);
         return log('paused', 'warn', { reason: 'rate-limited', until: until.toISOString() });
       }
+      const code = error instanceof AppError ? error.code : 'INTERNAL';
+      const details = { errorCode: code, errorMessage: failureSummary(code) };
       // Blocked after it was claimed: trying again won't help, and its failures don't count.
       if (claimed.attempts < MAX_ATTEMPTS && !(error instanceof EventBlockedError)) {
         const wait =
@@ -265,32 +325,39 @@ export class FetchQueueWorker {
           new Date(this.#now().getTime() + wait),
           messageOf(error),
         );
-        return log('retry');
+        return log('retry', 'info', details);
       }
-      const code = error instanceof AppError ? error.code : 'INTERNAL';
       await markJobFailed(db, claimed.id, messageOf(error), code);
-      return log('failed');
+      return log('failed', 'info', details);
     }
   }
 
-  async #fetchList(job: ClaimedJob): Promise<TickOutcome> {
+  #runJob(job: ClaimedJob): Promise<JobFailure | undefined> {
+    switch (job.kind) {
+      case 'list':
+        return this.#fetchList(job);
+      case 'event':
+        return this.#fetchEvent(job);
+      case 'pairings-round':
+        return this.#fetchRound(job);
+    }
+  }
+
+  async #fetchList(job: ClaimedJob): Promise<JobFailure | undefined> {
     const { db, source } = this.#options;
     if (job.playerId === null || job.listId === null) {
-      await markJobFailed(db, job.id, 'List job without player or list', 'INTERNAL');
-      return 'failed';
+      return { code: 'INTERNAL', message: 'List job without player or list' };
     }
     const list = await source.getList(job.listId);
     if (list === null) {
-      await markJobFailed(db, job.id, 'No list on BCP', NO_LIST_CODE);
-      return 'failed';
+      return { code: NO_LIST_CODE, message: 'No list on BCP' };
     }
     await saveArmyList(db, job.playerId, list, job.listId);
     await markJobDone(db, job.id);
-    return 'fetched';
   }
 
   /** Event detail, teams and players; with a pairings follow-up, then queues every round. */
-  async #fetchEvent(job: ClaimedJob): Promise<TickOutcome> {
+  async #fetchEvent(job: ClaimedJob): Promise<undefined> {
     const { db, source } = this.#options;
     const event = await syncEvent({ db, source }, job.eventId);
     if (job.followUp === 'pairings' && event.removedFromBcpAt === null) {
@@ -302,16 +369,15 @@ export class FetchQueueWorker {
       await enqueueEventPairings(db, job.eventId, { rounds, priority, origin });
     }
     await markJobDone(db, job.id);
-    return 'fetched';
+    return undefined;
   }
 
   /** One round's team matchups and games; marks the event's pairings synced after the last. */
-  async #fetchRound(job: ClaimedJob): Promise<TickOutcome> {
+  async #fetchRound(job: ClaimedJob): Promise<JobFailure | undefined> {
     const { db, source, logger } = this.#options;
     const event = await findEvent(db, job.eventId);
     if (!event || job.round === null) {
-      await markJobFailed(db, job.id, 'Round job for an unknown event or round', 'NOT_FOUND');
-      return 'failed';
+      return { code: 'NOT_FOUND', message: 'Round job for an unknown event or round' };
     }
     await syncRoundPairings(
       { db, source, logger },
@@ -325,6 +391,5 @@ export class FetchQueueWorker {
       // The round is stored; the next round job (or a refresh) sets the synced time.
       logger.warn({ err: error, eventId: event.id }, 'Could not mark the event’s pairings synced');
     }
-    return 'fetched';
   }
 }

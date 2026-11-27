@@ -8,6 +8,8 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from dashboard import dashboard
+
 ROOT = Path(__file__).resolve().parent
 ENV = dict(line.split("=", 1) for line in (ROOT / ".env").read_text().splitlines())
 INDEX = "logis-fetch-live"
@@ -58,6 +60,24 @@ def provision():
         "POST",
         {"password": ENV["KIBANA_PASSWORD"]},
     )
+    mappings = {"properties": {
+        "@timestamp": {"type": "date"},
+        "logis": {"properties": {
+            "jobId": {"type": "long"},
+            "attempt": {"type": "integer"},
+            "status": {"type": "keyword"},
+            "kind": {"type": "keyword"},
+            "reason": {"type": "keyword"},
+            "until": {"type": "date"},
+            "durationMs": {"type": "long"},
+            "order": {"type": "long"},
+            "errorCode": {"type": "keyword"},
+            "errorMessage": {"type": "keyword"},
+            "waiting": {"type": "long"},
+            "oldestWaitSeconds": {"type": "long"},
+            "workerState": {"type": "keyword"},
+        }},
+    }}
     try:
         request(f"{elastic}/{INDEX}")
     except HTTPError as error:
@@ -65,19 +85,10 @@ def provision():
             raise
         request(f"{elastic}/{INDEX}", "PUT", {
             "settings": {"number_of_replicas": 0},
-            "mappings": {"properties": {
-                "@timestamp": {"type": "date"},
-                "logis": {"properties": {
-                    "jobId": {"type": "long"},
-                    "attempt": {"type": "integer"},
-                    "status": {"type": "keyword"},
-                    "kind": {"type": "keyword"},
-                    "reason": {"type": "keyword"},
-                    "durationMs": {"type": "long"},
-                    "order": {"type": "long"},
-                }},
-            }},
+            "mappings": mappings,
         })
+    else:
+        request(f"{elastic}/{INDEX}/_mapping", "PUT", mappings)
 
     request(elastic + "/_security/role/logis_writer", "PUT", {
         "cluster": ["monitor"],
@@ -104,32 +115,7 @@ def provision():
         "roles": ["logis_dashboard"],
     })
     query = (ROOT / "failure-rate.esql").read_text().strip()
-    panels = []
-    for i, (title, column) in enumerate([
-        ("Fetch failure rate", "failureRate"),
-        ("Failed jobs", "failed"),
-        ("Finished jobs", "finished"),
-    ]):
-        metric = {"type": "primary", "column": column, "label": title}
-        if column == "failureRate":
-            metric["format"] = {"type": "percent", "decimals": 1}
-        panels.append({
-            "type": "vis",
-            "grid": {"x": i * 16, "y": 0, "w": 16, "h": 8},
-            "config": {
-                "title": title,
-                "type": "metric",
-                "data_source": {"type": "esql", "query": query},
-                "metrics": [metric],
-            },
-        })
-    request(f"{KIBANA}/api/dashboards/{DASHBOARD}", "PUT", {
-        "title": "Logis fetch queue",
-        "description": "Latest observed outcome per job in the selected window.",
-        "refresh_interval": {"pause": False, "value": 15000},
-        "time_range": {"from": "now-24h", "to": "now"},
-        "panels": panels,
-    })
+    request(f"{KIBANA}/api/dashboards/{DASHBOARD}", "PUT", dashboard(INDEX, query))
     compose("up", "-d", "filebeat")
     print("Provisioned the Logis dashboard and started Filebeat.")
 

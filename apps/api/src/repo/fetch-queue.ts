@@ -10,6 +10,7 @@ import {
   inArray,
   isNull,
   lte,
+  min,
   ne,
   notExists,
   or,
@@ -463,6 +464,15 @@ interface JobTotals {
   queued: number;
   fetching: number;
   failed: number;
+}
+
+/** All waiting jobs, including automatic jobs and jobs in retry backoff. */
+export async function queueBacklog(db: Db) {
+  const [row] = await db
+    .select({ waiting: count(), oldestQueuedAt: min(fetchQueue.queuedAt) })
+    .from(fetchQueue)
+    .where(and(eq(fetchQueue.status, 'queued'), eventNotBlocked));
+  return row ?? { waiting: 0, oldestQueuedAt: null };
 }
 
 /** Open and failed jobs, summed and per kind (every kind present, zeros included). */

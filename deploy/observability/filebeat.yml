@@ -11,9 +11,13 @@ filebeat.inputs:
     processors:
       - drop_event:
           when.not:
-            and:
-              - equals.logis.msg: Fetch queue job
-              - has_fields: [logis.jobId, logis.status, logis.occurredAt]
+            or:
+              - and:
+                  - equals.logis.msg: Fetch queue job
+                  - has_fields: [logis.jobId, logis.status, logis.occurredAt]
+              - and:
+                  - equals.logis.msg: Fetch queue health
+                  - has_fields: [logis.waiting, logis.workerState, logis.occurredAt]
       - include_fields:
           fields:
             [
@@ -23,6 +27,12 @@ filebeat.inputs:
               'logis.kind',
               'logis.durationMs',
               'logis.reason',
+              'logis.until',
+              'logis.errorCode',
+              'logis.errorMessage',
+              'logis.waiting',
+              'logis.oldestWaitSeconds',
+              'logis.workerState',
               'logis.order',
             ]
 

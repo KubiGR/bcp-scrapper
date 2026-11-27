@@ -1,4 +1,5 @@
 FROM logis-fetch-live
+| WHERE logis.jobId IS NOT NULL
 | STATS outcome = LAST(logis.status, logis.order) BY logis.jobId
 | WHERE outcome IN ("fetched", "failed")
 | STATS finished = COUNT(*), failed = COUNT(*) WHERE outcome == "failed"
