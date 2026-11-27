@@ -79,6 +79,21 @@ describe('PairingsPage', () => {
     expect(column('The chain')).toBeNull();
   });
 
+  it('keeps the React Flow preview open when the defenders change', async () => {
+    renderWithProviders(<PairingsPage />);
+    paste(SHEET);
+    fireEvent.click(screen.getByRole('button', { name: 'Use these ratings' }));
+    const defender = screen.getByLabelText<HTMLSelectElement>('You defend');
+    const next = [...defender.options].find((option) => option.value !== defender.value);
+    if (!next) throw new Error('Expected another defender');
+    fireEvent.click(screen.getByRole('switch', { name: 'React Flow preview' }));
+    await screen.findByRole('region', { name: 'React Flow pairing diagram' });
+
+    fireEvent.change(defender, { target: { value: next.value } });
+    expect(screen.getByRole('switch', { name: 'React Flow preview' })).toBeChecked();
+    expect(screen.getByRole('region', { name: 'React Flow pairing diagram' })).toBeInTheDocument();
+  });
+
   it('the defenders in the follow bar and the grid square move together', () => {
     renderWithProviders(<PairingsPage />);
     paste(SHEET);

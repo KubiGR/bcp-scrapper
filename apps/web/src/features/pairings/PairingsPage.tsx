@@ -321,7 +321,6 @@ function Analysis({
         }}
       >
         <ChainFlow
-          key={`${String(selected.d)}-${String(selected.e)}`}
           analysis={analysis}
           ours={ours}
           theirs={theirs}

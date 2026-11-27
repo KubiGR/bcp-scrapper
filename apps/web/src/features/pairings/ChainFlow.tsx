@@ -77,7 +77,10 @@ export function ChainFlow({
 }) {
   const options = analysis.attackerOptions(d, e);
   const best = options.reduce((x, y) => (y.share > x.share ? y : x));
-  const [sendKey, setSendKey] = useState<string | null>(null);
+  const defenders = `${d}-${e}`;
+  const [sendChoice, setSendChoice] = useState<{ defenders: string; pair: string } | null>(null);
+  const sendKey = sendChoice?.defenders === defenders ? sendChoice.pair : null;
+  if (sendChoice && sendChoice.defenders !== defenders) setSendChoice(null);
   const send = options.find((o) => o.pair.join() === sendKey) ?? best;
   // Cheap: the solver already cached every stage the chain walks through.
   // Unlikely choices (theirs or ours) only when asked for: they multiply the chain's size.
@@ -116,7 +119,7 @@ export function ChainFlow({
   // Their answers to it, and a read on which one they'll make (forgotten when the decision moves on).
   const replyPlayers = tip?.replies.side === 'ours' ? ours : theirs;
   const tipKey = tip
-    ? `${tip.step}|${tip.options.map((o) => o.index).join()}|${tip.replies.list.map((r) => r.index).join()}`
+    ? `${defenders}|${tip.step}|${tip.options.map((o) => o.index).join()}|${tip.replies.list.map((r) => r.index).join()}`
     : '';
   const [readState, setReadState] = useState<{ key: string; reply: number } | null>(null);
   const read = readState?.key === tipKey ? readState.reply : null;
@@ -378,7 +381,7 @@ export function ChainFlow({
           label="You send"
           value={send.pair.join()}
           onChange={(ev) => {
-            setSendKey(ev.currentTarget.value);
+            setSendChoice({ defenders, pair: ev.currentTarget.value });
             // What follows our send starts over; the defenders stay chosen.
             setFollow({ ourDefender: follow.ourDefender, theirDefender: follow.theirDefender });
           }}
@@ -500,7 +503,7 @@ export function ChainFlow({
           onClick={() => {
             // The whole pairing starts over: our best send, nothing followed, no unlikely
             // choices shown, and (from the page) the suggested defenders.
-            setSendKey(null);
+            setSendChoice(null);
             setSelection(null);
             setFollow({});
             setShown({ ours: false, theirs: false });
