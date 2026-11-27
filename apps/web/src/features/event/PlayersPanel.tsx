@@ -25,12 +25,18 @@ import { Panel } from '../../components/Panel';
 import { Card, CardGroup, SidebarLayout, scoreboardClasses } from '../../components/Scoreboard';
 import { renderFactionOption, renderFactionPill } from '../../components/FactionIcon';
 import { listPath, openHere } from '../../lib/open-link';
-import { sortRows, type SortDir, type SortValue } from '../../lib/table-sort';
+import { sortRows, type SortValue } from '../../lib/table-sort';
 import { PlayerName } from '../rankings/PlayerName';
 import { RankBadge } from '../rankings/RankBadge';
 import { topRanksQuery } from '../rankings/rankings-queries';
 import { EventQueueLine } from './EventQueueLine';
 import { playersQuery } from './event-queries';
+import {
+  PLAYER_SORT_OPTIONS,
+  selectedValues,
+  selectionParam,
+  type PlayerSearch,
+} from './event-search';
 import { ExportMenu } from './ExportMenu';
 import { FetchListsMenu } from './FetchListsMenu';
 import { ListDrawer } from './ListDrawer';
@@ -101,20 +107,6 @@ const PLAYER_SORT = {
   oppElo: (p) => p.opponents?.elo ?? null,
   listStatus: (p) => p.listStatus,
 } satisfies Record<string, SortValue<EventPlayer>>;
-type PlayerSortKey = keyof typeof PLAYER_SORT | 'elo';
-
-/** The orders on offer, each its natural way round. */
-const SORTS: { value: PlayerSortKey; label: string; dir: SortDir }[] = [
-  { value: 'placing', label: 'Placing', dir: 'asc' },
-  { value: 'wins', label: 'Record', dir: 'desc' },
-  { value: 'elo', label: 'Elo', dir: 'desc' },
-  { value: 'name', label: 'Player', dir: 'asc' },
-  { value: 'faction', label: 'Faction', dir: 'asc' },
-  { value: 'oppWinRate', label: 'Opp. win %', dir: 'desc' },
-  { value: 'oppElo', label: 'Opp. Elo', dir: 'desc' },
-  { value: 'listStatus', label: 'List', dir: 'asc' },
-];
-
 /** "Undefeated", "One loss", "3 losses", with draws: what a record group's heading says. */
 function recordMeaning(player: EventPlayer, count: number): string {
   const played = player.wins + player.losses + player.draws;
@@ -153,6 +145,8 @@ interface PlayersPanelProps {
   /** The player whose list is open (from the address, so it can be shared); omitted: kept here. */
   openPlayerId?: string | null;
   onOpenPlayer?: (playerId: string | null) => void;
+  playerSearch?: PlayerSearch;
+  onPlayerSearchChange?: (changes: PlayerSearch) => void;
 }
 
 export function PlayersPanel({
@@ -160,15 +154,22 @@ export function PlayersPanel({
   loadingFromBcp,
   openPlayerId: openPlayerIdProp,
   onOpenPlayer,
+  playerSearch,
+  onPlayerSearchChange,
 }: PlayersPanelProps) {
   const players = useQuery(playersQuery(event.bcpId));
   const typeToSearch = useTypeToSearch();
-  const [query, setQuery] = useState('');
-  const [factions, setFactions] = useState<string[]>([]);
-  const [dispositions, setDispositions] = useState<string[]>([]);
-  const [detachments, setDetachments] = useState<string[]>([]);
-  const [maxLosses, setMaxLosses] = useState<number | null>(null);
-  const [chosenSort, setChosenSort] = useState<PlayerSortKey | null>(null);
+  const [localSearch, setLocalSearch] = useState<PlayerSearch>({});
+  const search = playerSearch ?? localSearch;
+  const updateSearch = (changes: PlayerSearch) => {
+    if (onPlayerSearchChange) onPlayerSearchChange(changes);
+    else setLocalSearch((previous) => ({ ...previous, ...changes }));
+  };
+  const query = search.q ?? '';
+  const factions = selectedValues(search.faction);
+  const dispositions = selectedValues(search.disposition);
+  const detachments = selectedValues(search.detachment);
+  const maxLosses = search.maxLosses ?? null;
   const [openPlayerId, setOpenPlayerId] = useUncontrolled<string | null>({
     value: openPlayerIdProp,
     defaultValue: null,
@@ -187,7 +188,7 @@ export function PlayersPanel({
         PLAYER_SORT.wins(player) !== null ||
         (player.opponents?.games ?? 0) > 0,
     );
-  const sortKey = chosenSort ?? (hasResults ? 'placing' : 'elo');
+  const sortKey = search.sort ?? (hasResults ? 'placing' : 'elo');
   const { data: ratings } = useQuery({
     ...topRanksQuery,
     enabled: sortKey === 'elo' && all.some((player) => player.bcpUserId !== null),
@@ -196,7 +197,7 @@ export function PlayersPanel({
   // The list the address opened the page on (a link opened in a new tab).
   const [listFromAddress] = useState(openPlayerIdProp ?? null);
   const filtered = filterPlayers(all, { query, factions, dispositions, detachments, maxLosses });
-  const dir = SORTS.find((option) => option.value === sortKey)?.dir ?? 'asc';
+  const dir = PLAYER_SORT_OPTIONS.find((option) => option.value === sortKey)?.dir ?? 'asc';
   const sortValue: SortValue<EventPlayer> =
     sortKey === 'elo'
       ? (player) => (player.bcpUserId === null ? null : (ratings?.elo[player.bcpUserId] ?? null))
@@ -220,7 +221,7 @@ export function PlayersPanel({
       return next;
     });
   };
-  const cardProps = { eventId: event.bcpId, onOpen: setOpenPlayerId };
+  const cardProps = { eventId: event.bcpId, onOpen: setOpenPlayerId, search };
 
   const content = () => {
     if (players.error) {
@@ -309,11 +310,11 @@ export function PlayersPanel({
               <Stack gap="sm">
                 <Select
                   label="Sort by"
-                  data={SORTS.map(({ value, label }) => ({ value, label }))}
+                  data={PLAYER_SORT_OPTIONS.map(({ value, label }) => ({ value, label }))}
                   value={sortKey}
                   onChange={(value) => {
-                    const next = SORTS.find((option) => option.value === value);
-                    if (next) setChosenSort(next.value);
+                    const next = PLAYER_SORT_OPTIONS.find((option) => option.value === value);
+                    if (next) updateSearch({ sort: next.value });
                   }}
                   allowDeselect={false}
                 />
@@ -322,7 +323,7 @@ export function PlayersPanel({
                   placeholder="Search player or team"
                   value={query}
                   onChange={(e) => {
-                    setQuery(e.currentTarget.value);
+                    updateSearch({ q: e.currentTarget.value || undefined });
                   }}
                 />
                 <MultiSelect
@@ -330,9 +331,11 @@ export function PlayersPanel({
                   renderOption={renderFactionOption}
                   renderPill={renderFactionPill}
                   placeholder={factions.length === 0 ? 'All factions' : undefined}
-                  data={factionsOf(all)}
+                  data={[...new Set([...factionsOf(all), ...factions])]}
                   value={factions}
-                  onChange={setFactions}
+                  onChange={(values) => {
+                    updateSearch({ faction: selectionParam(values) });
+                  }}
                   clearable
                   searchable={typeToSearch}
                 />
@@ -345,16 +348,18 @@ export function PlayersPanel({
                   }))}
                   value={maxLosses === null ? null : String(maxLosses)}
                   onChange={(value) => {
-                    setMaxLosses(value === null ? null : Number(value));
+                    updateSearch({ maxLosses: value === null ? undefined : Number(value) });
                   }}
                   clearable
                 />
                 <MultiSelect
                   aria-label="Disposition"
                   placeholder={dispositions.length === 0 ? 'All dispositions' : undefined}
-                  data={dispositionsOf(all)}
+                  data={[...new Set([...dispositionsOf(all), ...dispositions])]}
                   value={dispositions}
-                  onChange={setDispositions}
+                  onChange={(values) => {
+                    updateSearch({ disposition: selectionParam(values) });
+                  }}
                   renderOption={({ option }) => <DispositionText disposition={option.value} />}
                   clearable
                 />
@@ -363,7 +368,9 @@ export function PlayersPanel({
                   placeholder={detachments.length === 0 ? 'All detachments' : undefined}
                   data={detachmentsOf(all, factions, detachments)}
                   value={detachments}
-                  onChange={setDetachments}
+                  onChange={(values) => {
+                    updateSearch({ detachment: selectionParam(values) });
+                  }}
                   clearable
                   searchable={typeToSearch}
                 />
@@ -495,13 +502,14 @@ function TeamGroup({
 interface PlayerCardProps {
   eventId: string;
   player: EventPlayer;
+  search: PlayerSearch;
   /** The record on the card, when no record heading is above it. */
   showRecord?: boolean;
   onOpen: (bcpId: string) => void;
 }
 
 /** One player: placing, name, army, how tough their opponents were, and their list. */
-function PlayerCard({ eventId, player, showRecord = false, onOpen }: PlayerCardProps) {
+function PlayerCard({ eventId, player, search, showRecord = false, onOpen }: PlayerCardProps) {
   const winRate = player.opponents?.winRate ?? null;
   const strength = player.opponents;
   return (
@@ -579,7 +587,7 @@ function PlayerCard({ eventId, player, showRecord = false, onOpen }: PlayerCardP
         {/* A fetched list keeps its own address, for a new tab; a plain click opens it here. */}
         {player.listStatus === 'fetched' ? (
           <a
-            href={listPath(eventId, player.bcpId)}
+            href={listPath(eventId, player.bcpId, search)}
             aria-label="Fetched"
             onClick={openHere(() => {
               onOpen(player.bcpId);

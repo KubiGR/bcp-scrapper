@@ -1,12 +1,75 @@
-import { screen, waitFor } from '@testing-library/react';
+import { QueryClient } from '@tanstack/react-query';
+import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { routeTree } from '../../routeTree.gen';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
-import { anEventDetail, aSyncRun } from '../../test/sample-data';
+import { aPlayer, anEventDetail, aSyncRun } from '../../test/sample-data';
 import { EventPage } from './EventPage';
 
 const tabProps = { tab: 'players', onTabChange: () => undefined } as const;
 
 describe('EventPage', () => {
+  it('restores a filtered roster from its URL and keeps those filters when opening a list', async () => {
+    stubFetchRoutes({
+      'GET /api/auth/me': { authRequired: false, user: null },
+      'GET /api/events/EVT1/players': {
+        items: [
+          aPlayer({
+            name: 'Ada Archer',
+            faction: 'Tyranids',
+            disposition: 'Take and Hold',
+            detachments: ['Invasion Fleet'],
+          }),
+          aPlayer({ bcpId: 'PL-BEN', name: 'Ben Brass', faction: 'Aeldari' }),
+        ],
+      },
+      'GET /api/events/EVT1': anEventDetail({ isTeamEvent: false }),
+      'GET /api/players/PL-ADA/list': {
+        playerId: 'PL-ADA',
+        playerName: 'Ada Archer',
+        teamName: null,
+        faction: 'Tyranids',
+        listId: 'LS-ADA',
+        text: 'Example army list',
+        fetchedAt: '2026-11-27T10:00:00Z',
+      },
+    });
+    const router = createRouter({
+      routeTree,
+      context: { queryClient: new QueryClient() },
+      history: createMemoryHistory({
+        initialEntries: [
+          '/events/EVT1?faction=Tyranids&disposition=Take%20and%20Hold&detachment=Invasion%20Fleet&maxLosses=0&sort=elo',
+        ],
+      }),
+    });
+    renderWithProviders(<RouterProvider router={router} />);
+    expect(await screen.findByText('1 of 2 players')).toBeInTheDocument();
+    expect(screen.queryByText('Ben Brass')).not.toBeInTheDocument();
+    const input = screen.getAllByRole('textbox', { name: 'Search players' })[0];
+    if (!input) throw new Error('Missing player search input');
+    fireEvent.change(input, { target: { value: 'Ada Archer' } });
+    await waitFor(() => {
+      expect(router.state.location.search).toMatchObject({ q: 'Ada Archer' });
+    });
+
+    const link = screen.getByRole('link', { name: 'Fetched' });
+    expect(link).toHaveAttribute('href', expect.stringContaining('faction=Tyranids'));
+    fireEvent.click(link);
+    expect(await screen.findByText('Example army list')).toBeInTheDocument();
+    expect(router.state.location.search).toMatchObject({
+      tab: 'players',
+      list: 'PL-ADA',
+      q: 'Ada Archer',
+      faction: 'Tyranids',
+      disposition: 'Take and Hold',
+      detachment: 'Invasion Fleet',
+      maxLosses: 0,
+      sort: 'elo',
+    });
+  });
+
   it('offers to fetch an event that is not in the catalogue yet', async () => {
     stubFetchRoutes({
       'GET /api/events/NOPE': () =>

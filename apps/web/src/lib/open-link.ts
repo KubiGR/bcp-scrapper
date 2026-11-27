@@ -1,3 +1,4 @@
+import { defaultStringifySearch } from '@tanstack/react-router';
 import type { MouseEvent } from 'react';
 
 const enc = encodeURIComponent;
@@ -6,8 +7,8 @@ const enc = encodeURIComponent;
 export const eventPath = (eventId: string) => `/events/${enc(eventId)}?tab=players`;
 
 /** A list's own address: its event's players with the list open. */
-export const listPath = (eventId: string, playerId: string) =>
-  `${eventPath(eventId)}&list=${enc(playerId)}`;
+export const listPath = (eventId: string, playerId: string, search?: Record<string, unknown>) =>
+  `/events/${enc(eventId)}${defaultStringifySearch({ ...search, tab: 'players', list: playerId })}`;
 
 /**
  * For a link that also opens in place: a plain click opens it here (a drawer, the router), while

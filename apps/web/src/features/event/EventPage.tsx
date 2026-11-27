@@ -12,18 +12,10 @@ import { isActiveRun } from '../sync/follow-sync';
 import { SyncRunError, useSync } from '../sync/use-sync';
 import { EventHeader } from './EventHeader';
 import { eventQuery } from './event-queries';
+import { EVENT_TABS, type EventTab, type PlayerSearch } from './event-search';
 import { PlayersPanel } from './PlayersPanel';
 import { usePageTitle } from '../../lib/page-title';
 import { PageSkeleton, TilesSkeleton, TitleSkeleton } from '../../components/Skeletons';
-
-/** The event page's tabs, in order; the selected one lives in the URL (`?tab=`). */
-export const EVENT_TABS = [
-  { value: 'players', label: 'Players & lists' },
-  { value: 'rounds', label: 'Rounds' },
-  { value: 'standings', label: 'Standings' },
-  { value: 'matchups', label: 'Matchups' },
-] as const;
-export type EventTab = (typeof EVENT_TABS)[number]['value'];
 
 /** Standings only make sense for team events. */
 export const tabsFor = (event: { isTeamEvent: boolean }) =>
@@ -39,9 +31,19 @@ interface EventPageProps {
   /** The player whose list is open on the players tab (from the address, so it can be shared). */
   openListId?: string | null;
   onOpenList?: (playerId: string | null) => void;
+  playerSearch?: PlayerSearch;
+  onPlayerSearchChange?: (changes: PlayerSearch) => void;
 }
 
-export function EventPage({ eventId, tab, onTabChange, openListId, onOpenList }: EventPageProps) {
+export function EventPage({
+  eventId,
+  tab,
+  onTabChange,
+  openListId,
+  onOpenList,
+  playerSearch,
+  onPlayerSearchChange,
+}: EventPageProps) {
   const event = useQuery(eventQuery(eventId));
   usePageTitle(
     event.data?.name ?? 'Event',
@@ -144,6 +146,8 @@ export function EventPage({ eventId, tab, onTabChange, openListId, onOpenList }:
             loadingFromBcp={syncing && detail.lastSyncedAt === null}
             openPlayerId={openListId}
             onOpenPlayer={onOpenList}
+            playerSearch={playerSearch}
+            onPlayerSearchChange={onPlayerSearchChange}
           />
         </Tabs.Panel>
         <Tabs.Panel value="rounds" pt="md">
