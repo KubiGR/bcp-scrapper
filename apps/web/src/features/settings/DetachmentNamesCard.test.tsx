@@ -223,13 +223,25 @@ describe('DetachmentNamesCard', () => {
     expect(known.queryByText('War Horde')).not.toBeInTheDocument();
   });
 
-  it('stays on the faction being worked on, even when another has more left or it has none', async () => {
-    // After the save, Chaos Daemons has nothing left and Orks has the most.
-    const after = names({ unsure: [{ name: 'Horda de Guerra', lists: 4, factions: ['Orks'] }] });
+  it('advances after the final to-do, including detachments outside the faction', async () => {
+    const outside = { faction: 'Chaos Daemons', name: 'Wreckas', lists: 2, bsdataFactions: [] };
+    const withOutside = names({
+      unsure: names().unsure.filter((entry) => entry.name !== 'Legion de Sangre'),
+      wrong: [outside],
+    });
+    const afterLink = names({
+      unsure: names().unsure.filter((entry) => entry.name === 'Horda de Guerra'),
+      wrong: [outside],
+    });
+    let finishKeep: (response: Response) => void = () => undefined;
     stubFetchRoutes({
       'GET /api/auth/me': authOff,
-      'GET /api/detachments': names(),
-      'POST /api/detachments/links': after,
+      'GET /api/detachments': withOutside,
+      'POST /api/detachments/links': afterLink,
+      'POST /api/detachments/keeps': () =>
+        new Promise<Response>((resolve) => {
+          finishKeep = resolve;
+        }),
     });
     renderWithProviders(<DetachmentNamesCard />);
     const faction = await screen.findByRole('combobox', { name: 'Faction' });
@@ -237,10 +249,12 @@ describe('DetachmentNamesCard', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Cabalgata del Caos is its own detachment' }),
     );
-    await waitFor(() => {
-      expect(faction).toHaveValue('Chaos Daemons (0)');
-    });
-    expect(screen.queryByText('Horda de Guerra')).not.toBeInTheDocument();
+    await waitFor(() => expect(faction).toHaveValue('Chaos Daemons (1)'));
+    fireEvent.click(screen.getByRole('button', { name: 'Ignore Wreckas for Chaos Daemons' }));
+    expect(await screen.findByText('Horda de Guerra')).toBeInTheDocument();
+    expect(faction).toHaveValue('Orks (1)');
+    finishKeep(Response.json({ ...afterLink, wrong: [] }));
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
   });
 
   it('offers to see the lists behind each name', async () => {
@@ -366,37 +380,85 @@ describe('DetachmentNamesCard', () => {
     });
   });
 
-  it('keeps each clicked button loading until its own save finishes', async () => {
-    const held = new Map<string, (response: Response) => void>();
+  it('removes rows immediately and saves clicks in order across different kinds of edits', async () => {
+    let finishFirst: (response: Response) => void = () => undefined;
+    let finishSecond: (response: Response) => void = () => undefined;
+    const first = 'Cabalgata del Caos';
+    const outside = { faction: 'Chaos Daemons', name: 'Wreckas', lists: 2, bsdataFactions: [] };
+    const data = names({
+      unsure: names().unsure.filter((entry) => entry.name === first),
+      wrong: [outside],
+    });
+    const writes: string[] = [];
+    stubFetchRoutes({
+      'GET /api/auth/me': authOff,
+      'GET /api/detachments': data,
+      'POST /api/detachments/links': () =>
+        new Promise<Response>((resolve) => {
+          writes.push('link');
+          finishFirst = resolve;
+        }),
+      'POST /api/detachments/keeps': () =>
+        new Promise<Response>((resolve) => {
+          writes.push('keep');
+          finishSecond = resolve;
+        }),
+    });
+    renderWithProviders(<DetachmentNamesCard />);
+    const faction = await screen.findByRole('combobox', { name: 'Faction' });
+    fireEvent.click(screen.getByRole('button', { name: `${first} is not in English` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep Wreckas for Chaos Daemons' }));
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('2 edits to save'));
+    expect(screen.queryByText(first)).not.toBeInTheDocument();
+    expect(screen.queryByText('Wreckas · 2 lists')).not.toBeInTheDocument();
+    expect(faction).toHaveValue('Chaos Daemons (0)');
+    expect(writes).toEqual(['link']);
+
+    const afterFirst = { ...data, unsure: [] };
+    finishFirst(Response.json(afterFirst));
+    await waitFor(() => {
+      expect(writes).toEqual(['link', 'keep']);
+    });
+    expect(screen.queryByText('Wreckas · 2 lists')).not.toBeInTheDocument();
+    finishSecond(Response.json({ ...afterFirst, wrong: [] }));
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
+  });
+
+  it('restores an edit that failed and reports it while the queue continues', async () => {
+    const first = 'Cabalgata del Caos';
+    const second = 'Legion de Sangre';
+    let finishFirst: (response: Response) => void = () => undefined;
+    let finishSecond: (response: Response) => void = () => undefined;
+    const saves: string[] = [];
     stubFetchRoutes({
       'GET /api/auth/me': authOff,
       'GET /api/detachments': names(),
       'POST /api/detachments/links': (_url: string, init?: RequestInit) =>
         new Promise<Response>((resolve) => {
           const { name } = JSON.parse(init?.body as string) as { name: string };
-          held.set(name, resolve);
+          saves.push(name);
+          if (name === first) finishFirst = resolve;
+          else finishSecond = resolve;
         }),
     });
     renderWithProviders(<DetachmentNamesCard />);
-    const notEnglish = (name: string) =>
-      screen.getByRole('button', { name: `${name} is not in English` });
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Cabalgata del Caos is not in English' }),
-    );
-    fireEvent.click(notEnglish('Legion de Sangre'));
+    await screen.findByRole('combobox', { name: 'Faction' });
+    fireEvent.click(screen.getByRole('button', { name: `${first} is its own detachment` }));
+    fireEvent.click(screen.getByRole('button', { name: `${second} is its own detachment` }));
     await waitFor(() => {
-      expect(held.size).toBe(2);
+      expect(saves).toEqual([first]);
     });
-    expect(notEnglish('Cabalgata del Caos')).toHaveAttribute('data-loading');
-    expect(notEnglish('Legion de Sangre')).toHaveAttribute('data-loading');
-    expect(
-      within(rowOf('Cabalgata del Caos')).getByRole('button', { name: 'Link' }),
-    ).not.toHaveAttribute('data-loading');
-    held.get('Cabalgata del Caos')?.(Response.json(names()));
+    finishFirst(Response.json({}, { status: 500 }));
     await waitFor(() => {
-      expect(notEnglish('Cabalgata del Caos')).not.toHaveAttribute('data-loading');
+      expect(saves).toEqual([first, second]);
     });
-    expect(notEnglish('Legion de Sangre')).toHaveAttribute('data-loading');
+    expect(await screen.findByRole('alert')).toHaveTextContent(first);
+    const afterSecond = names({ unsure: names().unsure.filter((entry) => entry.name !== second) });
+    finishSecond(Response.json(afterSecond));
+    await pickOption('Faction', 'Chaos Daemons (1)');
+    expect(screen.getByRole('button', { name: `${first} is its own detachment` })).toBeEnabled();
+    expect(screen.queryByText(second)).not.toBeInTheDocument();
   });
 
   it('lists the faction’s names that aren’t English apart, and can say one is English', async () => {

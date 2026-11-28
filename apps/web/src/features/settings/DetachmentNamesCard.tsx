@@ -1,6 +1,6 @@
 import type { DetachmentNamesResponse } from '@bcp/shared';
 import { Alert, Badge, Button, Group, Select, Stack, Text } from '@mantine/core';
-import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 import { SearchSelect } from '../../components/SearchSelect';
 import { ErrorState } from '../../components/ErrorState';
@@ -12,41 +12,19 @@ import { meQuery } from '../auth/auth-queries';
 import { DetachmentListsButton } from './DetachmentLists';
 import classes from './DetachmentNamesCard.module.css';
 import { ALL_FACTIONS } from './settings-search';
+import { detachmentNamesQuery } from './detachment-names-queries';
 import {
-  detachmentNamesQuery,
-  keepDetachment,
-  linkDetachment,
-  unkeepDetachment,
-  unlinkDetachment,
-} from './detachment-names-queries';
+  detachmentNamesWithPending,
+  useDetachmentSaves,
+  type DetachmentEdit,
+  type LinkRequest,
+} from './use-detachment-saves';
 import { FactionIcon, renderFactionOption } from '../../components/FactionIcon';
 import { CardsSkeleton } from '../../components/Skeletons';
 
 type Unsure = DetachmentNamesResponse['unsure'][number];
 type Foreign = DetachmentNamesResponse['foreign'][number];
 type Target = DetachmentNamesResponse['targets'][number];
-interface LinkRequest {
-  name: string;
-  target: string | null;
-  foreign: boolean;
-  /** Junk to leave alone. */
-  ignored?: boolean;
-}
-interface Pair {
-  faction: string;
-  name: string;
-}
-
-/** The variables of every save of this kind still running (several can run at once). */
-function usePending<T>(mutationKey: string[]): T[] {
-  return useMutationState({
-    filters: { mutationKey, status: 'pending' },
-    select: (mutation) => mutation.state.variables as T,
-  });
-}
-
-const samePair = (a: Pair) => (b: Pair) => a.faction === b.faction && a.name === b.name;
-
 const ALL = '';
 
 /**
@@ -67,24 +45,27 @@ function targetOptions(unsure: Unsure, targets: Target[], faction: string): stri
 }
 
 /**
- * Factions with unsure, foreign or linked names, most unsure names first, as picker options;
+ * Factions with names to review or existing decisions, most to-dos first;
  * `keep` (the picked one) stays listed even with nothing left.
  */
 function factionOptions(data: DetachmentNamesResponse, keep: string | null) {
   const counts = new Map<string, number>();
   if (keep !== null && keep !== ALL) counts.set(keep, 0);
-  for (const named of [...data.links, ...data.foreign, ...data.learned]) {
+  for (const named of [...data.links, ...data.foreign, ...data.ignored, ...data.learned]) {
     for (const f of named.factions) counts.set(f, counts.get(f) ?? 0);
   }
   for (const unsure of data.unsure) {
     for (const f of unsure.factions) counts.set(f, (counts.get(f) ?? 0) + 1);
   }
-  for (const pair of [...data.wrong, ...data.kept]) {
+  for (const pair of data.wrong) {
+    counts.set(pair.faction, (counts.get(pair.faction) ?? 0) + 1);
+  }
+  for (const pair of data.kept) {
     counts.set(pair.faction, counts.get(pair.faction) ?? 0);
   }
   return [...counts]
     .sort(([a, x], [b, y]) => y - x || a.localeCompare(b))
-    .map(([faction, count]) => ({ value: faction, label: `${faction} (${String(count)})` }));
+    .map(([faction, count]) => ({ value: faction, label: `${faction} (${String(count)})`, count }));
 }
 
 type Outside = DetachmentNamesResponse['wrong'][number];
@@ -118,9 +99,6 @@ interface RowProps {
   /** The picked faction, or ALL (then the row also says which factions play the name). */
   faction: string;
   readOnly: boolean;
-  /** Links and undos still saving. */
-  linking: LinkRequest[];
-  undoing: string[];
   onLink: (request: LinkRequest) => void;
   onUndo: (name: string) => void;
 }
@@ -132,8 +110,6 @@ function NameRow({
   targets,
   faction,
   readOnly,
-  linking,
-  undoing,
   onLink,
   onUndo,
 }: RowProps & { entry: Unsure; foreign?: Foreign }) {
@@ -141,15 +117,6 @@ function NameRow({
   const link = (request: Omit<LinkRequest, 'name'>) => {
     onLink({ name: entry.name, ...request });
   };
-  // Which of the row's buttons is saving: to a detachment, as its own (or English), or not English.
-  const saving = (to: 'detachment' | 'own' | 'foreign') =>
-    linking.some(
-      (r) =>
-        r.name === entry.name &&
-        (to === 'detachment'
-          ? r.target !== null
-          : r.target === null && r.foreign === (to === 'foreign')),
-    );
   return (
     <Card dense>
       <Text size="sm" fw={600} className={classes.name}>
@@ -183,7 +150,6 @@ function NameRow({
           <Button
             size="xs"
             disabled={readOnly || target === null}
-            loading={saving('detachment')}
             onClick={() => {
               link({ target, foreign: false });
             }}
@@ -197,7 +163,6 @@ function NameRow({
                 variant="subtle"
                 disabled={readOnly}
                 aria-label={`${entry.name} is its own detachment`}
-                loading={saving('own')}
                 onClick={() => {
                   link({ target: null, foreign: false });
                 }}
@@ -210,7 +175,6 @@ function NameRow({
                 color="gray"
                 disabled={readOnly}
                 aria-label={`${entry.name} is not in English`}
-                loading={saving('foreign')}
                 onClick={() => {
                   link({ target: null, foreign: true });
                 }}
@@ -223,7 +187,6 @@ function NameRow({
                 color="gray"
                 disabled={readOnly}
                 aria-label={`Ignore ${entry.name}`}
-                loading={linking.some((r) => r.name === entry.name && r.ignored === true)}
                 onClick={() => {
                   link({ target: null, foreign: false, ignored: true });
                 }}
@@ -238,7 +201,6 @@ function NameRow({
                 variant="subtle"
                 disabled={readOnly}
                 aria-label={`${entry.name} is English`}
-                loading={saving('own')}
                 onClick={() => {
                   link({ target: null, foreign: false });
                 }}
@@ -252,7 +214,6 @@ function NameRow({
                   color="gray"
                   disabled={readOnly}
                   aria-label={`Undo Not English for ${entry.name}`}
-                  loading={undoing.includes(entry.name)}
                   onClick={() => {
                     onUndo(entry.name);
                   }}
@@ -347,42 +308,9 @@ export function DetachmentNamesCard({
 } = {}) {
   const names = useQuery(detachmentNamesQuery);
   const me = useQuery(meQuery);
-  const queryClient = useQueryClient();
   const readOnly = me.data?.authRequired === true && me.data.user?.role !== 'admin';
-  const saved = async (data: DetachmentNamesResponse) => {
-    queryClient.setQueryData(detachmentNamesQuery.queryKey, data);
-    // Every analysis that shows detachments has new names now.
-    await queryClient.invalidateQueries({
-      predicate: (query) => query.queryKey[0] !== detachmentNamesQuery.queryKey[0],
-    });
-  };
-  const link = useMutation({
-    mutationKey: ['detachment-link'],
-    mutationFn: ({ name, target, foreign, ignored }: LinkRequest) =>
-      linkDetachment(name, target, foreign, ignored),
-    onSuccess: saved,
-  });
-  const unlink = useMutation({
-    mutationKey: ['detachment-unlink'],
-    mutationFn: unlinkDetachment,
-    onSuccess: saved,
-  });
-  const keep = useMutation({
-    mutationKey: ['detachment-keep'],
-    mutationFn: ({ faction, name, ignored }: Pair & { ignored?: boolean }) =>
-      keepDetachment(faction, name, ignored),
-    onSuccess: saved,
-  });
-  const unkeep = useMutation({
-    mutationKey: ['detachment-unkeep'],
-    mutationFn: ({ faction, name }: Pair) => unkeepDetachment(faction, name),
-    onSuccess: saved,
-  });
-  const linking = usePending<LinkRequest>(['detachment-link']);
-  const undoing = usePending<string>(['detachment-unlink']);
-  const keeping = usePending<Pair & { ignored?: boolean }>(['detachment-keep']);
-  const unkeeping = usePending<Pair>(['detachment-unkeep']);
-  const error = link.error ?? unlink.error ?? keep.error ?? unkeep.error;
+  const { enqueue, pending, errors, clearErrors } = useDetachmentSaves();
+  const data = names.data && detachmentNamesWithPending(names.data, pending);
   // Opened from the to-do list: straight to the detachments outside their faction, once (a
   // stable callback, so saving there doesn't jump back).
   const scrollToOutside = useCallback(
@@ -404,42 +332,45 @@ export function DetachmentNamesCard({
     if (onFactionChange === undefined) setOwnPicked(value);
     else onFactionChange(value === ALL ? ALL_FACTIONS : value);
   };
-  const factions = names.data ? factionOptions(names.data, picked) : [];
-  // The picked faction, or (until one is picked or worked on) the one with the most unsure names.
-  const faction =
-    picked === ALL || factions.some((f) => f.value === picked)
-      ? (picked ?? ALL)
-      : (factions[0]?.value ?? ALL);
-  // Work on a faction keeps it picked: it stays (even with nothing left) until another is picked.
-  const work = <T,>(mutation: { mutate: (value: T) => void }, value: T) => {
-    if (picked === null) setPicked(faction);
-    mutation.mutate(value);
+  const factions = data ? factionOptions(data, picked) : [];
+  const faction = picked ?? factions[0]?.value ?? ALL;
+  const work = (edits: DetachmentEdit[]) => {
+    if (data && faction !== ALL) {
+      const hadTodos = factions.some((option) => option.value === faction && option.count > 0);
+      const remaining = factionOptions(detachmentNamesWithPending(data, edits), faction);
+      const hasTodos = remaining.some((option) => option.value === faction && option.count > 0);
+      const next = remaining.find((option) => option.count > 0);
+      if (hadTodos && !hasTodos && next) {
+        setPicked(next.value);
+      } else if (picked === null) {
+        setPicked(faction);
+      }
+    }
+    for (const edit of edits) enqueue(edit);
   };
   const inFaction = (list: { factions: string[] }) =>
     faction === ALL || list.factions.includes(faction);
-  const unsure = names.data?.unsure.filter(inFaction) ?? [];
-  const foreign = names.data?.foreign.filter(inFaction) ?? [];
-  const ignored = names.data?.ignored.filter(inFaction) ?? [];
-  const links = names.data?.links.filter(inFaction) ?? [];
-  const learned = names.data?.learned.filter(inFaction) ?? [];
+  const unsure = data?.unsure.filter(inFaction) ?? [];
+  const foreign = data?.foreign.filter(inFaction) ?? [];
+  const ignored = data?.ignored.filter(inFaction) ?? [];
+  const links = data?.links.filter(inFaction) ?? [];
+  const learned = data?.learned.filter(inFaction) ?? [];
   // A covered faction knows the GW app's detachments; others the names BCP uses.
-  const covered = names.data?.bsdataFactions.includes(faction) === true;
+  const covered = data?.bsdataFactions.includes(faction) === true;
   const known =
-    names.data?.targets.filter((t) => t.factions.includes(faction) && (!covered || t.bsdata)) ?? [];
+    data?.targets.filter((t) => t.factions.includes(faction) && (!covered || t.bsdata)) ?? [];
   const ofFaction = (pair: { faction: string }) => faction === ALL || pair.faction === faction;
-  const wrong = names.data?.wrong.filter(ofFaction) ?? [];
-  const kept = names.data?.kept.filter(ofFaction) ?? [];
+  const wrong = data?.wrong.filter(ofFaction) ?? [];
+  const kept = data?.kept.filter(ofFaction) ?? [];
   const rowProps: RowProps = {
-    targets: names.data?.targets ?? [],
+    targets: data?.targets ?? [],
     faction,
     readOnly,
-    linking,
-    undoing,
     onLink: (request) => {
-      work(link, request);
+      work([{ type: 'link', ...request }]);
     },
     onUndo: (name) => {
-      work(unlink, name);
+      work([{ type: 'unlink', name }]);
     },
   };
 
@@ -449,7 +380,7 @@ export function DetachmentNamesCard({
         <CardsSkeleton label="Loading detachment names" groups={0} cards={3} dense />
       )}
       {names.error && <ErrorState error={names.error} onRetry={() => void names.refetch()} />}
-      {names.data && (
+      {data && (
         <Stack gap="md">
           <Text size="sm" c="dimmed">
             Names used in lists that BCP never uses — often a translation or a misspelling. Link
@@ -460,9 +391,18 @@ export function DetachmentNamesCard({
               Only admins can link detachment names.
             </Text>
           )}
-          {error && (
-            <Alert color="red" role="alert">
-              {error.message}
+          {pending.length > 0 && (
+            <Text size="xs" c="dimmed" role="status">
+              {plural(pending.length, 'edit')} to save
+            </Text>
+          )}
+          {errors.length > 0 && (
+            <Alert color="red" role="alert" withCloseButton onClose={clearErrors}>
+              {errors.map((message, index) => (
+                <Text key={index} size="sm">
+                  {message}
+                </Text>
+              ))}
             </Alert>
           )}
           {factions.length > 0 && (
@@ -498,7 +438,7 @@ export function DetachmentNamesCard({
               </Group>
             </Stack>
           )}
-          {names.data.unsure.length === 0 ? (
+          {data.unsure.length === 0 && data.wrong.length === 0 ? (
             <Text size="sm" c="dimmed">
               Every detachment name is known.
             </Text>
@@ -541,9 +481,8 @@ export function DetachmentNamesCard({
                     color="gray"
                     disabled={readOnly}
                     aria-label={`Undo Ignore for ${entry.name}`}
-                    loading={undoing.includes(entry.name)}
                     onClick={() => {
-                      work(unlink, entry.name);
+                      work([{ type: 'unlink', name: entry.name }]);
                     }}
                   >
                     Undo
@@ -572,23 +511,15 @@ export function DetachmentNamesCard({
               {groupByName(wrong).map((group) => {
                 const one = group.pairs.length === 1 ? group.pairs[0] : undefined;
                 const target = one ? `for ${one.faction}` : 'for all its factions';
-                const saving = (ignored: boolean) =>
-                  keeping.some(
-                    (k) =>
-                      group.pairs.some((pair) => samePair(pair)(k)) &&
-                      (k.ignored === true) === ignored,
-                  );
-                // One decision for the detachment: every faction it's outside of, one after
-                // another (each answer is the whole picture, so the last one has them all).
                 const decide = (ignored: boolean) => {
-                  if (picked === null) setPicked(faction);
-                  void (async () => {
-                    for (const pair of group.pairs) {
-                      await keep
-                        .mutateAsync({ faction: pair.faction, name: pair.name, ignored })
-                        .catch(() => undefined);
-                    }
-                  })();
+                  work(
+                    group.pairs.map(({ faction, name }) => ({
+                      type: 'keep',
+                      faction,
+                      name,
+                      ignored,
+                    })),
+                  );
                 };
                 return (
                   <Group key={group.name} gap="xs">
@@ -613,7 +544,6 @@ export function DetachmentNamesCard({
                       variant="subtle"
                       disabled={readOnly}
                       aria-label={`Keep ${group.name} ${target}`}
-                      loading={saving(false)}
                       onClick={() => {
                         decide(false);
                       }}
@@ -626,7 +556,6 @@ export function DetachmentNamesCard({
                       color="gray"
                       disabled={readOnly}
                       aria-label={`Ignore ${group.name} ${target}`}
-                      loading={saving(true)}
                       onClick={() => {
                         decide(true);
                       }}
@@ -648,9 +577,8 @@ export function DetachmentNamesCard({
                     variant="subtle"
                     disabled={readOnly}
                     aria-label={`Undo keep ${pair.name} for ${pair.faction}`}
-                    loading={unkeeping.some(samePair(pair))}
                     onClick={() => {
-                      work(unkeep, { faction: pair.faction, name: pair.name });
+                      work([{ type: 'unkeep', faction: pair.faction, name: pair.name }]);
                     }}
                   >
                     Undo
@@ -680,9 +608,10 @@ export function DetachmentNamesCard({
                     variant="subtle"
                     disabled={readOnly}
                     aria-label={`${translation.name} is not ${translation.target}`}
-                    loading={linking.some((r) => r.name === translation.name)}
                     onClick={() => {
-                      work(link, { name: translation.name, target: null, foreign: false });
+                      work([
+                        { type: 'link', name: translation.name, target: null, foreign: false },
+                      ]);
                     }}
                   >
                     Not the same
@@ -708,9 +637,8 @@ export function DetachmentNamesCard({
                     variant="subtle"
                     disabled={readOnly}
                     aria-label={`Undo link for ${linked.name}`}
-                    loading={undoing.includes(linked.name)}
                     onClick={() => {
-                      work(unlink, linked.name);
+                      work([{ type: 'unlink', name: linked.name }]);
                     }}
                   >
                     Undo
