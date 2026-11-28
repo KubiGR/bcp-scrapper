@@ -2,7 +2,11 @@ import { Anchor, Popover, Stack, UnstyledButton } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import { detachmentNamesQuery } from '../settings/detachment-names-queries';
+import {
+  DETACHMENT_NAMES_REFRESH_MS,
+  detachmentNamesQuery,
+} from '../settings/detachment-names-queries';
+import { ALL_FACTIONS } from '../settings/settings-search';
 import classes from './AdminTodo.module.css';
 import { isAdminView, meQuery, usersQuery } from './auth-queries';
 import { useTitleCount } from '../../lib/page-title';
@@ -56,7 +60,7 @@ export function AdminTodo() {
   const names = useQuery({
     ...detachmentNamesQuery,
     enabled: admin,
-    refetchInterval: EVERY_FEW_MINUTES,
+    refetchInterval: DETACHMENT_NAMES_REFRESH_MS,
   });
 
   const waiting = approving
@@ -84,8 +88,7 @@ export function AdminTodo() {
     {
       count: outside,
       tab: 'detachments' as const,
-      // Every faction's, scrolled to: they're listed per faction otherwise.
-      search: { faction: 'all', focus: 'outside' as const },
+      search: { faction: ALL_FACTIONS, section: 'outside' as const },
       label: plural(outside, 'detachment outside its faction', 'detachments outside their faction'),
     },
   ].filter((item) => item.count > 0);
@@ -131,13 +134,7 @@ export function AdminTodo() {
                 setOpen(false);
               }}
               renderRoot={(props) => (
-                <Link
-                  to="/settings"
-                  search={{ tab: item.tab, ...item.search }}
-                  // The page scrolls to the work itself.
-                  resetScroll={false}
-                  {...props}
-                />
+                <Link to="/settings" search={{ tab: item.tab, ...item.search }} {...props} />
               )}
             >
               {item.label}

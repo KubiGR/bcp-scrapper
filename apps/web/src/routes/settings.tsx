@@ -10,7 +10,8 @@ export const Route = createFileRoute('/settings')({
 });
 
 function SettingsRoute() {
-  const { tab, faction, focus } = Route.useSearch();
+  const { tab, faction, section, focus } = Route.useSearch();
+  const detachmentSection = section ?? focus;
   const navigate = Route.useNavigate();
   usePageTitle('Settings');
   return (
@@ -21,11 +22,17 @@ function SettingsRoute() {
           void navigate({ search: { tab: next }, replace: true, resetScroll: false });
         }}
         faction={faction}
-        focus={focus}
-        onFactionChange={(next) => {
-          // A faction picked by hand: no more jumping to a section.
+        detachmentSection={detachmentSection}
+        onDetachmentSectionChange={(next) => {
           void navigate({
-            search: { tab, faction: next },
+            search: { tab: 'detachments', faction, section: next },
+            replace: true,
+            resetScroll: false,
+          });
+        }}
+        onFactionChange={(next) => {
+          void navigate({
+            search: { tab, faction: next, section: detachmentSection },
             replace: true,
             resetScroll: false,
           });

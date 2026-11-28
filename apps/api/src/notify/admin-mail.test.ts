@@ -36,7 +36,7 @@ describe('digestMail', () => {
     expect(mail?.text).toContain('- ana@example.com');
     expect(mail?.text).toContain(`${SITE}/settings?tab=users`);
     expect(mail?.text).toContain(`${SITE}/settings?tab=detachments`);
-    expect(mail?.text).toContain(`${SITE}/settings?tab=detachments&faction=all&focus=outside`);
+    expect(mail?.text).toContain(`${SITE}/settings?tab=detachments&faction=all&section=outside`);
   });
 
   it('leaves out what is done', () => {

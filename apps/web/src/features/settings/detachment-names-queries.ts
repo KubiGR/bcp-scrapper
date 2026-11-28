@@ -2,8 +2,12 @@ import { DetachmentListsResponseSchema, DetachmentNamesResponseSchema } from '@b
 import { queryOptions } from '@tanstack/react-query';
 import { apiDelete, apiGet, apiPost } from '../../api/client';
 
+export const DETACHMENT_NAMES_REFRESH_MS = 3 * 60_000;
+
 export const detachmentNamesQuery = queryOptions({
   queryKey: ['detachment-names'],
+  // Reuse the snapshot already loaded for the admin's to-do menu when opening Settings.
+  staleTime: DETACHMENT_NAMES_REFRESH_MS,
   queryFn: () => apiGet('/api/detachments', DetachmentNamesResponseSchema),
 });
 

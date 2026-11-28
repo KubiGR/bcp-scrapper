@@ -9,7 +9,7 @@ import { BcpStatusCard } from './BcpStatusCard';
 import { DetachmentsCard } from './DetachmentsCard';
 import { DetachmentNamesCard } from './DetachmentNamesCard';
 import { RulesCard } from './RulesCard';
-import { SETTINGS_TABS, type SettingsTab } from './settings-search';
+import { SETTINGS_TABS, type DetachmentSection, type SettingsTab } from './settings-search';
 import classes from './SettingsPage.module.css';
 import { UsersCard } from './UsersCard';
 
@@ -24,14 +24,16 @@ export function SettingsPage({
   tab,
   onTabChange,
   faction,
-  focus,
+  detachmentSection,
+  onDetachmentSectionChange,
   onFactionChange,
 }: {
   tab: SettingsTab;
   onTabChange: (tab: SettingsTab) => void;
-  /** The detachments tab's faction and focus (the address keeps them). */
+  /** The address keeps the faction and detachment section. */
   faction?: string;
-  focus?: 'outside';
+  detachmentSection?: DetachmentSection;
+  onDetachmentSectionChange?: (section: DetachmentSection) => void;
   onFactionChange?: (faction: string) => void;
 }) {
   const me = useQuery(meQuery);
@@ -83,7 +85,12 @@ export function SettingsPage({
           )}
         </Tabs.Panel>
         <Tabs.Panel value="detachments">
-          <DetachmentNamesCard faction={faction} focus={focus} onFactionChange={onFactionChange} />
+          <DetachmentNamesCard
+            faction={faction}
+            section={detachmentSection}
+            onSectionChange={onDetachmentSectionChange}
+            onFactionChange={onFactionChange}
+          />
         </Tabs.Panel>
       </Tabs>
     </Stack>

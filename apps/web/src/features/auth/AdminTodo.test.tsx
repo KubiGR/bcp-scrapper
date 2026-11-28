@@ -64,7 +64,7 @@ describe('AdminTodo', () => {
     expect(screen.getByRole('link', { name: '3 detachment names to link' })).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: '2 detachments outside their faction' }),
-    ).toHaveAttribute('href', '/settings?tab=detachments&faction=all&focus=outside');
+    ).toHaveAttribute('href', '/settings?tab=detachments&faction=all&section=outside');
   });
 
   it('shows nothing, and a plain title, when there is nothing to do', async () => {

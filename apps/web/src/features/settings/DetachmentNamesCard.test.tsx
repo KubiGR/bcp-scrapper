@@ -5,6 +5,7 @@ import { pickOption } from '../../test/pick-option';
 import { renderWithProviders, stubFetchRoutes } from '../../test/render';
 import { aUser, authOff, loggedIn } from '../auth/auth-test-utils';
 import { DetachmentNamesCard } from './DetachmentNamesCard';
+import { detachmentNamesQuery } from './detachment-names-queries';
 
 const names = (overrides: Partial<DetachmentNamesResponse> = {}): DetachmentNamesResponse => ({
   unsure: [
@@ -78,9 +79,11 @@ describe('DetachmentNamesCard with known detachments', () => {
       'GET /api/detachments': withPairs,
       'POST /api/detachments/keeps': withPairs,
     });
-    renderWithProviders(<DetachmentNamesCard />);
+    renderWithProviders(<DetachmentNamesCard section="outside" />);
     const section = within(await screen.findByRole('region', { name: 'Not in this faction' }));
-    expect(section.getByText('kept for Orks')).toBeInTheDocument();
+    expect(section.queryByText('kept for Orks')).not.toBeInTheDocument();
+    fireEvent.click(section.getByRole('button', { name: 'Kept and ignored (2)' }));
+    expect(await section.findByText('kept for Orks')).toBeInTheDocument();
     expect(section.getByText('ignored for Orks')).toBeInTheDocument();
     fireEvent.click(section.getByRole('button', { name: 'Ignore Wreckas for Orks' }));
     await waitFor(() => {
@@ -112,7 +115,9 @@ describe('DetachmentNamesCard with known detachments', () => {
       'GET /api/detachments': pairs,
       'POST /api/detachments/keeps': pairs,
     });
-    renderWithProviders(<DetachmentNamesCard faction="all" onFactionChange={vi.fn()} />);
+    renderWithProviders(
+      <DetachmentNamesCard faction="all" section="outside" onFactionChange={vi.fn()} />,
+    );
     const section = within(await screen.findByRole('region', { name: 'Not in this faction' }));
     expect(section.getByText('Librarius Conclave · 440 lists')).toBeInTheDocument();
     expect(section.getByText('Space Marines (Astartes) 381, Dark Angels 59')).toBeInTheDocument();
@@ -131,28 +136,33 @@ describe('DetachmentNamesCard with known detachments', () => {
     ]);
   });
 
-  it('follows the faction and focus it is given: all factions, scrolled to those outside', async () => {
-    const scrolled = vi.fn();
-    Element.prototype.scrollIntoView = scrolled;
+  it('opens the out-of-faction tab directly using the to-do menu’s cached data', async () => {
     const pairs = names({
       wrong: [
         { faction: 'Orks', name: 'Wreckas', lists: 2, bsdataFactions: [] },
         { faction: 'Chaos Daemons', name: 'Kult of Speed', lists: 1, bsdataFactions: ['Orks'] },
       ],
     });
-    stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': pairs });
+    const fetch = stubFetchRoutes({ 'GET /api/auth/me': authOff, 'GET /api/detachments': pairs });
     const onFactionChange = vi.fn();
-    renderWithProviders(
-      <DetachmentNamesCard faction="all" focus="outside" onFactionChange={onFactionChange} />,
+    const { queryClient, rerender } = renderWithProviders(<div />);
+    queryClient.setQueryData(detachmentNamesQuery.queryKey, pairs);
+    rerender(
+      <DetachmentNamesCard faction="all" section="outside" onFactionChange={onFactionChange} />,
     );
-    const section = within(await screen.findByRole('region', { name: 'Not in this faction' }));
+
+    expect(screen.getByRole('tab', { name: 'Out of faction' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    const section = within(screen.getByRole('region', { name: 'Not in this faction' }));
     expect(section.getByText('Wreckas · 2 lists')).toBeInTheDocument();
     expect(section.getByText('Kult of Speed · 1 list')).toBeInTheDocument();
-    expect(scrolled).toHaveBeenCalled();
-    // Picking a faction goes back to whoever keeps it (the address).
-    fireEvent.click(screen.getByRole('combobox', { name: 'Faction' }));
-    fireEvent.click(await screen.findByRole('option', { name: /^Orks/ }));
+    expect(screen.queryByText('Cabalgata del Caos')).not.toBeInTheDocument();
+
+    await pickOption('Faction', 'Orks (1)');
     expect(onFactionChange).toHaveBeenCalledWith('Orks');
+    expect(fetch.mock.calls.some(([url]) => url === '/api/detachments')).toBe(false);
   });
 
   it('lists detachments outside the faction’s known list, to keep anyway or undo', async () => {
@@ -172,9 +182,10 @@ describe('DetachmentNamesCard with known detachments', () => {
       'POST /api/detachments/keeps': withPairs,
       'DELETE /api/detachments/keeps': withPairs,
     });
-    renderWithProviders(<DetachmentNamesCard />);
+    renderWithProviders(<DetachmentNamesCard section="outside" />);
     const section = within(await screen.findByRole('region', { name: 'Not in this faction' }));
     expect(section.getByText('Wreckas · 2 lists')).toBeInTheDocument();
+    fireEvent.click(section.getByRole('button', { name: 'Kept and ignored (2)' }));
     expect(section.getByText('The GW app doesn’t list it')).toBeInTheDocument();
     expect(section.getByText('The GW app has it for Chaos Daemons')).toBeInTheDocument();
     fireEvent.click(section.getByRole('button', { name: 'Keep Wreckas for Orks' }));
@@ -183,7 +194,7 @@ describe('DetachmentNamesCard with known detachments', () => {
     });
     const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
     expect(JSON.parse(post?.[1]?.body as string)).toEqual({ faction: 'Orks', name: 'Wreckas' });
-    fireEvent.click(section.getByRole('button', { name: 'Undo keep Dread Mob for Orks' }));
+    fireEvent.click(await section.findByRole('button', { name: 'Undo keep Dread Mob for Orks' }));
     await waitFor(() => {
       expect(
         fetchMock.mock.calls.some(
@@ -223,38 +234,41 @@ describe('DetachmentNamesCard', () => {
     expect(known.queryByText('War Horde')).not.toBeInTheDocument();
   });
 
-  it('advances after the final to-do, including detachments outside the faction', async () => {
-    const outside = { faction: 'Chaos Daemons', name: 'Wreckas', lists: 2, bsdataFactions: [] };
-    const withOutside = names({
-      unsure: names().unsure.filter((entry) => entry.name !== 'Legion de Sangre'),
-      wrong: [outside],
-    });
-    const afterLink = names({
-      unsure: names().unsure.filter((entry) => entry.name === 'Horda de Guerra'),
-      wrong: [outside],
-    });
-    let finishKeep: (response: Response) => void = () => undefined;
-    stubFetchRoutes({
+  it('advances to the next army after the final out-of-faction to-do', async () => {
+    const first = { faction: 'Chaos Daemons', name: 'Wreckas', lists: 2, bsdataFactions: [] };
+    const second = { ...first, name: 'Blood Legion' };
+    const next = { ...first, faction: 'Orks', name: 'Kult of Speed' };
+    const data = names({ wrong: [first, second, next] });
+    let finishFirst: (response: Response) => void = () => undefined;
+    let finishSecond: (response: Response) => void = () => undefined;
+    const fetch = stubFetchRoutes({
       'GET /api/auth/me': authOff,
-      'GET /api/detachments': withOutside,
-      'POST /api/detachments/links': afterLink,
-      'POST /api/detachments/keeps': () =>
+      'GET /api/detachments': data,
+      'POST /api/detachments/keeps': (_url: string, init?: RequestInit) =>
         new Promise<Response>((resolve) => {
-          finishKeep = resolve;
+          const { name } = JSON.parse(init?.body as string) as { name: string };
+          if (name === first.name) finishFirst = resolve;
+          else finishSecond = resolve;
         }),
     });
-    renderWithProviders(<DetachmentNamesCard />);
+    renderWithProviders(<DetachmentNamesCard section="outside" />);
     const faction = await screen.findByRole('combobox', { name: 'Faction' });
     expect(faction).toHaveValue('Chaos Daemons (2)');
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Cabalgata del Caos is its own detachment' }),
-    );
-    await waitFor(() => expect(faction).toHaveValue('Chaos Daemons (1)'));
     fireEvent.click(screen.getByRole('button', { name: 'Ignore Wreckas for Chaos Daemons' }));
-    expect(await screen.findByText('Horda de Guerra')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(faction).toHaveValue('Chaos Daemons (1)');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Ignore Blood Legion for Chaos Daemons' }));
+    expect(await screen.findByText('Kult of Speed · 2 lists')).toBeInTheDocument();
     expect(faction).toHaveValue('Orks (1)');
-    finishKeep(Response.json({ ...afterLink, wrong: [] }));
-    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
+    finishFirst(Response.json({ ...data, wrong: [second, next] }));
+    await waitFor(() => {
+      expect(fetch.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(2);
+    });
+    finishSecond(Response.json({ ...data, wrong: [next] }));
+    await waitFor(() => {
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
   });
 
   it('offers to see the lists behind each name', async () => {
@@ -407,6 +421,10 @@ describe('DetachmentNamesCard', () => {
     renderWithProviders(<DetachmentNamesCard />);
     const faction = await screen.findByRole('combobox', { name: 'Faction' });
     fireEvent.click(screen.getByRole('button', { name: `${first} is not in English` }));
+    await waitFor(() => {
+      expect(screen.queryByText(first)).not.toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('tab', { name: 'Out of faction' }));
     fireEvent.click(screen.getByRole('button', { name: 'Keep Wreckas for Chaos Daemons' }));
 
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('2 edits to save'));
@@ -578,7 +596,7 @@ describe('DetachmentNamesCard', () => {
       'GET /api/detachments': names({ unsure: [] }),
     });
     renderWithProviders(<DetachmentNamesCard />);
-    expect(await screen.findByText('Every detachment name is known.')).toBeInTheDocument();
+    expect(await screen.findByText('No detachment names to link.')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByText('Only admins can link detachment names.')).toBeInTheDocument();
     });

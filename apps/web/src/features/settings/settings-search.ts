@@ -6,11 +6,14 @@ export type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 /** The detachments tab's faction in the address: a faction's name, or "all". */
 export const ALL_FACTIONS = 'all';
+export const DETACHMENT_SECTIONS = ['names', 'outside'] as const;
+export type DetachmentSection = (typeof DETACHMENT_SECTIONS)[number];
 
 export const SettingsSearchSchema = z.object({
   tab: z.enum(SETTINGS_TABS).catch('general'),
   /** Detachments: the faction shown (absent: the one with the most names left). */
   faction: z.string().min(1).optional().catch(undefined),
-  /** Detachments: where to scroll, "outside" = the detachments outside their faction. */
+  section: z.enum(DETACHMENT_SECTIONS).optional().catch(undefined),
+  /** Older links open the same section via `focus`. */
   focus: z.enum(['outside']).optional().catch(undefined),
 });

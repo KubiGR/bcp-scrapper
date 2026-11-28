@@ -84,7 +84,7 @@ export function digestMail(work: AdminWork, siteUrl: string): Mail | null {
       'detachments outside their faction',
     );
     parts.push(what);
-    sections.push(`${what}:\n${siteUrl}/settings?tab=detachments&faction=all&focus=outside`);
+    sections.push(`${what}:\n${siteUrl}/settings?tab=detachments&faction=all&section=outside`);
   }
   if (parts.length === 0) return null;
   return {

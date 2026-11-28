@@ -1,7 +1,7 @@
 import type { DetachmentNamesResponse } from '@bcp/shared';
-import { Alert, Badge, Button, Group, Select, Stack, Text } from '@mantine/core';
+import { Accordion, Alert, Badge, Button, Group, Select, Stack, Tabs, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { SearchSelect } from '../../components/SearchSelect';
 import { ErrorState } from '../../components/ErrorState';
 import { Panel } from '../../components/Panel';
@@ -11,7 +11,7 @@ import { Card, scoreboardClasses } from '../../components/Scoreboard';
 import { meQuery } from '../auth/auth-queries';
 import { DetachmentListsButton } from './DetachmentLists';
 import classes from './DetachmentNamesCard.module.css';
-import { ALL_FACTIONS } from './settings-search';
+import { ALL_FACTIONS, DETACHMENT_SECTIONS, type DetachmentSection } from './settings-search';
 import { detachmentNamesQuery } from './detachment-names-queries';
 import {
   detachmentNamesWithPending,
@@ -48,20 +48,27 @@ function targetOptions(unsure: Unsure, targets: Target[], faction: string): stri
  * Factions with names to review or existing decisions, most to-dos first;
  * `keep` (the picked one) stays listed even with nothing left.
  */
-function factionOptions(data: DetachmentNamesResponse, keep: string | null) {
+function factionOptions(
+  data: DetachmentNamesResponse,
+  keep: string | null,
+  section: DetachmentSection,
+) {
   const counts = new Map<string, number>();
   if (keep !== null && keep !== ALL) counts.set(keep, 0);
-  for (const named of [...data.links, ...data.foreign, ...data.ignored, ...data.learned]) {
-    for (const f of named.factions) counts.set(f, counts.get(f) ?? 0);
-  }
-  for (const unsure of data.unsure) {
-    for (const f of unsure.factions) counts.set(f, (counts.get(f) ?? 0) + 1);
-  }
-  for (const pair of data.wrong) {
-    counts.set(pair.faction, (counts.get(pair.faction) ?? 0) + 1);
-  }
-  for (const pair of data.kept) {
-    counts.set(pair.faction, counts.get(pair.faction) ?? 0);
+  if (section === 'names') {
+    for (const named of [...data.links, ...data.foreign, ...data.ignored, ...data.learned]) {
+      for (const f of named.factions) counts.set(f, counts.get(f) ?? 0);
+    }
+    for (const unsure of data.unsure) {
+      for (const f of unsure.factions) counts.set(f, (counts.get(f) ?? 0) + 1);
+    }
+  } else {
+    for (const pair of data.wrong) {
+      counts.set(pair.faction, (counts.get(pair.faction) ?? 0) + 1);
+    }
+    for (const pair of data.kept) {
+      counts.set(pair.faction, counts.get(pair.faction) ?? 0);
+    }
   }
   return [...counts]
     .sort(([a, x], [b, y]) => y - x || a.localeCompare(b))
@@ -295,15 +302,17 @@ function NamesTable({
  */
 /**
  * `faction`/`onFactionChange`: the faction kept outside (the address; "all" for every faction),
- * else kept here. `focus` "outside": scroll to the detachments outside their faction.
+ * else kept here. The selected section can also be kept in the address.
  */
 export function DetachmentNamesCard({
   faction: factionProp,
-  focus,
+  section: sectionProp,
+  onSectionChange,
   onFactionChange,
 }: {
   faction?: string;
-  focus?: 'outside';
+  section?: DetachmentSection;
+  onSectionChange?: (section: DetachmentSection) => void;
   onFactionChange?: (faction: string) => void;
 } = {}) {
   const names = useQuery(detachmentNamesQuery);
@@ -311,14 +320,9 @@ export function DetachmentNamesCard({
   const readOnly = me.data?.authRequired === true && me.data.user?.role !== 'admin';
   const { enqueue, pending, errors, clearErrors } = useDetachmentSaves();
   const data = names.data && detachmentNamesWithPending(names.data, pending);
-  // Opened from the to-do list: straight to the detachments outside their faction, once (a
-  // stable callback, so saving there doesn't jump back).
-  const scrollToOutside = useCallback(
-    (el: HTMLElement | null) => {
-      if (focus === 'outside') el?.scrollIntoView({ block: 'start' });
-    },
-    [focus],
-  );
+  const [ownSection, setOwnSection] = useState<DetachmentSection>(sectionProp ?? 'names');
+  const section = onSectionChange === undefined ? ownSection : (sectionProp ?? 'names');
+  const showOutside = section === 'outside';
   const [ownPicked, setOwnPicked] = useState<string | null>(null);
   const picked =
     onFactionChange === undefined
@@ -332,12 +336,12 @@ export function DetachmentNamesCard({
     if (onFactionChange === undefined) setOwnPicked(value);
     else onFactionChange(value === ALL ? ALL_FACTIONS : value);
   };
-  const factions = data ? factionOptions(data, picked) : [];
+  const factions = data ? factionOptions(data, picked, section) : [];
   const faction = picked ?? factions[0]?.value ?? ALL;
   const work = (edits: DetachmentEdit[]) => {
     if (data && faction !== ALL) {
       const hadTodos = factions.some((option) => option.value === faction && option.count > 0);
-      const remaining = factionOptions(detachmentNamesWithPending(data, edits), faction);
+      const remaining = factionOptions(detachmentNamesWithPending(data, edits), faction, section);
       const hasTodos = remaining.some((option) => option.value === faction && option.count > 0);
       const next = remaining.find((option) => option.count > 0);
       if (hadTodos && !hasTodos && next) {
@@ -376,279 +380,317 @@ export function DetachmentNamesCard({
 
   return (
     <Panel title="Detachment names">
-      {names.isPending && (
-        <CardsSkeleton label="Loading detachment names" groups={0} cards={3} dense />
-      )}
-      {names.error && <ErrorState error={names.error} onRetry={() => void names.refetch()} />}
-      {data && (
-        <Stack gap="md">
-          <Text size="sm" c="dimmed">
-            Names used in lists that BCP never uses — often a translation or a misspelling. Link
-            each to the detachment it means, or mark it as its own.
-          </Text>
-          {readOnly && (
-            <Text size="xs" c="dimmed">
-              Only admins can link detachment names.
-            </Text>
-          )}
-          {pending.length > 0 && (
-            <Text size="xs" c="dimmed" role="status">
-              {plural(pending.length, 'edit')} to save
-            </Text>
-          )}
-          {errors.length > 0 && (
-            <Alert color="red" role="alert" withCloseButton onClose={clearErrors}>
-              {errors.map((message, index) => (
-                <Text key={index} size="sm">
-                  {message}
-                </Text>
-              ))}
-            </Alert>
-          )}
-          {factions.length > 0 && (
-            <SearchSelect
-              label="Faction"
-              renderOption={renderFactionOption}
-              leftSection={<FactionIcon faction={faction} size={18} />}
-              data={[{ value: ALL, label: 'All factions' }, ...factions]}
-              value={faction}
-              onChange={(value) => {
-                setPicked(value ?? ALL);
-              }}
-              allowDeselect={false}
-              w={{ base: '100%', xs: 280 }}
-            />
-          )}
-          {faction !== ALL && known.length > 0 && (
-            <Stack gap={4}>
-              <Text size="sm" fw={600}>
-                Known {faction} detachments
+      <Tabs
+        value={section}
+        onChange={(value) => {
+          const next = DETACHMENT_SECTIONS.find((option) => option === value);
+          if (next === undefined) return;
+          if (onSectionChange === undefined) setOwnSection(next);
+          else onSectionChange(next);
+        }}
+      >
+        <Tabs.List mb="md" aria-label="Detachment review">
+          <Tabs.Tab value="names">Names to link</Tabs.Tab>
+          <Tabs.Tab value="outside">Out of faction</Tabs.Tab>
+        </Tabs.List>
+        {names.isPending && (
+          <CardsSkeleton label="Loading detachment names" groups={0} cards={3} dense />
+        )}
+        {names.error && <ErrorState error={names.error} onRetry={() => void names.refetch()} />}
+        {data && (
+          <Stack gap="md">
+            {readOnly && (
+              <Text size="xs" c="dimmed">
+                Only admins can link detachment names.
               </Text>
-              <Group
-                component="ul"
-                aria-label={`Known ${faction} detachments`}
-                gap={6}
-                className={classes.known}
-              >
-                {known.map((target) => (
-                  <Badge component="li" key={target.name} variant="light" color="gray">
-                    {target.name}
-                  </Badge>
+            )}
+            {pending.length > 0 && (
+              <Text size="xs" c="dimmed" role="status">
+                {plural(pending.length, 'edit')} to save
+              </Text>
+            )}
+            {errors.length > 0 && (
+              <Alert color="red" role="alert" withCloseButton onClose={clearErrors}>
+                {errors.map((message, index) => (
+                  <Text key={index} size="sm">
+                    {message}
+                  </Text>
                 ))}
-              </Group>
-            </Stack>
-          )}
-          {data.unsure.length === 0 && data.wrong.length === 0 ? (
-            <Text size="sm" c="dimmed">
-              Every detachment name is known.
-            </Text>
-          ) : (
-            unsure.length > 0 && <NamesTable entries={unsure} {...rowProps} />
-          )}
-          {foreign.length > 0 && (
-            <Stack component="section" aria-label="Not in English" gap={4}>
-              <Text size="sm" fw={600}>
-                Not in English
-              </Text>
-              <Text size="xs" c="dimmed">
-                Lists keep these names, but Meta counts them as detachment unknown. Link one to the
-                detachment it means to count it.
-              </Text>
-              <NamesTable entries={foreign} foreign {...rowProps} />
-            </Stack>
-          )}
-          {ignored.length > 0 && (
-            <Stack component="section" aria-label="Ignored" gap={4}>
-              <Text size="sm" fw={600}>
-                Ignored
-              </Text>
-              <Text size="xs" c="dimmed">
-                Names that aren’t a detachment at all. Lists keep them; Meta counts them as
-                detachment unknown.
-              </Text>
-              {ignored.map((entry) => (
-                <Group key={entry.name} justify="space-between" wrap="nowrap">
-                  <Text size="sm">
-                    {entry.name}{' '}
-                    <Text span size="xs" c="dimmed" className="numeric">
-                      · {entry.lists} {entry.lists === 1 ? 'list' : 'lists'}
-                    </Text>
+              </Alert>
+            )}
+            {factions.length > 0 && (
+              <SearchSelect
+                label="Faction"
+                renderOption={renderFactionOption}
+                leftSection={<FactionIcon faction={faction} size={18} />}
+                data={[{ value: ALL, label: 'All factions' }, ...factions]}
+                value={faction}
+                onChange={(value) => {
+                  setPicked(value ?? ALL);
+                }}
+                allowDeselect={false}
+                w={{ base: '100%', xs: 280 }}
+              />
+            )}
+            <Tabs.Panel value="outside">
+              {showOutside && (
+                <Stack component="section" aria-label="Not in this faction" gap={4}>
+                  <Text size="sm" fw={600}>
+                    Not in this faction
                   </Text>
-                  <DetachmentListsButton name={entry.name} />
-                  <Button
-                    size="xs"
-                    variant="subtle"
-                    color="gray"
-                    disabled={readOnly}
-                    aria-label={`Undo Ignore for ${entry.name}`}
-                    onClick={() => {
-                      work([{ type: 'unlink', name: entry.name }]);
-                    }}
-                  >
-                    Undo
-                  </Button>
-                </Group>
-              ))}
-            </Stack>
-          )}
-          {(wrong.length > 0 || kept.length > 0) && (
-            <Stack
-              component="section"
-              aria-label="Not in this faction"
-              gap={4}
-              // Landed on from the to-do list: clear of the fixed header.
-              style={{ scrollMarginTop: 76 }}
-              ref={scrollToOutside}
-            >
-              <Text size="sm" fw={600}>
-                Not in this faction
-              </Text>
-              <Text size="xs" c="dimmed">
-                Detachments lists use that the GW app doesn’t list for their army, most used first.
-                Meta counts them as detachment unknown unless you keep them anyway; Ignore only
-                takes one off the to-do list.
-              </Text>
-              {groupByName(wrong).map((group) => {
-                const one = group.pairs.length === 1 ? group.pairs[0] : undefined;
-                const target = one ? `for ${one.faction}` : 'for all its factions';
-                const decide = (ignored: boolean) => {
-                  work(
-                    group.pairs.map(({ faction, name }) => ({
-                      type: 'keep',
-                      faction,
-                      name,
-                      ignored,
-                    })),
-                  );
-                };
-                return (
-                  <Group key={group.name} gap="xs">
-                    <Text size="sm">{`${group.name} · ${plural(group.lists, 'list')}`}</Text>
-                    {(faction === ALL || !one) && (
-                      <Text size="sm" c="dimmed">
-                        {one
-                          ? one.faction
-                          : group.pairs
-                              .map((pair) => `${pair.faction} ${String(pair.lists)}`)
-                              .join(', ')}
+                  <Text size="xs" c="dimmed">
+                    Detachments lists use that the GW app doesn’t list for their army, most used
+                    first. Meta counts them as detachment unknown unless you keep them anyway;
+                    Ignore only takes one off the to-do list.
+                  </Text>
+                  {wrong.length === 0 && (
+                    <Text size="sm" c="dimmed">
+                      No out-of-faction detachments to review.
+                    </Text>
+                  )}
+                  {groupByName(wrong).map((group) => {
+                    const one = group.pairs.length === 1 ? group.pairs[0] : undefined;
+                    const target = one ? `for ${one.faction}` : 'for all its factions';
+                    const decide = (ignored: boolean) => {
+                      work(
+                        group.pairs.map(({ faction, name }) => ({
+                          type: 'keep',
+                          faction,
+                          name,
+                          ignored,
+                        })),
+                      );
+                    };
+                    return (
+                      <Group key={group.name} gap="xs">
+                        <Text size="sm">{`${group.name} · ${plural(group.lists, 'list')}`}</Text>
+                        {(faction === ALL || !one) && (
+                          <Text size="sm" c="dimmed">
+                            {one
+                              ? one.faction
+                              : group.pairs
+                                  .map((pair) => `${pair.faction} ${String(pair.lists)}`)
+                                  .join(', ')}
+                          </Text>
+                        )}
+                        <Text size="xs" c="dimmed">
+                          {group.bsdataFactions.length === 0
+                            ? 'The GW app doesn’t list it'
+                            : `The GW app has it for ${group.bsdataFactions.join(', ')}`}
+                        </Text>
+                        <DetachmentListsButton name={group.name} faction={one?.faction} />
+                        <Button
+                          size="compact-xs"
+                          variant="subtle"
+                          disabled={readOnly}
+                          aria-label={`Keep ${group.name} ${target}`}
+                          onClick={() => {
+                            decide(false);
+                          }}
+                        >
+                          Keep anyway
+                        </Button>
+                        <Button
+                          size="compact-xs"
+                          variant="subtle"
+                          color="gray"
+                          disabled={readOnly}
+                          aria-label={`Ignore ${group.name} ${target}`}
+                          onClick={() => {
+                            decide(true);
+                          }}
+                        >
+                          Ignore
+                        </Button>
+                      </Group>
+                    );
+                  })}
+                  {kept.length > 0 && (
+                    <Accordion keepMounted={false} variant="separated" chevronPosition="left">
+                      <Accordion.Item value="reviewed">
+                        <Accordion.Control>Kept and ignored ({kept.length})</Accordion.Control>
+                        <Accordion.Panel>
+                          <Stack gap={4}>
+                            {kept.map((pair) => (
+                              <Group key={`kept:${pair.faction}:${pair.name}`} gap="xs">
+                                <Text size="sm">{pair.name}</Text>
+                                <Text size="sm" c="dimmed">
+                                  {`${pair.ignored ? 'ignored' : 'kept'} for ${pair.faction}`}
+                                </Text>
+                                <DetachmentListsButton name={pair.name} faction={pair.faction} />
+                                <Button
+                                  size="compact-xs"
+                                  variant="subtle"
+                                  disabled={readOnly}
+                                  aria-label={`Undo keep ${pair.name} for ${pair.faction}`}
+                                  onClick={() => {
+                                    work([
+                                      { type: 'unkeep', faction: pair.faction, name: pair.name },
+                                    ]);
+                                  }}
+                                >
+                                  Undo
+                                </Button>
+                              </Group>
+                            ))}
+                          </Stack>
+                        </Accordion.Panel>
+                      </Accordion.Item>
+                    </Accordion>
+                  )}
+                </Stack>
+              )}
+            </Tabs.Panel>
+            <Tabs.Panel value="names">
+              {!showOutside && (
+                <Stack gap="md">
+                  <Text size="sm" c="dimmed">
+                    Names used in lists that BCP never uses — often a translation or a misspelling.
+                    Link each to the detachment it means, or mark it as its own.
+                  </Text>
+                  {faction !== ALL && known.length > 0 && (
+                    <Stack gap={4}>
+                      <Text size="sm" fw={600}>
+                        Known {faction} detachments
                       </Text>
-                    )}
-                    <Text size="xs" c="dimmed">
-                      {group.bsdataFactions.length === 0
-                        ? 'The GW app doesn’t list it'
-                        : `The GW app has it for ${group.bsdataFactions.join(', ')}`}
+                      <Group
+                        component="ul"
+                        aria-label={`Known ${faction} detachments`}
+                        gap={6}
+                        className={classes.known}
+                      >
+                        {known.map((target) => (
+                          <Badge component="li" key={target.name} variant="light" color="gray">
+                            {target.name}
+                          </Badge>
+                        ))}
+                      </Group>
+                    </Stack>
+                  )}
+                  {unsure.length === 0 ? (
+                    <Text size="sm" c="dimmed">
+                      No detachment names to link.
                     </Text>
-                    <DetachmentListsButton name={group.name} faction={one?.faction} />
-                    <Button
-                      size="compact-xs"
-                      variant="subtle"
-                      disabled={readOnly}
-                      aria-label={`Keep ${group.name} ${target}`}
-                      onClick={() => {
-                        decide(false);
-                      }}
-                    >
-                      Keep anyway
-                    </Button>
-                    <Button
-                      size="compact-xs"
-                      variant="subtle"
-                      color="gray"
-                      disabled={readOnly}
-                      aria-label={`Ignore ${group.name} ${target}`}
-                      onClick={() => {
-                        decide(true);
-                      }}
-                    >
-                      Ignore
-                    </Button>
-                  </Group>
-                );
-              })}
-              {kept.map((pair) => (
-                <Group key={`kept:${pair.faction}:${pair.name}`} gap="xs">
-                  <Text size="sm">{pair.name}</Text>
-                  <Text size="sm" c="dimmed">
-                    {`${pair.ignored ? 'ignored' : 'kept'} for ${pair.faction}`}
-                  </Text>
-                  <DetachmentListsButton name={pair.name} faction={pair.faction} />
-                  <Button
-                    size="compact-xs"
-                    variant="subtle"
-                    disabled={readOnly}
-                    aria-label={`Undo keep ${pair.name} for ${pair.faction}`}
-                    onClick={() => {
-                      work([{ type: 'unkeep', faction: pair.faction, name: pair.name }]);
-                    }}
-                  >
-                    Undo
-                  </Button>
-                </Group>
-              ))}
-            </Stack>
-          )}
-          {learned.length > 0 && (
-            <Stack component="section" aria-label="Learned from BCP" gap={4}>
-              <Text size="sm" fw={600}>
-                Learned from BCP
-              </Text>
-              <Text size="xs" c="dimmed">
-                Names read as translations because players picked that detachment on BCP. If one is
-                really a different detachment, say so.
-              </Text>
-              {learned.map((translation) => (
-                <Group key={translation.name} gap="xs">
-                  <Text size="sm">{translation.name}</Text>
-                  <Text size="sm" c="dimmed">
-                    →
-                  </Text>
-                  <Text size="sm">{translation.target}</Text>
-                  <Button
-                    size="compact-xs"
-                    variant="subtle"
-                    disabled={readOnly}
-                    aria-label={`${translation.name} is not ${translation.target}`}
-                    onClick={() => {
-                      work([
-                        { type: 'link', name: translation.name, target: null, foreign: false },
-                      ]);
-                    }}
-                  >
-                    Not the same
-                  </Button>
-                </Group>
-              ))}
-            </Stack>
-          )}
-          {links.length > 0 && (
-            <Stack gap={4}>
-              <Text size="sm" fw={600}>
-                Linked names
-              </Text>
-              {links.map((linked) => (
-                <Group key={linked.name} gap="xs">
-                  <Text size="sm">{linked.name}</Text>
-                  <Text size="sm" c="dimmed">
-                    →
-                  </Text>
-                  <Text size="sm">{linked.target ?? 'its own detachment'}</Text>
-                  <Button
-                    size="compact-xs"
-                    variant="subtle"
-                    disabled={readOnly}
-                    aria-label={`Undo link for ${linked.name}`}
-                    onClick={() => {
-                      work([{ type: 'unlink', name: linked.name }]);
-                    }}
-                  >
-                    Undo
-                  </Button>
-                </Group>
-              ))}
-            </Stack>
-          )}
-        </Stack>
-      )}
+                  ) : (
+                    <NamesTable entries={unsure} {...rowProps} />
+                  )}
+                  {foreign.length > 0 && (
+                    <Stack component="section" aria-label="Not in English" gap={4}>
+                      <Text size="sm" fw={600}>
+                        Not in English
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        Lists keep these names, but Meta counts them as detachment unknown. Link one
+                        to the detachment it means to count it.
+                      </Text>
+                      <NamesTable entries={foreign} foreign {...rowProps} />
+                    </Stack>
+                  )}
+                  {ignored.length > 0 && (
+                    <Stack component="section" aria-label="Ignored" gap={4}>
+                      <Text size="sm" fw={600}>
+                        Ignored
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        Names that aren’t a detachment at all. Lists keep them; Meta counts them as
+                        detachment unknown.
+                      </Text>
+                      {ignored.map((entry) => (
+                        <Group key={entry.name} justify="space-between" wrap="nowrap">
+                          <Text size="sm">
+                            {entry.name}{' '}
+                            <Text span size="xs" c="dimmed" className="numeric">
+                              · {entry.lists} {entry.lists === 1 ? 'list' : 'lists'}
+                            </Text>
+                          </Text>
+                          <DetachmentListsButton name={entry.name} />
+                          <Button
+                            size="xs"
+                            variant="subtle"
+                            color="gray"
+                            disabled={readOnly}
+                            aria-label={`Undo Ignore for ${entry.name}`}
+                            onClick={() => {
+                              work([{ type: 'unlink', name: entry.name }]);
+                            }}
+                          >
+                            Undo
+                          </Button>
+                        </Group>
+                      ))}
+                    </Stack>
+                  )}
+                  {learned.length > 0 && (
+                    <Stack component="section" aria-label="Learned from BCP" gap={4}>
+                      <Text size="sm" fw={600}>
+                        Learned from BCP
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        Names read as translations because players picked that detachment on BCP. If
+                        one is really a different detachment, say so.
+                      </Text>
+                      {learned.map((translation) => (
+                        <Group key={translation.name} gap="xs">
+                          <Text size="sm">{translation.name}</Text>
+                          <Text size="sm" c="dimmed">
+                            →
+                          </Text>
+                          <Text size="sm">{translation.target}</Text>
+                          <Button
+                            size="compact-xs"
+                            variant="subtle"
+                            disabled={readOnly}
+                            aria-label={`${translation.name} is not ${translation.target}`}
+                            onClick={() => {
+                              work([
+                                {
+                                  type: 'link',
+                                  name: translation.name,
+                                  target: null,
+                                  foreign: false,
+                                },
+                              ]);
+                            }}
+                          >
+                            Not the same
+                          </Button>
+                        </Group>
+                      ))}
+                    </Stack>
+                  )}
+                  {links.length > 0 && (
+                    <Stack gap={4}>
+                      <Text size="sm" fw={600}>
+                        Linked names
+                      </Text>
+                      {links.map((linked) => (
+                        <Group key={linked.name} gap="xs">
+                          <Text size="sm">{linked.name}</Text>
+                          <Text size="sm" c="dimmed">
+                            →
+                          </Text>
+                          <Text size="sm">{linked.target ?? 'its own detachment'}</Text>
+                          <Button
+                            size="compact-xs"
+                            variant="subtle"
+                            disabled={readOnly}
+                            aria-label={`Undo link for ${linked.name}`}
+                            onClick={() => {
+                              work([{ type: 'unlink', name: linked.name }]);
+                            }}
+                          >
+                            Undo
+                          </Button>
+                        </Group>
+                      ))}
+                    </Stack>
+                  )}
+                </Stack>
+              )}
+            </Tabs.Panel>
+          </Stack>
+        )}
+      </Tabs>
     </Panel>
   );
 }
